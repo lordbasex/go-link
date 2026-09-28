@@ -11,7 +11,6 @@ All notable changes to go-link. Newest first.
 - The controls over the video are see-through and hide after 3 seconds without moving the mouse or tapping, as in video players.
 - On phones, a one-row header with a "…" tools menu, and the sections as a tab bar at the bottom of the screen.
 - Recordings download as MP4 (H.264 + AAC, the picture enlarged with crisp pixels) ready for chat apps and phones: the browser converts them with WebCodecs and a small Go WebAssembly helper, the device takes no part. When someone spoke, a preview plays the recording first ("Preview and export"), with a Game and a Voices volume and a clipping meter, and "Export MP4" applies them; with voices the MP4 has three sound tracks (game and voices, the default; game alone; voices alone). Browsers that cannot convert save the original WebM.
-- Exported videos carry the go-link icon: fully opaque, beating slowly, jumping to another corner every 8 to 15 seconds. Screenshots carry no mark.
 
 ### Added (device)
 

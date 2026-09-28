@@ -701,7 +701,7 @@ export const en = {
       { title: "Any controller", text: "Gamepads, the keyboard or the on-screen pad of a phone. Swap seats without leaving the game." },
       { title: "Private by design", text: "Every invitation has its own PIN, good for one person. Nobody gets in without one." },
       { title: "Your games stay home", text: "ROMs never leave your computer: only the picture and the sound travel." },
-      { title: "Record and share", text: "The host records the game with everyone's voices and exports an MP4 ready for WhatsApp, with the mix set by ear and the go-link mark. Screenshots in one tap." },
+      { title: "Record and share", text: "The host records the game with everyone's voices and exports an MP4 ready for WhatsApp, with the mix set by ear. Screenshots in one tap." },
       { title: "A console in your pocket", text: "On a phone the room becomes a handheld: a Game Boy held upright, a Switch held sideways, with the controls out of the way." },
     ],
     flowEyebrow: "Under the hood",

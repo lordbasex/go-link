@@ -714,7 +714,7 @@ export const es: Messages = {
       { title: "Cualquier control", text: "Joysticks, el teclado o el pad en pantalla del celular. Cambia de puesto sin salir de la partida." },
       { title: "Privado de fábrica", text: "Cada invitación tiene su propio PIN, válido para una persona. Nadie entra sin uno." },
       { title: "Tus juegos no salen de casa", text: "Las ROMs nunca salen de tu computadora: solo viajan la imagen y el sonido." },
-      { title: "Graba y comparte", text: "El anfitrión graba la partida con las voces de todos y exporta un MP4 listo para WhatsApp, con la mezcla ajustada a oído y la marca de go-link. Capturas de pantalla en un toque." },
+      { title: "Graba y comparte", text: "El anfitrión graba la partida con las voces de todos y exporta un MP4 listo para WhatsApp, con la mezcla ajustada a oído. Capturas de pantalla en un toque." },
       { title: "Una consola en el bolsillo", text: "En el celular la sala se vuelve una portátil: una Game Boy en vertical, una Switch en horizontal, con los controles fuera del camino." },
     ],
     flowEyebrow: "Por dentro",

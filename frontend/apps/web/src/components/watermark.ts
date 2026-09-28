@@ -1,10 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
-// The go-link icon drawn over every exported video (never over
-// screenshots). It sits in a corner, beats slowly like a heart, and jumps
-// to another corner at random every 8 to 15 seconds, so cropping one
-// corner does not remove it. It is drawn on the frame the converter
-// already paints (to enlarge the picture), so it costs nothing extra.
+// The go-link icon over exported videos (not over screenshots): it sits
+// in a corner, beats slowly and changes corner now and then. It is drawn
+// on the frame the converter already paints, so it costs nothing extra.
 
 type Corner = 0 | 1 | 2 | 3; // top left, top right, bottom right, bottom left
 

@@ -269,7 +269,6 @@ export const docsEn: Docs = {
             "The file comes from the device over the direct connection in 60 KB parts, with progress, a cancel button and a SHA-256 check.",
             "If someone spoke, a **preview** opens: play the recording and set the **Game** and **Voices** volumes (0 to 300 %). A meter warns when the mix would clip.",
             "**Export MP4**: your browser turns it into an MP4 (H.264 video, AAC sound, the picture enlarged with crisp pixels). The device takes no part in it.",
-            "Every exported video carries the go-link icon: it beats slowly and jumps to another corner every 8 to 15 seconds, so it cannot be cropped out. Screenshots have no mark.",
           ],
         },
         {
