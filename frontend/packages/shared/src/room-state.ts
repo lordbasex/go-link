@@ -39,6 +39,8 @@ export interface RoomStateView {
   pausedBy: string;
   /** The running game's control panel, for the on-screen gamepad. */
   controls: GameControls;
+  /** The host is recording the game, with the players' voices: show REC. */
+  recording?: boolean;
 }
 
 /** What the device tells guests about the room. */
@@ -78,8 +80,12 @@ function parseControls(v: unknown): GameControls {
   return { players, buttons, control: typeof o.control === "string" ? o.control.slice(0, 20) : "" };
 }
 
+/** System chat lines the web shows in the reader's language. */
+export type ChatEvent = "recording_started" | "recording_stopped";
+const CHAT_EVENTS: readonly ChatEvent[] = ["recording_started", "recording_stopped"];
+
 export type ChatLine =
-  | { kind: "system"; text: string; ts: number }
+  | { kind: "system"; text: string; ts: number; event?: ChatEvent }
   | { kind: "user"; name: string; port: number | null; role: string; text: string; ts: number };
 
 const str = (v: unknown, max = 300): string => (typeof v === "string" ? v.slice(0, max) : "");
@@ -145,6 +151,7 @@ export function parseRoomState(msg: unknown): RoomStateView | null {
     paused: m.paused === true,
     pausedBy: str(m.paused_by, 40),
     controls: parseControls(m.controls),
+    recording: m.recording === true,
   };
 }
 
@@ -152,7 +159,10 @@ export function parseChat(msg: unknown): ChatLine | null {
   const m = obj(msg);
   if (m.type !== "chat") return null;
   const ts = num(m.ts);
-  if (typeof m.system === "string") return { kind: "system", text: str(m.system), ts };
+  if (typeof m.system === "string") {
+    const event = CHAT_EVENTS.find((e) => e === m.event);
+    return event ? { kind: "system", text: str(m.system), ts, event } : { kind: "system", text: str(m.system), ts };
+  }
   if (typeof m.text !== "string" || typeof m.name !== "string") return null;
   const port = num(m.port);
   return { kind: "user", name: str(m.name, 40), port: port >= 1 && port <= 4 ? port : null, role: str(m.role, 20), text: str(m.text), ts };

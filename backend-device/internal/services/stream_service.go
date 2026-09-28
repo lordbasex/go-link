@@ -92,6 +92,7 @@ type viewer struct {
 	kind    PeerKind
 	pc      *webrtc.PeerConnection
 	control *webrtc.DataChannel
+	files   *webrtc.DataChannel // linked browsers: ROM uploads and downloads
 	// voice[i] carries the voice of the player at port i+1 to this viewer.
 	voice [4]*webrtc.TrackLocalStaticRTP
 
@@ -114,6 +115,9 @@ type StreamService struct {
 	audio *webrtc.TrackLocalStaticSample
 
 	keyframe atomic.Bool
+	// rec, while the room is recorded, gets a copy of every encoded frame
+	// and voice packet (nothing is encoded twice).
+	rec atomic.Pointer[Recorder]
 
 	// Owned by the source goroutine (Run): encoders and pacing.
 	vp8        *encoder.VP8
@@ -302,6 +306,25 @@ func (s *StreamService) SendControl(peerID string, msg []byte) bool {
 	return v.control.SendText(string(msg)) == nil
 }
 
+// SendFiles sends a message on a linked browser's "files" channel
+// (downloads). It reports false when the channel is not open or the
+// browser has not proven its link.
+func (s *StreamService) SendFiles(peerID string, isString bool, data []byte) bool {
+	s.mu.Lock()
+	v := s.viewers[peerID]
+	s.mu.Unlock()
+	if v == nil || v.kind != KindLink || v.files == nil || v.files.ReadyState() != webrtc.DataChannelStateOpen || !s.linkAllowed(peerID) {
+		return false
+	}
+	var err error
+	if isString {
+		err = v.files.SendText(string(data))
+	} else {
+		err = v.files.Send(data)
+	}
+	return err == nil
+}
+
 // OnLatency registers a callback for measured round trips.
 func (s *StreamService) OnLatency(fn func(peerID string, ms int)) {
 	s.mu.Lock()
@@ -466,7 +489,8 @@ func (s *StreamService) Run(ctx context.Context) error {
 // size, so games with odd resolutions (e.g. 248x256) are sent natively
 // and the browser scales them.
 func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
-	if s.videoViewerCount() == 0 {
+	rec := s.rec.Load()
+	if s.videoViewerCount() == 0 && rec == nil {
 		s.sent, s.window = 0, time.Now()
 		return
 	}
@@ -499,6 +523,9 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 	if len(data) == 0 {
 		return
 	}
+	if rec != nil {
+		rec.Video(data, w, h)
+	}
 	if err := s.track.WriteSample(media.Sample{Data: data, Duration: dur}); err != nil && !errors.Is(err, errClosedPipe) {
 		s.log.Debug("write sample", "err", err)
 	}
@@ -508,7 +535,8 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 
 // AudioSamples buffers audio and sends it in 20 ms Opus frames.
 func (s *StreamService) AudioSamples(pcm []int16) {
-	if s.videoViewerCount() == 0 || s.opus == nil {
+	rec := s.rec.Load()
+	if s.videoViewerCount() == 0 && rec == nil || s.opus == nil {
 		s.pcm = s.pcm[:0]
 		return
 	}
@@ -521,7 +549,19 @@ func (s *StreamService) AudioSamples(pcm []int16) {
 			s.log.Error("audio encode", "err", err)
 			continue
 		}
+		if rec != nil {
+			rec.GameAudio(pkt)
+		}
 		_ = s.audio.WriteSample(media.Sample{Data: pkt, Duration: 20 * time.Millisecond})
+	}
+}
+
+// SetRecorder starts (rec) or stops (nil) copying the room's media to a
+// recording. A new recording starts with a keyframe.
+func (s *StreamService) SetRecorder(rec *Recorder) {
+	s.rec.Store(rec)
+	if rec != nil {
+		s.keyframe.Store(true)
 	}
 }
 
@@ -747,6 +787,7 @@ func (s *StreamService) AddPeer(peerID string, kind PeerKind) error {
 		if err != nil {
 			return fail(err)
 		}
+		v.files = files
 		files.OnMessage(func(msg webrtc.DataChannelMessage) {
 			s.mu.Lock()
 			fn := s.onLinkFile
@@ -855,6 +896,9 @@ func (s *StreamService) forwardVoice(from string, track *webrtc.TrackRemote) {
 		port := s.seatOf(from)
 		if port == 0 || s.voiceDisabled() {
 			continue // not a player, or voice is off in this room
+		}
+		if rec := s.rec.Load(); rec != nil {
+			rec.Voice(port, pkt)
 		}
 		for _, out := range s.voiceTargets(from, port) {
 			_ = out.WriteRTP(pkt)

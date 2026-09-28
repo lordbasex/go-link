@@ -70,4 +70,8 @@ type ManagedRoom struct {
 	// OwnerKey is what the host's own browsers send instead of a PIN
 	// (guests get a PIN per invitation, see RoomsService.Invite).
 	OwnerKey string `json:"owner_key,omitempty"`
+	// Recording is set while the host records the game, since
+	// RecordingSince.
+	Recording      bool       `json:"recording,omitempty"`
+	RecordingSince *time.Time `json:"recording_since,omitempty"`
 }

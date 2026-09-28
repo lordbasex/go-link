@@ -188,15 +188,22 @@ func run() error {
 	// run at once. The list lives in device.json.
 	systemDir := filepath.Join(base, "system")
 	history := services.NewHistoryService(filepath.Join(base, "history.json"))
+	// Recordings of game rooms, only for the host (~/go-link/rec).
+	recordings := services.NewRecordingService(filepath.Join(base, "rec"), nil)
+	history.SetRecordings(recordings)
 	games := services.NewRoomsService(services.RoomsConfig{
-		Library:  library,
-		Status:   status,
-		ICE:      ice,
-		Stream:   streamCfg,
-		Opener:   opener,
-		HostName: hostName(),
-		SavesDir: filepath.Join(base, "saves"),
-		History:  history,
+		Library:    library,
+		Status:     status,
+		ICE:        ice,
+		Stream:     streamCfg,
+		Opener:     opener,
+		HostName:   hostName(),
+		SavesDir:   filepath.Join(base, "saves"),
+		History:    history,
+		Recordings: recordings,
+		OnRecording: func(ev services.RecordingEvent) {
+			stream.SendToLinks(ev)
+		},
 		MaxRooms: cfg.MaxRooms,
 		Trusted:  links.Trusted,
 		Rooms:    cfg.Rooms,
@@ -220,7 +227,17 @@ func run() error {
 			stream.SendControl(peerID, b)
 		}
 	})
-	stream.OnLinkFiles(uploads.Handle, uploads.Abort)
+	// Recordings to the owner, pulled piece by piece on the same channel.
+	downloads := services.NewDownloadService(recordings, stream.SendFiles)
+	stream.OnLinkFiles(func(peerID string, isString bool, data []byte) {
+		if isString && downloads.Handle(peerID, data) {
+			return
+		}
+		uploads.Handle(peerID, isString, data)
+	}, func(peerID string) {
+		uploads.Abort(peerID)
+		downloads.Abort(peerID)
+	})
 
 	// Requests from the owner (a browser linked with the pairing code).
 	stream.OnLinkMessage(func(peerID string, data []byte) {
@@ -229,16 +246,17 @@ func run() error {
 			return
 		}
 		var msg struct {
-			Type   string `json:"type"`
-			Dir    string `json:"dir"`
-			Set    string `json:"set"`
-			Kind   string `json:"kind"`
-			Size   string `json:"size"`
-			ID     string `json:"id"`
-			Action string `json:"action"`
-			Name   string `json:"name"`
-			From   string `json:"from"`
-			Slot   int    `json:"slot"`
+			Type    string `json:"type"`
+			Dir     string `json:"dir"`
+			Set     string `json:"set"`
+			Kind    string `json:"kind"`
+			Size    string `json:"size"`
+			ID      string `json:"id"`
+			Action  string `json:"action"`
+			Name    string `json:"name"`
+			From    string `json:"from"`
+			Slot    int    `json:"slot"`
+			Confirm string `json:"confirm"`
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -306,16 +324,68 @@ func run() error {
 				stream.SendControl(peerID, b)
 			}
 			return
-		case "get_history", "clear_history":
+		case "get_history", "clear_history", "delete_history":
 			// The history of games, only to the owner's linked browsers.
-			if msg.Type == "clear_history" {
+			// Clearing it (or deleting a game) deletes its recordings too.
+			res := map[string]any{"type": "history"}
+			switch msg.Type {
+			case "clear_history":
 				if err := history.Clear(); err != nil {
 					logger.Warn("cannot clear the history", "err", err)
 				}
+			case "delete_history":
+				if err := history.Delete(msg.ID); err != nil {
+					res["error"] = err.Error()
+				}
 			}
-			if b, err := json.Marshal(map[string]any{"type": "history", "items": history.List()}); err == nil {
+			res["items"] = history.List()
+			if b, err := json.Marshal(res); err == nil {
 				stream.SendControl(peerID, b)
 			}
+			return
+		case "get_recordings", "delete_recording":
+			res := map[string]any{"type": "recordings"}
+			if msg.Type == "delete_recording" {
+				if err := recordings.Delete(msg.ID); err != nil {
+					res["error"] = err.Error()
+					if code, _ := services.ErrorCode(err); code != "" {
+						res["code"] = code
+					}
+				} else if err := history.ForgetRecording(msg.ID); err != nil {
+					logger.Warn("cannot update the history", "err", err)
+				}
+			}
+			res["items"], res["bytes"] = recordings.List(), recordings.Bytes()
+			if b, err := json.Marshal(res); err == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
+		case "factory_reset":
+			// Everything the host made goes; the device keeps only what
+			// makes it itself and reachable (see factoryReset). The browser
+			// must say so twice: the web asks first, and sends confirm.
+			if msg.Confirm != "factory_reset" {
+				return
+			}
+			go func() {
+				err := factoryReset(ctx, resetParts{
+					games: games, history: history, recordings: recordings,
+					settings: settings, library: library, romsDir: filepath.Join(base, "roms"),
+					config: func(change func(*models.Config)) error { return updateConfig(store, &cfg, change) },
+				})
+				res := map[string]any{"type": "factory_reset_result", "ok": err == nil}
+				if err != nil {
+					res["error"] = err.Error()
+				}
+				if b, jerr := json.Marshal(res); jerr == nil {
+					stream.SendControl(peerID, b)
+				}
+				if err == nil {
+					// Last: every browser forgets the device (this one too).
+					time.Sleep(500 * time.Millisecond)
+					links.UnlinkAll()
+				}
+			}()
 			return
 		case "create_room":
 			err = games.Create(msg.GameRequest, reply)

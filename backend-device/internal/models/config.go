@@ -66,6 +66,19 @@ type Link struct {
 	TermsAt time.Time `json:"terms_at,omitempty"`
 }
 
+// FactoryDefaults is the config after a factory reset: a fresh install's,
+// keeping only what makes this device itself and reachable, so it can be
+// linked again right away: its identity (device_id, device_secret), its
+// signaling server, its network settings (udp_port, announce_ips) and the
+// local panel's token. Links, rooms, the ROM and thumbnail folders, the
+// room limit, the website and the language go back to their defaults.
+func (c Config) FactoryDefaults() Config {
+	return Config{
+		DeviceID: c.DeviceID, DeviceSecret: c.DeviceSecret, SignalURL: c.SignalURL,
+		UDPPort: c.UDPPort, AnnounceIPs: c.AnnounceIPs, PanelToken: c.PanelToken,
+	}
+}
+
 // EffectiveWebURL returns the configured website or the default.
 func (c Config) EffectiveWebURL() string {
 	if c.WebURL != "" {

@@ -3,6 +3,8 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -19,6 +21,9 @@ const MaxHistory = 500
 // HistoryEntry is one game session of a room: from the moment it was
 // turned on to the moment it stopped.
 type HistoryEntry struct {
+	// ID names the entry (delete_history). Entries saved before it
+	// existed have none and go only with the whole history.
+	ID             string    `json:"id,omitempty"`
 	RoomID         string    `json:"room_id"` // the saved room's stable id
 	Name           string    `json:"name"`
 	Rom            string    `json:"rom"`
@@ -32,6 +37,8 @@ type HistoryEntry struct {
 	Reason string `json:"reason"`
 	// People is everyone who joined, in order of arrival.
 	People []HistoryPerson `json:"people,omitempty"`
+	// Recordings made during this game, if the host recorded it.
+	Recordings []RecordingInfo `json:"recordings,omitempty"`
 }
 
 // HistoryPerson is one browser that joined a game: the name it used last,
@@ -52,6 +59,7 @@ const maxHistoryPeople = 64
 // device.json (history.json, private to the user).
 type HistoryService struct {
 	path string
+	recs *RecordingService // recordings go with their entries
 
 	mu      sync.Mutex
 	entries []HistoryEntry // oldest first
@@ -68,19 +76,94 @@ func NewHistoryService(path string) *HistoryService {
 	return h
 }
 
-// Add records a finished game and saves the file.
+// SetRecordings links the recordings: removing an entry (or the whole
+// history) removes its recordings.
+func (h *HistoryService) SetRecordings(recs *RecordingService) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.recs = recs
+}
+
+// Add records a finished game and saves the file. The oldest games go
+// when there are more than MaxHistory, with their recordings.
 func (h *HistoryService) Add(e HistoryEntry) error {
+	if e.ID == "" {
+		e.ID = newEntryID()
+	}
 	h.mu.Lock()
 	h.entries = append(h.entries, e)
+	var gone []HistoryEntry
 	if len(h.entries) > MaxHistory {
+		gone = slices.Clone(h.entries[:len(h.entries)-MaxHistory])
 		h.entries = slices.Clone(h.entries[len(h.entries)-MaxHistory:])
 	}
-	b, err := json.MarshalIndent(h.entries, "", "  ")
+	err := h.saveLocked()
+	recs := h.recs
 	h.mu.Unlock()
+	deleteRecordings(recs, gone...)
+	return err
+}
+
+// saveLocked writes the file. Callers hold h.mu.
+func (h *HistoryService) saveLocked() error {
+	b, err := json.MarshalIndent(h.entries, "", "  ")
 	if err != nil {
 		return err
 	}
 	return writePrivate(h.path, b)
+}
+
+func newEntryID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func deleteRecordings(recs *RecordingService, entries ...HistoryEntry) {
+	if recs == nil {
+		return
+	}
+	for _, e := range entries {
+		for _, r := range e.Recordings {
+			_ = recs.Delete(r.ID)
+		}
+	}
+}
+
+// Delete forgets one game and deletes its recordings.
+func (h *HistoryService) Delete(id string) error {
+	h.mu.Lock()
+	i := slices.IndexFunc(h.entries, func(e HistoryEntry) bool { return id != "" && e.ID == id })
+	if i < 0 {
+		h.mu.Unlock()
+		return ErrUnknownHistory
+	}
+	gone := h.entries[i]
+	h.entries = slices.Delete(h.entries, i, i+1)
+	err := h.saveLocked()
+	recs := h.recs
+	h.mu.Unlock()
+	deleteRecordings(recs, gone)
+	return err
+}
+
+// ErrUnknownHistory is a delete_history id that is not in the history.
+var ErrUnknownHistory = errors.New("unknown game in the history")
+
+// ForgetRecording removes a deleted recording from the game it belongs to.
+func (h *HistoryService) ForgetRecording(id string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	changed := false
+	for i := range h.entries {
+		n := len(h.entries[i].Recordings)
+		h.entries[i].Recordings = slices.DeleteFunc(h.entries[i].Recordings, func(r RecordingInfo) bool { return r.ID == id })
+		changed = changed || len(h.entries[i].Recordings) != n
+	}
+	if !changed {
+		return nil
+	}
+	return h.saveLocked()
 }
 
 // List returns the history, newest first.
@@ -95,11 +178,16 @@ func (h *HistoryService) List() []HistoryEntry {
 	return out
 }
 
-// Clear forgets every past game.
+// Clear forgets every past game and deletes every finished recording
+// (the history's and any other).
 func (h *HistoryService) Clear() error {
 	h.mu.Lock()
 	h.entries = nil
+	recs := h.recs
 	h.mu.Unlock()
+	if recs != nil {
+		recs.DeleteAll()
+	}
 	if err := os.Remove(h.path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

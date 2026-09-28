@@ -74,6 +74,16 @@ func ErrorCode(err error) (code string, limit int) {
 	if errors.Is(err, ErrNoSaves) {
 		return "no_saves", 0
 	}
+	switch {
+	case errors.Is(err, ErrRecordPaused):
+		return "record_paused", 0
+	case errors.Is(err, ErrRecording):
+		return "already_recording", 0
+	case errors.Is(err, ErrNotRecording):
+		return "not_recording", 0
+	case errors.Is(err, ErrUnknownRecording):
+		return "unknown_recording", 0
+	}
 	return "", 0
 }
 
@@ -126,6 +136,11 @@ type RoomsConfig struct {
 	ProbeSaves func(ctx context.Context, rom string) (bool, error)
 	// History records every finished game (nil: no history).
 	History *HistoryService
+	// Recordings keeps the games the host records (nil: no recording).
+	Recordings *RecordingService
+	// OnRecording tells the host's browsers that a recording ended
+	// (recording_saved or recording_error), so they can offer it.
+	OnRecording func(RecordingEvent)
 	// Trusted tells the device's own linked browsers, who skip the PIN.
 	Trusted func(peerID string) bool
 	Logger  *slog.Logger
@@ -173,12 +188,24 @@ type gameRoom struct {
 	reply   func(GameReply) // pending answer to the owner who started it
 	invite  string          // current invitation (link, QR) while it runs
 	code    string          // its 9 digit code
+	rec     *Recorder       // the recording in progress, if any
+	recs    []RecordingInfo // recordings of this session, for the history
 	// The running session, for the history of games.
 	startedAt      time.Time
 	peakPlayers    int
 	peakSpectators int
 	people         []string                  // peers, in order of arrival
 	person         map[string]*HistoryPerson // by peer
+}
+
+// RecordingEvent is sent to the host's linked browsers when a recording
+// ends: recording_saved with the recording, or recording_error.
+type RecordingEvent struct {
+	Type      string         `json:"type"`
+	Room      string         `json:"room"`   // the saved room's id
+	Reason    string         `json:"reason"` // why it stopped (RecStopped...)
+	Recording *RecordingInfo `json:"recording,omitempty"`
+	Error     string         `json:"error,omitempty"`
 }
 
 // GameService is the older name of RoomsService, used by the window.
@@ -276,6 +303,7 @@ func (r *RoomsService) Shutdown(ctx context.Context) {
 	r.stopping = true
 	r.mu.Unlock()
 	for _, gr := range r.running() {
+		_ = r.stopRecording(gr, nil, RecDeviceStopped)
 		r.autosave(ctx, gr)
 		r.record(gr, "device_stopped")
 	}
@@ -520,6 +548,10 @@ func (r *RoomsService) Action(ctx context.Context, id, action, name string) (int
 			return 0, ErrRoomState
 		}
 		m.Pause(action == "pause", "The host")
+	case "record_start":
+		return 0, r.startRecording(gr)
+	case "record_stop":
+		return 0, r.stopRecording(gr, nil, RecStopped)
 	case "save":
 		if r.managerOf(gr) == nil {
 			return 0, ErrRoomState
@@ -669,6 +701,10 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	})
 	manager.OnPause(func(paused bool) {
 		source.SetPaused(paused)
+		if paused {
+			// A paused game ends its recording (the host is warned first).
+			go func() { _ = r.stopRecording(gr, nil, RecPaused) }()
+		}
 		state := models.RoomLive
 		if paused {
 			state = models.RoomPaused
@@ -691,6 +727,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	gr.ready, gr.roomID, gr.summary = false, "", RoomSummary{}
 	gr.startedAt, gr.peakPlayers, gr.peakSpectators = r.cfg.Now(), 0, 0
 	gr.people, gr.person = nil, map[string]*HistoryPerson{}
+	gr.rec, gr.recs = nil, nil
 	gr.art = r.art(saved.Rom, saved.Art)
 	info := RoomInfo{Title: saved.Name, Game: game, Host: r.cfg.HostName, Art: gr.art}
 	r.mu.Unlock()
@@ -746,6 +783,7 @@ func (r *RoomsService) failed(gr *gameRoom, err error) {
 // stop closes the room in signalhub and ends its game, saving it first
 // when save is true.
 func (r *RoomsService) stop(ctx context.Context, gr *gameRoom, save bool, reason string) {
+	_ = r.stopRecording(gr, nil, RecRoomStopped)
 	if save {
 		r.autosave(ctx, gr)
 	}
@@ -801,7 +839,9 @@ func (r *RoomsService) record(gr *gameRoom, reason string) {
 		RoomID: gr.saved.ID, Name: gr.saved.Name, Rom: gr.saved.Rom, Game: gr.game,
 		StartedAt: gr.startedAt, EndedAt: r.cfg.Now(),
 		PeakPlayers: gr.peakPlayers, PeakSpectators: gr.peakSpectators, Reason: reason,
+		Recordings: gr.recs,
 	}
+	gr.recs = nil
 	running := gr.signal != nil && !gr.startedAt.IsZero()
 	stream := gr.stream
 	for _, peer := range gr.people {
@@ -820,6 +860,104 @@ func (r *RoomsService) record(gr *gameRoom, reason string) {
 	if err := r.cfg.History.Add(e); err != nil {
 		r.log.Warn("cannot save the history of games", "err", err)
 	}
+}
+
+// startRecording begins recording a running room's game: its picture, its
+// sound and the players' voices. Everyone in the room is told.
+func (r *RoomsService) startRecording(gr *gameRoom) error {
+	if r.cfg.Recordings == nil {
+		return ErrRoomState
+	}
+	r.mu.Lock()
+	stream, manager, ready, busy := gr.stream, gr.manager, gr.ready, gr.rec != nil
+	id, name, paused := gr.saved.ID, gr.saved.Name, gr.saved.State == models.RoomPaused
+	r.mu.Unlock()
+	switch {
+	case stream == nil || manager == nil || !ready:
+		return ErrRoomState
+	case busy:
+		return ErrRecording
+	case paused:
+		return ErrRecordPaused
+	}
+	var rec *Recorder
+	rec, err := r.cfg.Recordings.Start(id, name, func(reason string) { _ = r.stopRecording(gr, rec, reason) })
+	if err != nil {
+		return err
+	}
+	r.mu.Lock()
+	if gr.rec != nil || gr.stream != stream {
+		r.mu.Unlock()
+		_, _ = r.cfg.Recordings.Finish(rec, id, name, RecStopped) // empty: leaves no file
+		return ErrRecording
+	}
+	gr.rec = rec
+	r.mu.Unlock()
+	stream.SetRecorder(rec)
+	manager.SetRecording(true)
+	r.log.Info("recording started", "room", name, "file", rec.Path())
+	r.publish()
+	return nil
+}
+
+// stopRecording ends a room's recording (only want, when not nil), saves
+// it and tells the host's browsers.
+func (r *RoomsService) stopRecording(gr *gameRoom, want *Recorder, reason string) error {
+	r.mu.Lock()
+	rec, stream, manager := gr.rec, gr.stream, gr.manager
+	if rec == nil || want != nil && rec != want {
+		r.mu.Unlock()
+		return ErrNotRecording
+	}
+	gr.rec = nil
+	id, name := gr.saved.ID, gr.saved.Name
+	r.mu.Unlock()
+	if stream != nil {
+		stream.SetRecorder(nil)
+	}
+	if manager != nil {
+		manager.SetRecording(false)
+	}
+	r.publish()
+	info, err := r.cfg.Recordings.Finish(rec, id, name, reason)
+	ev := RecordingEvent{Type: "recording_saved", Room: id, Reason: reason}
+	if info.ID == "" {
+		ev.Type = "recording_error"
+		if err != nil {
+			ev.Error = err.Error()
+		}
+		r.log.Warn("recording lost", "room", name, "err", err)
+	} else {
+		if err != nil {
+			r.log.Warn("recording saved with an error", "room", name, "err", err)
+		}
+		r.log.Info("recording saved", "room", name, "file", info.File, "reason", reason, "bytes", info.Size, "dropped_frames", rec.Dropped())
+		r.mu.Lock()
+		gr.recs = append(gr.recs, info)
+		r.mu.Unlock()
+		ev.Recording = &info
+	}
+	if r.cfg.OnRecording != nil {
+		r.cfg.OnRecording(ev)
+	}
+	r.publish()
+	return nil
+}
+
+// Reset stops every room without saving and forgets them all with their
+// saved games (factory reset).
+func (r *RoomsService) Reset(ctx context.Context) {
+	for _, gr := range r.running() {
+		r.stop(ctx, gr, false, "reset")
+	}
+	r.mu.Lock()
+	r.rooms, r.resume = nil, nil
+	r.mu.Unlock()
+	if r.cfg.SavesDir != "" {
+		_ = os.RemoveAll(r.cfg.SavesDir)
+	}
+	r.persist()
+	r.publish()
 }
 
 // autosave writes auto.state for a running room.
@@ -970,6 +1108,10 @@ func (r *RoomsService) List() []models.ManagedRoom {
 			Players: gr.summary.Players, MaxPlayers: 4, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
 		})
+		if gr.rec != nil {
+			since := gr.rec.StartedAt()
+			out[len(out)-1].Recording, out[len(out)-1].RecordingSince = true, &since
+		}
 	}
 	return out
 }

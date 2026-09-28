@@ -3,6 +3,8 @@
 // Status a device sends to browsers linked with the pairing code, on the
 // WebRTC "control" DataChannel (type "device_status").
 
+import { parseRecordingList, type RecordingInfo } from "./recordings";
+
 export interface DeviceHardware {
   /** The computer's name (older devices: absent). */
   hostname?: string;
@@ -111,6 +113,9 @@ export interface ManagedRoom {
   inviteCode: string;
   /** The host turned the room's chat off. */
   chatOff: boolean;
+  /** The host is recording the game, since recordingSince. */
+  recording?: boolean;
+  recordingSince?: string;
 }
 
 /** Days a deleted room stays in the trash. */
@@ -155,6 +160,8 @@ function parseRooms(v: unknown): ManagedRoom[] {
         invite: typeof o.invite === "string" && /^[A-Za-z0-9_-]{22}$/.test(o.invite) ? o.invite : "",
         chatOff: o.chat_off === true,
         inviteCode: typeof o.invite_code === "string" && /^\d{9}$/.test(o.invite_code) ? o.invite_code : "",
+        recording: o.recording === true,
+        recordingSince: str(o.recording_since, 40),
       },
     ];
   });
@@ -294,6 +301,8 @@ const HISTORY_REASONS: readonly HistoryReason[] = ["archived", "deleted", "faile
 
 /** One past game of the device: from the moment a room was turned on to the moment it stopped. */
 export interface HistoryItem {
+  /** Names the game for delete_history; "" for games saved before ids existed. */
+  id?: string;
   roomId: string;
   name: string;
   rom: string;
@@ -305,6 +314,8 @@ export interface HistoryItem {
   reason: HistoryReason;
   /** Everyone who joined, in order of arrival. */
   people: HistoryPerson[];
+  /** Recordings the host made of this game (deleted with it). */
+  recordings?: RecordingInfo[];
 }
 
 /** One browser in a past game: its name, the ports it played at (none = spectator) and how it connected. */
@@ -329,6 +340,7 @@ export function parseHistory(msg: unknown): HistoryItem[] | null {
     if (!startedAt) return [];
     return [
       {
+        id: typeof o.id === "string" && /^[0-9a-f]{16}$/.test(o.id) ? o.id : "",
         roomId: str(o.room_id, 40),
         name: str(o.name, 80),
         rom: str(o.rom, 16),
@@ -347,6 +359,7 @@ export function parseHistory(msg: unknown): HistoryItem[] | null {
             path: q.path === "direct" || q.path === "relay" ? q.path : "",
           };
         }),
+        recordings: parseRecordingList(o.recordings),
       },
     ];
   });

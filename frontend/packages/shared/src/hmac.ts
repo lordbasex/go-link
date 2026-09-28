@@ -18,18 +18,61 @@ const K = new Uint32Array([
 
 /** SHA-256 of bytes. */
 export function sha256(data: Uint8Array): Uint8Array {
-  const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
-  // Padding: 0x80, zeros, then the length in bits as 64 bits big endian.
-  const bitLen = data.length * 8;
-  const total = Math.ceil((data.length + 9) / 64) * 64;
-  const msg = new Uint8Array(total);
-  msg.set(data);
-  msg[data.length] = 0x80;
-  const view = new DataView(msg.buffer);
-  view.setUint32(total - 8, Math.floor(bitLen / 2 ** 32));
-  view.setUint32(total - 4, bitLen >>> 0);
-  const w = new Uint32Array(64);
-  for (let off = 0; off < total; off += 64) {
+  return new Sha256().update(data).digest();
+}
+
+/**
+ * SHA-256 fed piece by piece, for data too big to hold at once (a
+ * recording downloaded in chunks).
+ */
+export class Sha256 {
+  private h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+  private w = new Uint32Array(64);
+  private block = new Uint8Array(64);
+  private view = new DataView(this.block.buffer);
+  private used = 0; // bytes waiting in block
+  private length = 0; // bytes hashed so far
+
+  update(data: Uint8Array): this {
+    this.length += data.length;
+    let i = 0;
+    if (this.used > 0) {
+      const n = Math.min(64 - this.used, data.length);
+      this.block.set(data.subarray(0, n), this.used);
+      this.used += n;
+      i = n;
+      if (this.used < 64) return this;
+      this.compress(this.view, 0);
+      this.used = 0;
+    }
+    const whole = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (; i + 64 <= data.length; i += 64) this.compress(whole, i);
+    if (i < data.length) {
+      this.block.set(data.subarray(i));
+      this.used = data.length - i;
+    }
+    return this;
+  }
+
+  /** The hash of everything given; the object is spent afterwards. */
+  digest(): Uint8Array {
+    // Padding: 0x80, zeros, then the length in bits as 64 bits big endian.
+    const bitLen = this.length * 8;
+    const tail = new Uint8Array(this.used + 9 <= 64 ? 64 - this.used : 128 - this.used);
+    tail[0] = 0x80;
+    const tv = new DataView(tail.buffer);
+    tv.setUint32(tail.length - 8, Math.floor(bitLen / 2 ** 32));
+    tv.setUint32(tail.length - 4, bitLen >>> 0);
+    this.length -= tail.length; // the padding is not part of the message
+    this.update(tail);
+    const out = new Uint8Array(32);
+    const ov = new DataView(out.buffer);
+    for (let i = 0; i < 8; i++) ov.setUint32(i * 4, this.h[i]!);
+    return out;
+  }
+
+  private compress(view: DataView, off: number): void {
+    const { h, w } = this;
     for (let i = 0; i < 16; i++) w[i] = view.getUint32(off + i * 4);
     for (let i = 16; i < 64; i++) {
       const a = w[i - 15]!;
@@ -64,10 +107,6 @@ export function sha256(data: Uint8Array): Uint8Array {
     h[6] = (h[6]! + g) >>> 0;
     h[7] = (h[7]! + hh) >>> 0;
   }
-  const out = new Uint8Array(32);
-  const ov = new DataView(out.buffer);
-  for (let i = 0; i < 8; i++) ov.setUint32(i * 4, h[i]!);
-  return out;
 }
 
 /** HMAC-SHA256 (RFC 2104). */

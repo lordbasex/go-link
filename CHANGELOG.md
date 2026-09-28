@@ -10,6 +10,13 @@ All notable changes to go-link. Newest first.
 - The controls over the video are see-through and hide after 3 seconds without moving the mouse or tapping, as in video players.
 - On phones, a one-row header with a "…" tools menu, and the sections as a tab bar at the bottom of the screen.
 
+### Added (device)
+
+- Recording of game rooms for the host (`room_action` `record_start` / `record_stop`): a WebM file with the game's picture and sound and one track per player's voice, copied from the packets the room already sends (no encoding twice). It stops at 2 hours or 2 GB, when the game is paused and when the room stops; everyone in the room sees `room_state.recording` and a chat notice. Files in `~/go-link/rec/`, listed in the history of games (`get_recordings`, `delete_recording`, `delete_history`; clearing the history deletes them).
+- Recordings download to the owner's browser over the `files` channel, pulled in 60 KB pieces with progress, cancel and a SHA-256 check at the end.
+- Factory reset (`factory_reset`, `device reset --yes`): rooms, saved games, history, recordings, linked browsers and settings go; the device's identity and network settings, ROMs, thumbnails and the core stay.
+- CLI: `device rec list`, `device rec rm`.
+
 ### Fixed
 
 - The update notice reaches My device on the website (it only showed in the window).

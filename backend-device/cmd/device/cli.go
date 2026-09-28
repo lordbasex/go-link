@@ -40,6 +40,11 @@ Usage:
   device thumbnails kind [boxart|title|snap]
                                          show or change which thumbnail is shown
   device panel token [--new]             show (or replace) the web panel token
+  device rec list [--json]               list the recordings of game rooms (~/go-link/rec)
+  device rec rm ID...|--all              delete recordings
+  device reset --yes                     factory reset (device stopped): rooms, saved games,
+                                         history, recordings, links and settings go;
+                                         ROMs, thumbnails and the emulator stay
 
 Every subcommand accepts --config PATH.
 
@@ -72,6 +77,11 @@ func runCommand(args []string) (handled bool, err error) {
 		"thumbnails dir":   cmdThumbnailsDir,
 		"thumbnails kind":  cmdThumbnailsKind,
 		"panel token":      cmdPanelToken,
+		"rec list":         cmdRecList,
+		"rec rm":           cmdRecRm,
+	}
+	if args[0] == "reset" {
+		return true, cmdReset(args[1:])
 	}
 	if args[0] == "help" {
 		flag.CommandLine.SetOutput(os.Stdout)

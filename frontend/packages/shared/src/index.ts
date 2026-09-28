@@ -14,3 +14,4 @@ export * from "./device-link";
 export * from "./legacy-storage";
 export * from "./input-config";
 export * from "./hmac";
+export * from "./recordings";

@@ -20,7 +20,7 @@ Hardware and usage data go **only** to linked browsers, never to room guests.
 | Voice | Track (one per seat) | Opus 48 kHz mono | Seated players' microphones, forwarded by the device |
 | `control` | DataChannel | `ordered: true`, reliable | JSON: chat, room state, queue, device status |
 | `input` | DataChannel | `ordered: false`, `maxRetransmits: 0` | 12-byte binary packets: sequence, local player, buttons, sticks |
-| `files` | DataChannel | `ordered: true`, reliable | Linked browsers only: ROM zips and images dropped on the website |
+| `files` | DataChannel | `ordered: true`, reliable | Linked browsers only: ROM zips and images dropped on the website, and recordings downloaded from the device |
 
 ### Audio and voice tracks
 
@@ -109,10 +109,10 @@ The **local player** lets two or more people play from the same browser (for exa
 |---|---|---|
 | `welcome` | device → guest | Greeting when the channel opens |
 | `hello` | guest → device | `name` (up to 24 characters) and `local_players` (list of local players, 0 to 3). Sent again when they change |
-| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (your ports, queue position, `swap_offers` and `swap_asked`), `pausable`, `paused`, `paused_by` and `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad). Personal to each guest, sent on every change |
+| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (your ports, queue position, `swap_offers` and `swap_asked`), `pausable`, `paused`, `paused_by`, `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad) and `recording` (the host is recording the game with the players' voices: everyone sees a REC badge). Personal to each guest, sent on every change |
 | `stream_stats` | device → guest | Frames per second sent, video size, display `aspect`. Every 2 s |
 | `chat` | guest → device | `text` (up to 300 characters, 5 messages every 5 s) |
-| `chat` | device → guest | `name`, `port`, `role`, `text`, `ts`, or `system` for notices. The last 50 on joining |
+| `chat` | device → guest | `name`, `port`, `role`, `text`, `ts`, or `system` for notices. Some notices carry an `event` the website shows in the reader's language: `recording_started`, `recording_stopped`. The last 50 on joining |
 | `typing` | guest → device | `on` (`true` while typing, repeated every ~2.5 s; `false` when cleared). Sending a `chat` also clears it; the device clears it after 6 s without a repeat |
 | `typing` | device → guest | `names` (`[{name, port}]`): who else is typing, never yourself |
 | `spectate` | guest → device | Leave the seat and the queue, to just watch |
@@ -136,9 +136,9 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` the core state (`installed`, `catalog`), the device's `version` and, when a newer go-link was released, `update` (`latest`, `url` of its GitHub release page; the website only accepts go-link's own releases). Never includes the pairing code |
 | `create_room` | linked → device | `rom`, `title`, `voice`, `chat` (absent = on) and optional `art` (`boxart`, `title` or `snap`). Opens a **new** room |
 | `room_created` / `room_error` | device → linked | `id` (device room), `room_id` (signalhub) or a readable `error`. Some errors carry a `code` the website translates: `too_many_rooms` with `limit`, `no_saves` |
-| `room_action` | linked → device | `id` and `action`: `pause`, `resume`, `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off` |
+| `room_action` | linked → device | `id` and `action`: `pause`, `resume`, `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off`, `record_start` / `record_stop` (see [Recordings](#recordings)) |
 | `room_start` | linked → device | `id` of an archived or trashed room and `from`: `continue`, `fresh` or `slot` (with `slot`) |
-| `room_result` | device → linked | `id`, `action`, `ok`, readable `error` (and `code`) and, for `save`, `slot` |
+| `room_result` | device → linked | `id`, `action`, `ok`, readable `error` (and `code`: `record_paused`, `already_recording`, `not_recording`…) and, for `save`, `slot` |
 | `close_room` | linked → device | `id`: archives that room (kept for older websites) |
 | `invite` | linked → device | `id` of a room (or `test`): make a new invitation PIN |
 | `invite_pass` | device → linked | `id`, `pin`, `expires_at` (or `error`) |
@@ -147,8 +147,13 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `set_thumbnails` / `thumbnails_result` | both | `kind` (`boxart`, `title` or `snap`) and/or `dir` (a folder on the device, or `default`): which picture everyone sees and where the device reads them, like the window's Settings / `ok`, `error` |
 | `set_roms_dir` / `roms_dir_result` | both | `dir`: absolute path of an existing folder on the device / `dir`, `ok`, `error` |
 | `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error` |
-| `get_history` / `clear_history` | linked → device | Ask for (or clear) the game history. The device answers `history` |
-| `history` | device → linked | `items`, newest first (up to 500): `room_id`, `name`, `rom`, `game`, `started_at`, `ended_at`, `peak_players`, `peak_spectators`, `reason` (`archived`, `deleted`, `failed` or `device_stopped`) and `people` (each browser that joined: `name`, `ports`, `ip` as seen on the chosen ICE pair, empty through TURN, and `path`, `direct` or `relay`). Only the owner sees it |
+| `get_history` / `clear_history` / `delete_history` | linked → device | Ask for the game history, clear it (**with every recording**), or delete one game (`id`, with its recordings). The device answers `history` (with `error` for an unknown `id`) |
+| `history` | device → linked | `items`, newest first (up to 500): `id` (absent on games saved before ids existed), `room_id`, `name`, `rom`, `game`, `started_at`, `ended_at`, `peak_players`, `peak_spectators`, `reason` (`archived`, `deleted`, `failed` or `device_stopped`) and `people` (each browser that joined: `name`, `ports`, `ip` as seen on the chosen ICE pair, empty through TURN, and `path`, `direct` or `relay`) and `recordings` (the recordings made during that game, as below). Only the owner sees it |
+| `get_recordings` / `delete_recording` | linked → device | List every finished recording / delete one (`id`). The device answers `recordings` |
+| `recordings` | device → linked | `items` (newest first), `bytes` (space they take) and, after a failed delete, `error` and `code` |
+| `recording_saved` / `recording_error` | device → linked | A recording ended: `room` (device room id), `reason` and `recording`, or a readable `error` when nothing could be kept (it stopped before the first picture). Sent to every linked browser, so the website can offer "Download now" |
+| `factory_reset` | linked → device | `confirm: "factory_reset"` (anything else is ignored). See [Factory reset](device.md#factory-reset) |
+| `factory_reset_result` | device → linked | `ok`, `error`. Then the device unlinks every browser |
 
 Each room in `device_status.rooms`:
 
@@ -161,9 +166,43 @@ Each room in `device_status.rooms`:
   "saves": [{ "slot": 1, "name": "Stage 3", "at": "2026-09-26T22:17:00Z" }], "autosave": true }
 ```
 
+## Recordings
+
+The host (a linked browser) records a running game room with `room_action` `record_start`, and stops it with `record_stop`. The device writes a WebM file with these tracks: the game's VP8 picture and Opus sound, exactly as the room already encodes them for its guests, plus one Opus track per player's voice (`voice-p1`…`voice-p4`), copied from the packets it forwards. Nothing is decoded or encoded again, so recording costs a copy per packet and a disk write.
+
+- Files live in `~/go-link/rec/<room id>/<room name>-<date>.webm` (mode `0600`), each with a `.json` description (a `recording` object, below). The device only ever serves a file under that folder by its `id`.
+- A recording stops by itself at **2 hours or 2 GB**, when the game is **paused**, and when the room is archived, deleted, fails or the device shuts down. The website warns the host before pausing a recorded game. A paused game cannot start one (`code: record_paused`).
+- Everyone in the room is told: `room_state.recording` and a chat notice (`event`), because their voices are recorded too.
+- A recording the device never closed (power loss) is kept as `interrupted` at the next start: it plays, only without the seek index.
+
+```json
+{ "id": "a1b2/turtles-co-op-2026-09-28-2130.webm", "room_id": "a1b2", "room": "Turtles co-op",
+  "file": "turtles-co-op-2026-09-28-2130.webm", "started_at": "2026-09-28T21:30:00Z",
+  "duration_ms": 1122000, "size": 225000000, "sha256": "…",
+  "tracks": ["video", "game", "voice-p1", "voice-p2"], "reason": "stopped" }
+```
+
+`reason` is `stopped`, `paused`, `limit_time`, `limit_size`, `room_stopped`, `device_stopped` or `interrupted`. Screenshots never involve the device: the browser draws the video on a canvas and saves a PNG.
+
 ## `files` channel
 
-Only on linked browsers' connections. The host drops ROM zips on the website, and they land in the device's ROM folder, with no web server on the device. One file at a time:
+Only on linked browsers' connections, and only after the browser proved its link.
+
+### Downloads (recordings)
+
+The browser pulls a recording piece by piece, so it sets the pace, shows the progress, can stop at any time and checks the whole file at the end:
+
+```json
+{ "type": "download", "id": "t1", "file": "a1b2/turtles-co-op-2026-09-28-2130.webm" }
+{ "type": "download_ready", "id": "t1", "file": "…", "name": "turtles-co-op-2026-09-28-2130.webm", "size": 225000000, "sha256": "…" }
+{ "type": "read", "id": "t1", "offset": 0, "length": 61440 }
+```
+
+Each `read` is answered with one **binary** message: the offset (8 bytes, big endian) and then up to `length` bytes (at most 60 KB). The browser keeps a few reads in flight; the channel is ordered, so pieces arrive in the order asked and the browser hashes them as they come. It ends with `{ "type": "done", "id": "t1" }`, or stops with `{ "type": "cancel", "id": "t1" }` (what arrived is dropped). Any failure is `{ "type": "download_error", "id": "t1", "error": "…", "code": "…" }`. One download per browser at a time; the device closes one nobody reads for 2 minutes.
+
+### Uploads (ROMs)
+
+The host drops ROM zips on the website, and they land in the device's ROM folder, with no web server on the device. One file at a time:
 
 ```json
 { "type": "begin", "id": "f1", "name": "robby.zip", "size": 307200 }

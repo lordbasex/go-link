@@ -62,6 +62,9 @@ device thumbnails check [--json]         # count the thumbnails of the ROM sets
 device thumbnails dir [PATH|default]     # show or change the thumbnails folder
 device thumbnails kind [boxart|title|snap]   # which thumbnail is shown
 device panel token [--new]               # show (or replace) the web panel token
+device rec list [--json]                 # list the recordings of game rooms
+device rec rm ID...|--all                # delete recordings
+device reset --yes                       # factory reset (with the device stopped)
 ```
 
 Every subcommand accepts `--config PATH`. Settings changed from the CLI are saved in `device.json`; a running device picks them up on its next start.
@@ -93,7 +96,18 @@ Created on the first run with mode `0600`:
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.
 - STUN and TURN are **not** stored here.
-- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `history.json` (0600) and `logs/device.log`.
+- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600) and `logs/device.log`.
+
+### Factory reset
+
+From My device on the website (`factory_reset`) or, with the device stopped, `device reset --yes`. It deletes what the host made on this device:
+
+- every room (running ones stop without saving) and every saved game (`saves/`),
+- the history of games and every recording (`history.json`, `rec/`),
+- the linked browsers (they must link again with a new pairing code),
+- the settings: ROM folder (back to `~/go-link/roms`), thumbnails, `max_rooms`, `web_url` and `language`.
+
+It keeps what makes the device itself and reachable, so it can be linked again right away: `device_id`, `device_secret`, `signal_url`, `udp_port`, `announce_ips` and `panel_token`. It never deletes the host's own files: ROMs, thumbnails, the emulator core and the logs stay.
 
 ### Single instance
 

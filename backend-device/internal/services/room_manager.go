@@ -115,6 +115,7 @@ type RoomManager struct {
 	controls  GameControls
 	paused    bool
 	pausedBy  string
+	recording bool              // the host is recording the game (everyone is told)
 	onPause   func(paused bool) // set by OnPause; called on the actor goroutine
 	seats     []*seatKey
 	queue     []seatKey
@@ -317,6 +318,33 @@ func (m *RoomManager) Pause(paused bool, by string) {
 		} else {
 			m.system(fmt.Sprintf("%s resumed the game", by))
 		}
+		m.broadcastState()
+	})
+}
+
+// Chat events: a machine-readable kind for some system lines, so the web
+// can show them in the reader's language.
+const (
+	EventRecordingStarted = "recording_started"
+	EventRecordingStopped = "recording_stopped"
+)
+
+// SetRecording tells everyone in the room whether the host records the
+// game: room_state.recording (a REC badge) and a line in the chat, since
+// the players' voices are recorded too.
+func (m *RoomManager) SetRecording(on bool) {
+	m.do(func() {
+		if m.recording == on {
+			return
+		}
+		m.recording = on
+		msg := chatOut{Type: "chat", TS: m.cfg.Now().UnixMilli()}
+		if on {
+			msg.System, msg.Event = "The host is recording this game, with the players' voices", EventRecordingStarted
+		} else {
+			msg.System, msg.Event = "The recording stopped", EventRecordingStopped
+		}
+		m.publish(msg)
 		m.broadcastState()
 	})
 }
@@ -649,13 +677,14 @@ type stateOut struct {
 	Paused     bool         `json:"paused"`
 	PausedBy   string       `json:"paused_by,omitempty"`
 	Controls   GameControls `json:"controls"`
+	Recording  bool         `json:"recording"`
 }
 
 // broadcastState sends each member its own view of the room.
 func (m *RoomManager) broadcastState() {
 	for peer, mem := range m.members {
 		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
-			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls}
+			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls, Recording: m.recording}
 		st.You = youOut{Name: mem.name, Ports: []int{}, QueuePositions: []int{}, Spectator: mem.spectator, SwapOffers: []swapOut{}, SwapAsked: []swapOut{}}
 		for _, p := range m.swaps {
 			if p.target.peer == peer {
@@ -702,6 +731,7 @@ type chatOut struct {
 	Role   string `json:"role,omitempty"`
 	Text   string `json:"text,omitempty"`
 	System string `json:"system,omitempty"`
+	Event  string `json:"event,omitempty"` // EventRecordingStarted...
 	TS     int64  `json:"ts"`
 }
 

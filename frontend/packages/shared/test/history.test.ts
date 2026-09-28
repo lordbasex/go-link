@@ -19,11 +19,12 @@ describe("parseHistory", () => {
       ],
     });
     expect(list).toEqual([
-      { roomId: "a", name: "Night", rom: "robby", game: "Robby Roto", startedAt: "2026-09-26T10:00:00Z", endedAt: "2026-09-26T11:00:00Z", peakPlayers: 2, peakSpectators: 0, reason: "archived",
+      { id: "", roomId: "a", name: "Night", rom: "robby", game: "Robby Roto", startedAt: "2026-09-26T10:00:00Z", endedAt: "2026-09-26T11:00:00Z", peakPlayers: 2, peakSpectators: 0, reason: "archived",
         people: [
           { name: "Fede", ports: [1], ip: "192.0.2.10", path: "direct" },
           { name: "Ana", ports: [], ip: "", path: "relay" },
         ],
+        recordings: [],
       },
     ]);
   });

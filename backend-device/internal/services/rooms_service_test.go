@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +32,7 @@ type fakeGame struct {
 	paused     bool
 	fail       error
 	noSaves    bool // the emulator cannot save this game whole
+	feed       bool // it sends pictures (recording tests)
 }
 
 func (g *fakeGame) SavesIncomplete() bool { return g.noSaves }
@@ -40,8 +42,21 @@ func (g *fakeGame) Run(ctx context.Context, sink MediaSink) error {
 		return g.fail
 	}
 	g.onReady(libretro.AVInfo{})
-	<-ctx.Done()
-	return ctx.Err()
+	if !g.feed {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	frame := make([]byte, 64*64*3/2)
+	t := time.NewTicker(10 * time.Millisecond)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-t.C:
+			sink.VideoFrame(frame, 64, 64, 16*time.Millisecond)
+		}
+	}
 }
 
 func (g *fakeGame) SetPaused(p bool) {
@@ -108,6 +123,9 @@ type roomsHarness struct {
 	saved   []models.SavedRoom
 	fail    error
 	history *HistoryService
+	recs    *RecordingService
+	events  []RecordingEvent
+	feed    bool // games send pictures
 	noSaves bool // new games cannot be saved whole
 	// probe answers ProbeSaves (nil: no probe at all).
 	probe func(rom string) bool
@@ -130,11 +148,19 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts 
 	lib.SetCore(coresDir, "")
 	h := &roomsHarness{t: t, opener: NewRoomOpener(), sender: &recordingSender{}, status: status, saves: t.TempDir(), history: NewHistoryService(filepath.Join(t.TempDir(), "history.json"))}
 	h.opener.SetSender(h.sender)
+	h.recs = NewRecordingService(t.TempDir(), nil)
+	h.history.SetRecordings(h.recs)
 	for _, o := range opts {
 		o(h)
 	}
 	h.rooms = NewRoomsService(RoomsConfig{
-		History:  h.history,
+		History:    h.history,
+		Recordings: h.recs,
+		OnRecording: func(ev RecordingEvent) {
+			h.mu.Lock()
+			h.events = append(h.events, ev)
+			h.mu.Unlock()
+		},
 		Library:  lib,
 		Status:   status,
 		ICE:      NewICEStore(),
@@ -155,6 +181,7 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts 
 			h.mu.Lock()
 			g.fail = h.fail
 			g.noSaves = h.noSaves
+			g.feed = h.feed
 			h.games = append(h.games, g)
 			h.mu.Unlock()
 			return g
@@ -644,5 +671,93 @@ func TestAGameWhoseSaveLosesSomethingStartsOver(t *testing.T) {
 	})
 	if h.room(id2).NoSaves {
 		t.Fatal("a game whose saves work was marked")
+	}
+}
+
+func (h *roomsHarness) recordingEvents() []RecordingEvent {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.events)
+}
+
+func TestTheHostRecordsAGameUntilItStopsOrPauses(t *testing.T) {
+	h := newRoomsHarness(t, 2, nil, func(h *roomsHarness) { h.feed = true })
+	r := h.create("robby", "R1")
+	ctx := context.Background()
+	if _, err := h.rooms.Action(ctx, r.ID, "record_stop", ""); !errors.Is(err, ErrNotRecording) {
+		t.Fatalf("stop without a recording: %v", err)
+	}
+	if _, err := h.rooms.Action(ctx, r.ID, "record_start", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.rooms.Action(ctx, r.ID, "record_start", ""); !errors.Is(err, ErrRecording) {
+		t.Fatalf("second start: %v", err)
+	}
+	if room := h.room(r.ID); !room.Recording || room.RecordingSince == nil {
+		t.Fatalf("the room does not show the recording: %+v", room)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if _, err := h.rooms.Action(ctx, r.ID, "record_stop", ""); err != nil {
+		t.Fatal(err)
+	}
+	evs := h.recordingEvents()
+	if len(evs) != 1 || evs[0].Type != "recording_saved" || evs[0].Room != r.ID || evs[0].Reason != RecStopped || evs[0].Recording == nil || evs[0].Recording.Size == 0 {
+		t.Fatalf("events %+v", evs)
+	}
+	if h.room(r.ID).Recording {
+		t.Fatal("still recording")
+	}
+
+	// Pausing the game ends a recording; a paused game cannot start one.
+	if _, err := h.rooms.Action(ctx, r.ID, "record_start", ""); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if _, err := h.rooms.Action(ctx, r.ID, "pause", ""); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the pause to end the recording", func() bool { return len(h.recordingEvents()) == 2 })
+	if ev := h.recordingEvents()[1]; ev.Reason != RecPaused {
+		t.Fatalf("event %+v", ev)
+	}
+	eventually(t, "the room to be paused", func() bool { return h.room(r.ID).State == models.RoomPaused })
+	if _, err := h.rooms.Action(ctx, r.ID, "record_start", ""); !errors.Is(err, ErrRecordPaused) {
+		t.Fatalf("start while paused: %v", err)
+	}
+	if code, _ := ErrorCode(ErrRecordPaused); code != "record_paused" {
+		t.Fatalf("code %q", code)
+	}
+
+	// Archiving ends the recording in progress; the game's history keeps
+	// all its recordings.
+	if _, err := h.rooms.Action(ctx, r.ID, "resume", ""); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "the room to resume", func() bool { return h.room(r.ID).State == models.RoomLive })
+	if _, err := h.rooms.Action(ctx, r.ID, "record_start", ""); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if _, err := h.rooms.Action(ctx, r.ID, "archive", ""); err != nil {
+		t.Fatal(err)
+	}
+	if ev := h.recordingEvents()[2]; ev.Reason != RecRoomStopped || ev.Type != "recording_saved" {
+		t.Fatalf("event %+v", ev)
+	}
+	list := h.history.List()
+	if len(list) != 1 || len(list[0].Recordings) != 3 {
+		t.Fatalf("history %+v", list)
+	}
+	if len(h.recs.List()) != 3 {
+		t.Fatalf("recordings %+v", h.recs.List())
+	}
+
+	// A factory reset forgets the rooms and their saved games.
+	h.rooms.Reset(ctx)
+	if len(h.rooms.List()) != 0 {
+		t.Fatal("rooms left after the reset")
+	}
+	if _, err := os.Stat(h.saves); !os.IsNotExist(err) {
+		t.Fatal("the saved games stayed")
 	}
 }

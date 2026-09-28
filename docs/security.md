@@ -19,7 +19,8 @@ Details in [signalhub's README](https://github.com/lordbasex/signalhub). In shor
 - **Input and voice rules are enforced on the device:** only seated players' input reaches the game, and only seated players' voice is forwarded.
 - **Uploads:** strict set names, ZIP signature check, size limit, temporary file + rename, never overwrites.
 - **Thumbnails:** size limits on files and pixels before decoding.
-- `device.json` and `history.json` are `0600`. `device.lock` prevents two devices at once.
+- `device.json`, `history.json` and the recordings (`rec/`) are `0600`. `device.lock` prevents two devices at once.
+- Recordings are served only to linked browsers that proved their link, only on their `files` channel and only by recording id (`<room id>/<file>.webm`, checked against a strict pattern): never a path. The device serves no recording to room guests.
 
 ## Website
 
