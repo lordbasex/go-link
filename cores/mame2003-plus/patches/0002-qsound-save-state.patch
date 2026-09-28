@@ -1,8 +1,16 @@
 diff --git a/src/sound/qsound.c b/src/sound/qsound.c
-index 3862f96..6b423f6 100644
+index 3862f96..4a69428 100644
 --- a/src/sound/qsound.c
 +++ b/src/sound/qsound.c
-@@ -157,6 +157,28 @@ int qsound_sh_start(const struct MachineSound *msound)
+@@ -33,6 +33,7 @@
+ 
+ #include <math.h>
+ #include "driver.h"
++#include "state.h"
+ 
+ /*
+ Two Q sound drivers:
+@@ -157,6 +158,28 @@ int qsound_sh_start(const struct MachineSound *msound)
  	i=0;
  #endif
  

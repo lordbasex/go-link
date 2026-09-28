@@ -1,8 +1,16 @@
 diff --git a/src/drivers/cps1.c b/src/drivers/cps1.c
-index 8dcf577..8fd30f2 100644
+index 8dcf577..8538155 100644
 --- a/src/drivers/cps1.c
 +++ b/src/drivers/cps1.c
-@@ -231,22 +231,39 @@ static WRITE16_HANDLER( qsound_sharedram2_w )
+@@ -13,6 +13,7 @@
+ ***************************************************************************/
+ 
+ #include "driver.h"
++#include "state.h"
+ #include "vidhrdw/generic.h"
+ #include "machine/eeprom.h"
+ #include "ost_samples.h"
+@@ -231,22 +232,39 @@ static WRITE16_HANDLER( qsound_sharedram2_w )
  		qsound_sharedram2[offset] = data;
  }
  
@@ -49,7 +57,7 @@ index 8dcf577..8fd30f2 100644
  
  /********************************************************************
  *
-@@ -8063,24 +8080,28 @@ static DRIVER_INIT( wof )
+@@ -8063,24 +8081,28 @@ static DRIVER_INIT( wof )
  {
  	wof_decode();
  	init_cps1();

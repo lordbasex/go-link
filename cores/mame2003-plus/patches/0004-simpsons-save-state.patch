@@ -1,0 +1,232 @@
+diff --git a/src/drivers/simpsons.c b/src/drivers/simpsons.c
+index 6c70c57..015e9cb 100644
+--- a/src/drivers/simpsons.c
++++ b/src/drivers/simpsons.c
+@@ -9,6 +9,7 @@ someone@secureshell.com
+ ***************************************************************************/
+ 
+ #include "driver.h"
++#include "state.h"
+ #include "vidhrdw/generic.h"
+ #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
+ #include "cpu/z80/z80.h"
+@@ -29,6 +30,7 @@ READ_HANDLER( simpsons_speedup1_r );
+ READ_HANDLER( simpsons_speedup2_r );
+ MACHINE_INIT( simpsons );
+ NVRAM_HANDLER( simpsons );
++void simpsons_state_register(void);
+ extern int simpsons_firq_enabled;
+ 
+ /***************************************************************************
+@@ -72,15 +74,22 @@ static MEMORY_WRITE_START( writemem )
+ 	{ 0x8000, 0xffff, MWA_ROM },
+ MEMORY_END
+ 
+-static WRITE_HANDLER( z80_bankswitch_w )
++int simpsons_z80_bank = 2;	/* sound CPU bank register, kept for save states */
++
++static void z80_bank_set(void)
+ {
+ 	unsigned char *RAM = memory_region(REGION_CPU2);
+-
+-	offset = 0x10000 + ( ( ( data & 7 ) - 2 ) * 0x4000 );
++	int offset = 0x10000 + ( ( ( simpsons_z80_bank & 7 ) - 2 ) * 0x4000 );
+ 
+ 	cpu_setbank( 2, &RAM[ offset ] );
+ }
+ 
++static WRITE_HANDLER( z80_bankswitch_w )
++{
++	simpsons_z80_bank = data;
++	z80_bank_set();
++}
++
+ #if 0
+ static int nmi_enabled;
+ 
+@@ -468,6 +477,12 @@ static DRIVER_INIT( simpsons )
+ {
+ 	konami_rom_deinterleave_2(REGION_GFX1);
+ 	konami_rom_deinterleave_4(REGION_GFX2);
++
++	/* Save the bank selections so a loaded save state runs the right code */
++	simpsons_z80_bank = 2;
++	state_save_register_int("simpsons_z80", 0, "bank", &simpsons_z80_bank);
++	state_save_register_func_postload(z80_bank_set);
++	simpsons_state_register();
+ }
+ 
+ GAME( 1991, simpsons, 0,        simpsons, simpsons, simpsons, ROT0, "Konami", "The Simpsons (4 Players)" )
+diff --git a/src/machine/simpsons_machine.c b/src/machine/simpsons_machine.c
+index c729c63..6eb293b 100644
+--- a/src/machine/simpsons_machine.c
++++ b/src/machine/simpsons_machine.c
+@@ -1,4 +1,5 @@
+ #include "driver.h"
++#include "state.h"
+ #include "vidhrdw/generic.h"
+ #include "vidhrdw/konamiic.h"
+ #include "cpu/konami/konami.h"
+@@ -8,8 +9,15 @@
+ extern void simpsons_video_banking( int select );
+ extern unsigned char *simpsons_xtraram;
+ 
++/* from drivers */
++extern int simpsons_z80_bank;
++
+ int simpsons_firq_enabled;
+ 
++/* Bank selections, kept for save states (see simpsons_state_register) */
++static int simpsons_rombank;
++static int simpsons_videobank;
++
+ /***************************************************************************
+ 
+   EEPROM
+@@ -75,7 +83,8 @@ WRITE_HANDLER( simpsons_eeprom_w )
+ 	EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+ 	EEPROM_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+ 
+-	simpsons_video_banking( data & 3 );
++	simpsons_videobank = data & 3;
++	simpsons_video_banking( simpsons_videobank );
+ 
+ 	simpsons_firq_enabled = data & 0x04;
+ }
+@@ -170,9 +179,10 @@ READ_HANDLER( simpsons_speedup2_r )
+ 
+ ***************************************************************************/
+ 
+-static void simpsons_banking( int lines )
++static void simpsons_rombank_set(void)
+ {
+ 	unsigned char *RAM = memory_region(REGION_CPU1);
++	int lines = simpsons_rombank;
+ 	int offs = 0;
+ 
+ 	switch ( lines & 0xf0 )
+@@ -201,6 +211,37 @@ static void simpsons_banking( int lines )
+ 	cpu_setbank( 1, &RAM[offs] );
+ }
+ 
++static void simpsons_banking( int lines )
++{
++	simpsons_rombank = lines;
++	simpsons_rombank_set();
++}
++
++/* After loading a save state, map the saved banks again: the CPU ROM bank
++   (0x6000-0x7fff) and the video banks (0x0000-0x0fff and 0x2000-0x3fff). */
++static void simpsons_postload(void)
++{
++	simpsons_rombank_set();
++	simpsons_video_banking( simpsons_videobank );
++}
++
++/* Called once from the driver init: saves the bank selections, the FIRQ
++   enable and the banked RAM (palette, extra RAM and sprite RAM live in
++   the CPU region at 0x88000-0x8afff, outside the saved address space). */
++void simpsons_state_register(void)
++{
++	unsigned char *RAM = memory_region(REGION_CPU1);
++
++	state_save_register_int("simpsons", 0, "rombank", &simpsons_rombank);
++	state_save_register_int("simpsons", 0, "videobank", &simpsons_videobank);
++	state_save_register_int("simpsons", 0, "firq_enabled", &simpsons_firq_enabled);
++	/* reads left that fake the test switch on a board without NVRAM: a board
++	   that boots without it must not enter the service mode after loading */
++	state_save_register_int("simpsons", 0, "init_eeprom_count", &init_eeprom_count);
++	state_save_register_UINT8("simpsons", 0, "banked_ram", &RAM[0x88000], 0x3000);
++	state_save_register_func_postload(simpsons_postload);
++}
++
+ MACHINE_INIT( simpsons )
+ {
+ 	unsigned char *RAM = memory_region(REGION_CPU1);
+@@ -214,11 +255,14 @@ MACHINE_INIT( simpsons )
+ 	simpsons_firq_enabled = 0;
+ 
+ 	/* init the default banks */
++	simpsons_rombank = 0;
+ 	cpu_setbank( 1, &RAM[0x10000] );
+ 
+ 	RAM = memory_region(REGION_CPU2);
+ 
++	simpsons_z80_bank = 2;
+ 	cpu_setbank( 2, &RAM[0x10000] );
+ 
++	simpsons_videobank = 0;
+ 	simpsons_video_banking( 0 );
+ }
+diff --git a/src/sound/k053260.c b/src/sound/k053260.c
+index 1b0f0e4..0004435 100644
+--- a/src/sound/k053260.c
++++ b/src/sound/k053260.c
+@@ -5,6 +5,7 @@
+ *********************************************************/
+ 
+ #include "driver.h"
++#include "state.h"
+ #include "k053260.h"
+ 
+ /* 2004-02-28: Fixed ppcm decoding. Games sound much better now.*/
+@@ -14,14 +15,14 @@
+ #define BASE_SHIFT	16
+ 
+ struct K053260_channel_def {
+-	unsigned long		rate;
+-	unsigned long		size;
+-	unsigned long		start;
+-	unsigned long		bank;
+-	unsigned long		volume;
++	UINT32				rate;
++	UINT32				size;
++	UINT32				start;
++	UINT32				bank;
++	UINT32				volume;
+ 	int					play;
+-	unsigned long		pan;
+-	unsigned long		pos;
++	UINT32				pan;
++	UINT32				pos;
+ 	int					loop;
+ 	int					ppcm; /* packed PCM ( 4 bit signed ) */
+ 	int					ppcm_data;
+@@ -229,6 +230,28 @@ int K053260_sh_start(const struct MachineSound *msound) {
+ 
+ 		InitDeltaTable( ics );
+ 
++		/* Save the registers (the first 8 are the latches between the main
++		   and the sound CPU) and the channels, so a loaded save state keeps
++		   its sound and the two CPUs keep talking */
++		state_save_register_int("K053260", ics, "mode", &ic->mode);
++		state_save_register_INT32("K053260", ics, "regs", (INT32 *)ic->regs, 0x30);
++		for ( i = 0; i < 4; i++ ) {
++			struct K053260_channel_def *ch = &ic->channels[i];
++			char name[32];
++
++			sprintf(name, "ch%d rate", i);   state_save_register_UINT32("K053260", ics, name, &ch->rate, 1);
++			sprintf(name, "ch%d size", i);   state_save_register_UINT32("K053260", ics, name, &ch->size, 1);
++			sprintf(name, "ch%d start", i);  state_save_register_UINT32("K053260", ics, name, &ch->start, 1);
++			sprintf(name, "ch%d bank", i);   state_save_register_UINT32("K053260", ics, name, &ch->bank, 1);
++			sprintf(name, "ch%d volume", i); state_save_register_UINT32("K053260", ics, name, &ch->volume, 1);
++			sprintf(name, "ch%d play", i);   state_save_register_int("K053260", ics, name, &ch->play);
++			sprintf(name, "ch%d pan", i);    state_save_register_UINT32("K053260", ics, name, &ch->pan, 1);
++			sprintf(name, "ch%d pos", i);    state_save_register_UINT32("K053260", ics, name, &ch->pos, 1);
++			sprintf(name, "ch%d loop", i);   state_save_register_int("K053260", ics, name, &ch->loop);
++			sprintf(name, "ch%d ppcm", i);   state_save_register_int("K053260", ics, name, &ch->ppcm);
++			sprintf(name, "ch%d ppcm_data", i); state_save_register_int("K053260", ics, name, &ch->ppcm_data);
++		}
++
+ 		/* setup SH1 timer if necessary */
+ 		if ( intf->irq[ics] )
+ 			timer_pulse( TIME_IN_HZ( ( intf->clock[ics] / 32 ) ), 0, intf->irq[ics] );
+@@ -275,7 +298,7 @@ static INLINE void check_bounds( int chip, int channel ) {
+ 
+ 		ic->channels[channel].size = ic->rom_size - channel_start;
+ 	}
+-	log_cb(RETRO_LOG_DEBUG, LOGPRE "K053260: Sample Start = %06x, Sample End = %06x, Sample rate = %04lx, PPCM = %s\n", channel_start, channel_end, ic->channels[channel].rate, ic->channels[channel].ppcm ? "yes" : "no" );
++	log_cb(RETRO_LOG_DEBUG, LOGPRE "K053260: Sample Start = %06x, Sample End = %06x, Sample rate = %04x, PPCM = %s\n", channel_start, channel_end, ic->channels[channel].rate, ic->channels[channel].ppcm ? "yes" : "no" );
+ }
+ 
+ void K053260_write( int chip, offs_t offset, data8_t data )
