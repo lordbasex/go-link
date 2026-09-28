@@ -118,7 +118,9 @@ func TestFourPlayAndOneQueues(t *testing.T) {
 	found := false
 	for _, c := range out.chats("a") {
 		if c["system"] == "Guest E took seat P2" {
-			found = true
+			// The web translates it from the event and its values.
+			args, _ := c["args"].(map[string]any)
+			found = c["event"] == EventTookSeat && args["name"] == "Guest E" && args["port"] == float64(2)
 		}
 	}
 	if !found {

@@ -33,10 +33,47 @@ export interface QueueRow {
 }
 
 /** The device's notices come in English; the ones it marks are translated. */
-function systemText(c: { text: string; event?: string }): string {
-  if (c.event === "recording_started") return t.rec.started;
-  if (c.event === "recording_stopped") return t.rec.stopped;
-  return c.text;
+/** The device names guests "Guest 9F3A": shown in the reader's language. */
+export function localName(name: string): string {
+  const m = /^Guest ([0-9A-F]{1,8})$/.exec(name);
+  return m ? t.room.guestName(m[1]!) : name;
+}
+
+function systemText(c: ChatLine & { kind: "system" }): string {
+  const a = c.args;
+  const n = localName(a?.name ?? "");
+  const n2 = localName(a?.name2 ?? "");
+  const p = a?.port ?? 0;
+  const p2 = a?.port2 ?? 0;
+  const e = t.room.chatEvents;
+  switch (c.event) {
+    case "recording_started":
+      return t.rec.started;
+    case "recording_stopped":
+      return t.rec.stopped;
+    case "game_paused":
+      return e.paused(n);
+    case "game_resumed":
+      return e.resumed(n);
+    case "now_watching":
+      return e.watching(n);
+    case "moved":
+      return e.moved(n, p);
+    case "swap_asked":
+      return e.swapAsked(n, p, n2, p2);
+    case "kept_seat":
+      return e.kept(n, p);
+    case "swapped":
+      return e.swapped(n, p, n2, p2);
+    case "left_seat":
+      return e.left(n, p);
+    case "seat_free":
+      return e.free(p);
+    case "took_seat":
+      return e.took(n, p);
+    default:
+      return c.text;
+  }
 }
 
 export type ChatRow = { system: string } | { name: string; port: number | null; role: string; text: string; you: boolean };
@@ -81,7 +118,7 @@ export function liveModel(room: RoomStateView | null, chat: ChatLine[], voice: V
         const speaking = voice.speaking.has(port) && !silenced;
         const micOff = s.you && !voice.talking;
         return {
-          name: s.name,
+          name: localName(s.name),
           you: s.you,
           silenced,
           status: speaking ? t.room.speaking : silenced ? t.room.silenced : micOff ? t.room.muted : t.room.seatPlaying,
@@ -99,12 +136,12 @@ export function liveModel(room: RoomStateView | null, chat: ChatLine[], voice: V
     seats,
     queue: (room?.queue ?? []).map((q) => ({
       pos: t.ordinal(q.position),
-      name: q.name,
+      name: localName(q.name),
       you: q.you,
       note: q.position === 1 ? t.room.queueNext : t.room.queueWaiting,
     })),
-    spectators: room?.spectators ?? [],
-    chat: chat.map((c) => (c.kind === "system" ? { system: systemText(c) } : { name: c.name, port: c.port, role: c.role, text: c.text, you: !!room && c.name === room.you.name })),
+    spectators: (room?.spectators ?? []).map((sp) => ({ ...sp, name: localName(sp.name) })),
+    chat: chat.map((c) => (c.kind === "system" ? { system: systemText(c) } : { name: localName(c.name), port: c.port, role: c.role, text: c.text, you: !!room && c.name === room.you.name })),
     me,
     voice: room?.voice === false ? "off" : me.kind === "player" ? "player" : "spectator",
     hearVoice: false,

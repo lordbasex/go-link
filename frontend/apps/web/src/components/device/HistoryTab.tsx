@@ -7,6 +7,7 @@ import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
 import { DownloadIcon, PlayIcon, TrashIcon } from "../Icons";
 import { DownloadDialog, trackNames } from "../Recordings";
+import { localName } from "../../pages/roomModel";
 import { SkeletonRows } from "../ui/Skeleton";
 import { useInfiniteList } from "../ui/useInfiniteList";
 import { useThumbKind, useThumbnail } from "./useThumbnail";
@@ -232,7 +233,7 @@ function HistoryPeople({ item }: { item: HistoryItem }) {
           {p.ports.map((port) => (
             <span key={port} className={`hist-port is-p${port}`}>{`P${port}`}</span>
           ))}
-          <span className="hist-name">{p.name}</span>
+          <span className="hist-name">{localName(p.name)}</span>
           <span className="hist-ip mono" title={p.path === "relay" ? t.history.viaRelayHint : undefined}>
             {p.ip || (p.path === "relay" ? t.history.viaRelay : "–")}
           </span>

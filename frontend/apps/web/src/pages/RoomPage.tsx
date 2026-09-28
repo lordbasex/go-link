@@ -80,8 +80,7 @@ import { useFullscreen } from "../components/useFullscreen";
 import {
   demoModel,
   liveModel,
-  type RoomModel,
-} from "./roomModel";
+  type RoomModel, localName } from "./roomModel";
 import {
   useAudioLevels,
   useMicrophone,
@@ -737,7 +736,7 @@ function SidePanel({
               <i />
             </span>
             <span className="small muted">
-              {t.room.typing(typing.map((x) => x.name))}
+              {t.room.typing(typing.map((x) => localName(x.name)))}
             </span>
           </div>
         )}
@@ -1542,11 +1541,11 @@ export function RoomPage() {
                 key={`${o.from}-${o.to}`}
                 className="swap-offer swap-toast"
                 role="alertdialog"
-                aria-label={t.room.swapOffer(o.name, o.from, o.to)}
+                aria-label={t.room.swapOffer(localName(o.name), o.from, o.to)}
               >
                 <SwapIcon />
                 <span className="grow">
-                  {t.room.swapOffer(o.name, o.from, o.to)}
+                  {t.room.swapOffer(localName(o.name), o.from, o.to)}
                 </span>
                 <button
                   type="button"

@@ -208,4 +208,16 @@ describe("RecordingDownload", () => {
     d.handleText(JSON.stringify({ type: "download_error", id: d.id, error: "unknown recording", code: "unknown_recording" }));
     expect(await d.result).toEqual({ ok: false, cancelled: false, error: "unknown recording", code: "unknown_recording" });
   });
+
+  it("reads the values of a seat event, for the web to translate", () => {
+    expect(parseChat({ type: "chat", system: "Guest E took seat P2", event: "took_seat", args: { name: "Guest E", port: 2 }, ts: 1 })).toEqual({
+      kind: "system",
+      text: "Guest E took seat P2",
+      ts: 1,
+      event: "took_seat",
+      args: { name: "Guest E", port: 2, name2: "", port2: 0 },
+    });
+    // A seat out of range is dropped (0).
+    expect(parseChat({ type: "chat", system: "x", event: "seat_free", args: { port: 9 }, ts: 1 })).toMatchObject({ args: { port: 0 } });
+  });
 });

@@ -81,11 +81,44 @@ function parseControls(v: unknown): GameControls {
 }
 
 /** System chat lines the web shows in the reader's language. */
-export type ChatEvent = "recording_started" | "recording_stopped";
-const CHAT_EVENTS: readonly ChatEvent[] = ["recording_started", "recording_stopped"];
+export type ChatEvent =
+  | "recording_started"
+  | "recording_stopped"
+  | "game_paused"
+  | "game_resumed"
+  | "now_watching"
+  | "moved"
+  | "swap_asked"
+  | "kept_seat"
+  | "swapped"
+  | "left_seat"
+  | "seat_free"
+  | "took_seat";
+const CHAT_EVENTS: readonly ChatEvent[] = [
+  "recording_started",
+  "recording_stopped",
+  "game_paused",
+  "game_resumed",
+  "now_watching",
+  "moved",
+  "swap_asked",
+  "kept_seat",
+  "swapped",
+  "left_seat",
+  "seat_free",
+  "took_seat",
+];
+
+/** The values of a chat event (who and which seat). */
+export interface ChatArgs {
+  name: string;
+  port: number;
+  name2: string;
+  port2: number;
+}
 
 export type ChatLine =
-  | { kind: "system"; text: string; ts: number; event?: ChatEvent }
+  | { kind: "system"; text: string; ts: number; event?: ChatEvent; args?: ChatArgs }
   | { kind: "user"; name: string; port: number | null; role: string; text: string; ts: number };
 
 const str = (v: unknown, max = 300): string => (typeof v === "string" ? v.slice(0, max) : "");
@@ -161,7 +194,12 @@ export function parseChat(msg: unknown): ChatLine | null {
   const ts = num(m.ts);
   if (typeof m.system === "string") {
     const event = CHAT_EVENTS.find((e) => e === m.event);
-    return event ? { kind: "system", text: str(m.system), ts, event } : { kind: "system", text: str(m.system), ts };
+    if (!event) return { kind: "system", text: str(m.system), ts };
+    if (m.args === undefined) return { kind: "system", text: str(m.system), ts, event };
+    const a = obj(m.args);
+    const seat = (v: unknown) => (Number.isInteger(num(v)) && num(v) >= 1 && num(v) <= 4 ? num(v) : 0);
+    const args: ChatArgs = { name: str(a.name, 60), port: seat(a.port), name2: str(a.name2, 60), port2: seat(a.port2) };
+    return { kind: "system", text: str(m.system), ts, event, args };
   }
   if (typeof m.text !== "string" || typeof m.name !== "string") return null;
   const port = num(m.port);

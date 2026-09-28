@@ -314,9 +314,9 @@ func (m *RoomManager) Pause(paused bool, by string) {
 		}
 		m.setPaused(paused, by)
 		if paused {
-			m.system(fmt.Sprintf("%s paused the game", by))
+			m.event(EventGamePaused, fmt.Sprintf("%s paused the game", by), chatArgs{Name: by})
 		} else {
-			m.system(fmt.Sprintf("%s resumed the game", by))
+			m.event(EventGameResumed, fmt.Sprintf("%s resumed the game", by), chatArgs{Name: by})
 		}
 		m.broadcastState()
 	})
@@ -327,7 +327,26 @@ func (m *RoomManager) Pause(paused bool, by string) {
 const (
 	EventRecordingStarted = "recording_started"
 	EventRecordingStopped = "recording_stopped"
+	EventGamePaused       = "game_paused"  // name
+	EventGameResumed      = "game_resumed" // name
+	EventNowWatching      = "now_watching" // name
+	EventMoved            = "moved"        // name, port
+	EventSwapAsked        = "swap_asked"   // name, port, name2, port2
+	EventKeptSeat         = "kept_seat"    // name, port
+	EventSwapped          = "swapped"      // name, port, name2, port2
+	EventLeftSeat         = "left_seat"    // name, port
+	EventSeatFree         = "seat_free"    // port
+	EventTookSeat         = "took_seat"    // name, port
 )
+
+// chatArgs are the values of a chat event, for the web to put into the
+// reader's language.
+type chatArgs struct {
+	Name  string `json:"name,omitempty"`
+	Port  int    `json:"port,omitempty"`
+	Name2 string `json:"name2,omitempty"`
+	Port2 int    `json:"port2,omitempty"`
+}
 
 // SetRecording tells everyone in the room whether the host records the
 // game: room_state.recording (a REC badge) and a line in the chat, since
@@ -409,7 +428,7 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 		case "spectate":
 			if !mem.spectator {
 				mem.spectator = true
-				m.system(fmt.Sprintf("%s is now watching", mem.name))
+				m.event(EventNowWatching, fmt.Sprintf("%s is now watching", mem.name), chatArgs{Name: mem.name})
 				m.reconcile()
 			}
 		case "queue":
@@ -424,9 +443,9 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 			}
 			m.setPaused(msg.Paused, mem.name)
 			if msg.Paused {
-				m.system(fmt.Sprintf("%s paused the game", mem.name))
+				m.event(EventGamePaused, fmt.Sprintf("%s paused the game", mem.name), chatArgs{Name: mem.name})
 			} else {
-				m.system(fmt.Sprintf("%s resumed the game", mem.name))
+				m.event(EventGameResumed, fmt.Sprintf("%s resumed the game", mem.name), chatArgs{Name: mem.name})
 			}
 			m.broadcastState()
 		case "swap_seat":
@@ -451,7 +470,7 @@ func (m *RoomManager) askSwap(peer string, from, to int) {
 	target := m.seats[to-1]
 	if target == nil {
 		m.seats[to-1], m.seats[from-1] = asker, nil
-		m.system(fmt.Sprintf("%s moved to P%d", m.displayName(*asker), to))
+		m.event(EventMoved, fmt.Sprintf("%s moved to P%d", m.displayName(*asker), to), chatArgs{Name: m.displayName(*asker), Port: to})
 		m.reconcile()
 		return
 	}
@@ -470,7 +489,8 @@ func (m *RoomManager) askSwap(peer string, from, to int) {
 	m.nextSwap++
 	req := pendingSwap{id: m.nextSwap, from: from, to: to, asker: *asker, target: *target}
 	m.swaps = append(m.swaps, req)
-	m.system(fmt.Sprintf("%s (P%d) asks %s (P%d) to swap controllers", m.displayName(*asker), from, m.displayName(*target), to))
+	m.event(EventSwapAsked, fmt.Sprintf("%s (P%d) asks %s (P%d) to swap controllers", m.displayName(*asker), from, m.displayName(*target), to),
+		chatArgs{Name: m.displayName(*asker), Port: from, Name2: m.displayName(*target), Port2: to})
 	time.AfterFunc(swapTimeout, func() {
 		m.do(func() {
 			n := len(m.swaps)
@@ -496,7 +516,7 @@ func (m *RoomManager) answerSwap(peer string, from, to int, accept bool) {
 		return
 	}
 	if !accept {
-		m.system(fmt.Sprintf("%s kept P%d", m.displayName(req.target), to))
+		m.event(EventKeptSeat, fmt.Sprintf("%s kept P%d", m.displayName(req.target), to), chatArgs{Name: m.displayName(req.target), Port: to})
 		m.broadcastState()
 		return
 	}
@@ -510,7 +530,8 @@ func (m *RoomManager) swapSeats(a, b int) {
 	m.swaps = slices.DeleteFunc(m.swaps, func(p pendingSwap) bool { return !m.swapValid(p) })
 	x, y := m.seats[a-1], m.seats[b-1]
 	if x != nil && y != nil {
-		m.system(fmt.Sprintf("%s is now P%d and %s is P%d", m.displayName(*y), b, m.displayName(*x), a))
+		m.event(EventSwapped, fmt.Sprintf("%s is now P%d and %s is P%d", m.displayName(*y), b, m.displayName(*x), a),
+			chatArgs{Name: m.displayName(*y), Port: b, Name2: m.displayName(*x), Port2: a})
 	}
 }
 
@@ -531,9 +552,9 @@ func (m *RoomManager) reconcile() {
 	for i, s := range m.seats {
 		if s != nil && !wants(*s) {
 			if mem := m.members[s.peer]; mem != nil {
-				m.system(fmt.Sprintf("%s left P%d", mem.name, i+1))
+				m.event(EventLeftSeat, fmt.Sprintf("%s left P%d", mem.name, i+1), chatArgs{Name: mem.name, Port: i + 1})
 			} else {
-				m.system(fmt.Sprintf("P%d is free", i+1))
+				m.event(EventSeatFree, fmt.Sprintf("P%d is free", i+1), chatArgs{Port: i + 1})
 			}
 			m.seats[i] = nil
 		}
@@ -565,7 +586,7 @@ func (m *RoomManager) reconcile() {
 			k := m.queue[0]
 			m.queue = m.queue[1:]
 			m.seats[i] = &k
-			m.system(fmt.Sprintf("%s took seat P%d", m.displayName(k), i+1))
+			m.event(EventTookSeat, fmt.Sprintf("%s took seat P%d", m.displayName(k), i+1), chatArgs{Name: m.displayName(k), Port: i + 1})
 		}
 	}
 
@@ -725,14 +746,15 @@ func (m *RoomManager) broadcastState() {
 }
 
 type chatOut struct {
-	Type   string `json:"type"`
-	Name   string `json:"name,omitempty"`
-	Port   int    `json:"port,omitempty"`
-	Role   string `json:"role,omitempty"`
-	Text   string `json:"text,omitempty"`
-	System string `json:"system,omitempty"`
-	Event  string `json:"event,omitempty"` // EventRecordingStarted...
-	TS     int64  `json:"ts"`
+	Type   string    `json:"type"`
+	Name   string    `json:"name,omitempty"`
+	Port   int       `json:"port,omitempty"`
+	Role   string    `json:"role,omitempty"`
+	Text   string    `json:"text,omitempty"`
+	System string    `json:"system,omitempty"`
+	Event  string    `json:"event,omitempty"` // EventRecordingStarted...
+	Args   *chatArgs `json:"args,omitempty"`  // the event's values
+	TS     int64     `json:"ts"`
 }
 
 func (m *RoomManager) chat(mem *member, raw string) {
@@ -824,8 +846,10 @@ func (m *RoomManager) roleOf(mem *member) (string, int) {
 	return "spectator", 0
 }
 
-func (m *RoomManager) system(text string) {
-	m.publish(chatOut{Type: "chat", System: text, TS: m.cfg.Now().UnixMilli()})
+// event posts a system line: the English text, plus its kind and values
+// so the web shows it in the reader's language.
+func (m *RoomManager) event(kind, text string, args chatArgs) {
+	m.publish(chatOut{Type: "chat", System: text, Event: kind, Args: &args, TS: m.cfg.Now().UnixMilli()})
 }
 
 // publish sends a chat line to everyone and keeps it in the history.
