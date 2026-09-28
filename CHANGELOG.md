@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-28
+
 ### Changed (device window)
 
 - The window speaks English, Spanish or Portuguese (Settings › General, or automatic from the computer), live, without restarting.
@@ -14,11 +16,17 @@ All notable changes to go-link. Newest first.
 
 - The device checks go-link's releases on GitHub every 6 hours; the window and My device show a download notice when a newer version is out. My device also shows the device's version.
 - My device › ROMs can choose which picture every browser shows and the device's pictures folder (`set_thumbnails`).
+- Install page of the user guide with one tab per system (it opens on the visitor's own).
+
+### Fixed
+
+- The troubleshooting guide quotes the exact message the website shows for a used invitation.
+
+## [0.1.0] - 2026-09-28
+
+First public release (pre-release): universal macOS dmg, Windows, Linux, Raspberry Pi and Docker, with licenses in every file.
 
 ### Added
-
-- Released v0.1.0 (pre-release): universal macOS dmg, Windows, Linux, Raspberry Pi and Docker, with licenses in every file.
-- Install page with one tab per system (it opens on the visitor's own), like Docker's install docs.
 
 - User guide at `/docs` (English, Spanish and Portuguese): install, linking, ROMs, first game, invitations, controls, voice and chat, rooms, the app, pictures, headless panel, command line, Docker, network and troubleshooting. "Docs" in the menu and the footer.
 - An arcade 404 page, and the website's version in the footer and in a `go-link-version` meta tag.
