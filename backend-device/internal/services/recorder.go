@@ -291,9 +291,11 @@ func (r *Recorder) write(file *countingFile) {
 			c.last = d
 			ts = int64(d / time.Millisecond)
 		}
-		// Blocks of one track must keep their order.
-		if used[f.track] && ts < last[f.track] {
-			ts = last[f.track]
+		// Blocks of one track must keep their order, each after the last
+		// (two frames within the same millisecond would share a timestamp,
+		// which players accept but muxers reject).
+		if used[f.track] && ts <= last[f.track] {
+			ts = last[f.track] + 1
 		}
 		key := f.track != recTrackVideo || f.data[0]&1 == 0
 		if _, err := ws[f.track-1].Write(key, ts, f.data); err != nil {
