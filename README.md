@@ -1,5 +1,9 @@
 # go-link
 
+[![CI](https://github.com/lordbasex/go-link/actions/workflows/ci.yml/badge.svg)](https://github.com/lordbasex/go-link/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/lordbasex/go-link?include_prereleases)](https://github.com/lordbasex/go-link/releases)
+
 Play classic arcade games online with friends, straight from the browser.
 
 A **host** runs the go-link app (the **device**) on their own computer, with **their own ROMs**. Friends join from a web browser **without needing the ROM**: they get the game's video and sound over WebRTC and send their controls back, peer to peer.
@@ -34,6 +38,22 @@ A **host** runs the go-link app (the **device**) on their own computer, with **t
 3. The host starts a game and invites friends with a link, a QR or a code, plus a PIN for each person.
 4. Friends open the invitation, type the PIN and play.
 
+## Download
+
+Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
+
+| System | File | Notes |
+|---|---|---|
+| **macOS 12+** (Intel and Apple silicon) | `go-link-vX.Y.Z-macos-universal.dmg` | Drag go-link to Applications. Until the app is notarized, open it the first time with right click › Open. Or `brew install --cask go-link` from this repository's tap |
+| **Windows 10/11** (x64 and ARM) | `go-link-vX.Y.Z-windows-amd64.zip` / `-arm64.zip` | Unzip and run `go-link-device.exe` |
+| **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
+| **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
+| **Docker** | `go-link-vX.Y.Z-docker.oci.tar.gz` | `docker load`, then see [docs/device.md](docs/device.md#docker) |
+
+Every download is listed in `SHA256SUMS`. The emulator core is downloaded by the app on first use; ROMs are never included. Linking a device and joining a game ask you to accept the [terms of use](https://go-link.org/terms).
+
+To see which version you run: the device shows it in its window (System) and with `go-link-device --help`, and the website in its footer (or `curl -s https://go-link.org/ | grep go-link-version`).
+
 ## Repository
 
 | Directory | What it is |
@@ -54,6 +74,7 @@ Requirements: Go, Node.js, `pkg-config`, libvpx and Opus (`brew install libvpx o
 # The device (uses the public signaling server)
 cd backend-device
 go run ./cmd/device --web-url http://localhost:5180
+# or: make device-darwin-universal / make device-dmg (macOS), make help for the rest
 
 # The website
 cd frontend
@@ -75,7 +96,7 @@ Details in [docs/deploy.md](docs/deploy.md).
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, networking, security, building and deploying.
+Start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, networking, security, building, deploying, the roadmap and the legal texts. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## ROMs, Copyright and Legal Disclaimers
 
