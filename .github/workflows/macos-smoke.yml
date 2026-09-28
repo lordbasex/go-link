@@ -46,7 +46,9 @@ jobs:
           set -euo pipefail
           export HOME="$RUNNER_TEMP/home"
           mkdir -p "$HOME"
-          arch -arm64 "$BIN" --help | tee help.txt
+          # --help exits with 2 (Go's flag package): only its text matters.
+          arch -arm64 "$BIN" --help > help.txt 2>&1 || true
+          cat help.txt
           grep -q "go-link device $TAG" help.txt
           arch -arm64 "$BIN" core download
           ls -la "$HOME/go-link/cores/"
