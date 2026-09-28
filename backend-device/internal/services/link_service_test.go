@@ -135,6 +135,30 @@ func TestLinkRememberedAndBack(t *testing.T) {
 	_ = tr
 }
 
+func TestTheLinkRemembersTheAcceptedTerms(t *testing.T) {
+	var saved []models.Link
+	l, tr, _ := newTestLinks(t, &saved, time.Minute)
+	l.PairedByCode("b1")
+	l.HandleMessage("b1", []byte(`{"type":"auth","terms":"2026-09-28"}`))
+	ok := tr.last("b1")
+	if len(saved) != 1 || saved[0].Terms != "2026-09-28" || saved[0].TermsAt.IsZero() {
+		t.Fatalf("saved = %+v", saved)
+	}
+	// A newer version accepted later is recorded when the browser comes back;
+	// anything that is not a version is ignored.
+	l2, _, _ := newTestLinks(t, &saved, time.Minute)
+	l2.Reached("b2")
+	l2.HandleMessage("b2", []byte(`{"type":"auth","link_id":"`+ok["link_id"]+`","token":"`+ok["token"]+`","terms":"2027-01-01"}`))
+	if saved[0].Terms != "2027-01-01" {
+		t.Fatalf("terms = %q", saved[0].Terms)
+	}
+	l2.Reached("b3")
+	l2.HandleMessage("b3", []byte(`{"type":"auth","link_id":"`+ok["link_id"]+`","token":"`+ok["token"]+`","terms":"<script>"}`))
+	if saved[0].Terms != "2027-01-01" {
+		t.Fatalf("terms = %q", saved[0].Terms)
+	}
+}
+
 func TestReachedMustAuthInTime(t *testing.T) {
 	var saved []models.Link
 	l, tr, _ := newTestLinks(t, &saved, 30*time.Millisecond)

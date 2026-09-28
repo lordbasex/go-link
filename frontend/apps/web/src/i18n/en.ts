@@ -2,8 +2,10 @@
 
 // Every visible text of the web lives here, in English (the default).
 // Other languages (es.ts, pt.ts) are files with the same shape: Messages.
+import { legalEn } from "./legal-en";
 
 export const en = {
+  legal: legalEn,
   brand: { name: "go", dot: "-", suffix: "link", home: "go-link home" },
   /** 1 -> "1st", 2 -> "2nd", 11 -> "11th"... */
   lang: { label: "Language" },

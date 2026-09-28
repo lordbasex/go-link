@@ -55,6 +55,8 @@ test("links the device with its pairing code and shows it live", async () => {
     data.setData("text", text);
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
   }, code);
+  // The host accepts the terms of use before linking.
+  await page.getByRole("checkbox", { name: /I have read and accept/ }).check();
   await page.getByRole("button", { name: "Link", exact: true }).click();
   await expect(page.getByText("Linked · live")).toBeVisible();
   // Hardware and usage arrive over the WebRTC data channel.
@@ -102,6 +104,7 @@ async function joinAsGuest(browser: Browser, code: string, pin: string) {
   const dialog = p.getByRole("dialog", { name: "Join a game" });
   await dialog.getByPlaceholder("123 456 789").fill(code);
   await dialog.getByPlaceholder("000000").fill(pin);
+  await dialog.getByRole("checkbox", { name: /I have read and accept/ }).check();
   await dialog.getByRole("button", { name: "Join", exact: true }).click();
   return { context, page: p };
 }
@@ -112,6 +115,7 @@ test("the device's local web panel opens with its token and plays its rooms", as
   await p.goto(`http://127.0.0.1:${PORTS.panel}/`);
   await expect(p.getByRole("heading", { name: "Device panel" })).toBeVisible();
   await p.getByLabel("Panel token").fill(panelToken());
+  await p.getByRole("checkbox", { name: /I have read and accept/ }).check();
   await p.getByRole("button", { name: "Open the panel" }).click();
   // The panel opens on the rooms; the device page shows it linked.
   await p.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My device" }).click();

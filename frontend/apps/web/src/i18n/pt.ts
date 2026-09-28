@@ -1,8 +1,10 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 // Portuguese (Brazil) texts of the web. Same shape as en.ts (Messages).
 import type { Messages } from "./en";
+import { legalPt } from "./legal-pt";
 
 export const pt: Messages = {
+  legal: legalPt,
   brand: { name: "go", dot: "-", suffix: "link", home: "Início do go-link" },
   lang: { label: "Idioma" },
   theme: { toLight: "Modo claro", toDark: "Modo escuro" },

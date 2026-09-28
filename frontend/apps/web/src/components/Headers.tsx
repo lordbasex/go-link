@@ -5,6 +5,8 @@ import { useSignal } from "../signal/SignalProvider";
 import { DEMO_DEVICE_NAME } from "../fixtures";
 import { GamepadIcon, MonitorIcon, MoonIcon, ServerIcon, SunIcon } from "./Icons";
 import { setTheme, useTheme } from "../theme";
+import { GithubIcon } from "./Icons";
+import { REPO_URL } from "../config";
 
 export function Brand() {
   return (
@@ -118,6 +120,16 @@ export function MainHeader() {
         <ServerButton />
         <DeviceBadge />
         <ThemeButton />
+        <a
+          className="icon-button tip-below"
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener"
+          aria-label={t.legal.footer.github}
+          data-tip={t.legal.footer.github}
+        >
+          <GithubIcon />
+        </a>
       </div>
     </header>
   );

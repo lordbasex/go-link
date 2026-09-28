@@ -12,6 +12,8 @@ import { useSignal } from "../signal/SignalProvider";
 import { ServerHelp } from "../components/ServerSettings";
 import { SkeletonDashboard } from "../components/ui/Skeleton";
 import { DeviceDashboard } from "../components/device/DeviceDashboard";
+import { TermsCheck } from "../components/legal/TermsCheck";
+import { acceptTerms, termsAccepted } from "../legal";
 
 type Failure = "incomplete" | "invalid" | "rateLimited" | "unreachable";
 
@@ -41,6 +43,9 @@ export function DevicePage({
   );
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // The host accepts the terms of use before linking (once per version).
+  const [agreed, setAgreed] = useState(termsAccepted);
+  const [askTerms, setAskTerms] = useState(false);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   const focus = (i: number) =>
@@ -93,6 +98,11 @@ export function DevicePage({
       setFailure("incomplete");
       return;
     }
+    if (!agreed) {
+      setAskTerms(true);
+      return;
+    }
+    acceptTerms();
     setBusy(true);
     setFailure(null);
     try {
@@ -229,6 +239,7 @@ export function DevicePage({
                   </p>
                 )}
                 {failure === "invalid" && <ServerHelp />}
+                <TermsCheck checked={agreed} onChange={setAgreed} showError={askTerms} />
                 <div className="pair-submit">
                   <button
                     type="submit"

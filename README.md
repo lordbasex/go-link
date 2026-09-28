@@ -77,9 +77,12 @@ Details in [docs/deploy.md](docs/deploy.md).
 
 Start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, networking, security, building and deploying.
 
-## ROMs and licenses
+## ROMs, Copyright and Legal Disclaimers
 
-- go-link does **not** include, host or download ROMs or thumbnails. Hosts must use only sets they have the right to use, such as backups of arcade boards they own.
-- go-link's code is [MIT](LICENSE).
-- MAME and the libretro cores have their own licenses. **mame2003-plus is for non-commercial use only.**
-- go-link is not affiliated with MAME or libretro.
+- **Zero-Content Policy:** `go-link` does **not** host, include, distribute, or download any ROMs, game images, artwork, or system BIOS files. It is strictly a software utility and a streaming engine.
+- **User Responsibility:** The application operates under a completely decentralized, self-hosted architecture. Hosts must exclusively use legal backup sets of arcade boards or software they physically own. The creators of `go-link` are not liable for any unauthorized reproduction or streaming of copyrighted material by end-users.
+- **Intellectual Property:** All corporate names, game titles, logos, and characters referenced or emulated are trademarks and property of their respective copyright holders (such as Nintendo, Capcom, SEGA, Bandai Namco, etc.). This project is completely independent, non-profit, and does not claim any affiliation with or endorsement by these entities.
+- **Trademarks:** MAME® is a registered trademark of Gregory Ember. `go-link` is not affiliated with, endorsed by, or sponsored by MAMEdev or libretro; the name MAME is only used to describe compatibility, and the MAME logo is not used.
+- **Licensing:** The source code of `go-link` is distributed under the open-source [MIT license](LICENSE), and the third-party components it includes keep their own licenses ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). However, MAME, libretro, and individual emulator cores carry their own restrictive licenses. The `mame2003-plus` core, which the device downloads at the host's request and never bundles, is strictly for **non-commercial use only**: any commercial distribution or monetization of `go-link` together with that core is prohibited under its upstream license terms.
+
+Full terms of use, privacy policy and licenses: [docs/legal.md](docs/legal.md) (also at [go-link.org/terms](https://go-link.org/terms) and [go-link.org/privacy](https://go-link.org/privacy)).

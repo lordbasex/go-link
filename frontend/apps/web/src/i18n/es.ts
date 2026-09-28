@@ -1,8 +1,10 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 // Spanish texts of the web. Same shape as en.ts (Messages).
 import type { Messages } from "./en";
+import { legalEs } from "./legal-es";
 
 export const es: Messages = {
+  legal: legalEs,
   brand: { name: "go", dot: "-", suffix: "link", home: "Inicio de go-link" },
   lang: { label: "Idioma" },
   theme: { toLight: "Modo claro", toDark: "Modo oscuro" },

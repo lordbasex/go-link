@@ -27,6 +27,7 @@ Details in [signalhub's README](https://github.com/lordbasex/signalhub). In shor
 - Strict Content Security Policy, with `connect-src wss:` to allow self-hosted signaling servers. No inline scripts or styles.
 - The signaling server is kept in `localStorage` and changed only by hand, never from a link.
 - PINs are never put in URLs.
+- No third-party requests: fonts are bundled, and there are no analytics, ads or trackers.
 - Text from other users is always rendered as text.
 - SHA-256 and HMAC are implemented in TypeScript (`packages/shared/src/hmac.ts`), because `crypto.subtle` is missing on plain `http` pages such as the local panel.
 
@@ -36,7 +37,7 @@ A `<meta>` CSP cannot set everything. Whatever static host or CDN serves the web
 
 | Header | Value | Why |
 |---|---|---|
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss:; media-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'` | Own scripts and styles only, WebSockets only over `wss:`, and no one can frame the site |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' wss:; media-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'` | Own scripts and styles only, WebSockets only over `wss:`, and no one can frame the site |
 | `X-Frame-Options` | `DENY` | The same for older browsers (clickjacking) |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Always HTTPS |
 | `X-Content-Type-Options` | `nosniff` | No content type guessing |

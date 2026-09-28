@@ -55,6 +55,7 @@ STUN and TURN are **not** configured: they arrive in signalhub's `hello` and liv
 | `/r/:roomId` | A room by id (the owner's own rooms) |
 | `/device` | My device: linking with the code, then the live dashboard |
 | `/device/roms`, `/device/history` | My device tabs |
+| `/terms`, `/privacy` | Terms of use and privacy policy ([docs/legal.md](legal.md) in three languages) |
 
 On a headless device's local panel, `/` goes to `/device` (not linked yet) or `/rooms`, and there is no landing page.
 
@@ -70,6 +71,10 @@ All visible text lives in `apps/web/src/i18n/`: `en.ts` (English, default and re
 - **New game:** pick a game (`GamePicker`: search, arrows, Enter, Escape; any library size), a name, voice and chat, with a preview of the game's thumbnail.
 - **Room:** the video with a floating **players capsule** (seat colors, speaking glow, muted mic, free seats) on the left and a **dock** on the right: Start 1P-4P, voice (mic, level, game and voice volumes), pause, controls, sound and full screen. The owner also gets Invite (dialog with QR, link, code and a new PIN per person), Close game, and the chat switch. Chat with bubbles and a "typing…" indicator. A "How to play" dialog (`components/HelpDialog.tsx`) explains seats, keyboard, gamepads, touch, full screen, sound and voice.
 - **My device:** without a device, the linking view with the 9-digit code. With a device, a live dashboard (`components/device/DeviceDashboard.tsx`): system CPU, go-link CPU, memory, latency, players, CPU chart (1, 2 or 5 min), network, disk space used by ROMs, thumbnails and saves, library, connection path; tabs **ROMs** (cards or list, search, sort, status chips, Play, drop zone for zips, ROM folder) and **History** (every game that ran, with players and their connection path).
+
+## Terms of use
+
+Linking a device (with the code or on the local panel) requires ticking "I have read and accept the Terms of use and the Privacy policy" (`components/legal/TermsCheck.tsx`); a guest ticks it once before joining (join form or PIN prompt). The accepted version (`TERMS_VERSION` in `src/legal.ts`, the date of `docs/legal.md`) is kept in `go-link.terms`, and a new version asks again. The website also sends it in the control channel's `auth` (`terms`), and the device keeps it with that browser's link in `device.json`. The landing and legal pages end with the site footer (`components/legal/SiteFooter.tsx`): product links, source code, releases, licenses, the legal pages and the MAME trademark notice. The header has a GitHub link.
 
 ## Mobile, tablets and full screen
 
@@ -89,6 +94,7 @@ The **Signaling server** button in the header lets a user switch servers without
 - **Theme before paint:** `public/theme.js` applies the saved theme (`go-link.theme`) before the page paints. It is a separate file because the CSP forbids inline scripts.
 - **Shared pieces:** `PageHero`, `Chip`, `HeroTile`, dashboard cards, `GamePicker`, `ControllerArt`, the ROM and room tables.
 - **Loading:** a splash logo (`#splash` in `index.html`, `public/splash.css`) stays at least 3 s and until the first screen has real data (`useSplash` in `App.tsx`, max 8 s). After that, views show skeletons (`components/ui/Skeleton.tsx`), never an empty list that fills later. Long lists page with `useInfiniteList`.
+- **Fonts:** Chakra Petch, IBM Plex Sans and JetBrains Mono (SIL Open Font License) are bundled with the site (`@fontsource`), never loaded from a font service, so no third party receives visitors' IP addresses.
 - **Icons:** `public/favicon.svg` is the header logo. The PNG icons come from `backend-device/pkg/trayicon.Render`, the same drawing the device uses for its app and tray icon.
 - **Accessibility:** real `<button>` and `<a>`, `<label>` on inputs, `aria-label` on icon-only buttons, one `<main>` per page. The end-to-end tests run axe on every page.
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { TERMS_VERSION, termsAccepted } from "../legal";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   APP,
@@ -293,13 +294,20 @@ export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage
             // A remembered browser asks the device to prove itself first:
             // its token must never reach someone else answering for the
             // device_id on signalhub.
-            stream.sendControl(saved ? { type: "auth_challenge", link_id: saved.linkId, nonce } : { type: "auth" });
+            stream.sendControl(
+              saved ? { type: "auth_challenge", link_id: saved.linkId, nonce } : { type: "auth", terms: TERMS_VERSION },
+            );
           },
           onControl: (msg) => {
             const proof = msg as { type?: unknown; link_id?: unknown; proof?: unknown };
             if (saved && proof?.type === "auth_proof") {
               if (typeof proof.proof === "string" && sameString(proof.proof, linkProof(saved.token, nonce))) {
-                stream.sendControl({ type: "auth", link_id: saved.linkId, token: saved.token });
+                stream.sendControl({
+                  type: "auth",
+                  link_id: saved.linkId,
+                  token: saved.token,
+                  ...(termsAccepted() ? { terms: TERMS_VERSION } : {}),
+                });
               } else {
                 // Not the device this browser linked to: hang up, keep the token.
                 drop();

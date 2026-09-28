@@ -9,6 +9,11 @@
 #   docker buildx build -f build/docker.Dockerfile -t go-link-device --load .
 #   docker run -d --name go-link --network host -v go-link:/data \
 #     -v /path/to/roms:/data/go-link/roms go-link-device
+# The licenses (LICENSE, THIRD_PARTY_NOTICES.md) come from the repository
+# root: the Makefile passes them as the "legal" build context. A plain
+# `docker build` gets this empty stage instead.
+FROM scratch AS legal
+
 FROM golang:1.26-bookworm AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       pkg-config libvpx-dev libopus-dev && rm -rf /var/lib/apt/lists/*
@@ -34,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # with that owner. Otherwise mounting the ROMs at /data/go-link/roms makes
 # Docker create go-link/ as root, and the device cannot write its core.
 COPY --from=build /out/go-link-device /usr/local/bin/go-link-device
+COPY --from=legal / /usr/share/doc/go-link/
 USER golink
 ENV HOME=/data
 VOLUME /data

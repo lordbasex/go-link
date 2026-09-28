@@ -5,6 +5,8 @@ import { t } from "../i18n";
 import { cleanPanelToken } from "../panel";
 import { PANEL_BAD_TOKEN, useSignal } from "../signal/SignalProvider";
 import { LockIcon, MonitorIcon } from "../components/Icons";
+import { TermsCheck } from "../components/legal/TermsCheck";
+import { acceptTerms, termsAccepted } from "../legal";
 
 /**
  * The way into a headless device's local web panel: its panel token, a
@@ -16,11 +18,18 @@ export function PanelLoginPage() {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [agreed, setAgreed] = useState(termsAccepted);
+  const [askTerms, setAskTerms] = useState(false);
   const token = cleanPanelToken(value);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token || busy) return;
+    if (!agreed) {
+      setAskTerms(true);
+      return;
+    }
+    acceptTerms();
     setBusy(true);
     setError("");
     clearLinkNotice();
@@ -80,6 +89,7 @@ export function PanelLoginPage() {
                 {error}
               </p>
             )}
+            <TermsCheck checked={agreed} onChange={setAgreed} showError={askTerms} />
             <div className="pair-submit">
               <button type="submit" className="button button-primary" disabled={!token || busy}>
                 {busy ? t.panel.opening : t.panel.open}

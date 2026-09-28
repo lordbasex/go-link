@@ -231,8 +231,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", strings.Join([]string{
 			"default-src 'self'",
 			"script-src 'self'",
-			"style-src 'self' https://fonts.googleapis.com",
-			"font-src https://fonts.gstatic.com",
+			"style-src 'self'",
+			"font-src 'self'",
 			"img-src 'self' data: blob:",
 			"connect-src 'self' ws: wss:",
 			"media-src 'self' blob:",

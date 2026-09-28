@@ -58,6 +58,8 @@ import { TouchPad } from "../components/TouchPad";
 import { InviteDialog } from "../components/InviteDialog";
 import { StreamInfo } from "../components/StreamInfo";
 import { PlayersCapsule, type SeatSwap } from "../components/PlayersCapsule";
+import { TermsCheck } from "../components/legal/TermsCheck";
+import { acceptTerms, termsAccepted } from "../legal";
 import { HelpDialog } from "../components/HelpDialog";
 import { useFullscreen } from "../components/useFullscreen";
 import {
@@ -130,6 +132,10 @@ function PinPrompt({
   onSend: (pin: string) => void;
 }) {
   const [value, setValue] = useState("");
+  // A guest who came straight from a link accepts the terms here.
+  const [needsTerms] = useState(() => !termsAccepted());
+  const [agreed, setAgreed] = useState(false);
+  const [askTerms, setAskTerms] = useState(false);
   const blocked = last?.reason === "blocked";
   const error = !last
     ? ""
@@ -145,7 +151,12 @@ function PinPrompt({
       className="pin-prompt card stack-md"
       onSubmit={(e) => {
         e.preventDefault();
+        if (needsTerms && !agreed) {
+          setAskTerms(true);
+          return;
+        }
         if (value.length === 6 && !busy && !blocked) {
+          if (needsTerms) acceptTerms();
           onSend(value);
           setValue("");
         }
@@ -180,6 +191,7 @@ function PinPrompt({
           {error}
         </p>
       )}
+      {needsTerms && <TermsCheck guest checked={agreed} onChange={setAgreed} showError={askTerms} />}
       <button
         type="submit"
         className="button button-primary button-block"

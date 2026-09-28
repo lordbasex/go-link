@@ -7,7 +7,7 @@
 #   make web-deploy   build and upload the website (deploy/local/hosting.mk)
 #   make help         everything else
 
-.PHONY: all e2e release panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy hosting-help \
+.PHONY: all e2e release legal panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy hosting-help \
 	device device-windows device-windows-amd64 device-windows-arm64 clean
 
 # The darwin and linux device targets are pattern rules (device-darwin-%,
@@ -204,19 +204,24 @@ device-windows: $(PANEL_DIST)/index.html
 	@echo "$(GREEN)✓ $(DEVICE_OUT)/windows-$(GO_ARCH)/go-link-device.exe$(NC)"
 
 # ---------------------------------------------------------------------------
+# The licenses that travel with every binary and image.
+LEGAL_DIR = $(DIST)/.legal
+legal:
+	@mkdir -p $(LEGAL_DIR) && cp LICENSE THIRD_PARTY_NOTICES.md $(LEGAL_DIR)/
+
 # The device as a container (headless, web panel on 7373): loaded into the
 # local Docker for this computer's CPU, and an OCI archive for amd64 and
 # arm64 (Raspberry Pi). Not pushed to any registry.
-device-docker: $(PANEL_DIST)/index.html
+device-docker: $(PANEL_DIST)/index.html legal
 	@echo "$(YELLOW)Building the go-link-device image...$(NC)"
 	cd $(DEVICE_DIR) && docker buildx build -f build/docker.Dockerfile --build-arg VERSION=$(VERSION) \
-		-t go-link-device:$(VERSION) -t go-link-device:latest --load .
+		--build-context legal=$(LEGAL_DIR) -t go-link-device:$(VERSION) -t go-link-device:latest --load .
 	@echo "$(GREEN)✓ go-link-device:$(VERSION) (docker compose -f $(DEVICE_DIR)/docker-compose.yml up -d)$(NC)"
 
-device-docker-oci: $(PANEL_DIST)/index.html
+device-docker-oci: $(PANEL_DIST)/index.html legal
 	mkdir -p $(DOCKER_OUT)
 	cd $(DEVICE_DIR) && docker buildx build -f build/docker.Dockerfile --build-arg VERSION=$(VERSION) \
-		--platform linux/amd64,linux/arm64 -t go-link-device:$(VERSION) \
+		--build-context legal=$(LEGAL_DIR) --platform linux/amd64,linux/arm64 -t go-link-device:$(VERSION) \
 		--output type=oci,dest=$(DOCKER_OUT)/go-link-device-$(VERSION).oci.tar .
 	@echo "$(GREEN)✓ $(DOCKER_OUT)/go-link-device-$(VERSION).oci.tar$(NC)"
 

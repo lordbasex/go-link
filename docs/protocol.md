@@ -128,7 +128,7 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 
 | `type` | Direction | Content |
 |---|---|---|
-| `auth` | linked → device | First message. Empty after redeeming a code; `link_id` and `token` when coming back with `reach` |
+| `auth` | linked → device | First message. Empty after redeeming a code; `link_id` and `token` when coming back with `reach`. Optional `terms`: the version of the terms of use accepted in that browser, kept with the link (`terms`, `terms_at` in `device.json`) |
 | `auth_challenge` / `auth_proof` | linked ⇄ device | `link_id` + `nonce`, answered with `proof` (see [flows](flows.md#2-linking-a-browser-with-the-device)) |
 | `auth_ok` | device → linked | `device_id`, `link_id` and, only after a code, the `token` to keep |
 | `auth_failed` | device → linked | Readable `error`. The link no longer exists: the website forgets it and the device hangs up |

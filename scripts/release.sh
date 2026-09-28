@@ -41,6 +41,7 @@ fi
 
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   echo "▶ Building every platform ($TAG)"
+  "$ROOT/scripts/third-party-notices.sh"
   make -C "$ROOT" panel
   make -C "$ROOT" device VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
   if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -70,20 +71,26 @@ fi
 for variant in linux-amd64 linux-arm64 linux-amd64-headless linux-arm64-headless; do
   bin="$DEVICE/$variant/go-link-device"
   [[ -f "$bin" ]] || { echo "  (no $variant build, skipped)"; continue; }
-  tar -C "$DEVICE/$variant" -czf "$OUT/$NAME-$variant.tar.gz" go-link-device
+  cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEVICE/$variant/"
+  tar -C "$DEVICE/$variant" -czf "$OUT/$NAME-$variant.tar.gz" go-link-device LICENSE THIRD_PARTY_NOTICES.md
 done
 
 # Windows: a .zip with the .exe (no console; the log goes to a file).
 for arch in amd64 arm64; do
   exe="$DEVICE/windows-$arch/go-link-device.exe"
   [[ -f "$exe" ]] || { echo "  (no windows-$arch build, skipped)"; continue; }
-  (cd "$DEVICE/windows-$arch" && zip -q -j "$OUT/$NAME-windows-$arch.zip" go-link-device.exe)
+  cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEVICE/windows-$arch/"
+  (cd "$DEVICE/windows-$arch" && zip -q -j "$OUT/$NAME-windows-$arch.zip" go-link-device.exe LICENSE THIRD_PARTY_NOTICES.md)
 done
 
 oci="$ROOT/dist/docker/go-link-device-$TAG.oci.tar"
 if [[ -f "$oci" ]]; then
   gzip -c "$oci" > "$OUT/$NAME-docker.oci.tar.gz"
 fi
+
+# The licenses also go as their own files (the .dmg has them inside the app).
+cp "$ROOT/LICENSE" "$OUT/LICENSE.txt"
+cp "$ROOT/THIRD_PARTY_NOTICES.md" "$OUT/THIRD_PARTY_NOTICES.md"
 
 echo "▶ SHA256SUMS"
 (cd "$OUT" && shasum -a 256 -- * > SHA256SUMS && cat SHA256SUMS)

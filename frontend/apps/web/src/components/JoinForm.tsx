@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { parseInvite } from "@go-link/shared";
 import { t } from "../i18n";
 import { GamepadIcon, LockIcon } from "./Icons";
+import { TermsCheck } from "./legal/TermsCheck";
+import { acceptTerms, termsAccepted } from "../legal";
 
 /**
  * The code (or link) and the PIN of an invitation, as the guest join page
@@ -15,12 +17,20 @@ export function JoinForm({ className, autoFocus = false }: { className?: string;
   const id = useId();
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
+  const [needsTerms] = useState(() => !termsAccepted());
+  const [agreed, setAgreed] = useState(false);
+  const [askTerms, setAskTerms] = useState(false);
   const target = parseInvite(code);
   const ready = target !== null && /^\d{6}$/.test(pin);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!target || !ready) return;
+    if (needsTerms && !agreed) {
+      setAskTerms(true);
+      return;
+    }
+    if (needsTerms) acceptTerms();
     navigate(`/g/${"invite" in target ? target.invite : target.code}`, { state: { pin } });
   };
 
@@ -63,6 +73,7 @@ export function JoinForm({ className, autoFocus = false }: { className?: string;
           />
         </div>
       </div>
+      {needsTerms && <TermsCheck guest checked={agreed} onChange={setAgreed} showError={askTerms} />}
       <div className="pair-submit">
         <button type="submit" className="button button-primary" disabled={!ready}>
           {t.guest.join}

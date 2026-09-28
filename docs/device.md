@@ -87,7 +87,7 @@ Created on the first run with mode `0600`:
 | `udp_port`, `announce_ips` | Fixed WebRTC UDP port and the addresses to announce for it |
 | `max_rooms` | Game rooms running at once (default 4, counting paused ones) |
 | `rooms` | The saved game rooms and their state |
-| `links` | Linked browsers: `id`, `token_hash` (SHA-256 of the token, never the token), `created_at`, `last_seen` |
+| `links` | Linked browsers: `id`, `token_hash` (SHA-256 of the token, never the token), `created_at`, `last_seen`, and the terms of use version accepted (`terms`, `terms_at`) |
 | `panel_token` | UUID token of the local web panel (headless only) |
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.

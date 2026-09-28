@@ -13,5 +13,6 @@
 | [Building](building.md) | Requirements, Makefile, macOS app, releases, tests, CI |
 | [Deploying](deploy.md) | Signaling server, website hosting, device distribution |
 | [Status and roadmap](status.md) | What is done and what comes next |
+| [Legal](legal.md) | Terms of use, privacy policy, licenses and trademarks |
 
 The signaling protocol lives in [signalhub's README](https://github.com/lordbasex/signalhub). Changes are recorded in [CHANGELOG.md](../CHANGELOG.md).

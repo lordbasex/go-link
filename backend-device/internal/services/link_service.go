@@ -173,6 +173,21 @@ type linkMessage struct {
 	LinkID string `json:"link_id,omitempty"`
 	Token  string `json:"token,omitempty"`
 	Nonce  string `json:"nonce,omitempty"`
+	// Terms: the version of the terms of use accepted in this browser.
+	Terms string `json:"terms,omitempty"`
+}
+
+// validTerms accepts a terms version as the website sends it (a date).
+func validTerms(v string) bool {
+	if len(v) == 0 || len(v) > 20 {
+		return false
+	}
+	for _, r := range v {
+		if (r < '0' || r > '9') && r != '-' && r != '.' {
+			return false
+		}
+	}
+	return true
 }
 
 // HandleMessage processes auth and unlink. It reports false for other
@@ -236,12 +251,15 @@ func (l *LinkService) auth(peerID string, m linkMessage) {
 			l.cfg.Logger.Error("cannot create a link", "err", err)
 			return
 		}
+		if validTerms(m.Terms) {
+			rec.Terms, rec.TermsAt = m.Terms, l.cfg.Now()
+		}
 		l.links = append(l.links, rec)
 		l.trusted[peerID] = rec.ID
 		links := slices.Clone(l.links)
 		l.mu.Unlock()
 		l.persist(links)
-		l.cfg.Logger.Info("browser remembered", "link_id", rec.ID)
+		l.cfg.Logger.Info("browser remembered", "link_id", rec.ID, "terms", rec.Terms)
 		l.reply(peerID, map[string]string{"type": msgAuthOK, "device_id": l.cfg.DeviceID, "link_id": rec.ID, "token": token})
 		return
 	case trusted:
@@ -258,6 +276,9 @@ func (l *LinkService) auth(peerID string, m linkMessage) {
 		return
 	}
 	l.links[i].LastSeen = l.cfg.Now()
+	if validTerms(m.Terms) && m.Terms != l.links[i].Terms {
+		l.links[i].Terms, l.links[i].TermsAt = m.Terms, l.cfg.Now()
+	}
 	l.trusted[peerID] = m.LinkID
 	if t := l.timers[peerID]; t != nil {
 		t.Stop()

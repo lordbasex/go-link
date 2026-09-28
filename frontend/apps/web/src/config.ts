@@ -11,3 +11,6 @@ export const DEMO_DATA = import.meta.env.VITE_DEMO_DATA === "true";
 
 /** How often the lobby refreshes the public room list. */
 export const LOBBY_REFRESH_MS = 15_000;
+
+/** The project's source repository. */
+export const REPO_URL = "https://github.com/lordbasex/go-link";

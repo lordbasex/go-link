@@ -56,6 +56,11 @@ type Link struct {
 	TokenHash string    `json:"token_hash"` // hex SHA-256 of the token the browser keeps
 	CreatedAt time.Time `json:"created_at"`
 	LastSeen  time.Time `json:"last_seen"`
+	// Terms is the version of the terms of use the browser's user accepted
+	// when linking (or later), and TermsAt when the device learned it: the
+	// host's acceptance, kept on the host's own computer.
+	Terms   string    `json:"terms,omitempty"`
+	TermsAt time.Time `json:"terms_at,omitempty"`
 }
 
 // EffectiveWebURL returns the configured website or the default.

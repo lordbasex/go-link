@@ -7,6 +7,7 @@ import { FakeSocket, OFFICIAL, renderApp } from "./test-utils";
 import { panelProof } from "@go-link/shared";
 import { setLang } from "./i18n";
 import { es } from "./i18n/es";
+import { TERMS_VERSION } from "./legal";
 
 const ROOM = "3f2b9c1e-7a4d-4e0b-9c52-1d8e6f0aa71d";
 const HOST = "host".padEnd(32, "0");
@@ -60,6 +61,7 @@ describe("lobby", () => {
     const dialog = screen.getByRole("dialog", { name: "Join a game" });
     await userEvent.type(within(dialog).getByPlaceholderText("123 456 789"), "123456789");
     await userEvent.type(within(dialog).getByPlaceholderText("000000"), "482913");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Join" }));
     // Off to the room (the page loads on demand, so the dialog goes when it arrives).
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Join a game" })).not.toBeInTheDocument());
@@ -105,6 +107,11 @@ describe("device pairing", () => {
     await userEvent.click(first);
     await userEvent.paste("113 134 323");
     expect(screen.getByLabelText("Digit 9 of 9")).toHaveValue("3");
+    // The host must accept the terms of use first: nothing is claimed.
+    await userEvent.click(screen.getByRole("button", { name: "Link" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Accept the terms of use to continue.");
+    expect(FakeSocket.allSent().some((e) => e.type === "claim")).toBe(false);
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(screen.getByRole("button", { name: "Link" }));
     // The page stays on /device and turns into the device panel.
     expect(await screen.findByRole("heading", { name: "Your device" })).toBeInTheDocument();
@@ -142,6 +149,7 @@ describe("device pairing", () => {
     renderApp("/device");
     await userEvent.click(screen.getByLabelText("Digit 1 of 9"));
     await userEvent.paste("999999999");
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(screen.getByRole("button", { name: "Link" }));
     expect(await screen.findByText(/That code is invalid or expired/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Change signaling server" }));
@@ -207,6 +215,7 @@ describe("room", () => {
     renderApp("/rooms");
     await userEvent.type(await screen.findByLabelText("Game code"), "123 456 789");
     await userEvent.type(screen.getByLabelText("PIN"), "482913");
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(screen.getByRole("button", { name: "Join" }));
     await vi.waitFor(() => expect(FakeSocket.allSent().find((e) => e.type === "join")?.code).toBe("123456789"));
     // The device asks for the PIN: the page sends the one typed, never in the URL.
@@ -310,6 +319,7 @@ describe("local web panel", () => {
     expect(await screen.findByRole("heading", { name: "Device panel" })).toBeInTheDocument();
     const input = screen.getByLabelText("Panel token");
     await userEvent.type(input, "0b5c7c1e-9d7a-4b8e-8a31-2f6f3c9d1e25");
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(screen.getByRole("button", { name: "Open the panel" }));
     expect(await screen.findByText("That token is not right. Check it and try again.")).toBeInTheDocument();
 
@@ -384,5 +394,32 @@ describe("local web panel", () => {
     await waitFor(() => expect(FakeSocket.allSent().some((e) => e.type === "panel" && e.proof === panelProof(TOKEN, "n-2"))).toBe(true));
     expect(screen.queryByRole("heading", { name: "Device panel" })).not.toBeInTheDocument();
     localStorage.removeItem("go-link.panel-token");
+  });
+});
+
+describe("legal", () => {
+  it("shows the terms of use and the privacy policy, linked from the footer", async () => {
+    FakeSocket.reset((env) => (env.type === "rooms_list" ? { type: "rooms" } : undefined));
+    renderApp("/terms");
+    expect(await screen.findByRole("heading", { level: 1, name: "Terms of use" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /zero-content policy/ })).toBeInTheDocument();
+    expect(screen.getByText(/MAME® is a registered trademark of Gregory Ember\. go-link is not affiliated with, endorsed/)).toBeInTheDocument();
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/privacy");
+    expect(within(footer).getByRole("link", { name: "Third-party licenses" })).toHaveAttribute(
+      "href",
+      "https://github.com/lordbasex/go-link/blob/main/THIRD_PARTY_NOTICES.md",
+    );
+    await userEvent.click(within(footer).getByRole("link", { name: "Privacy policy" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Privacy policy" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Games, voice and chat travel peer to peer" })).toBeInTheDocument();
+  });
+
+  it("asks a guest once for the terms, then remembers them", async () => {
+    FakeSocket.reset((env) => (env.type === "rooms_list" ? { type: "rooms" } : undefined));
+    localStorage.setItem("go-link.terms", JSON.stringify({ version: TERMS_VERSION }));
+    renderApp("/g");
+    expect(await screen.findByLabelText("PIN")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /I have read and accept/ })).not.toBeInTheDocument();
   });
 });

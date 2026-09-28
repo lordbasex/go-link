@@ -26,6 +26,7 @@ const PanelLoginPage = lazy(() =>
 const DevicePage = lazy(() =>
   import("./pages/DevicePage").then((m) => ({ default: m.DevicePage })),
 );
+import { LegalPage } from "./pages/LegalPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 /**
@@ -134,6 +135,8 @@ export function App() {
               path="/device/history"
               element={<DevicePage tab="history" />}
             />
+            <Route path="/terms" element={<LegalPage doc="terms" />} />
+            <Route path="/privacy" element={<LegalPage doc="privacy" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         )}

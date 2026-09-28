@@ -19,6 +19,7 @@ DEVICE="$(cd "$HERE/../.." && pwd)"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/go-link-device"
+cp "$DEVICE/../LICENSE" "$DEVICE/../THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/"
 sed -e "s|@VERSION@|$VERSION|" -e "s|@SHORT_VERSION@|$SHORT_VERSION|" "$HERE/Info.plist" > "$APP/Contents/Info.plist"
 
 ICONSET="$(mktemp -d)/go-link.iconset"

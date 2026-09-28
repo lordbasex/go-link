@@ -5,6 +5,7 @@ import { t } from "../i18n";
 import { JoinForm } from "../components/JoinForm";
 import { FightScene } from "../components/landing/FightScene";
 import { ControllersShowcase } from "../components/landing/ControllersShowcase";
+import { SiteFooter } from "../components/legal/SiteFooter";
 import {
   CloseIcon,
   ControllerIcon,
@@ -147,6 +148,7 @@ export function HowItWorksPage() {
       </section>
 
       {joinOpen && <JoinDialog onClose={() => setJoinOpen(false)} />}
+      <SiteFooter />
     </div>
   );
 }

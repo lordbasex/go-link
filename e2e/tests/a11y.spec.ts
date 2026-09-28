@@ -11,6 +11,8 @@ const pages = [
   { path: "/device", name: "device (not linked)" },
   { path: "/g", name: "guest join" },
   { path: "/create", name: "new game" },
+  { path: "/terms", name: "terms of use" },
+  { path: "/privacy", name: "privacy policy" },
   { path: "/nowhere", name: "not found" },
 ];
 
