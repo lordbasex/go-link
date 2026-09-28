@@ -9,6 +9,7 @@ All notable changes to go-link. Newest first.
 - Phones and tablets play in a full-screen console: upright like a Game Boy (picture on top, gamepad below), sideways like a Switch (picture in the middle, gamepad halves on the sides). The touch gamepad is on by default; chat, players and room actions open from a side tab.
 - The controls over the video are see-through and hide after 3 seconds without moving the mouse or tapping, as in video players.
 - On phones, a one-row header with a "…" tools menu, and the sections as a tab bar at the bottom of the screen.
+- Recordings download as MP4 (H.264 + AAC, the picture enlarged with crisp pixels) ready for chat apps and phones: the browser converts them with WebCodecs and a small Go WebAssembly helper, the device takes no part. Sound track 1 is the game with the voices, track 2 the voices alone. Browsers that cannot convert save the original WebM.
 
 ### Added (device)
 

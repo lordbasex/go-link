@@ -13,6 +13,7 @@ import { t } from "../i18n";
 import { useSignal } from "../signal/SignalProvider";
 import { formatDuration } from "./device/HistoryTab";
 import { DownloadIcon } from "./Icons";
+import { canMakeMp4, Mp4Unsupported, webmToMp4 } from "./toMp4";
 
 /** "Video · Game · Voice P1": the tracks of a recording. */
 export function trackNames(tracks: readonly RecordingTrack[]): string {
@@ -86,23 +87,30 @@ export function RecordingFacts({ rec }: { rec: RecordingInfo }) {
 
 type Phase =
   | { kind: "running"; progress: DownloadProgress | null }
-  | { kind: "done" }
+  | { kind: "converting"; fraction: number }
+  | { kind: "done"; mp4: boolean; note: string }
   | { kind: "cancelled" }
   | { kind: "failed"; error: string };
 
 /**
  * Downloads a recording from the device over WebRTC, in parts the browser
- * asks for, with live progress, a cancel button and a SHA-256 check.
+ * asks for, with live progress, a cancel button and a SHA-256 check. Then
+ * the browser itself turns it into an MP4 (see toMp4.ts) so it can be sent
+ * by chat apps and played on phones; where it cannot, the original WebM is
+ * saved.
  */
 export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: () => void }) {
   const { hostLink } = useSignal();
   const [phase, setPhase] = useState<Phase>({ kind: "running", progress: null });
   const [attempt, setAttempt] = useState(0);
   const current = useRef<RecordingDownload | null>(null);
+  const converting = useRef<AbortController | null>(null);
+  const original = useRef<{ parts: BlobPart[]; name: string } | null>(null);
 
   useEffect(() => {
     const stream = hostLink?.stream;
     setPhase({ kind: "running", progress: null });
+    original.current = null;
     let d: RecordingDownload;
     try {
       if (!stream) throw new Error("no device link");
@@ -113,23 +121,60 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
     }
     current.current = d;
     let live = true;
-    void d.result.then((r) => {
+    const abort = new AbortController();
+    converting.current = abort;
+    void d.result.then(async (r) => {
       if (!live) return;
-      if (r.ok) {
-        saveFile(r.parts as BlobPart[], r.name || rec.file, "video/webm");
-        setPhase({ kind: "done" });
-      } else setPhase(r.cancelled ? { kind: "cancelled" } : { kind: "failed", error: r.error });
+      if (!r.ok) {
+        setPhase(r.cancelled ? { kind: "cancelled" } : { kind: "failed", error: r.error });
+        return;
+      }
+      const name = r.name || rec.file;
+      const parts = r.parts as BlobPart[];
+      original.current = { parts, name };
+      const saveOriginal = (note: string) => {
+        saveFile(parts, name, "video/webm");
+        setPhase({ kind: "done", mp4: false, note });
+      };
+      if (!canMakeMp4()) {
+        saveOriginal(t.rec.webmOnly);
+        return;
+      }
+      setPhase({ kind: "converting", fraction: 0 });
+      try {
+        const webm = new Uint8Array(await new Blob(parts).arrayBuffer());
+        const mp4 = await webmToMp4(webm, (fraction) => live && setPhase({ kind: "converting", fraction }), abort.signal);
+        if (!live) return;
+        saveFile([mp4], name.replace(/\.webm$/i, "") + ".mp4", "video/mp4");
+        setPhase({ kind: "done", mp4: true, note: "" });
+      } catch (e) {
+        if (!live) return;
+        if (abort.signal.aborted) setPhase({ kind: "cancelled" });
+        else if (e instanceof Mp4Unsupported) saveOriginal(t.rec.webmOnly);
+        else saveOriginal(t.rec.mp4Failed(e instanceof Error ? e.message : String(e)));
+      }
     });
     return () => {
       live = false;
       d.cancel();
+      abort.abort();
     };
   }, [hostLink, rec.id, rec.file, attempt]);
 
+  const cancel = () => {
+    current.current?.cancel();
+    converting.current?.abort();
+  };
+  const busy = phase.kind === "running" || phase.kind === "converting";
   const p = phase.kind === "running" ? phase.progress : null;
   const size = p?.size || rec.size;
-  const got = phase.kind === "done" ? size : (p?.received ?? 0);
-  const pct = size ? Math.min(100, Math.floor((got * 100) / size)) : 0;
+  const got = phase.kind === "running" ? (p?.received ?? 0) : size;
+  const pct =
+    phase.kind === "converting"
+      ? Math.floor(phase.fraction * 100)
+      : size
+        ? Math.min(100, Math.floor((got * 100) / size))
+        : 0;
   const chunks = (n: number) => Math.ceil(n / (60 * 1024)).toLocaleString();
   const title =
     phase.kind === "done"
@@ -138,23 +183,29 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
         ? t.rec.downloadCancelled
         : phase.kind === "failed"
           ? t.rec.downloadFailed
-          : t.rec.downloadTitle;
+          : phase.kind === "converting"
+            ? t.rec.preparing
+            : t.rec.downloadTitle;
+  const fileName =
+    phase.kind === "converting" || (phase.kind === "done" && phase.mp4)
+      ? rec.file.replace(/\.webm$/i, "") + ".mp4"
+      : rec.file;
 
   return (
-    <Modal title={title} onClose={() => (phase.kind === "running" ? current.current?.cancel() : onClose())}>
+    <Modal title={title} onClose={() => (busy ? cancel() : onClose())}>
       <div className="rec-file">
         <span className="rec-file-icon" aria-hidden="true">
           <DownloadIcon />
         </span>
-        <span className="mono small">{rec.file}</span>
+        <span className="mono small">{fileName}</span>
       </div>
       <div
-        className="rec-bar"
+        className={`rec-bar${phase.kind === "converting" ? " is-converting" : ""}`}
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct}
-        aria-label={t.rec.downloadTitle}
+        aria-label={title}
       >
         <i style={{ width: `${phase.kind === "cancelled" ? 0 : pct}%` }} />
       </div>
@@ -164,7 +215,9 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
             ? phase.error
             : phase.kind === "cancelled"
               ? ""
-              : t.rec.progress(formatBytes(got), formatBytes(size), pct)}
+              : phase.kind === "converting"
+                ? t.rec.preparingPct(pct)
+                : t.rec.progress(formatBytes(got), formatBytes(size), pct)}
         </span>
         <span>
           {p && p.rate > 0 ? t.rec.speed(formatBytes(p.rate), formatLeft((size - got) / p.rate)) : ""}
@@ -176,22 +229,43 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
           <b className="mono">{phase.kind === "cancelled" ? "–" : `${chunks(got)} / ${chunks(size)}`}</b>
         </div>
         <div>
-          <span>{t.rec.path}</span>
-          <b>WebRTC</b>
+          <span>{t.rec.check}</span>
+          <b>{phase.kind === "running" ? t.rec.checkAtEnd : phase.kind === "cancelled" || phase.kind === "failed" ? "–" : t.rec.checkOk}</b>
         </div>
         <div>
-          <span>{t.rec.check}</span>
-          <b>{phase.kind === "done" ? t.rec.checkOk : phase.kind === "running" ? t.rec.checkAtEnd : "–"}</b>
+          <span>{t.rec.format}</span>
+          <b>
+            {phase.kind === "done"
+              ? phase.mp4
+                ? "MP4 · H.264 + AAC"
+                : "WebM"
+              : phase.kind === "converting"
+                ? t.rec.formatPreparing
+                : "–"}
+          </b>
         </div>
       </div>
-      <p className="small muted">{t.rec.downloadHint}</p>
+      {phase.kind === "done" && phase.note ? (
+        <p className="notice small">{phase.note}</p>
+      ) : (
+        <p className="small muted">{phase.kind === "converting" ? t.rec.preparingHint : t.rec.downloadHint}</p>
+      )}
       <div className="dialog-actions">
-        {phase.kind === "running" ? (
-          <button type="button" className="button button-danger" onClick={() => current.current?.cancel()}>
+        {busy ? (
+          <button type="button" className="button button-danger" onClick={cancel}>
             {t.rec.cancel}
           </button>
         ) : (
           <>
+            {phase.kind === "done" && phase.mp4 && original.current && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => original.current && saveFile(original.current.parts, original.current.name, "video/webm")}
+              >
+                {t.rec.original}
+              </button>
+            )}
             {phase.kind !== "done" && (
               <button type="button" className="button button-secondary" onClick={() => setAttempt((n) => n + 1)}>
                 {t.rec.retry}

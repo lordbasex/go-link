@@ -29,3 +29,6 @@ design/
 
 # website hosting of this computer (see docs/deploy.md)
 deploy/local/
+
+# Built by frontend/wasm/mp4 (make web-build)
+/frontend/apps/web/public/mp4/

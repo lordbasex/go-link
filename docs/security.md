@@ -38,7 +38,7 @@ A `<meta>` CSP cannot set everything. Whatever static host or CDN serves the web
 
 | Header | Value | Why |
 |---|---|---|
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' wss:; media-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'` | Own scripts and styles only, WebSockets only over `wss:`, and no one can frame the site |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' wss:; media-src 'self' blob:; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'` | Own scripts and styles only (plus WebAssembly, for the in-browser MP4 conversion), WebSockets only over `wss:`, and no one can frame the site |
 | `X-Frame-Options` | `DENY` | The same for older browsers (clickjacking) |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Always HTTPS |
 | `X-Content-Type-Options` | `nosniff` | No content type guessing |

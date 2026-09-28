@@ -74,6 +74,8 @@ NODE_ENV_SETUP = if [ -s "$${NVM_DIR:-$$HOME/.nvm}/nvm.sh" ]; then \
 web-build:
 	@echo "$(YELLOW)Building the website $(VERSION) for $(SIGNAL_URL)...$(NC)"
 	rm -rf $(WEB_DIST)
+	@# The in-browser MP4 helper (Go compiled to WebAssembly) goes in public/mp4.
+	$(MAKE) -C frontend/wasm/mp4 build
 	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
 		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
 		VITE_BUILD_DATE=$$(date -u +%Y-%m-%d) npm run build

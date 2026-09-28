@@ -89,6 +89,16 @@ Linking a device (with the code or on the local panel) requires ticking "I have 
 - **Full screen:** the Fullscreen API on the video stage (Android also tries to lock landscape), or on the whole page in console mode so the drawer and dialogs stay visible. iPhone Safari does not allow full screen on elements, so the stage fills the window with CSS (`useFullscreen`).
 - **Other pages on phones (up to 700 px):** a one-row header with the logo, the Guest or device badge and a "…" button that opens the tools (language, signaling server, theme, GitHub); the sections (How it works, Rooms, My device, Docs) are a tab bar at the bottom of the screen, hidden inside rooms, in dialogs and while typing. Titles are smaller and the 9 digit code fits one row.
 
+## Recordings and MP4
+
+The host records a game from the room's dock; everyone sees REC and a chat notice. When a recording ends, the host's browser offers to download it: the WebM comes from the device in 60 KB parts over the `files` DataChannel (progress, cancel, SHA-256 check), and then **the browser** turns it into an MP4 that chat apps and phones play ("Preparing the MP4 video…"). The device takes no part in the conversion:
+
+- `frontend/wasm/mp4` is a small Go program compiled to WebAssembly (`make -C frontend/wasm/mp4 build`, run by `make web-build`; output in `apps/web/public/mp4/`, not committed). It reads the WebM (frame positions only, nothing copied) and writes a progressive MP4 with the index first. Tests run on the computer (`go test ./...`, one of them muxes a real ffmpeg stream and decodes it back).
+- `apps/web/src/components/toMp4.ts` uses WebCodecs: VP8 is decoded, enlarged by whole steps without smoothing (up to 900 px high) and encoded to H.264; the Opus tracks are decoded, mixed five seconds at a time and encoded to AAC. Sound track 1 is the game with the voices (what phones and chat apps play), track 2 the voices alone (an alternative track, only when someone spoke).
+- Browsers without WebCodecs or without an H.264/AAC encoder save the original WebM instead, and say so. The CSP allows `'wasm-unsafe-eval'` for this.
+
+Screenshots are browser only: the camera button draws the `<video>` into a canvas and saves a PNG.
+
 ## Your own signaling server
 
 The **Signaling server** button in the header lets a user switch servers without rebuilding anything. See [networking.md](networking.md#your-own-signaling-server).

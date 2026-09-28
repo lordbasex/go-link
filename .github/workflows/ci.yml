@@ -42,6 +42,23 @@ jobs:
         run: go build -tags headless ./cmd/device
       - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+  mp4-wasm:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/wasm/mp4
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: frontend/wasm/mp4/go.mod
+          cache: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - run: go vet ./... && GOOS=js GOARCH=wasm go vet ./...
+      - run: go test -race ./...
+      - run: GOOS=js GOARCH=wasm go build -o /dev/null .
+
   web:
     runs-on: ubuntu-latest
     defaults:

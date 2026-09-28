@@ -230,7 +230,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("Content-Security-Policy", strings.Join([]string{
 			"default-src 'self'",
-			"script-src 'self'",
+			"script-src 'self' 'wasm-unsafe-eval'",
 			"style-src 'self'",
 			"font-src 'self'",
 			"img-src 'self' data: blob:",

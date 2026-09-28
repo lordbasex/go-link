@@ -7,7 +7,7 @@ import react from "@vitejs/plugin-react";
 // It is not applied in dev: Vite's hot reload needs inline scripts.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
