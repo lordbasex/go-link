@@ -1,16 +1,42 @@
+<div align="center">
+
 # go-link
 
-[![CI](https://github.com/lordbasex/go-link/actions/workflows/ci.yml/badge.svg)](https://github.com/lordbasex/go-link/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/lordbasex/go-link?include_prereleases)](https://github.com/lordbasex/go-link/releases)
+**Play classic arcade games online with your friends, straight from the browser.**
 
-Play classic arcade games online with friends, straight from the browser.
+Your computer becomes the arcade: it runs the games and streams them live. Friends join with a link and a PIN, with no install and no ROMs.
+
+[![CI](https://github.com/lordbasex/go-link/actions/workflows/ci.yml/badge.svg)](https://github.com/lordbasex/go-link/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/lordbasex/go-link?include_prereleases)](https://github.com/lordbasex/go-link/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%20%7C%20Docker%20Hub-2496ED?logo=docker&logoColor=white)](https://github.com/lordbasex/go-link/pkgs/container/go-link-device)
+[![Stars](https://img.shields.io/github/stars/lordbasex/go-link?style=social)](https://github.com/lordbasex/go-link/stargazers)
+
+[**Website**](https://go-link.org) · [**Download**](https://github.com/lordbasex/go-link/releases/latest) · [**User guide**](https://go-link.org/docs) · [**How it works**](https://go-link.org/#how) · [**Contribute**](CONTRIBUTING.md)
+
+<img src="docs/images/how-it-works.png" alt="The how-it-works walkthrough on go-link.org: download, link, add your ROMs and play, share" width="860">
+
+</div>
+
+> **Do you like go-link?** Give it a ⭐ **star** (top right of this page). It is free, it takes one click, and it helps other retro gamers find the project. Then [install it](#install-in-a-minute), invite a friend, and tell us how it went.
 
 A **host** runs the go-link app (the **device**) on their own computer, with **their own ROMs**. Friends join from a web browser **without needing the ROM**: they get the game's video and sound over WebRTC and send their controls back, peer to peer.
 
-- Website: [go-link.org](https://go-link.org)
-- Up to **4 players** per room. Everyone else waits **in the queue**, like at an arcade, and can watch and chat meanwhile.
+- Up to **4 players** per room, with voice between them. Everyone else waits **in the queue**, like at an arcade, and can watch and chat meanwhile.
 - Based on MAME: the engine is [mame2003-plus](https://github.com/libretro/mame2003-plus-libretro) (MAME 0.78 sets) through libretro.
+- Free and open source (MIT), self-hosted, no accounts, no ads.
+
+## Install in a minute
+
+| You have | Do this |
+|---|---|
+| **macOS 12+** | Download the [`.dmg`](https://github.com/lordbasex/go-link/releases/latest), or `brew tap lordbasex/go-link https://github.com/lordbasex/go-link && brew install --cask go-link` |
+| **Windows 10/11** | Download the [`.zip`](https://github.com/lordbasex/go-link/releases/latest), unzip, run `go-link-device.exe` |
+| **Linux** | Download the [`.tar.gz`](https://github.com/lordbasex/go-link/releases/latest), unpack, run `./go-link-device` |
+| **Raspberry Pi / server** | The `-headless` build: a web panel on port 7373 and a full CLI |
+| **Docker** | `docker run -d --name go-link --network host -v go-link:/data -v ~/roms:/data/go-link/roms ghcr.io/lordbasex/go-link-device:latest` (also `lordbasex/go-link-device` on Docker Hub) |
+
+Then open [go-link.org/device](https://go-link.org/device), type the 9-digit code the app shows, add your ROMs and start a game. The [user guide](https://go-link.org/docs) walks you through every step.
 
 ## Features
 
@@ -50,7 +76,7 @@ Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
 | **Windows 10/11** (x64 and ARM) | `go-link-vX.Y.Z-windows-amd64.zip` / `-arm64.zip` | Unzip and run `go-link-device.exe` |
 | **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
 | **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
-| **Docker** | `ghcr.io/lordbasex/go-link-device` (amd64, arm64) | `docker run … ghcr.io/lordbasex/go-link-device:latest`, see [docs/device.md](docs/device.md#docker); offline: `go-link-vX.Y.Z-docker.oci.tar.gz` and `docker load` |
+| **Docker** | `ghcr.io/lordbasex/go-link-device` or `lordbasex/go-link-device` on Docker Hub (amd64, arm64) | `docker run … ghcr.io/lordbasex/go-link-device:latest`, see [docs/device.md](docs/device.md#docker); offline: `go-link-vX.Y.Z-docker.oci.tar.gz` and `docker load` |
 
 Every download is listed in `SHA256SUMS`. The emulator core is downloaded by the app on first use; ROMs are never included. Linking a device and joining a game ask you to accept the [terms of use](https://go-link.org/terms).
 
@@ -95,6 +121,17 @@ Open `http://localhost:5180/device` and type the code shown in the device window
 | **Device** | `VERSION=x.y.z make release` builds the universal macOS `.dmg` (Intel + Apple silicon, macOS 12+), Windows `.zip`, Linux archives and a Docker image, and publishes a GitHub release. |
 
 Details in [docs/deploy.md](docs/deploy.md).
+
+## Help the project
+
+go-link is built in the open, and every bit of help counts:
+
+- ⭐ **Star the repository.** It is the easiest way to help others discover it.
+- 🕹️ **Install it and play** with your friends, then tell us what worked and what did not.
+- 🐛 **Report bugs** and 💡 **suggest ideas** in [Issues](https://github.com/lordbasex/go-link/issues/new/choose), or ask and share in [Discussions](https://github.com/lordbasex/go-link/discussions).
+- 🌍 **Translate** the website: English, Spanish and Portuguese today, and more languages are welcome.
+- 🧑‍💻 **Contribute code, docs or tests:** read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+- 📣 **Share it** with your retro gaming community.
 
 ## Documentation
 

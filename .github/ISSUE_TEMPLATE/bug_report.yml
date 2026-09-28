@@ -1,0 +1,49 @@
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report it! Please never attach ROM files or links to ROMs.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a game with …
+        2. Invite a friend from …
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: go-link version
+      description: Shown in the app's window, or run `go-link-device --help`.
+      placeholder: v0.1.2
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: Where does the device run?
+      options: [macOS, Windows, Linux (desktop), Raspberry Pi / headless, Docker]
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device of the players
+      placeholder: Chrome 140 on Windows, Safari on iPhone 15…
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The end of `~/go-link/logs/device.log`, or the terminal output. Remove anything private.
+      render: text

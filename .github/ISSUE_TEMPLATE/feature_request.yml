@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+name: Idea or feature request
+description: Suggest something that would make go-link better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The situation or the problem, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could go-link help?
+      description: Your idea of how it could work. Screenshots or sketches are welcome.
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?

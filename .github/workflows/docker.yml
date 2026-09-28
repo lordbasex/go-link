@@ -2,6 +2,8 @@
 # Publishes the device's Docker image (headless, web panel on 7373) to the
 # GitHub Container Registry for amd64 and arm64, tagged with the release
 # and "latest": when a release is published, or by hand for a given tag.
+# With the DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets set, the same
+# image is copied to Docker Hub too.
 name: docker
 
 on:
@@ -25,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -56,3 +60,15 @@ jobs:
             --label org.opencontainers.image.licenses=MIT \
             --label org.opencontainers.image.version="$TAG" \
             -t "$IMAGE:$TAG" -t "$IMAGE:latest" --push .
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+      - name: Copy to Docker Hub
+        if: env.DOCKERHUB_TOKEN != ''
+        run: |
+          SRC="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/go-link-device:$TAG"
+          DST="docker.io/${DOCKERHUB_USERNAME}/go-link-device"
+          docker buildx imagetools create -t "$DST:$TAG" -t "$DST:latest" "$SRC"

@@ -12,6 +12,8 @@ All notable changes to go-link. Newest first.
 ### Changed (release)
 
 - The device image is published on the GitHub Container Registry, `ghcr.io/lordbasex/go-link-device` (`:vX.Y.Z` and `:latest`, amd64 and arm64), by a workflow on every release; the website and the guide use it (`docker run … ghcr.io/lordbasex/go-link-device:latest`).
+- The image is also on Docker Hub as `lordbasex/go-link-device`; the workflow copies each release there when the repository has Docker Hub secrets.
+- The repository has a contributing guide, issue templates and a README that invites people to star, install and help.
 - Releases include the Docker image by default (`DOCKER=0` skips it); v0.1.2 got its image afterwards. The Docker guide runs the image by its version tag (`go-link-device:vX.Y.Z`), which is how `docker load` names it.
 
 ## [0.1.2] - 2026-09-28
