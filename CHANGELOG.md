@@ -4,6 +4,15 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-28
+
+### Added (website)
+
+- Recording in the room: the host's record button (red dot, then a square to stop) in the dock, with the time; everyone sees REC over the video and a notice in the chat; pausing a recorded game asks first.
+- When a recording ends, the host is offered to download it; My device › History shows each game's recordings (download, delete), deletes a game from the history, and the space they take.
+- Screenshots: a camera button saves a PNG of the game (crisp pixels, the game's shape), in the browser only.
+- Factory reset on My device, with a confirmation.
+
 ### Changed (website)
 
 - The landing page and the user guide describe recordings, MP4 export, screenshots and the phone console; a new guide page, "Recordings, screenshots and MP4". The guide no longer says voice is never recorded.
