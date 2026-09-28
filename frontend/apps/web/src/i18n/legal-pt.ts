@@ -152,7 +152,8 @@ export const legalPt: LegalTexts = {
         list: [
           "os navegadores vinculados (apenas um hash de cada chave) e a versão destes termos que cada um aceitou;",
           "o histórico de partidas: cada sala que rodou e, para cada convidado, o nome que digitou, os lugares em que jogou, o caminho da conexão e o endereço IP que o app viu (vazio quando o convidado entrou pelo relay);",
-          "as últimas 50 mensagens do chat de cada sala enquanto ela está aberta, em memória.",
+          "as últimas 50 mensagens do chat de cada sala enquanto ela está aberta, em memória;",
+          "gravações, só quando o anfitrião grava uma partida: a imagem e o som do jogo e a voz de cada jogador, em um arquivo no computador do anfitrião. Todos na sala ficam sabendo enquanto é gravado (um aviso REC e uma mensagem no chat). Uma gravação para sozinha após 2 horas ou 2 GB e quando a partida é pausada. Só o anfitrião pode baixá-la ou apagá-la; apagar uma partida do histórico, limpar o histórico ou restaurar de fábrica apaga suas gravações.",
         ],
       },
       {

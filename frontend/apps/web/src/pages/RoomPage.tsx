@@ -16,6 +16,8 @@ import {
   isTouchDevice,
   padMapFor,
   parseInvite,
+  recordStart,
+  recordStop,
   startButtonCount,
   startOf,
   type TypingView,
@@ -50,6 +52,9 @@ import {
   PanelCloseIcon,
   UserPlusIcon,
   PowerIcon,
+  CameraIcon,
+  RecordIcon,
+  StopIcon,
   LogOutIcon,
   SlidersIcon,
   CloseIcon,
@@ -70,6 +75,7 @@ import { PlayersCapsule, type SeatSwap } from "../components/PlayersCapsule";
 import { TermsCheck } from "../components/legal/TermsCheck";
 import { acceptTerms, termsAccepted } from "../legal";
 import { HelpDialog } from "../components/HelpDialog";
+import { saveScreenshot } from "../components/screenshot";
 import { useFullscreen } from "../components/useFullscreen";
 import {
   demoModel,
@@ -963,8 +969,15 @@ export function RoomPage() {
   const pausable = seated && live.room?.pausable === true;
   const paused = live.room?.paused === true;
   const { setPaused } = live;
+  // Pausing a game that is being recorded ends the recording: ask first.
+  const recordingRef = useRef(false);
+  const [pauseAsk, setPauseAsk] = useState(false);
+  const togglePause = () => {
+    if (!paused && recordingRef.current) setPauseAsk(true);
+    else setPaused(!paused);
+  };
   pauseToggleRef.current = () => {
-    if (pausable) setPaused(!paused);
+    if (pausable) togglePause();
   };
   const pauseKey = bindingOf(inputCfg.input.keyboard, "pause");
   useEffect(() => {
@@ -977,7 +990,7 @@ export function RoomPage() {
         (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"))
       )
         return;
-      setPaused(!paused);
+      pauseToggleRef.current();
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
@@ -989,6 +1002,9 @@ export function RoomPage() {
     ? undefined
     : linkedDevice.status?.rooms.find((r) => r.roomId === roomId);
   const ownsRoom = hostLink !== null && ownRoom !== undefined;
+  const recording = live.room?.recording === true || ownRoom?.recording === true;
+  recordingRef.current = recording;
+  const [shotNote, setShotNote] = useState(false);
   // The device's test pattern room: its owner may invite someone to test.
   const ownTest =
     hostLink !== null && !!testRoom?.room_id && testRoom.room_id === roomId;
@@ -1411,6 +1427,12 @@ export function RoomPage() {
               muted
               hidden={!streaming}
             />
+            {shotNote && (
+              <p className="video-chip shot-note" role="status">
+                <CameraIcon size={14} />
+                {t.rec.screenshotSaved}
+              </p>
+            )}
             {streaming && soundBlocked && (
               <p className="video-chip sound-hint" role="status">
                 <SoundOffIcon size={14} />
@@ -1448,6 +1470,11 @@ export function RoomPage() {
                   <span className="dot dot-accent dot-small" />
                   {t.room.live}
                 </span>
+                {recording && (
+                  <RecChip
+                    since={ownsRoom ? ownRoom?.recordingSince : undefined}
+                  />
+                )}
                 <StreamInfo
                   rttMs={demo ? 38 : live.stats.rttMs}
                   sentFps={demo ? 60 : live.sentFps}
@@ -1619,7 +1646,7 @@ export function RoomPage() {
                   aria-pressed={paused}
                   aria-label={paused ? t.room.resume : t.room.pause}
                   data-tip={paused ? t.room.resume : t.room.pause}
-                  onClick={() => setPaused(!paused)}
+                  onClick={togglePause}
                 >
                   {paused ? <PlayIcon /> : <PauseIcon />}
                 </button>
@@ -1678,6 +1705,46 @@ export function RoomPage() {
                   onClick={() => (soundBlocked ? undefined : setSoundOn(!soundOn))}
                 >
                   {hearing ? <SoundOnIcon /> : <SoundOffIcon />}
+                </button>
+              )}
+              {streaming && (
+                <button
+                  type="button"
+                  className="icon-button video-shot"
+                  aria-label={t.rec.screenshot}
+                  data-tip={t.rec.screenshot}
+                  onClick={() => {
+                    const v = videoRef.current;
+                    if (v && saveScreenshot(v, title, live.aspect ?? null)) {
+                      setShotNote(true);
+                      window.setTimeout(() => setShotNote(false), 2500);
+                    }
+                  }}
+                >
+                  <CameraIcon />
+                </button>
+              )}
+              {streaming && ownsRoom && ownRoom && live.room?.pausable && (
+                <button
+                  type="button"
+                  className={`icon-button video-record${recording ? " is-recording" : ""}`}
+                  aria-pressed={recording}
+                  aria-label={recording ? t.rec.stop : t.rec.start}
+                  data-tip={
+                    recording
+                      ? t.rec.stop
+                      : paused
+                        ? t.rec.pauseText
+                        : `${t.rec.start} · ${t.rec.limits}`
+                  }
+                  disabled={!recording && paused}
+                  onClick={() =>
+                    sendToDevice(
+                      recording ? recordStop(ownRoom.id) : recordStart(ownRoom.id),
+                    )
+                  }
+                >
+                  {recording ? <StopIcon size={16} /> : <RecordIcon size={16} />}
                 </button>
               )}
               <button
@@ -1750,6 +1817,18 @@ export function RoomPage() {
             />
           )}
           {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
+          {pauseAsk && (
+            <ConfirmDialog
+              title={t.rec.pauseTitle}
+              text={t.rec.pauseText}
+              confirm={t.rec.pauseConfirm}
+              onCancel={() => setPauseAsk(false)}
+              onConfirm={() => {
+                setPauseAsk(false);
+                setPaused(true);
+              }}
+            />
+          )}
           {confirmClose && (
             <ConfirmDialog
               title={t.room.closeTitle}
@@ -1847,5 +1926,26 @@ export function RoomPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** REC over the video; the owner also sees for how long. */
+function RecChip({ since }: { since?: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!since) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [since]);
+  const start = since ? new Date(since).getTime() : NaN;
+  const s = Number.isFinite(start) ? Math.max(0, Math.floor((now - start) / 1000)) : -1;
+  const p = (n: number) => String(n).padStart(2, "0");
+  const clock = s < 0 ? "" : s >= 3600 ? `${Math.floor(s / 3600)}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${p(Math.floor(s / 60))}:${p(s % 60)}`;
+  return (
+    <span className="video-chip video-rec" role="status" title={t.rec.everyoneHint} aria-label={t.rec.everyone}>
+      <i aria-hidden="true" />
+      {t.rec.badge}
+      {clock && <span className="mono">{clock}</span>}
+    </span>
   );
 }

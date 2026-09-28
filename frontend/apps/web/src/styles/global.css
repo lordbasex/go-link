@@ -1874,3 +1874,37 @@ body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48
 }
 @media (max-width: 700px) { .pair-title { font-size: 28px; } }
 @media (max-width: 700px) { .grooms-toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
+
+/* Recording: REC over the video (never hidden by the idle fade: everyone
+   must see their voice is being recorded), the owner's record button, the
+   download dialog and the History column. */
+.video-rec { top: 50px; left: 14px; z-index: 4; display: flex; align-items: center; gap: 7px; font-weight: 700; letter-spacing: 0.06em; color: #fff; background: rgb(224 98 122 / 0.9); border-color: transparent; }
+.video-rec i { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: rec-blink 1.2s steps(2, jump-none) infinite; }
+.video-rec .mono { font-weight: 600; letter-spacing: 0; }
+@keyframes rec-blink { 50% { opacity: 0.25; } }
+body .video-stage.has-touchpad.is-console .video-rec { top: calc(var(--sy) + 44px); left: calc(var(--sx) + 10px); }
+.shot-note { top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 6; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.icon-button.video-record { color: var(--color-danger-text, #ff8a9e); }
+.icon-button.video-record.is-recording { background: rgb(224 98 122 / 0.9); border-color: transparent; color: #fff; }
+.rec-dialog { width: min(560px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.rec-facts { margin: 0; padding: 14px; border-radius: 12px; background: var(--color-surface-2); display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13.5px; }
+.rec-facts dt { color: var(--color-text-muted); }
+.rec-facts dd { margin: 0; overflow-wrap: anywhere; }
+.rec-file { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rec-file .mono { overflow-wrap: anywhere; color: var(--color-text-2); }
+.rec-file-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; color: var(--color-info, #4fc3d9); background: rgb(79 195 217 / 0.14); }
+.rec-bar { height: 10px; border-radius: 999px; background: var(--color-bg); border: 1px solid var(--color-border); overflow: hidden; }
+.rec-bar i { display: block; height: 100%; border-radius: 999px; background: var(--color-info, #4fc3d9); transition: width 0.2s linear; }
+.rec-bar-text { display: flex; justify-content: space-between; gap: 12px; color: var(--color-text-2); flex-wrap: wrap; }
+.rec-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rec-tiles div { padding: 10px 12px; border-radius: 12px; background: var(--color-surface-2); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rec-tiles span { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
+.rec-tiles b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.hist-recs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.hist-recs li { display: flex; flex-direction: column; gap: 3px; }
+.hist-rec-line { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; white-space: nowrap; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0627a; flex-shrink: 0; }
+.hist-rec-actions { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.lrow-end { white-space: nowrap; }
+.lrow-end > * + * { margin-left: 6px; }
+@media (max-width: 700px) { .rec-tiles { grid-template-columns: 1fr 1fr; } }

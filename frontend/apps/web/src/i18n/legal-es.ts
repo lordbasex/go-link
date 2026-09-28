@@ -152,7 +152,8 @@ export const legalEs: LegalTexts = {
         list: [
           "los navegadores vinculados (solo un hash de cada clave) y la versión de estos términos que aceptó cada uno;",
           "el historial de partidas: cada sala que se jugó y, por cada invitado, el nombre que escribió, los puestos en los que jugó, el camino de conexión y la dirección IP que vio la app (vacía cuando el invitado entró por el relay);",
-          "los últimos 50 mensajes del chat de cada sala mientras está abierta, en memoria.",
+          "los últimos 50 mensajes del chat de cada sala mientras está abierta, en memoria;",
+          "grabaciones, solo cuando el anfitrión graba una partida: la imagen y el sonido del juego y la voz de cada jugador, en un archivo en la computadora del anfitrión. Todos en la sala lo saben mientras se graba (un aviso REC y un mensaje en el chat). Una grabación se detiene sola a las 2 horas o 2 GB y cuando se pausa la partida. Solo el anfitrión puede descargarla o borrarla; borrar una partida del historial, vaciar el historial o reiniciar de fábrica borra sus grabaciones.",
         ],
       },
       {

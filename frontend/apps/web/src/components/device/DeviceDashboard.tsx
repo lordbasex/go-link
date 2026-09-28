@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { formatBytes } from "@go-link/shared";
+import { FACTORY_RESET, formatBytes, parseFactoryReset } from "@go-link/shared";
 import { Chip, HeroTile, PageHero } from "../ui/PageHero";
 import { t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
 import { MonitorIcon, TestCardIcon, UserPlusIcon } from "../Icons";
 import { InviteDialog } from "../InviteDialog";
+import { ConfirmDialog } from "../RemapDialog";
 import { AreaChart, Ring, Sparkline } from "./charts";
 import { HISTORY_SIZE, useHistory } from "./useHistory";
 import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
@@ -36,7 +37,7 @@ export function DeviceDashboard({
 }: {
   tab?: "overview" | "roms" | "history";
 }) {
-  const { linkedDevice, unlinkDevice, hostLink, sendToDevice, panel } = useSignal();
+  const { linkedDevice, unlinkDevice, hostLink, sendToDevice, onDeviceMessage, panel } = useSignal();
   const { status, rttMs, path, state } = linkedDevice;
   const hw = status?.system?.hardware;
   const usage = status?.system?.usage;
@@ -70,6 +71,17 @@ export function DeviceDashboard({
 
   const room = status?.room;
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [resetAsk, setResetAsk] = useState(false);
+  const [resetError, setResetError] = useState("");
+  // On success the device unlinks every browser by itself.
+  useEffect(
+    () =>
+      onDeviceMessage((msg) => {
+        const r = parseFactoryReset(msg);
+        if (r && !r.ok) setResetError(t.reset.failed(r.error));
+      }),
+    [onDeviceMessage],
+  );
   const library = status?.library;
   const roms = library?.roms ?? [];
 
@@ -136,6 +148,18 @@ export function DeviceDashboard({
             >
               {panel ? t.panel.logout : t.linked.unlink}
             </button>
+            {status && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => {
+                  setResetError("");
+                  setResetAsk(true);
+                }}
+              >
+                {t.reset.button}
+              </button>
+            )}
             {/* The test pattern room: a permanent check of video, sound,
                 controllers and latency, like a VoIP echo test. */}
             {room?.room_id ? (
@@ -554,6 +578,23 @@ export function DeviceDashboard({
             </div>
           </section>
         </>
+      )}
+      {resetAsk && (
+        <ConfirmDialog
+          title={t.reset.title}
+          text={t.reset.text}
+          confirm={t.reset.confirm}
+          onCancel={() => setResetAsk(false)}
+          onConfirm={() => {
+            setResetAsk(false);
+            sendToDevice(FACTORY_RESET);
+          }}
+        />
+      )}
+      {resetError && (
+        <p className="notice small" role="alert">
+          {resetError}
+        </p>
       )}
       {inviteOpen && room?.room_id && (
         <InviteDialog

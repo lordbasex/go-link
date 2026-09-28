@@ -7,6 +7,7 @@
 import type { SignalClient } from "./signal-client";
 import type { Envelope } from "./protocol";
 import { ownerKeyOf } from "./device-status";
+import { RecordingDownload, type DownloadOptions } from "./recordings";
 
 export interface RTCSignal {
   kind: "offer" | "answer" | "candidate";
@@ -267,6 +268,28 @@ export class HostStream {
     ch.send(JSON.stringify({ type: "end", id }));
   }
 
+  private downloads = new Set<RecordingDownload>();
+
+  /**
+   * Downloads a recording from the device on the "files" channel, in
+   * pieces the browser asks for (see RecordingDownload). Await .result;
+   * .cancel() stops it.
+   */
+  download(file: string, onProgress?: DownloadOptions["onProgress"]): RecordingDownload {
+    const ch = this.files;
+    if (!ch || ch.readyState !== "open") throw new Error("files channel not open");
+    const d = new RecordingDownload(file, {
+      send: (text) => {
+        if (ch.readyState === "open") ch.send(text);
+      },
+      onProgress,
+    });
+    this.downloads.add(d);
+    void d.result.then(() => this.downloads.delete(d));
+    d.start();
+    return d;
+  }
+
   async stats(): Promise<StreamStats> {
     const result: StreamStats = { fps: null, rttMs: null, path: null };
     if (!this.pc) return result;
@@ -346,6 +369,13 @@ export class HostStream {
       } else if (ch.label === "files") {
         ch.binaryType = "arraybuffer";
         this.files = ch;
+        // Download replies and pieces go to the download they belong to.
+        ch.onmessage = (m) => {
+          for (const d of this.downloads) {
+            const mine = typeof m.data === "string" ? d.handleText(m.data) : d.handleBinary(m.data as ArrayBuffer);
+            if (mine) break;
+          }
+        };
       } else if (ch.label === "control") {
         this.control = ch;
         const flush = () => {

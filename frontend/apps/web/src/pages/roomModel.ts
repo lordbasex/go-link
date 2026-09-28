@@ -32,6 +32,13 @@ export interface QueueRow {
   note: string;
 }
 
+/** The device's notices come in English; the ones it marks are translated. */
+function systemText(c: { text: string; event?: string }): string {
+  if (c.event === "recording_started") return t.rec.started;
+  if (c.event === "recording_stopped") return t.rec.stopped;
+  return c.text;
+}
+
 export type ChatRow = { system: string } | { name: string; port: number | null; role: string; text: string; you: boolean };
 
 export type Me = { kind: "player"; ports: number[] } | { kind: "queue"; position: number } | { kind: "spectator" } | { kind: "unknown" };
@@ -97,7 +104,7 @@ export function liveModel(room: RoomStateView | null, chat: ChatLine[], voice: V
       note: q.position === 1 ? t.room.queueNext : t.room.queueWaiting,
     })),
     spectators: room?.spectators ?? [],
-    chat: chat.map((c) => (c.kind === "system" ? { system: c.text } : { name: c.name, port: c.port, role: c.role, text: c.text, you: !!room && c.name === room.you.name })),
+    chat: chat.map((c) => (c.kind === "system" ? { system: systemText(c) } : { name: c.name, port: c.port, role: c.role, text: c.text, you: !!room && c.name === room.you.name })),
     me,
     voice: room?.voice === false ? "off" : me.kind === "player" ? "player" : "spectator",
     hearVoice: false,

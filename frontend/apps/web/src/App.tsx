@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { CustomServerBanner, ServerDialog } from "./components/ServerSettings";
 import { MainHeader } from "./components/Headers";
+import { RecordingNotices } from "./components/Recordings";
 import { useSignal } from "./signal/SignalProvider";
 import { SPLASH_MAX_MS, SPLASH_MIN_MS, hideSplash } from "./splash";
 import { LobbyPage, readRoomsView } from "./pages/LobbyPage";
@@ -112,6 +113,7 @@ export function App() {
       <CustomServerBanner />
       {/* One header for every page: it stays put while the page changes. */}
       <MainHeader />
+      <RecordingNotices />
       {/* The one main landmark: every page renders inside it. */}
       <main className="app-main">
       <Suspense fallback={<div className="page" aria-busy="true" />}>

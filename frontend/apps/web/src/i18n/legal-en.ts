@@ -193,7 +193,8 @@ export const legalEn: LegalTexts = {
         list: [
           "the linked browsers (only a hash of each key) and the version of these terms each one accepted;",
           "the game history: each room that ran and, for each guest, the name they typed, the seats they played, the connection path and the IP address the app saw (empty when the guest came through the relay);",
-          "the last 50 chat messages of each room while it runs, in memory.",
+          "the last 50 chat messages of each room while it runs, in memory;",
+          "recordings, only when the host records a game: the game's picture and sound and the voice of each player, in a file on the host's computer. Everyone in the room is told while it records (a REC badge and a message in the chat). A recording stops by itself after 2 hours or 2 GB and when the game is paused. Only the host can download or delete it; deleting a game from the history, clearing the history or a factory reset deletes its recordings.",
         ],
       },
       {

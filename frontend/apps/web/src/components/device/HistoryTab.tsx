@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { parseHistory, type HistoryItem, type HistoryReason } from "@go-link/shared";
+import { formatBytes, parseHistory, parseRecordings, type HistoryItem, type HistoryReason, type RecordingInfo } from "@go-link/shared";
 import { getLang, t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
-import { PlayIcon, TrashIcon } from "../Icons";
+import { DownloadIcon, PlayIcon, TrashIcon } from "../Icons";
+import { DownloadDialog, trackNames } from "../Recordings";
 import { SkeletonRows } from "../ui/Skeleton";
 import { useInfiniteList } from "../ui/useInfiniteList";
 import { useThumbKind, useThumbnail } from "./useThumbnail";
@@ -59,6 +60,9 @@ export function HistoryTab() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [recBytes, setRecBytes] = useState<{ n: number; bytes: number } | null>(null);
+  const [downloading, setDownloading] = useState<RecordingInfo | null>(null);
+  const [deleting, setDeleting] = useState<{ kind: "rec"; rec: RecordingInfo } | { kind: "game"; item: HistoryItem } | null>(null);
   const library = linkedDevice.status?.library;
   // Ask again once the data link is up: a request sent before is dropped.
   const ready = linkedDevice.state === "connected" && linkedDevice.status !== null;
@@ -66,9 +70,19 @@ export function HistoryTab() {
   useEffect(() => {
     const off = onDeviceMessage((msg) => {
       const list = parseHistory(msg);
-      if (list) setItems(list);
+      if (list) {
+        setItems(list);
+        return;
+      }
+      // A recording was deleted (or listed): refresh the totals and rows.
+      const recs = parseRecordings(msg);
+      if (recs) {
+        setRecBytes({ n: recs.items.length, bytes: recs.bytes });
+        sendToDevice({ type: "get_history" });
+      }
     });
     sendToDevice({ type: "get_history" });
+    sendToDevice({ type: "get_recordings" });
     return off;
   }, [hostLink, ready, sendToDevice, onDeviceMessage]);
 
@@ -103,6 +117,9 @@ export function HistoryTab() {
           <input type="search" placeholder={t.history.search} value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
         <div className="roms-toolbar-end">
+          {recBytes && recBytes.n > 0 && (
+            <span className="chip">{t.rec.total(recBytes.n, formatBytes(recBytes.bytes))}</span>
+          )}
           {items && <span className="small faint">{t.roms.showing(visible.length, all.length)}</span>}
           <button
             type="button"
@@ -145,12 +162,20 @@ export function HistoryTab() {
                 <th scope="col" className="lrow-col-activity">{t.history.cols.started}</th>
                 <th scope="col" className="lrow-col-seats">{t.history.cols.duration}</th>
                 <th scope="col" className="lrow-col-host">{t.history.cols.players}</th>
+                <th scope="col">{t.history.cols.recording}</th>
                 <th scope="col" className="lrow-end">{t.lobby.cols.actions}</th>
               </tr>
             </thead>
             <tbody>
               {shown.map((h) => (
-                <HistoryRow key={`${h.roomId}-${h.startedAt}`} item={h} thumb={hasThumb(h.rom)} />
+                <HistoryRow
+                  key={`${h.roomId}-${h.startedAt}`}
+                  item={h}
+                  thumb={hasThumb(h.rom)}
+                  onDownload={setDownloading}
+                  onDeleteRec={(rec) => setDeleting({ kind: "rec", rec })}
+                  onDelete={() => setDeleting({ kind: "game", item: h })}
+                />
               ))}
             </tbody>
           </table>
@@ -164,6 +189,20 @@ export function HistoryTab() {
         </div>
       )}
 
+      {downloading && <DownloadDialog rec={downloading} onClose={() => setDownloading(null)} />}
+      {deleting && (
+        <ConfirmDialog
+          title={deleting.kind === "rec" ? t.rec.deleteTitle : t.history.deleteTitle}
+          text={deleting.kind === "rec" ? t.rec.deleteText : t.history.deleteText}
+          confirm={deleting.kind === "rec" ? t.rec.deleteOne : t.history.deleteOne}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            if (deleting.kind === "rec") sendToDevice({ type: "delete_recording", id: deleting.rec.id });
+            else sendToDevice({ type: "delete_history", id: deleting.item.id });
+            setDeleting(null);
+          }}
+        />
+      )}
       {confirming && (
         <ConfirmDialog
           title={t.history.clearTitle}
@@ -204,7 +243,15 @@ function HistoryPeople({ item }: { item: HistoryItem }) {
   );
 }
 
-function HistoryRow({ item, thumb }: { item: HistoryItem; thumb: boolean }) {
+interface HistoryRowProps {
+  item: HistoryItem;
+  thumb: boolean;
+  onDownload: (rec: RecordingInfo) => void;
+  onDeleteRec: (rec: RecordingInfo) => void;
+  onDelete: () => void;
+}
+
+function HistoryRow({ item, thumb, onDownload, onDeleteRec, onDelete }: HistoryRowProps) {
   const art = useThumbnail(item.rom, useThumbKind(), "mini", thumb);
   const ms = new Date(item.endedAt).getTime() - new Date(item.startedAt).getTime();
   return (
@@ -234,7 +281,49 @@ function HistoryRow({ item, thumb }: { item: HistoryItem; thumb: boolean }) {
       <td className="lrow-col-host" title={t.history.peak(item.peakPlayers, item.peakSpectators)}>
         <HistoryPeople item={item} />
       </td>
+      <td>
+        {!item.recordings?.length ? (
+          <span className="small faint">{t.rec.none}</span>
+        ) : (
+          <ul className="hist-recs">
+            {item.recordings.map((rec) => (
+              <li key={rec.id}>
+                <span className="hist-rec-line">
+                  <i className="rec-dot" aria-hidden="true" />
+                  {`${formatDuration(rec.durationMs)} · ${formatBytes(rec.size)}${rec.tracks.includes("video") ? "" : ` (${t.rec.audioOnly})`}`}
+                </span>
+                <span className="small muted">{trackNames(rec.tracks)}</span>
+                <span className="hist-rec-actions">
+                  <button type="button" className="button button-primary button-compact" onClick={() => onDownload(rec)}>
+                    <DownloadIcon size={16} />
+                    {t.rec.download}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button icon-button-danger"
+                    aria-label={t.rec.deleteOne}
+                    data-tip={t.rec.deleteOne}
+                    onClick={() => onDeleteRec(rec)}
+                  >
+                    <TrashIcon />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </td>
       <td className="lrow-end">
+        <button
+          type="button"
+          className="icon-button icon-button-danger"
+          aria-label={t.history.deleteOne}
+          data-tip={t.history.deleteOne}
+          disabled={!item.id}
+          onClick={onDelete}
+        >
+          <TrashIcon />
+        </button>
         <Link
           to={`/create?rom=${encodeURIComponent(item.rom)}`}
           className="icon-button"
