@@ -1137,6 +1137,7 @@ export function RoomPage() {
   // mouse moving or a tap, as video players do, and come back on the next
   // movement or tap. A tap on the bare video hides them at once.
   const [idle, setIdle] = useState(false);
+  const autoFullscreen = useRef(false);
   const idleTimer = useRef(0);
   const wake = useCallback(() => {
     setIdle(false);
@@ -1165,6 +1166,12 @@ export function RoomPage() {
     if (e.type === "pointermove") {
       if (e.pointerType === "mouse") wake();
       return;
+    }
+    // The first touch of a console hides the browser's bars (where the
+    // browser allows it); leaving full screen afterwards is respected.
+    if (consoleMode && !autoFullscreen.current) {
+      autoFullscreen.current = true;
+      fullscreen.enterQuietly();
     }
     const bare = !target.closest("button, a, input, [role='dialog'], .video-toolbar, .players-capsule, .stream-info");
     if (bare && !idle && e.pointerType !== "mouse") {
@@ -1683,7 +1690,12 @@ export function RoomPage() {
                 data-tip={
                   fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
                 }
-                onClick={fullscreen.toggle}
+                onClick={() => {
+                  // Where the page cannot go full screen (iPhone), the
+                  // stage fills the window instead.
+                  if (!(consoleMode && !fullscreen.active && fullscreen.enterQuietly()))
+                    fullscreen.toggle();
+                }}
               >
                 {fullscreen.active ? (
                   <ExitFullscreenIcon />

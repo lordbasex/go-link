@@ -22,7 +22,10 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
   const [pseudo, setPseudo] = useState(false);
 
   useEffect(() => {
-    const sync = () => setReal(fullscreenElement() !== null && fullscreenElement() === ref.current);
+    const sync = () => {
+      const el = fullscreenElement();
+      setReal(el !== null && (el === ref.current || el === document.documentElement));
+    };
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync);
     return () => {
@@ -44,7 +47,7 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
     };
   }, [pseudo]);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback((lockLandscape = true) => {
     const el = ref.current as FsElement | null;
     if (!el) return;
     if (pseudo) {
@@ -64,10 +67,23 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
     void Promise.resolve(request.call(el))
       .then(() => {
         // Phones play sideways; Android allows locking it in full screen.
-        void (screen.orientation as Orientation | undefined)?.lock?.("landscape").catch(() => undefined);
+        if (lockLandscape) void (screen.orientation as Orientation | undefined)?.lock?.("landscape").catch(() => undefined);
       })
       .catch(() => setPseudo(true));
   }, [ref, pseudo]);
 
-  return { active: real || pseudo, pseudo, toggle };
+  /**
+   * The whole page in real full screen, as it is (no pseudo, no rotation
+   * lock): what a console needs, since its drawer and dialogs live outside
+   * the element.
+   */
+  const enterQuietly = useCallback((): boolean => {
+    const el = document.documentElement as FsElement;
+    const request = el && (el.requestFullscreen ?? el.webkitRequestFullscreen);
+    if (!request || fullscreenElement()) return false;
+    void Promise.resolve(request.call(el)).catch(() => undefined);
+    return true;
+  }, []);
+
+  return { active: real || pseudo, pseudo, toggle, enterQuietly };
 }
