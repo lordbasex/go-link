@@ -36,12 +36,12 @@ func newMamePage(u *ui) *mamePage {
 	m := &mamePage{u: u, coreChip: newStatusChip(), listChip: newStatusChip()}
 	m.pages = []fyne.CanvasObject{mameTabRoms: u.roms.content, mameTabThumbs: u.thumbs.content}
 	m.body = container.NewStack()
-	for i, name := range []string{mameTabRoms: "ROMs", mameTabThumbs: "Thumbnails"} {
+	for i, name := range []string{mameTabRoms: L("ROMs"), mameTabThumbs: L("Thumbnails")} {
 		i := i
 		m.tabs = append(m.tabs, newTabButton(name, magenta, func() { m.showTab(i) }))
 	}
 
-	subtitle := text("Engine mame2003-plus · plays MAME 0.78 sets", 14, textMuted, false)
+	subtitle := text(L("Engine mame2003-plus · plays MAME 0.78 sets"), 14, textMuted, false)
 	chips := container.New(layout.NewCustomPaddedHBoxLayout(8), m.coreChip.content, m.listChip.content)
 	header := newAdaptiveRow(420, textTile(magenta, "MAME", 64),
 		container.NewVBox(text("MAME", 30, white, true), subtitle, container.NewHBox(chips)))
@@ -76,15 +76,15 @@ func (m *mamePage) render(st models.Status) {
 	}
 	switch {
 	case lib.Core.Installed:
-		m.coreChip.Set("Core installed", colorOK)
+		m.coreChip.Set(L("Core installed"), colorOK)
 	case lib.Core.Downloading:
-		m.coreChip.Set("Downloading core…", colorWarn)
+		m.coreChip.Set(L("Downloading core…"), colorWarn)
 	default:
-		m.coreChip.Set("Core missing", colorDanger)
+		m.coreChip.Set(L("Core missing"), colorDanger)
 	}
 	if lib.Core.Catalog {
-		m.listChip.Set("Game list", colorOK)
+		m.listChip.Set(L("Game list"), colorOK)
 	} else {
-		m.listChip.Set("No game list", colorDanger)
+		m.listChip.Set(L("No game list"), colorDanger)
 	}
 }

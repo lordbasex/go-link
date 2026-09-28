@@ -56,17 +56,17 @@ func newTrayPanel(u *ui, win fyne.Window) *trayPanel {
 		t.value.TextSize = 16
 		return t
 	}
-	p.cpu = compact(newStatTile("cpu", "CPU", violet, true))
-	p.memory = compact(newStatTile("memory", "Memory", violet, true))
-	p.network = compact(newStatTile("network", "Network", violet, false))
-	p.stream = compact(newStatTile("stream", "Streaming", violet, false))
-	p.players = compact(newStatTile("players", "Players", violet, false))
-	p.browsers = compact(newStatTile("link", "Browsers", violet, false))
+	p.cpu = compact(newStatTile("cpu", L("CPU"), violet, true))
+	p.memory = compact(newStatTile("memory", L("Memory"), violet, true))
+	p.network = compact(newStatTile("network", L("Network"), violet, false))
+	p.stream = compact(newStatTile("stream", L("Streaming"), violet, false))
+	p.players = compact(newStatTile("players", L("Players"), violet, false))
+	p.browsers = compact(newStatTile("link", L("Browsers"), violet, false))
 
 	title := container.NewHBox(text("go-link", 17, white, true), p.state)
 	header := container.NewBorder(nil, nil, nil, sized(heroTileSmall(), 48, 48), container.NewVBox(title, p.line))
 	p.codeBox = glass(container.NewVBox(
-		text("Link at "+u.pairingURL(), 12, textMuted, false),
+		text(Lf("Link at %s", u.pairingURL()), 12, textMuted, false),
 		p.code,
 	))
 	grid := newResponsiveGrid(160, 10,
@@ -74,7 +74,7 @@ func newTrayPanel(u *ui, win fyne.Window) *trayPanel {
 		p.network.content, p.stream.content,
 		p.players.content, p.browsers.content,
 	)
-	open := widget.NewButtonWithIcon("Open go-link", icon("device", white), func() {
+	open := widget.NewButtonWithIcon(L("Open go-link"), icon("device", white), func() {
 		win.Hide()
 		u.showWindow()
 	})
@@ -116,47 +116,36 @@ func (p *trayPanel) render(st models.Status) {
 	linked := p.u.linked(st)
 	switch {
 	case st.Signal.State != models.SignalConnected:
-		p.state.Color, p.state.Text = colorDanger, "Offline"
+		p.state.Color, p.state.Text = colorDanger, L("Offline")
 	case !linked:
-		p.state.Color, p.state.Text = colorWarn, "Waiting to link"
-	case p.u.opts.Games != nil && p.u.opts.Games.Current() != "":
-		p.state.Color, p.state.Text = colorOK, "Playing"
+		p.state.Color, p.state.Text = colorWarn, L("Waiting to link")
+	case roomsSummary(st).seated > 0:
+		p.state.Color, p.state.Text = colorOK, L("Playing")
 	default:
-		p.state.Color, p.state.Text = colorOK, "Ready"
+		p.state.Color, p.state.Text = colorOK, L("Ready")
 	}
 	p.state.Refresh()
-	line := "No room open"
-	if r := st.Room; r != nil {
-		name := "Test pattern"
-		if r.Title != "" && p.u.opts.Games != nil && p.u.opts.Games.Current() != "" {
-			name = r.Title
-		}
-		line = fmt.Sprintf("%s · %d in the room", name, r.Viewers)
-	}
-	setText(p.line, line)
+	sum := roomsSummary(st)
+	setText(p.line, Lf("%d live · %d paused", sum.live, sum.paused))
 	setText(p.code, codeOrDashes(st.Pairing.Code))
 	p.layout(!linked)
 
 	if sys := st.System; sys != nil {
 		u, hw := sys.Usage, sys.Hardware
-		p.cpu.Set(fmt.Sprintf("%.0f %%", u.CPUPercent), fmt.Sprintf("device %.0f %%", u.ProcessCPUPercent))
+		p.cpu.Set(fmt.Sprintf("%.0f %%", u.CPUPercent), Lf("go-link %.0f %%", u.ProcessCPUPercent))
 		p.cpu.meter.SetValue(u.CPUPercent/100, loadColor(u.CPUPercent/100))
 		if hw.MemTotal > 0 {
 			frac := float64(u.MemUsed) / float64(hw.MemTotal)
-			p.memory.Set(fmt.Sprintf("%.0f %%", frac*100), formatBytes(u.MemUsed)+" used")
+			p.memory.Set(fmt.Sprintf("%.0f %%", frac*100), Lf("%s used", formatBytes(u.MemUsed)))
 			p.memory.meter.SetValue(frac, loadColor(frac))
 		}
-		p.network.Set(formatRate(u.NetSentBps)+" sent", formatRate(u.NetRecvBps)+" received")
+		p.network.Set(formatRate(u.NetSentBps)+" "+L("sent"), formatRate(u.NetRecvBps)+" "+L("received"))
 	}
 	if s := st.Stream; s.VideoViewers > 0 {
 		p.stream.Set(fmt.Sprintf("%.0f fps", s.FPS), fmt.Sprintf("%.0f kbps", s.VideoKbps))
 	} else {
-		p.stream.Set("Idle", "no one watching")
+		p.stream.Set(L("Idle"), L("no one watching"))
 	}
-	if r := st.Room; r != nil {
-		p.players.Set(fmt.Sprintf("%d / %d", r.Players, max(r.MaxPlayers, 4)), fmt.Sprintf("%d in queue", r.Queue))
-	} else {
-		p.players.Set("—", "")
-	}
+	p.players.Set(fmt.Sprintf("%d", sum.seated), Lf("%d watching or in queue", sum.watching))
 	p.browsers.Set(fmt.Sprintf("%d online", len(st.Peers)), fmt.Sprintf("%d remembered", st.SavedLinks))
 }

@@ -191,6 +191,25 @@ export interface DeviceStatus {
   rooms: ManagedRoom[];
   /** Space the rooms' saved games take, in bytes. */
   savesBytes: number;
+  /** A newer go-link release than the device runs, when there is one. */
+  update?: DeviceUpdate;
+}
+
+export interface DeviceUpdate {
+  latest: string;
+  /** Its release page: always one of go-link's releases on GitHub. */
+  url: string;
+}
+
+const RELEASES = "https://github.com/lordbasex/go-link/releases/";
+
+/** Accepts an update only when it links to go-link's own releases. */
+function parseUpdate(u: unknown): DeviceUpdate | undefined {
+  if (typeof u !== "object" || u === null) return undefined;
+  const { latest, url } = u as Record<string, unknown>;
+  if (typeof latest !== "string" || !/^v?\d+\.\d+\.\d+[\w.+-]*$/.test(latest)) return undefined;
+  if (typeof url !== "string" || !url.startsWith(RELEASES)) return undefined;
+  return { latest, url };
 }
 
 /** Returns the status when msg is a device_status message. */
@@ -210,6 +229,7 @@ export function parseDeviceStatus(msg: unknown): DeviceStatus | null {
     linked_browsers: typeof m.linked_browsers === "number" ? m.linked_browsers : 0,
     rooms: parseRooms(m.rooms),
     savesBytes: bytesOf(m.saves_bytes),
+    update: parseUpdate(m.update),
   };
 }
 

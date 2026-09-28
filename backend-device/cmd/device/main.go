@@ -283,6 +283,29 @@ func run() error {
 				stream.SendControl(peerID, b)
 			}
 			return
+		case "set_thumbnails":
+			// Which thumbnail everyone sees, and where the device looks for
+			// them: the window's Settings, from the linked website. An empty
+			// field keeps its value; dir "default" goes back to the default.
+			t := settings.Thumbnails()
+			if msg.Kind != "" {
+				t.Kind = msg.Kind
+			}
+			switch msg.Dir {
+			case "":
+			case "default":
+				t.Dir = ""
+			default:
+				t.Dir = msg.Dir
+			}
+			res := map[string]any{"type": "thumbnails_result", "ok": true}
+			if err := settings.SetThumbnails(t); err != nil {
+				res["ok"], res["error"] = false, err.Error()
+			}
+			if b, err := json.Marshal(res); err == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
 		case "get_history", "clear_history":
 			// The history of games, only to the owner's linked browsers.
 			if msg.Type == "clear_history" {
@@ -397,6 +420,14 @@ func run() error {
 		stream.SendToLinks(services.NewDeviceStatusMessage(st))
 	})
 	go metrics.Run(ctx)
+	// A newer release shows in the window and on the linked website.
+	go services.NewUpdateService(services.UpdateConfig{
+		Current: version,
+		Logger:  logger,
+		OnUpdate: func(u models.UpdateInfo) {
+			status.SetUpdate(&u)
+		},
+	}).Run(ctx)
 	// What is being streamed, for the window (once a second).
 	go func() {
 		t := time.NewTicker(time.Second)
@@ -458,6 +489,10 @@ func run() error {
 		settings: settings,
 		links:    links,
 		webURL:   web,
+		language: cfg.Language,
+		setLanguage: func(id string) error {
+			return updateConfig(store, &cfg, func(c *models.Config) { c.Language = id })
+		},
 		quit:     cancel,
 		headless: *headless,
 		status:   status,

@@ -25,31 +25,21 @@ import (
 
 // The categories of the Settings page, in order.
 const (
-	settingsThumbnails = iota
+	settingsGeneral = iota
+	settingsThumbnails
 	settingsRooms
 	settingsNetwork
 )
 
 var settingsCategories = []struct{ title, icon string }{
+	settingsGeneral:    {"General", "gear"},
 	settingsThumbnails: {"Thumbnails", "image"},
 	settingsRooms:      {"Rooms", "players"},
 	settingsNetwork:    {"Network", "signal"},
 }
 
-// Labels of the thumbnail choices, in the order of thumbnails.Kinds and
-// models.ThumbnailSizes.
-var (
-	kindLabels = []string{"Boxart", "Title", "Snap"}
-	sizeLabels = []string{"Small", "Medium", "Large"}
-)
-
-// The ROM list's image box for each size: one 4:3 box, the image fits
-// inside it.
-var coverSizes = map[string]fyne.Size{
-	"small":  fyne.NewSize(48, 36),
-	"medium": fyne.NewSize(72, 54),
-	"large":  fyne.NewSize(96, 72),
-}
+// Labels of the thumbnail choices, in the order of thumbnails.Kinds.
+var kindLabels = []string{"Boxart", "Title", "Snap"}
 
 // thumbHelp explains the thumbnails folder. It never names a website.
 const thumbHelp = "One folder per type: Named_Boxarts, Named_Titles, Named_Snaps. Images are matched to games by set name or title. Thumbnail packs for MAME can be found on the internet."
@@ -65,7 +55,7 @@ type settingsPage struct {
 	pages    []fyne.CanvasObject
 	cat      int
 	kind     *segmented
-	size     *segmented
+	language *segmented
 	dir      *widget.Label
 	thumbErr *widget.Label
 	choose   *widget.Button
@@ -88,6 +78,7 @@ func newSettingsPage(u *ui) *settingsPage {
 		return l
 	}
 	p.pages = []fyne.CanvasObject{
+		settingsGeneral:    p.generalCards(),
 		settingsThumbnails: p.thumbnailsCards(mono),
 		settingsRooms:      p.roomsCards(mono),
 		settingsNetwork:    p.networkCards(mono),
@@ -97,20 +88,20 @@ func newSettingsPage(u *ui) *settingsPage {
 	cats := container.New(layout.NewCustomPaddedVBoxLayout(4))
 	for i, c := range settingsCategories {
 		i := i
-		row := newSidebarRow(c.title, c.icon, emerald, func() { p.showCategory(i) })
+		row := newSidebarRow(L(c.title), c.icon, emerald, func() { p.showCategory(i) })
 		p.cats = append(p.cats, row)
 		cats.Add(row)
 	}
 
-	subtitle := text("How this device shows and runs your games", 14, textMuted, false)
+	subtitle := text(L("How this device shows and runs your games"), 14, textMuted, false)
 	header := newAdaptiveRow(420, heroTile(emerald, "gear", 64),
-		container.NewVBox(text("Settings", 30, white, true), subtitle))
+		container.NewVBox(text(L("Settings"), 30, white, true), subtitle))
 	left := container.New(layout.NewCustomPaddedLayout(0, 0, 0, 16), fixedWidth(190, cats))
 	// A little room on the right keeps the cards clear of the scroll bar.
 	right := container.NewVScroll(container.New(layout.NewCustomPaddedLayout(0, 0, 0, 8), p.body))
 	p.content = container.New(layout.NewCustomPaddedLayout(24, 20, 28, 28),
 		container.NewBorder(container.New(layout.NewCustomPaddedLayout(0, 18, 0, 0), header), nil, left, nil, right))
-	p.showCategory(settingsThumbnails)
+	p.showCategory(settingsGeneral)
 	p.refresh()
 	return p
 }
@@ -126,13 +117,9 @@ func (p *settingsPage) showCategory(i int) {
 }
 
 func (p *settingsPage) thumbnailsCards(mono func() *widget.Label) fyne.CanvasObject {
-	p.kind = newSegmented(kindLabels, emerald, func(label string) {
-		kind := string(thumbnails.Kinds[labelIndex(kindLabels, label)])
+	p.kind = newSegmented(translated(kindLabels), emerald, func(label string) {
+		kind := string(thumbnails.Kinds[labelIndex(translated(kindLabels), label)])
 		p.change(func(t *models.ThumbnailSettings) { t.Kind = kind })
-	})
-	p.size = newSegmented(sizeLabels, emerald, func(label string) {
-		size := models.ThumbnailSizes[labelIndex(sizeLabels, label)]
-		p.change(func(t *models.ThumbnailSettings) { t.Size = size })
 	})
 	p.thumbErr = widget.NewLabel("")
 	p.thumbErr.Importance = widget.DangerImportance
@@ -140,24 +127,21 @@ func (p *settingsPage) thumbnailsCards(mono func() *widget.Label) fyne.CanvasObj
 	p.thumbErr.Hide()
 
 	p.dir = mono()
-	p.choose = widget.NewButtonWithIcon("Choose…", icon("folder", white), p.chooseFolder)
-	p.reset = widget.NewButton("Default", func() {
+	p.choose = widget.NewButtonWithIcon(L("Choose…"), icon("folder", white), p.chooseFolder)
+	p.reset = widget.NewButton(L("Default"), func() {
 		p.change(func(t *models.ThumbnailSettings) { t.Dir = "" })
 	})
-	open := widget.NewButtonWithIcon("Open folder", icon("folder", white), p.u.thumbs.openFolder)
-	help := wrapped(thumbHelp)
+	open := widget.NewButtonWithIcon(L("Open folder"), icon("folder", white), p.u.thumbs.openFolder)
+	help := wrapped(L(thumbHelp))
 	help.Importance = widget.LowImportance
 	help.SizeName = theme.SizeNameCaptionText
 
 	show := glass(container.NewVBox(
-		settingTitle("Show", "Which image the device and the browsers show for each game."),
+		settingTitle(L("Show"), L("Which image the device and the browsers show for each game.")),
 		container.NewHBox(p.kind.content),
-		widget.NewSeparator(),
-		settingTitle("Size in this window", "How big the images are in the ROM list."),
-		container.NewHBox(p.size.content),
 	))
 	folder := glass(container.NewVBox(
-		settingTitle("Folder", "Where the device looks for your thumbnails."),
+		settingTitle(L("Folder"), L("Where the device looks for your thumbnails.")),
 		p.dir,
 		container.NewHBox(p.choose, p.reset, open),
 		help,
@@ -165,17 +149,48 @@ func (p *settingsPage) thumbnailsCards(mono func() *widget.Label) fyne.CanvasObj
 	return vstack(p.thumbErr, show, folder)
 }
 
+// generalCards holds the window's language.
+func (p *settingsPage) generalCards() fyne.CanvasObject {
+	labels := make([]string, len(languages))
+	for i, l := range languages {
+		labels[i] = l.label
+		if l.id == "" {
+			labels[i] = L(l.label)
+		}
+	}
+	p.language = newSegmented(labels, emerald, func(label string) {
+		id := languages[labelIndex(labels, label)].id
+		if p.u.opts.SetLanguage != nil {
+			if err := p.u.opts.SetLanguage(id); err != nil {
+				p.u.showError(err)
+				return
+			}
+		}
+		p.u.opts.Language = id
+		fyne.Do(p.u.relanguage)
+	})
+	for i, l := range languages {
+		if l.id == p.u.opts.Language {
+			p.language.SetSelected(labels[i])
+		}
+	}
+	return vstack(glass(container.NewVBox(
+		settingTitle(L("Language"), L("The language of this window. Automatic follows your computer. The website has its own language switch.")),
+		container.NewHBox(p.language.content),
+	)))
+}
+
 func (p *settingsPage) roomsCards(mono func() *widget.Label) fyne.CanvasObject {
-	p.maxRooms = widget.NewLabel(itoa(models.DefaultMaxRooms) + " by default")
+	p.maxRooms = widget.NewLabel(Lf("%d by default", models.DefaultMaxRooms))
 	p.saves = mono()
 	p.saves.SetText(savesDir())
-	note := wrapped("To change the limit, set max_rooms in device.json and restart the device.")
+	note := wrapped(L("To change the limit, set max_rooms in device.json and restart the device."))
 	note.Importance = widget.LowImportance
 	note.SizeName = theme.SizeNameCaptionText
 	return vstack(glass(container.NewVBox(
 		widget.NewForm(
-			widget.NewFormItem("Rooms at once", p.maxRooms),
-			widget.NewFormItem("Saved games", p.saves),
+			widget.NewFormItem(L("Rooms at once"), p.maxRooms),
+			widget.NewFormItem(L("Saved games"), p.saves),
 		),
 		note,
 	)))
@@ -183,14 +198,14 @@ func (p *settingsPage) roomsCards(mono func() *widget.Label) fyne.CanvasObject {
 
 func (p *settingsPage) networkCards(mono func() *widget.Label) fyne.CanvasObject {
 	p.signal, p.state, p.ice = mono(), widget.NewLabel(""), mono()
-	note := wrapped("The signaling server comes from --server-signaling or signal_url in device.json. STUN and TURN servers come from the signaling server and are kept in memory only. A fixed UDP port and announced addresses are set with udp_port and announce_ips in device.json.")
+	note := wrapped(L("The signaling server comes from --server-signaling or signal_url in device.json. STUN and TURN servers come from the signaling server and are kept in memory only. A fixed UDP port and announced addresses are set with udp_port and announce_ips in device.json."))
 	note.Importance = widget.LowImportance
 	note.SizeName = theme.SizeNameCaptionText
 	return vstack(glass(container.NewVBox(
 		widget.NewForm(
-			widget.NewFormItem("Signaling", p.signal),
-			widget.NewFormItem("State", p.state),
-			widget.NewFormItem("STUN / TURN", p.ice),
+			widget.NewFormItem(L("Signaling"), p.signal),
+			widget.NewFormItem(L("State"), p.state),
+			widget.NewFormItem(L("STUN / TURN"), p.ice),
 		),
 		note,
 	)))
@@ -227,15 +242,13 @@ func (p *settingsPage) refresh() {
 	s := p.u.opts.Settings
 	if s == nil {
 		p.kind.SetDisabled(true)
-		p.size.SetDisabled(true)
 		p.choose.Disable()
 		p.reset.Disable()
 		p.dir.SetText(p.u.opts.Library.ThumbnailsDir())
 		return
 	}
 	t := s.Thumbnails()
-	p.kind.SetSelected(kindLabels[labelIndex(kindValues(), t.Kind)])
-	p.size.SetSelected(sizeLabels[labelIndex(models.ThumbnailSizes, t.Size)])
+	p.kind.SetSelected(translated(kindLabels)[labelIndex(kindValues(), t.Kind)])
 	p.dir.SetText(s.ThumbnailsDir())
 	if t.Dir == "" {
 		p.reset.Disable()
@@ -275,9 +288,9 @@ func (p *settingsPage) change(edit func(*models.ThumbnailSettings)) {
 
 func settingsError(err error, t models.ThumbnailSettings) string {
 	if errors.Is(err, services.ErrBadSetting) && t.Dir != "" {
-		return "That folder cannot be used: choose an existing folder."
+		return L("That folder cannot be used: choose an existing folder.")
 	}
-	return "The setting could not be saved: " + err.Error()
+	return L("The setting could not be saved:") + " " + err.Error()
 }
 
 func (p *settingsPage) showError(s string) {
@@ -315,27 +328,25 @@ func (p *settingsPage) render(st models.Status) {
 	if st.Signal.Error != "" {
 		state += " · " + st.Signal.Error
 	}
-	p.state.SetText(capitalize(state))
+	p.state.SetText(capitalize(L(state)))
 	if len(st.Signal.ICEURLs) == 0 {
-		p.ice.SetText("Not received yet (they come from the signaling server)")
+		p.ice.SetText(L("Not received yet (they come from the signaling server)"))
 	} else {
 		p.ice.SetText(strings.Join(st.Signal.ICEURLs, "\n"))
 	}
 }
 
-// coverSize is the ROM list's image box for the chosen size.
-func (u *ui) coverSize() fyne.Size {
-	if u.opts.Settings != nil {
-		if s, ok := coverSizes[u.opts.Settings.Thumbnails().Size]; ok {
-			return s
-		}
+// translated returns labels in the window's language.
+func translated(labels []string) []string {
+	out := make([]string, len(labels))
+	for i, l := range labels {
+		out[i] = L(l)
 	}
-	return coverSizes["small"]
+	return out
 }
 
 // settingsChanged repaints what depends on the settings. It runs on
 // Fyne's thread.
 func (u *ui) settingsChanged() {
 	u.settings.refresh()
-	u.roms.list.Refresh()
 }

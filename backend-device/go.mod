@@ -5,6 +5,7 @@ go 1.26.8
 require (
 	fyne.io/fyne/v2 v2.8.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade
 	github.com/pion/rtcp v1.2.18
 	github.com/pion/webrtc/v4 v4.2.22
 	github.com/shirou/gopsutil/v4 v4.26.8
@@ -35,7 +36,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
 	github.com/hack-pad/safejs v0.1.0 // indirect
-	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect
 	github.com/jsummers/gobmp v0.0.0-20230614200233-a9de23ed2e25 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect

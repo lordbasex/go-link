@@ -607,11 +607,97 @@ function AddRoms() {
         </form>
       )}
 
+      {library && <ThumbnailSettings />}
+
       <div className="card dash-card stack-sm">
         <h2 className="card-title">{t.roms.sourceTitle}</h2>
         <p className="small-plus muted">{t.roms.sourceText}</p>
         <p className="small faint">{t.roms.sourceRights}</p>
       </div>
     </>
+  );
+}
+
+const KINDS = ["boxart", "title", "snap"] as const;
+
+/**
+ * The device's thumbnail settings, like its window's Settings: which
+ * picture everyone sees for each game, and the folder it reads them from.
+ */
+function ThumbnailSettings() {
+  const { linkedDevice, hostLink, onDeviceMessage } = useSignal();
+  const library = linkedDevice.status?.library;
+  const [dirValue, setDirValue] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(
+    () =>
+      onDeviceMessage((msg) => {
+        const m = msg as { type?: string; ok?: boolean; error?: string };
+        if (m.type === "thumbnails_result") {
+          setError(m.ok ? "" : (m.error ?? t.thumbs.error));
+          if (m.ok) setDirValue(null);
+        }
+      }),
+    [onDeviceMessage],
+  );
+  if (!library) return null;
+  const send = (change: { kind?: string; dir?: string }) =>
+    hostLink?.stream.sendControl({ type: "set_thumbnails", ...change });
+  const counts = KINDS.map((k) => library.roms.filter((r) => r.thumbs[k]).length);
+
+  return (
+    <form
+      className="card dash-card stack-sm"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (dirValue !== null) send({ dir: dirValue.trim() || "default" });
+      }}
+    >
+      <h2 className="card-title">{t.thumbs.title}</h2>
+      <p className="small muted">{t.thumbs.showText}</p>
+      <div className="dash-segmented" role="group" aria-label={t.thumbs.show}>
+        {KINDS.map((k, i) => (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={library.thumbKind === k}
+            className={library.thumbKind === k ? "is-on" : ""}
+            onClick={() => send({ kind: k })}
+          >
+            {`${t.thumbs.kinds[i]} · ${counts[i]}`}
+          </button>
+        ))}
+      </div>
+      <label htmlFor="thumbs-dir" className="small muted">
+        {t.thumbs.folder}
+      </label>
+      <input
+        id="thumbs-dir"
+        className="input input-dark input-small input-mono"
+        spellCheck={false}
+        autoComplete="off"
+        value={dirValue ?? library.thumbnailsDir}
+        onChange={(e) => setDirValue(e.target.value)}
+      />
+      <div className="chip-row">
+        <button
+          type="submit"
+          className="button button-secondary"
+          disabled={dirValue === null || dirValue.trim() === library.thumbnailsDir}
+        >
+          {t.thumbs.useFolder}
+        </button>
+        <button type="button" className="button button-secondary" onClick={() => send({ dir: "default" })}>
+          {t.thumbs.defaultFolder}
+        </button>
+      </div>
+      <p className="small faint">{t.thumbs.help}</p>
+      {error && (
+        <p className="form-error small" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
   );
 }

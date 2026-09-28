@@ -48,6 +48,9 @@ type Config struct {
 	// devices: Raspberry Pi, Docker). The device makes it the first time
 	// the panel runs; `device panel token --new` replaces it.
 	PanelToken string `json:"panel_token,omitempty"`
+	// Language of the device window: en, es or pt; empty follows the
+	// computer's language.
+	Language string `json:"language,omitempty"`
 }
 
 // Link is one browser linked to this device.

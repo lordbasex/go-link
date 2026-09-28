@@ -124,6 +124,7 @@ export function DeviceDashboard({
             {status && (
               <Chip mono>{`device ${shortId(status.device_id)}`}</Chip>
             )}
+            {status?.version && <Chip mono>{`go-link ${status.version}`}</Chip>}
           </>
         }
         actions={
@@ -171,6 +172,14 @@ export function DeviceDashboard({
         <p className="notice" role="status">
           {t.dash.failedText}
         </p>
+      )}
+      {status?.update && (
+        <div className="help-box dash-update" role="status">
+          <p>{t.dash.update(status.update.latest, status.version)}</p>
+          <a className="button button-primary button-small" href={status.update.url} target="_blank" rel="noopener">
+            {t.dash.updateDownload}
+          </a>
+        </div>
       )}
 
 

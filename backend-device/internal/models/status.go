@@ -37,6 +37,14 @@ type Status struct {
 	SavesBytes int64         `json:"saves_bytes"`
 	System     *SystemStatus `json:"system,omitempty"`
 	Library    *Library      `json:"library,omitempty"`
+	// Update is a newer go-link release, when there is one.
+	Update *UpdateInfo `json:"update,omitempty"`
+}
+
+// UpdateInfo is a newer release of go-link than this build.
+type UpdateInfo struct {
+	Latest string `json:"latest"` // its version, e.g. v0.2.0
+	URL    string `json:"url"`    // its release page, with the downloads
 }
 
 // Library is the host's ROM folder.

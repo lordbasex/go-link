@@ -40,11 +40,11 @@ func newOnboardingView(u *ui) *onboardingView {
 
 	// Step 1: where.
 	address := text(strings.TrimPrefix(u.pairingURL(), "https://"), 15, violet.accent, true)
-	copyURL := widget.NewButtonWithIcon("Copy", icon("copy", white), func() {
+	copyURL := widget.NewButtonWithIcon(L("Copy"), icon("copy", white), func() {
 		u.app.Clipboard().SetContent(u.pairingURL())
 	})
 	step1 := container.NewBorder(nil, nil, stepBadge("1"), copyURL,
-		container.NewVBox(text("Open this address in your browser", 14, white, true), address))
+		container.NewVBox(text(L("Open this address in your browser"), 14, white, true), address))
 
 	// Step 2: the code, one box per digit like the website.
 	groups := make([]fyne.CanvasObject, 0, 3)
@@ -65,15 +65,15 @@ func newOnboardingView(u *ui) *onboardingView {
 	}
 	code := container.NewCenter(container.New(layout.NewCustomPaddedHBoxLayout(18), groups...))
 	step2 := container.NewBorder(nil, nil, stepBadge("2"), nil,
-		container.NewVBox(text("Type this code", 14, white, true), text("It works once. After that, the browser comes back on its own.", 12, textMuted, false)))
+		container.NewVBox(text(L("Type this code"), 14, white, true), text(L("It works once. After that, the browser comes back on its own."), 12, textMuted, false)))
 	// Copies the nine digits: the website's code field accepts a paste.
-	v.copyCode = widget.NewButtonWithIcon("Copy code", icon("copy", white), func() {
+	v.copyCode = widget.NewButtonWithIcon(L("Copy code"), icon("copy", white), func() {
 		if v.code == "" {
 			return
 		}
 		u.app.Clipboard().SetContent(v.code)
-		v.copyCode.SetText("Copied")
-		time.AfterFunc(2*time.Second, func() { fyne.Do(func() { v.copyCode.SetText("Copy code") }) })
+		v.copyCode.SetText(L("Copied"))
+		time.AfterFunc(2*time.Second, func() { fyne.Do(func() { v.copyCode.SetText(L("Copy code")) }) })
 	})
 	// Two layers: the countdown centered on the whole card, the button on
 	// the right with a fixed width, so neither moves when the label changes.
@@ -90,11 +90,11 @@ func newOnboardingView(u *ui) *onboardingView {
 	), 20, 22)
 
 	intro := container.New(layout.NewCustomPaddedVBoxLayout(2),
-		text("Manage this device from any browser: pick games, open rooms,", 15, textMuted, false),
-		text("add ROMs and see who is playing. Link it once and it remembers.", 15, textMuted, false),
+		text(L("Manage this device from any browser: pick games, open rooms,"), 15, textMuted, false),
+		text(L("add ROMs and see who is playing. Link it once and it remembers."), 15, textMuted, false),
 	)
 	right := container.New(layout.NewCustomPaddedVBoxLayout(18),
-		text("Link this device", 34, white, true),
+		text(L("Link this device"), 34, white, true),
 		intro,
 		card,
 	)
@@ -102,7 +102,7 @@ func newOnboardingView(u *ui) *onboardingView {
 	hero := container.New(layout.NewCustomPaddedVBoxLayout(4), heroTile(violet, "link", 200), status)
 	row := container.New(layout.NewCustomPaddedHBoxLayout(44), container.NewCenter(hero), fixedWidth(500, right))
 
-	open := newCapsuleButton("Open in browser", "link", violet, 240, func() {
+	open := newCapsuleButton(L("Open in browser"), "link", violet, 240, func() {
 		if link, err := url.Parse(u.pairingURL()); err == nil {
 			_ = u.app.OpenURL(link)
 		}
@@ -154,13 +154,13 @@ func setSignal(dot *canvas.Circle, line *canvas.Text, st models.Status) {
 	switch st.Signal.State {
 	case models.SignalConnected:
 		dot.FillColor = colorOK
-		line.Text = "Connected to the signaling server"
+		line.Text = L("Connected to the signaling server")
 	case models.SignalConnecting:
 		dot.FillColor = colorWarn
-		line.Text = "Connecting to the signaling server…"
+		line.Text = L("Connecting to the signaling server…")
 	default:
 		dot.FillColor = colorDanger
-		line.Text = "No connection to the signaling server"
+		line.Text = L("No connection to the signaling server")
 		if st.Signal.Error != "" {
 			line.Text += ": " + st.Signal.Error
 		}

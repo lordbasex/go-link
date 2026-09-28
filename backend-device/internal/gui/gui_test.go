@@ -14,6 +14,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -62,7 +64,7 @@ func newTestUI(t *testing.T) (*ui, *services.StatusService, string) {
 		t.Fatal(err)
 	}
 	lib.Scan()
-	u := newUI(a, Options{Ctx: context.Background(), Status: status, Library: lib, Settings: settings, Version: "test", Logger: logger})
+	u := newUI(a, Options{Ctx: context.Background(), Status: status, Library: lib, Settings: settings, Version: "test", Language: "en", Logger: logger})
 	u.settings.background = func(f func()) { f() }
 	return u, status, roms
 }
@@ -90,9 +92,9 @@ func TestWindowShowsCodeAndChecks(t *testing.T) {
 	if u.showing != "main" {
 		t.Fatal("without a LinkService the window is the full one")
 	}
-	// Sidebar: Overview, then MAME under an Emulators heading, then System
-	// and Settings.
-	if len(u.rows) != 4 || sections[pageSettings].title != "Settings" || sections[pageMAME].title != "MAME" || len(u.headings) != 1 || u.headings[0].Text != "EMULATORS" {
+	// Sidebar: Overview, then MAME under an Emulators heading, then
+	// Settings (the computer's details live in the Overview).
+	if len(u.rows) != 3 || sections[pageSettings].title != "Settings" || sections[pageMAME].title != "MAME" || len(u.headings) != 1 || u.headings[0].Text != "EMULATORS" {
 		t.Fatalf("sidebar: %d rows, headings %v", len(u.rows), u.headings)
 	}
 	test.Tap(u.rows[pageMAME])
@@ -110,19 +112,9 @@ func TestWindowShowsCodeAndChecks(t *testing.T) {
 	if u.mame.tab != mameTabRoms {
 		t.Fatal("showRoms must open the ROMs tab")
 	}
-	if got := u.roms.summary.Text; got != "1 of 2 run on mame2003-plus" {
-		t.Fatalf("summary = %q", got)
-	}
-	if len(u.roms.shown) != 2 || u.roms.shown[0].Title != "Robby Roto" {
-		t.Fatalf("shown = %+v", u.roms.shown)
-	}
-	badge, _ := checkBadge(u.roms.shown[1].Check)
-	if badge != "Not in this emulator" || !strings.Contains(checkNote(u.roms.shown[1].Check), "not in the mame2003-plus core") {
-		t.Fatalf("witchgme: %q %q", badge, checkNote(u.roms.shown[1].Check))
-	}
-	u.roms.filter.SetSelected(filterWontRun)
-	if len(u.roms.shown) != 1 || u.roms.shown[0].Name != "witchgme" {
-		t.Fatalf("filtered = %+v", u.roms.shown)
+	// The ROMs tab only manages the folder: counts, not a list.
+	if u.roms.total.value.Text != "2" || u.roms.runs.value.Text != "1" || u.roms.wontRun.value.Text != "1" {
+		t.Fatalf("counts: %q %q %q", u.roms.total.value.Text, u.roms.runs.value.Text, u.roms.wontRun.value.Text)
 	}
 	// The core is not installed yet, the game list is: the ROMs tab offers
 	// to download what is missing.
@@ -159,7 +151,7 @@ func TestOnlyTheCodeUntilLinked(t *testing.T) {
 	status := services.NewStatusService("7f3c2a10-1b2c-4d3e-8f90-a1b2c3d4e5f6", "test", "ws://x", t.TempDir())
 	lib := services.NewLibraryService(t.TempDir(), status, logger)
 	links := services.NewLinkService(services.LinkConfig{DeviceID: "7f3c2a10-1b2c-4d3e-8f90-a1b2c3d4e5f6", Logger: logger}, status)
-	u := newUI(a, Options{Status: status, Library: lib, Links: links, WebURL: "https://web.example/", Logger: logger})
+	u := newUI(a, Options{Status: status, Library: lib, Links: links, WebURL: "https://web.example/", Language: "en", Logger: logger})
 	if u.showing != "onboarding" || u.pairingURL() != "https://web.example/device" {
 		t.Fatalf("showing %q, url %q", u.showing, u.pairingURL())
 	}
@@ -287,8 +279,12 @@ func TestSettingsPage(t *testing.T) {
 		t.Fatal("the Settings row opens the Settings page")
 	}
 	p := u.settings
-	if p.cat != settingsThumbnails || p.kind.Selected != "Boxart" || p.size.Selected != "Small" {
-		t.Fatalf("category %d, kind %q, size %q", p.cat, p.kind.Selected, p.size.Selected)
+	if p.cat != settingsGeneral {
+		t.Fatalf("category %d", p.cat)
+	}
+	test.Tap(p.cats[settingsThumbnails])
+	if p.kind.Selected != "Boxart" {
+		t.Fatalf("kind %q", p.kind.Selected)
 	}
 	if p.dir.Text != settings.ThumbnailsDir() || !p.reset.Disabled() {
 		t.Fatalf("dir %q (want %q), default enabled %v", p.dir.Text, settings.ThumbnailsDir(), !p.reset.Disabled())
@@ -302,10 +298,6 @@ func TestSettingsPage(t *testing.T) {
 	}
 	if _, ok := lib.ThumbnailPath("robby", lib.ThumbnailKind()); !ok {
 		t.Fatal("the ROM list must find the Snap")
-	}
-	test.Tap(p.size.segments[2])
-	if settings.Thumbnails().Size != "large" || u.coverSize() != fyne.NewSize(96, 72) {
-		t.Fatalf("size = %q, cover %v", settings.Thumbnails().Size, u.coverSize())
 	}
 
 	// A folder that does not exist is refused with a message.
@@ -352,34 +344,82 @@ func TestWindowRemembersItsSize(t *testing.T) {
 	}
 }
 
-func TestRomsSearchAndFilter(t *testing.T) {
-	u, _, _ := newTestUI(t)
-	ok := romcheck.Result{Status: romcheck.StatusOK}
-	bad := romcheck.Result{Status: romcheck.StatusMissing}
-	u.roms.lib = models.Library{Roms: []models.RomInfo{
-		{Name: "galaga", Title: "Galaga (Namco rev. B)", Maker: "Namco", Check: &ok},
-		{Name: "aliens", Title: "Aliens (World set 1)", Maker: "Konami", Check: &ok},
-		{Name: "ga2", Title: "Golden Axe: The Revenge of Death Adder", Maker: "Sega", Check: &bad},
-	}}
-	names := func() []string {
-		var out []string
-		for _, r := range u.roms.shown {
-			out = append(out, r.Name)
+func TestTheWindowChangesLanguage(t *testing.T) {
+	u, status, _ := newTestUI(t)
+	var saved string
+	u.opts.SetLanguage = func(id string) error { saved = id; return nil }
+	test.Tap(u.rows[pageSettings])
+	test.Tap(u.settings.language.segments[2]) // Español
+	if saved != "es" || current != "es" {
+		t.Fatalf("saved %q, current %q", saved, current)
+	}
+	u.render(status.Snapshot())
+	if u.current != pageSettings || u.rows[pageOverview].label.Text != "Resumen" {
+		t.Fatalf("page %d, overview row %q", u.current, u.rows[pageOverview].label.Text)
+	}
+	test.Tap(u.settings.language.segments[1]) // English
+	if u.rows[pageOverview].label.Text != "Overview" {
+		t.Fatalf("back to English: %q", u.rows[pageOverview].label.Text)
+	}
+	// Every text of the window has its Spanish and Portuguese version.
+	for _, lang := range []string{"es", "pt"} {
+		for _, key := range guiKeys(t) {
+			if _, ok := catalogs[lang][key]; !ok {
+				t.Errorf("%s: missing %q", lang, key)
+			}
 		}
-		return out
 	}
-	u.roms.search.SetText("namco")
-	if got := names(); len(got) != 1 || got[0] != "galaga" {
-		t.Fatalf("search namco: %v", got)
+}
+
+// guiKeys lists every English text of the window: the literals passed to
+// L and Lf, and the texts translated through variables.
+func guiKeys(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
 	}
-	u.roms.search.SetText("ga")
-	u.roms.filter.SetSelected(filterWontRun)
-	if got := names(); len(got) != 1 || got[0] != "ga2" {
-		t.Fatalf("won't run + ga: %v", got)
+	re := regexp.MustCompile(`\bLf?\(("(?:[^"\\]|\\.)*")`)
+	seen := map[string]bool{}
+	var keys []string
+	add := func(k string) {
+		if !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
 	}
-	u.roms.filter.SetSelected(filterRuns)
-	u.roms.search.SetText("")
-	if got := names(); len(got) != 2 {
-		t.Fatalf("runs: %v", got)
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") || strings.HasPrefix(f, "i18n") {
+			continue
+		}
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range re.FindAllSubmatch(src, -1) {
+			k, err := strconv.Unquote(string(m[1]))
+			if err != nil {
+				t.Fatal(err)
+			}
+			add(k)
+		}
 	}
+	for _, s := range sections {
+		add(s.title)
+		if s.group != "" {
+			add(s.group)
+		}
+	}
+	for _, c := range settingsCategories {
+		add(c.title)
+	}
+	for _, k := range kindLabels[1:] {
+		add(k)
+	}
+	add(languages[0].label)
+	add(thumbHelp)
+	for _, s := range []string{"connected", "connecting", "disconnected"} {
+		add(s)
+	}
+	return keys
 }

@@ -4,6 +4,17 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Changed (device window)
+
+- The window speaks English, Spanish or Portuguese (Settings › General, or automatic from the computer), live, without restarting.
+- System is merged into Overview (the computer's details at the bottom, no usage shown twice); the Overview uses the app's logo, counts every live and paused room, and opens the rooms on the website.
+- MAME › ROMs only manages the folder: drop zone and file picker, counters (sets, runs, will not run, added, folder size, free space); the game list lives on the website.
+
+### Added
+
+- The device checks go-link's releases on GitHub every 6 hours; the window and My device show a download notice when a newer version is out. My device also shows the device's version.
+- My device › ROMs can choose which picture every browser shows and the device's pictures folder (`set_thumbnails`).
+
 ### Added
 
 - Released v0.1.0 (pre-release): universal macOS dmg, Windows, Linux, Raspberry Pi and Docker, with licenses in every file.

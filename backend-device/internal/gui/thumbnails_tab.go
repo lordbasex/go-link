@@ -58,8 +58,8 @@ type thumbFile struct {
 func newThumbnailsTab(u *ui) *thumbnailsTab {
 	t := &thumbnailsTab{u: u}
 	t.boxart = newStatTile("image", "Boxart", magenta, true)
-	t.title = newStatTile("image", "Title", magenta, true)
-	t.snap = newStatTile("image", "Snap", magenta, true)
+	t.title = newStatTile("image", L("Title"), magenta, true)
+	t.snap = newStatTile("image", L("Snap"), magenta, true)
 	stats := newResponsiveGrid(150, 12, t.boxart.content, t.title.content, t.snap.content)
 
 	t.list = widget.NewList(
@@ -77,15 +77,15 @@ func newThumbnailsTab(u *ui) *thumbnailsTab {
 		return sized(container.NewCenter(l), thumbColumn, 20)
 	}
 	head := container.NewBorder(nil, nil, nil,
-		container.NewHBox(column("Boxart"), column("Title"), column("Snap")),
-		container.New(layout.NewCustomPaddedLayout(0, 0, 8, 0), text("Game", 12, textMuted, true)))
+		container.NewHBox(column("Boxart"), column(L("Title")), column(L("Snap"))),
+		container.New(layout.NewCustomPaddedLayout(0, 0, 8, 0), text(L("Game"), 12, textMuted, true)))
 	list := glassPadded(container.NewBorder(head, nil, nil, nil, t.list), 8, 6)
 
 	t.message = wrapped("")
 	t.message.Hide()
 	drop := glass(container.NewVBox(
-		container.NewHBox(iconImage("download", magenta.accent, 18), text("Drop images or a folder here", 14, white, true)),
-		wrapped("PNG or JPG. go-link matches each image to its game by file name."),
+		container.NewHBox(iconImage("download", magenta.accent, 18), text(L("Drop images or a folder here"), 14, white, true)),
+		wrapped(L("PNG or JPG. go-link matches each image to its game by file name.")),
 		t.message,
 	))
 
@@ -93,17 +93,17 @@ func newThumbnailsTab(u *ui) *thumbnailsTab {
 	example.TextStyle.Monospace = true
 	example.SizeName = theme.SizeNameCaptionText
 	howto := glass(container.NewVBox(
-		text("How to name them", 14, white, true),
-		wrapped("One folder per type, file named after the set or the game title:"),
+		text(L("How to name them"), 14, white, true),
+		wrapped(L("One folder per type, file named after the set or the game title:")),
 		glassPadded(example, 2, 4),
-		wrapped("Thumbnail packs for MAME can be found on the internet. You are responsible for having the right to use them."),
+		wrapped(L("Thumbnail packs for MAME can be found on the internet. You are responsible for having the right to use them.")),
 	))
 
 	t.dir = widget.NewLabel("")
 	t.dir.TextStyle.Monospace = true
 	t.dir.Wrapping = fyne.TextWrapBreak
-	open := widget.NewButtonWithIcon("Open folder", icon("folder", white), t.openFolder)
-	folder := glass(container.NewVBox(text("Thumbnails folder", 14, white, true), t.dir, container.NewHBox(open)))
+	open := widget.NewButtonWithIcon(L("Open folder"), icon("folder", white), t.openFolder)
+	folder := glass(container.NewVBox(text(L("Thumbnails folder"), 14, white, true), t.dir, container.NewHBox(open)))
 
 	// A little room on the right keeps the cards clear of the scroll bar.
 	side := container.NewVScroll(container.New(layout.NewCustomPaddedLayout(0, 0, 0, 8), vstack(drop, howto, folder)))
@@ -178,10 +178,10 @@ func (t *thumbnailsTab) openFolder() {
 
 // dropped imports images or folders dropped while this tab is open.
 func (t *thumbnailsTab) dropped(uris []fyne.URI) {
-	t.showMessage("Reading…")
+	t.showMessage(L("Reading…"))
 	go func() {
 		ok, failed := t.importThumbs(uris, func(i, n int, name string) {
-			fyne.Do(func() { t.showMessage(fmt.Sprintf(importProgress, i, n, name)) })
+			fyne.Do(func() { t.showMessage(Lf("Copying %d / %d · %s", i, n, name)) })
 		})
 		fyne.Do(func() { t.showMessage(thumbResult(ok, failed)) })
 	}()
@@ -238,7 +238,7 @@ func collectThumbs(uris []fyne.URI) (files []thumbFile, skipped []string) {
 			if isImageFile(path) {
 				files = append(files, thumbFile{thumbnails.Boxart, path})
 			} else {
-				skipped = append(skipped, uri.Name()+" (not a PNG or JPG)")
+				skipped = append(skipped, uri.Name()+" ("+L("not a PNG or JPG")+")")
 			}
 		default:
 			if kind, ok := kindOfFolder(filepath.Base(path)); ok {
@@ -298,18 +298,18 @@ func isImageFile(name string) bool {
 
 // thumbResult is the short message after a drop.
 func thumbResult(ok int, failed []string) string {
-	msg := fmt.Sprintf("Added %d thumbnails.", ok)
+	msg := Lf("Added %d thumbnails.", ok)
 	if ok == 1 {
-		msg = "Added 1 thumbnail."
+		msg = L("Added 1 thumbnail.")
 	}
 	if len(failed) > 0 {
 		shown := failed
 		if len(shown) > 5 {
 			shown = shown[:5]
 		}
-		msg += " Not added: " + strings.Join(shown, ", ")
+		msg += " " + L("Not added:") + " " + strings.Join(shown, ", ")
 		if more := len(failed) - len(shown); more > 0 {
-			msg += fmt.Sprintf(" and %d more", more)
+			msg += " " + Lf("and %d more", more)
 		}
 		msg += "."
 	}

@@ -133,7 +133,7 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `auth_ok` | device → linked | `device_id`, `link_id` and, only after a code, the `token` to keep |
 | `auth_failed` | device → linked | Readable `error`. The link no longer exists: the website forgets it and the device hangs up |
 | `unlink` / `unlinked` | both | Remove this browser's link / the link was removed (from the website or the device window) |
-| `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` and the core state (`installed`, `catalog`). Never includes the pairing code |
+| `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` the core state (`installed`, `catalog`), the device's `version` and, when a newer go-link was released, `update` (`latest`, `url` of its GitHub release page; the website only accepts go-link's own releases). Never includes the pairing code |
 | `create_room` | linked → device | `rom`, `title`, `voice`, `chat` (absent = on) and optional `art` (`boxart`, `title` or `snap`). Opens a **new** room |
 | `room_created` / `room_error` | device → linked | `id` (device room), `room_id` (signalhub) or a readable `error`. Some errors carry a `code` the website translates: `too_many_rooms` with `limit`, `no_saves` |
 | `room_action` | linked → device | `id` and `action`: `pause`, `resume`, `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off` |
@@ -144,6 +144,7 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `invite_pass` | device → linked | `id`, `pin`, `expires_at` (or `error`) |
 | `get_thumb` / `thumb` | both | `set`, `kind` (empty = the host's choice) and `size` (`card` 360x480, `mini` 96x128) / the same plus `data` (JPEG, base64) or `missing: true` |
 | `download_core` | linked → device | Download the core and its game list (whatever is missing) |
+| `set_thumbnails` / `thumbnails_result` | both | `kind` (`boxart`, `title` or `snap`) and/or `dir` (a folder on the device, or `default`): which picture everyone sees and where the device reads them, like the window's Settings / `ok`, `error` |
 | `set_roms_dir` / `roms_dir_result` | both | `dir`: absolute path of an existing folder on the device / `dir`, `ok`, `error` |
 | `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error` |
 | `get_history` / `clear_history` | linked → device | Ask for (or clear) the game history. The device answers `history` |

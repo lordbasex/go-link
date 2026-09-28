@@ -20,5 +20,8 @@ type uiOptions struct {
 	games    *services.GameService // nil when rooms are disabled
 	links    *services.LinkService
 	webURL   string // where hosts type the pairing code
-	logger   *slog.Logger
+	// language is the window's language; setLanguage saves a new one.
+	language    string
+	setLanguage func(string) error
+	logger      *slog.Logger
 }

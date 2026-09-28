@@ -42,7 +42,11 @@ type Options struct {
 	Settings *services.SettingsService // host preferences; nil (tests) shows them read-only
 	WebURL   string                    // where hosts type the pairing code
 	Version  string
-	Logger   *slog.Logger
+	// Language is the window's language (en, es, pt, or "" for the
+	// computer's), and SetLanguage saves a new choice in device.json.
+	Language    string
+	SetLanguage func(string) error
+	Logger      *slog.Logger
 }
 
 // section is one entry of the sidebar, with its own palette. Rows with a
@@ -57,14 +61,12 @@ type section struct {
 const (
 	pageOverview = iota
 	pageMAME
-	pageSystem
 	pageSettings
 )
 
 var sections = []section{
 	pageOverview: {"Overview", "device", violet, ""},
 	pageMAME:     {"MAME", "arcade", magenta, "Emulators"},
-	pageSystem:   {"System", "system", azure, ""},
 	pageSettings: {"Settings", "gear", emerald, ""},
 }
 
@@ -86,7 +88,6 @@ type ui struct {
 	mame       *mamePage
 	roms       *romsTab
 	thumbs     *thumbnailsTab
-	system     *systemTab
 	settings   *settingsPage
 	panel      *trayPanel
 	trayMenu   *fyne.Menu
@@ -161,48 +162,12 @@ func newUI(a fyne.App, opts Options) *ui {
 		opts.WebURL = models.DefaultWebURL
 	}
 	u := &ui{opts: opts, app: a}
+	setLanguage(opts.Language)
 	u.win = a.NewWindow("go-link")
 	// The gradient reaches the window edges (Fyne pads by default).
 	u.win.SetPadded(false)
 	u.bg = background(violet)
-
-	u.overview = newOverviewPage(u)
-	u.roms = newRomsTab(u)
-	u.thumbs = newThumbnailsTab(u)
-	u.mame = newMamePage(u)
-	u.system = newSystemTab(u)
-	u.settings = newSettingsPage(u)
-	u.pages = []fyne.CanvasObject{pageOverview: u.overview.content, pageMAME: u.mame.content, pageSystem: u.system.content, pageSettings: u.settings.content}
-	u.page = container.NewStack()
-
-	side := container.New(layout.NewCustomPaddedVBoxLayout(4))
-	group := ""
-	for i, s := range sections {
-		i := i
-		if s.group != "" && s.group != group {
-			heading, label := sidebarHeading(s.group)
-			u.headings = append(u.headings, label)
-			side.Add(heading)
-		}
-		group = s.group
-		row := newSidebarRow(s.title, s.icon, s.pal, func() { u.show(i) })
-		u.rows = append(u.rows, row)
-		if s.group != "" {
-			side.Add(indented(row))
-		} else {
-			side.Add(row)
-		}
-	}
-	brand := container.New(layout.NewCustomPaddedLayout(4, 18, 10, 0), container.NewHBox(iconImage("joystick", white, 22), text("go-link", 15, white, true)))
-	footer := container.New(layout.NewCustomPaddedLayout(0, 0, 10, 0), text("Device "+opts.Version, 11, textFaint, false))
-	sideBg := canvas.NewRectangle(withAlpha(white, 0x0a))
-	divider := canvas.NewRectangle(cardStroke)
-	sidebar := container.NewStack(sideBg, container.New(layout.NewCustomPaddedLayout(18+titleBarInset, 18, 16, 16),
-		container.NewBorder(brand, footer, nil, nil, container.NewVBox(side))))
-	sidebar = container.NewBorder(nil, nil, nil, fixedWidth(1, divider), fixedWidth(228, sidebar))
-	u.main = container.NewBorder(nil, nil, sidebar, nil, container.New(layout.NewCustomPaddedLayout(titleBarInset, 0, 0, 0), u.page))
-
-	u.onboarding = newOnboardingView(u)
+	u.build()
 	u.win.SetContent(container.NewStack(u.bg, u.main))
 	u.win.Resize(u.savedSize())
 	u.win.SetOnDropped(func(_ fyne.Position, uris []fyne.URI) {
@@ -216,6 +181,67 @@ func newUI(a fyne.App, opts Options) *ui {
 		opts.Settings.OnChange(func() { fyne.Do(u.settingsChanged) })
 	}
 	return u
+}
+
+// build makes every page, the sidebar and the pairing view, in the
+// current language.
+func (u *ui) build() {
+	u.overview = newOverviewPage(u)
+	u.roms = newRomsTab(u)
+	u.thumbs = newThumbnailsTab(u)
+	u.mame = newMamePage(u)
+	u.settings = newSettingsPage(u)
+	u.pages = []fyne.CanvasObject{pageOverview: u.overview.content, pageMAME: u.mame.content, pageSettings: u.settings.content}
+	u.page = container.NewStack()
+	u.rows, u.headings = nil, nil
+
+	side := container.New(layout.NewCustomPaddedVBoxLayout(4))
+	group := ""
+	for i, s := range sections {
+		i := i
+		if s.group != "" && s.group != group {
+			heading, label := sidebarHeading(L(s.group))
+			u.headings = append(u.headings, label)
+			side.Add(heading)
+		}
+		group = s.group
+		row := newSidebarRow(L(s.title), s.icon, s.pal, func() { u.show(i) })
+		u.rows = append(u.rows, row)
+		if s.group != "" {
+			side.Add(indented(row))
+		} else {
+			side.Add(row)
+		}
+	}
+	brand := container.New(layout.NewCustomPaddedLayout(4, 18, 10, 0), container.NewHBox(logo(24), text("go-link", 15, white, true)))
+	footer := container.New(layout.NewCustomPaddedLayout(0, 0, 10, 0), text(L("Device")+" "+u.opts.Version, 11, textFaint, false))
+	sideBg := canvas.NewRectangle(withAlpha(white, 0x0a))
+	divider := canvas.NewRectangle(cardStroke)
+	sidebar := container.NewStack(sideBg, container.New(layout.NewCustomPaddedLayout(18+titleBarInset, 18, 16, 16),
+		container.NewBorder(brand, footer, nil, nil, container.NewVBox(side))))
+	sidebar = container.NewBorder(nil, nil, nil, fixedWidth(1, divider), fixedWidth(228, sidebar))
+	u.main = container.NewBorder(nil, nil, sidebar, nil, container.New(layout.NewCustomPaddedLayout(titleBarInset, 0, 0, 0), u.page))
+	u.onboarding = newOnboardingView(u)
+}
+
+// relanguage rebuilds the window in the new language, on the same page.
+func (u *ui) relanguage() {
+	setLanguage(u.opts.Language)
+	page := u.current
+	u.build()
+	u.settings.showCategory(settingsGeneral)
+	u.showing = ""
+	u.current = page
+	u.render(u.last)
+	u.show(page)
+	if u.panel != nil {
+		u.panel = newTrayPanel(u, u.panel.win)
+	}
+	if u.trayMenu != nil {
+		u.trayMenu.Items[2].Label = L("Open go-link")
+		u.trayCode.Label = ""
+		u.renderTray(u.last)
+	}
 }
 
 // show switches the section.
@@ -292,7 +318,6 @@ func (u *ui) render(st models.Status) {
 	u.mame.render(st)
 	u.roms.render(st)
 	u.thumbs.render(st)
-	u.system.render(st)
 	u.settings.render(st)
 	if u.panel != nil {
 		u.panel.render(st)
@@ -316,7 +341,7 @@ func (u *ui) setupTray() {
 	}
 	u.trayCode = fyne.NewMenuItem("", nil)
 	u.trayCode.Disabled = true
-	show := fyne.NewMenuItem("Open go-link", u.showWindow)
+	show := fyne.NewMenuItem(L("Open go-link"), u.showWindow)
 	u.trayMenu = fyne.NewMenu("go-link", u.trayCode, fyne.NewMenuItemSeparator(), show)
 	desk.SetSystemTrayMenu(u.trayMenu)
 	desk.SetSystemTrayIcon(trayResource())
@@ -337,7 +362,7 @@ func (u *ui) renderTray(st models.Status) {
 	if u.trayCode == nil {
 		return
 	}
-	label := "Pairing code: " + codeOrDashes(st.Pairing.Code)
+	label := L("Pairing code:") + " " + codeOrDashes(st.Pairing.Code)
 	if u.linked(st) {
 		label = linkedSummary(st)
 	}
@@ -350,11 +375,11 @@ func (u *ui) renderTray(st models.Status) {
 func linkedSummary(st models.Status) string {
 	switch n := len(st.Peers); n {
 	case 0:
-		return "Linked · no browser online"
+		return L("Linked · no browser online")
 	case 1:
-		return "Linked · 1 browser online"
+		return L("Linked · 1 browser online")
 	default:
-		return "Linked · " + itoa(n) + " browsers online"
+		return Lf("Linked · %d browsers online", n)
 	}
 }
 

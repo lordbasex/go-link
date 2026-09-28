@@ -14,16 +14,18 @@ func runUI(o uiOptions) {
 		return
 	}
 	gui.Run(gui.Options{
-		Ctx:      o.ctx,
-		Quit:     o.quit,
-		Status:   o.status,
-		Library:  o.library,
-		Games:    o.games,
-		Links:    o.links,
-		Settings: o.settings,
-		WebURL:   o.webURL,
-		Version:  version,
-		Logger:   o.logger,
+		Ctx:         o.ctx,
+		Quit:        o.quit,
+		Status:      o.status,
+		Library:     o.library,
+		Games:       o.games,
+		Links:       o.links,
+		Settings:    o.settings,
+		WebURL:      o.webURL,
+		Language:    o.language,
+		SetLanguage: o.setLanguage,
+		Version:     version,
+		Logger:      o.logger,
 	})
 }
 

@@ -89,6 +89,7 @@ Created on the first run with mode `0600`:
 | `rooms` | The saved game rooms and their state |
 | `links` | Linked browsers: `id`, `token_hash` (SHA-256 of the token, never the token), `created_at`, `last_seen`, and the terms of use version accepted (`terms`, `terms_at`) |
 | `panel_token` | UUID token of the local web panel (headless only) |
+| `language` | Language of the window: `en`, `es` or `pt` (empty follows the computer) |
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.
 - STUN and TURN are **not** stored here.
@@ -107,11 +108,10 @@ The device locks `device.lock` next to `device.json` (`flock` on macOS and Linux
 
 | Section | Content |
 |---|---|
-| **Overview** | What the device is doing: rooms, spectators, browsers, CPU, memory, network, streaming (fps, kbps, resolution), players, latency; **Link another browser** and **Unlink all** |
-| **Emulators › MAME › ROMs** | Core and game list status (download what is missing), ROM folder, each set's validation with its thumbnail, a filter and search, **Play**, and drag and drop of `.zip` files |
+| **Overview** | The app's logo and what the device is doing: rooms (live, paused), people playing, linked browsers, CPU, memory, network, streaming, players, latency; a notice with a download button when a newer go-link is released; **Open go-link** (the rooms on the website), **Link another browser**, **Unlink all**; and **This computer**: system, processor, memory, device ID, version and website |
+| **Emulators › MAME › ROMs** | Folder management only: emulator status and download, the ROM folder (choose, open), a drop zone (and a file picker) that copies `.zip` sets into it, and counters: sets, runs, will not run, added from the window, folder size and free space. Every game, its check and Play are on the website |
 | **Emulators › MAME › Thumbnails** | How many sets have Boxart, Title and Snap, the list per game, how to name images. Dropping images saves them; dropping a folder with `Named_Boxarts`, `Named_Titles` and `Named_Snaps` saves each in its kind |
-| **System** | Hardware, live usage, device identity and version |
-| **Settings** | Thumbnails (kind, size, folder), rooms (`max_rooms`, where saves go) and network (signaling server, STUN/TURN received) |
+| **Settings** | **General**: the window's language (Automatic, English, Español, Português; kept in `device.json` as `language`). **Thumbnails**: which picture is shown and the folder. **Rooms** and **Network**: `max_rooms`, where saves go, the signaling server and the STUN/TURN received |
 
 - **Menu bar panel:** a click on the tray icon opens a small panel with status, CPU, memory, network, streaming, players and browsers (and the code while nothing is linked). Right click opens the menu. On macOS the panel appears under the icon and closes when clicking outside (`panel_darwin.m`).
 - Closing the window hides it; the device keeps running in the tray. **Quit** in the tray stops it.
@@ -129,6 +129,10 @@ A device **without a window** (Raspberry Pi, server, Docker, or `--headless`) op
 - **The website knows it is the panel** because the device adds `<meta name="go-link-panel">` when serving `index.html`. The link with the device then goes over the local WebSocket, so it works on a LAN without internet.
 - **Playing from the panel:** the public signaling server does not accept the panel's origin, so panel rooms also go through the device's WebSocket. The website opens a second socket in room mode (`{"type":"panel","mode":"room"}`, no data channel) and sends `join` with a `room_id`, `invite` or `code`, as on signalhub. Guests from the internet still join through the official website with their invitation.
 - On the panel, `/` opens My device until a browser is linked, then the rooms. The landing page is not shown.
+
+## Updates
+
+A few seconds after starting, and every 6 hours, the device reads go-link's public releases list on GitHub. When a newer version than its own is out, the window's Overview and the linked website show it with a link to the release page. Nothing is downloaded or installed by itself, and development builds (without a version tag) never check.
 
 ## Metrics
 

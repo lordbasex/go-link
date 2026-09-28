@@ -158,6 +158,11 @@ func (s *StatusService) SetPeerLatency(peerID string, ms int) {
 }
 
 // SetSavedLinks records how many browsers are remembered.
+// SetUpdate records a newer go-link release (nil: none).
+func (s *StatusService) SetUpdate(u *models.UpdateInfo) {
+	s.update(func(st *models.Status) { st.Update = u })
+}
+
 func (s *StatusService) SetSavedLinks(n int) {
 	s.update(func(st *models.Status) { st.SavedLinks = n })
 }
