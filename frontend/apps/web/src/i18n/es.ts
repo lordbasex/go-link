@@ -715,7 +715,17 @@ export const es: Messages = {
     },
     error: (reason: string) => `No se pudo: ${reason}`,
   },
-  notFound: { title: "Página no encontrada", back: "Volver a las salas" },
+  notFound: {
+    title: "Página no encontrada",
+    back: "Volver a las salas",
+    eyebrow: "Error 404",
+    gameOver: "GAME OVER",
+    insertCoin: "INSERT COIN TO CONTINUE",
+    text: "Esta dirección no lleva a ninguna pantalla de go-link. Puede estar mal escrita, o el link puede ser viejo.",
+    address: "Dirección",
+    home: "Ir al inicio",
+    device: "Mi dispositivo",
+  },
   invite: {
     button: "Invitar",
     title: (name: string) => `Invitar a “${name}”`,

@@ -37,6 +37,7 @@ export interface LegalTexts {
     readonly legalDoc: string;
     readonly rights: string;
     readonly trademark: string;
+    readonly version: string;
     readonly github: string;
     readonly noRoms: string;
   };
@@ -236,6 +237,7 @@ export const legalEn: LegalTexts = {
     rights: "go-link. Code released under the MIT license.",
     trademark:
       "MAME® is a registered trademark of Gregory Ember. go-link is not affiliated with or endorsed by MAMEdev or libretro. Game names and logos belong to their owners.",
+    version: "Website version",
     github: "go-link on GitHub",
     noRoms: "go-link does not host, include or download any ROM, BIOS or game image.",
   },

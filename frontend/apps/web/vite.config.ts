@@ -23,7 +23,13 @@ function contentSecurityPolicy(): Plugin {
     name: "content-security-policy",
     apply: "build",
     transformIndexHtml(html) {
-      return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`);
+      // The build's version, to check which one a server is serving
+      // (curl -s https://go-link.org/ | grep go-link-version).
+      const version = (process.env.VITE_APP_VERSION || "dev").replace(/[^\w.+-]/g, "");
+      return html.replace(
+        "<head>",
+        `<head>\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />\n    <meta name="go-link-version" content="${version}" />`,
+      );
     },
   };
 }

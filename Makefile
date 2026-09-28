@@ -72,10 +72,11 @@ NODE_ENV_SETUP = if [ -s "$${NVM_DIR:-$$HOME/.nvm}/nvm.sh" ]; then \
 	echo "Node $$(node -v)"
 
 web-build:
-	@echo "$(YELLOW)Building the website for $(SIGNAL_URL)...$(NC)"
+	@echo "$(YELLOW)Building the website $(VERSION) for $(SIGNAL_URL)...$(NC)"
 	rm -rf $(WEB_DIST)
 	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
-		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_DEMO_DATA=false npm run build
+		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
+		VITE_BUILD_DATE=$$(date -u +%Y-%m-%d) npm run build
 	@find $(WEB_DIST) -name "*.map" -delete
 	@echo "$(GREEN)✓ Website built in $(WEB_DIST)$(NC)"
 

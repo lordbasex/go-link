@@ -196,6 +196,7 @@ export const legalEs: LegalTexts = {
     rights: "go-link. Código publicado bajo la licencia MIT.",
     trademark:
       "MAME® es una marca registrada de Gregory Ember. go-link no está afiliado ni respaldado por MAMEdev ni libretro. Los nombres y logos de los juegos pertenecen a sus dueños.",
+    version: "Versión del sitio",
     github: "go-link en GitHub",
     noRoms: "go-link no aloja, incluye ni descarga ninguna ROM, BIOS ni imagen de juego.",
   },

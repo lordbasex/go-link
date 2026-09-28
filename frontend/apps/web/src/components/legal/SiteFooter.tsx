@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { t } from "../../i18n";
 import { Brand } from "../Headers";
 import { GithubIcon } from "../Icons";
-import { REPO_URL } from "../../config";
+import { APP_VERSION, BUILD_DATE, REPO_URL } from "../../config";
 
 /** The site's footer: links, licenses, trademarks and the legal pages. */
 export function SiteFooter() {
@@ -53,6 +53,10 @@ export function SiteFooter() {
           © 2026 {f.rights} {f.noRoms}
         </p>
         <p>{f.trademark}</p>
+        <p className="site-footer-version">
+          {f.version}: <code>{APP_VERSION}</code>
+          {BUILD_DATE && ` · ${BUILD_DATE}`}
+        </p>
       </div>
     </footer>
   );

@@ -702,7 +702,17 @@ export const en = {
     },
     error: (reason: string) => `Could not do it: ${reason}`,
   },
-  notFound: { title: "Page not found", back: "Back to rooms" },
+  notFound: {
+    title: "Page not found",
+    back: "Back to rooms",
+    eyebrow: "Error 404",
+    gameOver: "GAME OVER",
+    insertCoin: "INSERT COIN TO CONTINUE",
+    text: "This address does not lead to any screen of go-link. It may be mistyped, or the link may be old.",
+    address: "Address",
+    home: "Go to the home page",
+    device: "My device",
+  },
   invite: {
     button: "Invite",
     title: (name: string) => `Invite to “${name}”`,

@@ -4,4 +4,6 @@
 interface ImportMetaEnv {
   readonly VITE_SIGNAL_URL?: string;
   readonly VITE_DEMO_DATA?: string;
+  readonly VITE_APP_VERSION?: string;
+  readonly VITE_BUILD_DATE?: string;
 }

@@ -14,3 +14,7 @@ export const LOBBY_REFRESH_MS = 15_000;
 
 /** The project's source repository. */
 export const REPO_URL = "https://github.com/lordbasex/go-link";
+
+/** This build of the website (git describe, set by `make web-build`), and its date. */
+export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "dev";
+export const BUILD_DATE = import.meta.env.VITE_BUILD_DATE || "";
