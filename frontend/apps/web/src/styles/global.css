@@ -1679,8 +1679,11 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
 .docs-tabpanel[hidden] { display: none; }
 .dash-update { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 16px; border-color: var(--color-accent); }
 /* Portrait phones without the touch pad: the vertical dock is taller than
-   the video there, so it becomes one row along the bottom of the video. */
+   the video there, so it becomes one compact row along the bottom of the
+   video (groups in a row, no level meter). */
 @media (orientation: portrait) and (max-width: 700px) {
-  .video-stage:not(.has-touchpad) { --ctl: 30px; }
-  .video-stage:not(.has-touchpad) .video-toolbar { flex-direction: row; flex-wrap: wrap; justify-content: center; top: auto; bottom: 8px; left: 50%; right: auto; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 5px 7px; gap: 6px; }
+  .video-stage:not(.has-touchpad) { --ctl: 28px; }
+  .video-stage:not(.has-touchpad) .video-toolbar { flex-direction: row; flex-wrap: nowrap; top: auto; bottom: 6px; left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100% - 12px); overflow-x: auto; padding: 4px 6px; gap: 5px; }
+  .video-stage:not(.has-touchpad) .dock-group { flex-direction: row; padding: 0 5px 0 0; margin: 0; border-bottom: none; border-right: 1px solid var(--color-border-input); gap: 5px; }
+  .video-stage:not(.has-touchpad) .mini-meter { display: none; }
 }
