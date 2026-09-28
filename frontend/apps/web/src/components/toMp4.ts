@@ -12,6 +12,8 @@
 // default, what phones and chat apps play), the game alone and the voices
 // alone, each at the volume set in the preview.
 
+import { createWatermark } from "./watermark";
+
 const BASE = import.meta.env.BASE_URL;
 const SCRIPT = `${BASE}mp4/wasm_exec.js`;
 const BINARY = `${BASE}mp4/mp4.wasm`;
@@ -247,6 +249,12 @@ export interface Mp4Gains {
   voices: number;
 }
 
+/** Export options besides the volumes. */
+export interface Mp4Options {
+  /** The go-link icon over the picture (beats and moves between corners). */
+  watermark?: boolean;
+}
+
 /**
  * A soft limiter: untouched below 0.9, then bent towards 1 so peaks never
  * clip (a hard cut crackles).
@@ -266,6 +274,7 @@ export async function webmToMp4(
   gains: Mp4Gains,
   onProgress: (f: number) => void,
   signal: AbortSignal,
+  options: Mp4Options = {},
 ): Promise<Blob> {
   if (!canMakeMp4()) throw new Mp4Unsupported("no WebCodecs");
   const go = await loadGo();
@@ -301,6 +310,7 @@ export async function webmToMp4(
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Mp4Unsupported("no canvas");
     ctx.imageSmoothingEnabled = false;
+    const mark = options.watermark ? await createWatermark(W, H, endUs) : null;
     let done = 0;
     let lastKey = -Infinity;
     const encoder = new VideoEncoder({
@@ -318,6 +328,7 @@ export async function webmToMp4(
       output: (frame) => {
         try {
           ctx.drawImage(frame, 0, 0, W, H);
+          mark?.(ctx, frame.timestamp);
           const ts = frame.timestamp;
           const out = new VideoFrame(canvas, { timestamp: ts });
           const key = ts - lastKey >= 2_000_000; // a key frame every 2 s

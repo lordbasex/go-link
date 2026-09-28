@@ -269,6 +269,7 @@ export const docsPt: Docs = {
             "O arquivo vem do dispositivo pela conexão direta, em partes de 60 KB, com progresso, botão para cancelar e verificação SHA-256.",
             "Se alguém falou, abre uma **prévia**: dê play e ajuste os volumes de **Jogo** e **Vozes** (de 0 a 300 %). Um medidor avisa se a mixagem satura.",
             "**Exportar MP4**: seu navegador converte para MP4 (vídeo H.264, som AAC, a imagem ampliada com pixels nítidos). O dispositivo não participa.",
+            "Todo vídeo exportado leva o ícone do go-link: pulsa devagar e pula para outro canto a cada 8 a 15 segundos, assim não dá para cortá-lo. As capturas de tela não levam marca.",
           ],
         },
         {
