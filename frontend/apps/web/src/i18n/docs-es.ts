@@ -426,7 +426,7 @@ export const docsEs: Docs = {
         { t: "p", text: "Si la sala muestra **relay**, configura un [puerto UDP fijo](/docs/connection). Una conexión por cable en la computadora del anfitrión también ayuda." },
         { t: "h2", id: "browser", text: "El video nunca empieza" },
         { t: "p", text: "Prueba otro navegador: Chrome y Edge funcionan mejor. Algunas redes bloquean la conexión; entonces se usa el relay." },
-        { t: "h2", id: "pin", text: "“Ya entró alguien con esta invitación”" },
+        { t: "h2", id: "pin", text: "“Alguien ya entró con esta invitación”" },
         { t: "p", text: "Cada PIN sirve para una persona. Pídele al anfitrión una invitación nueva." },
         { t: "h2", id: "restart", text: "Un juego empieza desde el principio" },
         { t: "p", text: "El emulador no puede guardar ese juego por completo, así que go-link siempre lo empieza de cero. Pausa la sala en lugar de archivarla." },

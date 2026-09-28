@@ -426,7 +426,7 @@ export const docsEn: Docs = {
         { t: "p", text: "If the room shows **relay**, set up a [fixed UDP port](/docs/connection). A wired connection on the host's computer helps too." },
         { t: "h2", id: "browser", text: "The video never starts" },
         { t: "p", text: "Try another browser: Chrome and Edge work best. Some networks block the connection; the relay is used then." },
-        { t: "h2", id: "pin", text: "“Someone already joined with this invitation”" },
+        { t: "h2", id: "pin", text: "“Someone already came in with this invitation”" },
         { t: "p", text: "Each PIN works for one person. Ask the host for a new invitation." },
         { t: "h2", id: "restart", text: "A game starts from the beginning" },
         { t: "p", text: "That game cannot be saved completely by the emulator, so go-link always starts it fresh. Pause it instead of archiving it." },
