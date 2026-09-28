@@ -1961,7 +1961,7 @@ body .video-stage.has-touchpad.is-console .video-rec { top: calc(var(--sy) + 44p
 .wz-card { border-radius: 14px; background: #161a23; border: 1px solid #2a3040; }
 .wz-laptop { position: relative; width: 300px; height: 210px; display: flex; flex-direction: column; align-items: center; }
 .wz-drop { position: absolute; top: 18px; left: 118px; z-index: 2; width: 64px; height: 64px; border-radius: 18px; background: #f2a33a; color: #1a1206; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgb(242 163 58 / .35); animation: wz-drop 1.8s ease-out infinite; }
-.wz-screen { margin-top: 40px; width: 260px; height: 150px; box-sizing: border-box; border: 3px solid #3a4256; border-radius: 12px 12px 4px 4px; background: #0d1017; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px; font: 700 18px var(--font-title); color: #5b6479; }
+.wz-screen { margin-top: 40px; width: 260px; height: 150px; box-sizing: border-box; border: 3px solid #3a4256; border-radius: 12px 12px 4px 4px; background: #0d1017; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px; font: 700 18px var(--font-title); color: #9aa3b8; }
 .wz-base { width: 300px; height: 12px; border-radius: 0 0 10px 10px; background: #3a4256; }
 .wz-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 600px; }
 .wz-chip { padding: 8px 14px; border-radius: 999px; border: 1px solid #3a4256; background: #161a23; color: #c4cad6; font-size: 14px; }
