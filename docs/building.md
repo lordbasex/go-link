@@ -7,7 +7,7 @@
 | Device | Go (version in `backend-device/go.mod`), a C compiler, `pkg-config`, **libvpx** and **libopus** (cgo) |
 | Device window on Linux | OpenGL, X11 and Wayland development packages (`libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols`) |
 | Website | Node.js (version in `frontend/.nvmrc`) and npm |
-| Cross builds | Docker with `buildx` (Linux and Windows device builds run in containers) |
+| Cross builds | Docker with `buildx` (Linux and Windows device builds run in containers); `nasm` for the macOS Intel build (`brew install nasm`) |
 | End-to-end tests | A clone of [signalhub](https://github.com/lordbasex/signalhub) next to this repository (`../signaling`) or `SIGNALING_DIR` |
 
 Install the device's C libraries:
@@ -18,7 +18,7 @@ Install the device's C libraries:
 | Debian/Ubuntu | `sudo apt install libvpx-dev libopus-dev pkg-config` |
 | Windows (MSYS2) | `pacman -S mingw-w64-x86_64-libvpx mingw-w64-x86_64-opus mingw-w64-x86_64-pkg-config` |
 
-These libraries are needed **only to build**. The `Makefile` builds link them statically, so the binaries run without them.
+These libraries are needed **only to build** and to run `go test`. The release builds link them statically (on macOS, built from source by `build/macos/static-libs.sh`), so the binaries run without them.
 
 ## Makefile
 
@@ -29,9 +29,10 @@ These libraries are needed **only to build**. The `Makefile` builds link them st
 | `make all` | Website and device for every platform |
 | `make web-build` | Builds the website for `wss://signal.go-link.org/ws` (`SIGNAL_URL=…` changes it) into `frontend/apps/web/dist`, without source maps |
 | `make web-deploy` | Builds and uploads the website with the local hosting file (see [deploy.md](deploy.md#website)) |
-| `make device` | The device for macOS, Linux (window and headless) and Windows, amd64 and arm64, into `dist/device/` |
+| `make device` | The device for macOS (universal), Linux (window and headless) and Windows, amd64 and arm64, into `dist/device/` |
+| `make device-darwin-universal` | The macOS app for Intel and Apple silicon in one binary, for macOS 12 or later, from any Mac |
 | `make device-darwin-amd64` | One platform. Also `-darwin-arm64`, `-linux-amd64`, `-linux-arm64`, `-linux-amd64-headless`, `-linux-arm64-headless`, `-windows-amd64`, `-windows-arm64` |
-| `make device-dmg` | The macOS app in a drag-to-Applications `.dmg` |
+| `make device-dmg` | The universal macOS app in a drag-to-Applications `.dmg` |
 | `make panel` | Builds the website into `backend-device/web/panel/dist`, the panel that headless devices serve (device builds do it when it is missing) |
 | `make device-docker` | The `go-link-device` image (headless, panel on :7373) in the local Docker |
 | `make device-docker-oci` | The same image for amd64 and arm64, as an OCI archive in `dist/docker/` |
@@ -40,7 +41,7 @@ These libraries are needed **only to build**. The `Makefile` builds link them st
 
 How the device is built on each system (cgo: libvpx, libopus and, with the window, OpenGL):
 
-- **macOS:** natively, each Mac its own architecture. libvpx and Opus are linked statically from Homebrew's `.a` files. On an Intel Mac arm64 is skipped with a notice, and the other way around.
+- **macOS:** on any Mac, both architectures: clang builds x86_64 and arm64 with the same SDK. `backend-device/build/macos/static-libs.sh` builds libvpx and Opus from source (pinned versions and SHA-256) for each architecture and for macOS 12, cached in `dist/.macos-libs/`, and `lipo` joins both device binaries into one universal app. Homebrew's copies are not used: they only exist for the Mac's own CPU and require the macOS they were built on.
 - **Linux:** in Docker (`backend-device/build/linux.Dockerfile`), the other architecture through QEMU, with static libvpx and Opus.
 - **Windows:** in Docker with llvm-mingw (`backend-device/build/windows.Dockerfile`), with libvpx and libopus built statically: the `.exe` needs no DLLs.
 
@@ -57,9 +58,9 @@ The emulator core is not in any binary: it is downloaded on first use (see [emul
 
 ## macOS app
 
-On macOS the device ships as **`go-link.app`**, not a bare executable (which the Finder would open through Terminal). It has its `Info.plist` (`org.go-link.device`), an `.icns` icon made from the logo and an ad hoc signature.
+On macOS the device ships as one universal **`go-link.app`** (Intel and Apple silicon, macOS 12 or later), not a bare executable (which the Finder would open through Terminal). It has its `Info.plist` (`org.go-link.device`), an `.icns` icon made from the logo and an ad hoc signature.
 
-`make device-dmg` builds `dist/device/go-link-<version>-macos-<arch>.dmg` (with its `.sha256`): the app on the left, a shortcut to Applications on the right, on a dark background with an amber arrow (`backend-device/build/macos/dmg-background.swift`). `backend-device/build/macos/make-dmg.sh` uses only macOS tools (`hdiutil`, `SetFile`, `osascript`, `swift`). The first time, macOS asks for permission for the terminal to control the Finder (the window layout); without it the `.dmg` is made without the background.
+`make device-dmg` builds `dist/device/go-link-<version>-macos-universal.dmg` (with its `.sha256`): the app on the left, a shortcut to Applications on the right, on a dark background with an amber arrow (`backend-device/build/macos/dmg-background.swift`). `backend-device/build/macos/make-dmg.sh` uses only macOS tools (`hdiutil`, `SetFile`, `osascript`, `swift`). The first time, macOS asks for permission for the terminal to control the Finder (the window layout); without it the `.dmg` is made without the background.
 
 ## Releases
 
@@ -67,14 +68,14 @@ On macOS the device ships as **`go-link.app`**, not a bare executable (which the
 
 | File | For |
 |---|---|
-| `go-link-v0.1.0-macos-amd64.dmg` (and `-arm64`, built on an Apple silicon Mac) | macOS: drag to Applications |
+| `go-link-v0.1.0-macos-universal.dmg` | macOS 12 or later, Intel and Apple silicon: drag to Applications |
 | `go-link-v0.1.0-windows-amd64.zip` / `-arm64.zip` | Windows: the `.exe`, no console |
 | `go-link-v0.1.0-linux-amd64.tar.gz` / `-arm64.tar.gz` | Linux desktops |
 | `go-link-v0.1.0-linux-amd64-headless.tar.gz` / `-arm64-headless.tar.gz` | Raspberry Pi and servers (no window, web panel) |
 | `go-link-v0.1.0-docker.oci.tar.gz` (with `DOCKER=1`) | The Docker image, for `docker load` |
 | `SHA256SUMS` | To verify the downloads |
 
-It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from the repository's tap) and, with `gh`, creates the `v0.1.0` release on `lordbasex/go-link` (`REPO=…` changes it) with every file and generated notes. `SKIP_BUILD=1` packs what is already in `dist/device` (for example after adding the arm64 `.dmg` from another Mac), and `GITHUB_RELEASE=0` only builds the files.
+It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from the repository's tap) and, with `gh`, creates the `v0.1.0` release on `lordbasex/go-link` (`REPO=…` changes it) with every file and generated notes. `SKIP_BUILD=1` packs what is already in `dist/device`, and `GITHUB_RELEASE=0` only builds the files.
 
 **Development mode (today):** without an Apple Developer ID, the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: right click › Open.
 

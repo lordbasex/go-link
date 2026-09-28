@@ -7,7 +7,7 @@
 #   make web-deploy   build and upload the website (deploy/local/hosting.mk)
 #   make help         everything else
 
-.PHONY: all e2e release panel device-dmg device-docker device-docker-oci help info web-build web-deploy hosting-help \
+.PHONY: all e2e release panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy hosting-help \
 	device device-windows device-windows-amd64 device-windows-arm64 clean
 
 # The darwin and linux device targets are pattern rules (device-darwin-%,
@@ -106,13 +106,13 @@ e2e:
 release:
 	./scripts/release.sh
 
-# macOS installer: go-link.app in a drag-to-Applications disk image
-# (dist/device/go-link-<version>-macos-<arch>.dmg), in the go-link style.
-# With CODESIGN_IDENTITY="Developer ID Application: ..." the image is signed.
-device-dmg: device-darwin-$(HOST_ARCH)
-	@if [ "$(HOST_OS)" != "darwin" ]; then echo "$(YELLOW)⚠ The .dmg is made on a Mac$(NC)"; exit 0; fi; \
-	CODESIGN_IDENTITY="$(CODESIGN_IDENTITY)" $(DEVICE_DIR)/build/macos/make-dmg.sh $(DEVICE_OUT)/darwin-$(HOST_ARCH)/go-link.app \
-		$(DEVICE_OUT)/go-link-$(VERSION)-macos-$(HOST_ARCH).dmg
+# macOS installer: the universal go-link.app in a drag-to-Applications disk
+# image (dist/device/go-link-<version>-macos-universal.dmg), in the go-link
+# style. With CODESIGN_IDENTITY="Developer ID Application: ..." the image
+# is signed.
+device-dmg: device-darwin-universal
+	CODESIGN_IDENTITY="$(CODESIGN_IDENTITY)" $(DEVICE_DIR)/build/macos/make-dmg.sh $(DEVICE_OUT)/darwin-universal/go-link.app \
+		$(DEVICE_OUT)/go-link-$(VERSION)-macos-universal.dmg
 
 # The local web panel of headless devices: the website, built and copied
 # into the device, which embeds it (backend-device/web). `make panel`
@@ -126,44 +126,55 @@ panel: web-build
 $(PANEL_DIST)/index.html:
 	@$(MAKE) panel
 
-device: device-darwin-amd64 device-darwin-arm64 \
+device: $(if $(filter darwin,$(HOST_OS)),device-darwin-universal) \
 	device-linux-amd64 device-linux-arm64 device-linux-amd64-headless device-linux-arm64-headless \
 	device-windows-amd64 device-windows-arm64
 
-# macOS builds natively as an app bundle (go-link.app): opened from the
-# Finder it runs like any Mac app, without a Terminal window; from a
-# terminal, go-link.app/Contents/MacOS/go-link-device takes the flags and
-# subcommands. It is signed ad hoc (codesign -s -); to hand it to other
-# people it needs a Developer ID signature and notarization.
-# Each Mac builds its own architecture with the
-# Homebrew libraries of that architecture (brew install libvpx opus).
-# libvpx and libopus are linked statically (a folder with only their .a
-# files goes first in the search), so the binary runs on a Mac without
-# Homebrew. -Wl,-w hides the linker's notes about Homebrew's assembler
-# objects (no platform load command), which are harmless.
-device-darwin-%: $(PANEL_DIST)/index.html
-	@if [ "$(HOST_OS)" != "darwin" ] || [ "$(HOST_ARCH)" != "$*" ]; then \
-		echo "$(YELLOW)⚠ Skipping darwin/$*: build it on a Mac with that CPU (this is $(HOST_OS)/$(HOST_ARCH))$(NC)"; \
-	else \
-		echo "$(YELLOW)Building the device for darwin/$*...$(NC)"; \
-		APP=$(DEVICE_OUT)/darwin-$*/go-link.app && \
-		rm -rf $(DEVICE_OUT)/darwin-$* && mkdir -p $$APP/Contents/MacOS $$APP/Contents/Resources $(DIST)/.static-darwin-$* && \
-		ln -sf "$$(brew --prefix libvpx)/lib/libvpx.a" "$$(brew --prefix opus)/lib/libopus.a" $(DIST)/.static-darwin-$*/ && \
-		cd $(DEVICE_DIR) && CGO_ENABLED=1 CGO_LDFLAGS="-L$(DIST)/.static-darwin-$* -Wl,-w" \
-			go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" \
-			-o $$APP/Contents/MacOS/go-link-device ./cmd/device && \
-		sed -e "s|@VERSION@|$(VERSION)|" -e "s|@SHORT_VERSION@|$(SHORT_VERSION)|" build/macos/Info.plist > $$APP/Contents/Info.plist && \
-		rm -rf $(DIST)/.iconset && go run ./build/macos/appicon $(DIST)/.iconset/go-link.iconset && \
-		iconutil -c icns -o $$APP/Contents/Resources/go-link.icns $(DIST)/.iconset/go-link.iconset && \
-		if [ "$(CODESIGN_IDENTITY)" = "-" ]; then \
-			echo "$(YELLOW)⚠ Development build: ad hoc signature (set CODESIGN_IDENTITY to sign with a Developer ID)$(NC)"; \
-			codesign --force --sign - $$APP; \
-		else \
-			codesign --force --options runtime --timestamp \
-				--entitlements build/macos/entitlements.plist --sign "$(CODESIGN_IDENTITY)" $$APP; \
-		fi && \
-		echo "$(GREEN)✓ $$APP$(NC)"; \
-	fi
+# macOS ships as an app bundle (go-link.app): opened from the Finder it
+# runs like any Mac app, without a Terminal window; from a terminal,
+# go-link.app/Contents/MacOS/go-link-device takes the flags and
+# subcommands. The release is one universal app (Intel + Apple silicon),
+# made on either kind of Mac: clang builds both architectures, and
+# build/macos/static-libs.sh builds libvpx and libopus from source for
+# each one and for macOS $(MIN_MACOS), linked statically (Homebrew's copies
+# only fit this Mac's CPU and macOS version). It is signed ad hoc
+# (codesign -s -); to hand it to other people it needs a Developer ID
+# signature and notarization. -Wl,-w hides the linker's notes about the
+# assembler objects (no platform load command), which are harmless.
+MIN_MACOS      = 12.0
+MACOS_LIBS     = $(DIST)/.macos-libs
+MACOS_CLANG    = $$(xcrun -f clang)
+clang_arch     = $(if $(filter amd64,$(1)),x86_64,arm64)
+
+# The device binary of one architecture: dist/device/darwin-<arch>/go-link-device.
+$(DEVICE_OUT)/darwin-%/go-link-device: $(PANEL_DIST)/index.html FORCE
+	@if [ "$(HOST_OS)" != "darwin" ]; then echo "$(RED)✗ macOS builds need a Mac$(NC)"; exit 1; fi
+	@echo "$(YELLOW)Building the device for darwin/$* (macOS $(MIN_MACOS)+)...$(NC)"
+	@$(DEVICE_DIR)/build/macos/static-libs.sh $* $(MACOS_LIBS)/$*
+	@mkdir -p $(DEVICE_OUT)/darwin-$*
+	cd $(DEVICE_DIR) && GOOS=darwin GOARCH=$* CGO_ENABLED=1 \
+		CC="$(MACOS_CLANG) -arch $(call clang_arch,$*)" \
+		MACOSX_DEPLOYMENT_TARGET=$(MIN_MACOS) SDKROOT="$$(xcrun --sdk macosx --show-sdk-path)" \
+		PKG_CONFIG_LIBDIR=$(MACOS_LIBS)/$*/lib/pkgconfig \
+		CGO_CFLAGS="-O2 -mmacosx-version-min=$(MIN_MACOS)" \
+		CGO_LDFLAGS="-mmacosx-version-min=$(MIN_MACOS) -Wl,-w" \
+		go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" \
+		-o $(DEVICE_OUT)/darwin-$*/go-link-device ./cmd/device
+
+# One architecture's app, for development: dist/device/darwin-<arch>/go-link.app.
+device-darwin-%: $(DEVICE_OUT)/darwin-%/go-link-device
+	@$(DEVICE_DIR)/build/macos/make-app.sh $(DEVICE_OUT)/darwin-$*/go-link-device \
+		$(DEVICE_OUT)/darwin-$*/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)"
+
+# The release app: both architectures in one binary (lipo),
+# dist/device/darwin-universal/go-link.app.
+device-darwin-universal: $(DEVICE_OUT)/darwin-amd64/go-link-device $(DEVICE_OUT)/darwin-arm64/go-link-device
+	@mkdir -p $(DEVICE_OUT)/darwin-universal
+	lipo -create -output $(DEVICE_OUT)/darwin-universal/go-link-device $^
+	@$(DEVICE_DIR)/build/macos/make-app.sh $(DEVICE_OUT)/darwin-universal/go-link-device \
+		$(DEVICE_OUT)/darwin-universal/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)"
+
+FORCE:
 
 # Linux builds in Docker (the other architecture through QEMU).
 device-linux-%-headless: $(PANEL_DIST)/index.html
@@ -227,7 +238,8 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Device:$(NC)"
 	@echo "  make device                  every platform into dist/device/"
-	@echo "  make device-darwin-amd64     also: -darwin-arm64 (native, on a Mac of that CPU)"
+	@echo "  make device-darwin-universal the macOS app for Intel + Apple silicon (macOS $(MIN_MACOS)+, on any Mac)"
+	@echo "  make device-darwin-amd64     one architecture only (also -darwin-arm64), for development"
 	@echo "  make device-linux-amd64      also: -linux-arm64, -linux-amd64-headless, -linux-arm64-headless (Docker)"
 	@echo "  make device-windows-amd64    also: -windows-arm64 (Docker, llvm-mingw)"
 	@echo "  make e2e                     end-to-end tests in a real browser (own signaling server, device, web)"

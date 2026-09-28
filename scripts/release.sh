@@ -30,7 +30,6 @@ CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
 DEVICE="$ROOT/dist/device"
 OUT="$ROOT/dist/release/$TAG"
 NAME="go-link-$TAG"
-ARCH="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
 
 if [[ "$CODESIGN_IDENTITY" == "-" || -z "${NOTARY_PROFILE:-}" ]]; then
   DEV=1
@@ -55,15 +54,16 @@ fi
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-# macOS: the .dmg of each architecture this Mac (or another Mac) built.
-for arch in amd64 arm64; do
-  dmg="$DEVICE/$NAME-macos-$arch.dmg"
-  [[ -f "$dmg" ]] || continue
+# macOS: one universal .dmg (Intel + Apple silicon, macOS 12 or later).
+dmg="$DEVICE/$NAME-macos-universal.dmg"
+if [[ -f "$dmg" ]]; then
   if [[ "$DEV" == "0" ]]; then
     "$ROOT/backend-device/build/macos/notarize.sh" "$dmg"
   fi
   cp "$dmg" "$OUT/"
-done
+else
+  echo "  (no macOS build: make it on a Mac)"
+fi
 
 # Linux: a .tar.gz per build; "headless" is the one without a window
 # (Raspberry Pi, servers), which opens the web panel.
@@ -91,13 +91,11 @@ echo "▶ SHA256SUMS"
 echo "▶ Updating Casks/go-link.rb"
 CASK="$ROOT/Casks/go-link.rb"
 sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" "$CASK"
-for arch in amd64 arm64; do
-  f="$OUT/$NAME-macos-$arch.dmg"
-  [[ -f "$f" ]] || continue
+f="$OUT/$NAME-macos-universal.dmg"
+if [[ -f "$f" ]]; then
   sum="$(shasum -a 256 "$f" | awk '{print $1}')"
-  key=$([[ "$arch" == "arm64" ]] && echo "arm" || echo "intel")
-  sed -i '' -E "s/($key: +\")[0-9a-f]{64}\"/\1$sum\"/" "$CASK"
-done
+  sed -i '' -E "s/^  sha256 \"[0-9a-f]{64}\"/  sha256 \"$sum\"/" "$CASK"
+fi
 
 # gh may live in a PATH only the login shell knows (Homebrew, ~/.local/bin).
 GH="$(command -v gh || /bin/zsh -lc 'command -v gh' 2>/dev/null || true)"
@@ -111,5 +109,4 @@ else
   echo "▶ GitHub release skipped ($([[ -n "$GH" ]] && echo 'GITHUB_RELEASE=0' || echo 'gh not installed')): upload dist/release/$TAG to https://github.com/$REPO/releases/new (tag $TAG)"
 fi
 echo "✔ Release files in dist/release/$TAG"
-[[ "$ARCH" == "amd64" && ! -f "$OUT/$NAME-macos-arm64.dmg" ]] && echo "  (the Apple silicon .dmg is made with 'make device-dmg' on an Apple silicon Mac, then SKIP_BUILD=1)"
 exit 0

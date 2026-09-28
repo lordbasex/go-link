@@ -113,7 +113,7 @@ type roomsHarness struct {
 	probe func(rom string) bool
 }
 
-func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom) *roomsHarness {
+func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts ...func(*roomsHarness)) *roomsHarness {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	romsDir, coresDir := t.TempDir(), t.TempDir()
@@ -130,6 +130,9 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom) *room
 	lib.SetCore(coresDir, "")
 	h := &roomsHarness{t: t, opener: NewRoomOpener(), sender: &recordingSender{}, status: status, saves: t.TempDir(), history: NewHistoryService(filepath.Join(t.TempDir(), "history.json"))}
 	h.opener.SetSender(h.sender)
+	for _, o := range opts {
+		o(h)
+	}
 	h.rooms = NewRoomsService(RoomsConfig{
 		History:  h.history,
 		Library:  lib,
@@ -380,6 +383,29 @@ func TestRoomsComeBackAfterRestart(t *testing.T) {
 	eventually(t, "trash emptied", func() bool { return len(h.rooms.List()) == 2 })
 	h.answerOpen("R9")
 	eventually(t, "room id", func() bool { return h.room("a1").RoomID == "R9" })
+}
+
+func TestARoomThatCannotBeSavedRestartsFresh(t *testing.T) {
+	now := time.Now()
+	saved := []models.SavedRoom{
+		{ID: "a1", Name: "Robby", Rom: "robby", State: models.RoomLive, Autosave: true, CreatedAt: now, Since: now},
+		{ID: "b2", Name: "Galaga", Rom: "galaga", State: models.RoomLive, Autosave: true, NoSaves: true, CreatedAt: now, Since: now},
+	}
+	h := newRoomsHarness(t, 4, saved, func(h *roomsHarness) {
+		h.probe = func(rom string) bool { return rom != "robby" }
+	})
+	eventually(t, "both rooms restart", func() bool {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		return len(h.games) == 2
+	})
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, g := range h.games {
+		if g.state != "" {
+			t.Fatalf("%s restarted from %q: its save cannot bring the game back", g.rom, g.state)
+		}
+	}
 }
 
 func TestRoomKeepsItsLobbyPicture(t *testing.T) {

@@ -69,7 +69,7 @@ Open `http://localhost:5180/device` and type the code shown in the device window
 |---|---|
 | **Signaling server** | Deploy [signalhub](https://github.com/lordbasex/signalhub) on any Linux server with Docker (its README lists the ports and variables). Allow your website's origin and the `go-link` app. |
 | **Website** | `SIGNAL_URL=wss://your-signal-domain/ws make web-build`, then upload `frontend/apps/web/dist` to any static host, serving `index.html` for every route and adding the [security headers](docs/security.md#http-headers-for-the-website). `make web-deploy` runs your own upload from the gitignored `deploy/local/hosting.mk` ([example](deploy/hosting.example.mk)). |
-| **Device** | `VERSION=x.y.z make release` builds the macOS `.dmg`, Windows `.zip`, Linux archives and a Docker image, and publishes a GitHub release. |
+| **Device** | `VERSION=x.y.z make release` builds the universal macOS `.dmg` (Intel + Apple silicon, macOS 12+), Windows `.zip`, Linux archives and a Docker image, and publishes a GitHub release. |
 
 Details in [docs/deploy.md](docs/deploy.md).
 

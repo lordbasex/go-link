@@ -9,8 +9,13 @@ All notable changes to go-link. Newest first.
 - English documentation split into `docs/` (architecture, flows, device protocol, device, emulator, website, networking, security, building, deploying, status); the README is now a summary with quick start and deployment.
 - This changelog, with the history of the private repository.
 
+### Fixed
+
+- A room of a game that cannot be saved failed to come back after a device restart: it was launched from its automatic save while the save check removed that file.
+
 ### Changed
 
+- macOS: one universal app and `.dmg` (Intel + Apple silicon) for macOS 12 or later, built from any Mac; libvpx and Opus are built from source per architecture (`build/macos/static-libs.sh`) instead of Homebrew's copies, which required the build Mac's macOS version.
 - Website hosting moved to a gitignored `deploy/local/hosting.mk`; `deploy/hosting.example.mk` shows a generic upload over SSH.
 - Test fixtures use neutral values; fake test tokens are marked with `gitleaks:allow`.
 

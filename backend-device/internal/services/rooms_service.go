@@ -222,18 +222,25 @@ func (r *RoomsService) Run(ctx context.Context) {
 	r.mu.Unlock()
 	for _, gr := range restart {
 		state := ""
-		if gr.saved.Autosave {
+		if gr.saved.Autosave && !gr.saved.NoSaves {
 			state = r.statePath(gr.saved.ID, "auto")
 		}
 		wasPaused := gr.saved.State == models.RoomPaused
-		if err := r.launch(gr, state); err != nil {
-			r.log.Warn("cannot restart room", "room", gr.saved.Name, "err", err)
-			r.update(gr, func(s *models.SavedRoom) { s.State, s.LastError = models.RoomArchived, err.Error() })
+		if state != "" && r.cfg.ProbeSaves != nil {
+			// As in Start: make sure the save brings the whole game back
+			// before loading it, off this loop (the first time takes a
+			// few seconds).
+			go func(gr *gameRoom, state string) {
+				if !r.savesWork(gr.saved.Rom) {
+					r.log.Warn("this game cannot resume from a save in this emulator: starting it over", "room", gr.saved.Name, "rom", gr.saved.Rom)
+					r.markNoSaves(gr)
+					state = ""
+				}
+				r.restart(gr, state, wasPaused)
+			}(gr, state)
 			continue
 		}
-		if m := r.managerOf(gr); m != nil && wasPaused {
-			m.Pause(true, "The host")
-		}
+		r.restart(gr, state, wasPaused)
 	}
 	r.purgeTrash()
 	t := time.NewTicker(time.Hour)
@@ -245,6 +252,19 @@ func (r *RoomsService) Run(ctx context.Context) {
 		case <-t.C:
 			r.purgeTrash()
 		}
+	}
+}
+
+// restart launches a room that was running when the device stopped, from
+// state (empty = from power on), paused again if it was.
+func (r *RoomsService) restart(gr *gameRoom, state string, wasPaused bool) {
+	if err := r.launch(gr, state); err != nil {
+		r.log.Warn("cannot restart room", "room", gr.saved.Name, "err", err)
+		r.update(gr, func(s *models.SavedRoom) { s.State, s.LastError = models.RoomArchived, err.Error() })
+		return
+	}
+	if m := r.managerOf(gr); m != nil && wasPaused {
+		m.Pause(true, "The host")
 	}
 }
 
@@ -684,9 +704,11 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 		}
 	}()
 	r.log.Info("room starting", "room", saved.Name, "rom", saved.Rom, "state", statePath != "")
-	if r.cfg.ProbeSaves != nil && !saved.NoSaves {
+	if r.cfg.ProbeSaves != nil && !saved.NoSaves && statePath == "" {
 		// Learn early whether this game can be saved, so the owner is
-		// never offered a save that would not work.
+		// never offered a save that would not work. A room loading a
+		// save was already checked (Start, Run): testing it again here
+		// could remove auto.state while the worker is still reading it.
 		go func() {
 			if !r.savesWork(saved.Rom) {
 				r.markNoSaves(gr)

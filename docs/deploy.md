@@ -51,6 +51,6 @@ The file can define `web-deploy`, a `hosting-help` target (shown by `make help`)
 
 ## Device
 
-Hosts download the device from the GitHub releases: a `.dmg` for macOS, a `.zip` for Windows, `.tar.gz` for Linux (with and without window) and optionally a Docker image. See [building.md](building.md#releases) for `make release`, and [device.md](device.md#docker) for running the Docker image on a server or a Raspberry Pi.
+Hosts download the device from the GitHub releases: one universal `.dmg` for macOS (Intel and Apple silicon, macOS 12 or later), a `.zip` for Windows, `.tar.gz` for Linux (with and without window) and optionally a Docker image. See [building.md](building.md#releases) for `make release`, and [device.md](device.md#docker) for running the Docker image on a server or a Raspberry Pi.
 
 The device's defaults point to the project's public services (`wss://signal.go-link.org/ws` and `https://go-link.org`). A self-hosted setup changes them with `signal_url` and `web_url` in `device.json`.
