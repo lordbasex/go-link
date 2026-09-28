@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { setAudioSession } from "./audioSession";
 
 // The landing page's music: an original 8-bit loop made with Web Audio
 // (square and triangle waves and a noise drum, no audio files, no known
@@ -41,6 +42,7 @@ export class Chiptune {
 
   /** Starts (or resumes) the music. Needs a tap or key first in most browsers. */
   async play(): Promise<boolean> {
+    setAudioSession("playback");
     if (!this.ctx) {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctx) return false;
@@ -73,6 +75,7 @@ export class Chiptune {
     window.clearInterval(this.timer);
     this.timer = 0;
     void this.ctx?.suspend().catch(() => undefined);
+    setAudioSession("auto");
   }
 
   /** Stops for good (leaving the page). */
