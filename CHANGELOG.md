@@ -11,6 +11,8 @@ All notable changes to go-link. Newest first.
 
 - My device, before linking, puts the code form first and shows the go-link window as it really looks (its texts in each language), with the downloads below.
 
+- The Docker page of the user guide starts with a quick start (run, pairing code from the log, emulator, ROMs, panel key), explains host and bridge networking with one full command each, and lists the useful `docker exec` commands.
+
 ### Fixed (website and device)
 
 - Room chat notices (took a seat, left, paused, swapped controllers…) and generated guest names ("Guest 9F3A") show in the reader's language: the device sends each notice as an event with its values (`event`, `args`).
