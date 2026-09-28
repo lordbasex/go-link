@@ -26,6 +26,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
 	"github.com/lordbasex/go-link/backend-device/pkg/testpattern"
+	"github.com/lordbasex/go-link/backend-device/pkg/watermark"
 )
 
 // RTCSignal is the application payload carried inside signalhub "signal"
@@ -118,6 +119,9 @@ type StreamService struct {
 	// rec, while the room is recorded, gets a copy of every encoded frame
 	// and voice packet (nothing is encoded twice).
 	rec atomic.Pointer[Recorder]
+	// mark is the go-link icon drawn on the picture while recording (only
+	// the video source's goroutine draws with it).
+	mark atomic.Pointer[recMark]
 
 	// Owned by the source goroutine (Run): encoders and pacing.
 	vp8        *encoder.VP8
@@ -515,6 +519,11 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.vp8, s.vp8W, s.vp8H = enc, w, h
 		s.keyframe.Store(true)
 	}
+	if m := s.mark.Load(); rec != nil && m != nil {
+		// While recording, the icon is part of the picture: everyone sees
+		// it live and the recording carries it, with no extra encoding.
+		i420 = m.stamp.Draw(i420, w, h, time.Since(m.start))
+	}
 	data, _, err := s.vp8.Encode(i420, s.keyframe.Swap(false))
 	if err != nil {
 		s.log.Error("encode failed", "err", err)
@@ -559,10 +568,21 @@ func (s *StreamService) AudioSamples(pcm []int16) {
 // SetRecorder starts (rec) or stops (nil) copying the room's media to a
 // recording. A new recording starts with a keyframe.
 func (s *StreamService) SetRecorder(rec *Recorder) {
+	if rec != nil {
+		s.mark.Store(&recMark{stamp: watermark.New(), start: time.Now()})
+	} else {
+		s.mark.Store(nil)
+	}
 	s.rec.Store(rec)
 	if rec != nil {
 		s.keyframe.Store(true)
 	}
+}
+
+// recMark is the icon of one recording and when it started.
+type recMark struct {
+	stamp *watermark.Stamper
+	start time.Time
 }
 
 // SetAspect records the picture's display aspect ratio for the web.

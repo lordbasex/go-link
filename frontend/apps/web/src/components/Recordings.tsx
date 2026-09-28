@@ -186,9 +186,7 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
     converting.current = abort;
     setPhase({ kind: "converting", fraction: 0 });
     try {
-      const mp4 = await webmToMp4(rec, gains, (fraction) => alive.current && setPhase({ kind: "converting", fraction }), abort.signal, {
-        watermark: true, // every exported video carries the go-link icon
-      });
+      const mp4 = await webmToMp4(rec, gains, (fraction) => alive.current && setPhase({ kind: "converting", fraction }), abort.signal);
       if (!alive.current) return;
       saveFile([mp4], orig.name.replace(/\.webm$/i, "") + ".mp4", "video/mp4");
       setPhase({ kind: "done", mp4: true, note: "" });
