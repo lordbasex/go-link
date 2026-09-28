@@ -75,12 +75,9 @@ func newOnboardingView(u *ui) *onboardingView {
 		v.copyCode.SetText(L("Copied"))
 		time.AfterFunc(2*time.Second, func() { fyne.Do(func() { v.copyCode.SetText(L("Copy code")) }) })
 	})
-	// Two layers: the countdown centered on the whole card, the button on
-	// the right with a fixed width, so neither moves when the label changes.
-	footer := container.NewStack(
-		container.NewCenter(v.refresh),
-		container.NewBorder(nil, nil, nil, fixedWidth(132, v.copyCode)),
-	)
+	// The countdown on the left, the button on the right with a fixed
+	// width: they never overlap, and neither moves when the label changes.
+	footer := container.NewBorder(nil, nil, container.NewCenter(v.refresh), fixedWidth(132, v.copyCode))
 	card := glassPadded(container.New(layout.NewCustomPaddedVBoxLayout(14),
 		step1,
 		widget.NewSeparator(),
@@ -144,7 +141,7 @@ func (v *onboardingView) render(st models.Status) {
 func (v *onboardingView) tick() {
 	s := ""
 	if v.refreshesAt != nil {
-		s = "A new code in " + countdown(time.Until(*v.refreshesAt))
+		s = Lf("A new code in %s", countdown(time.Until(*v.refreshesAt)))
 	}
 	setText(v.refresh, s)
 }

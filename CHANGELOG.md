@@ -9,6 +9,12 @@ All notable changes to go-link. Newest first.
 - "How it works" is an animated walkthrough on the landing page and on My device: four steps (download, link, add ROMs and play, share) that play like a video, with a progress bar, pause and previous/next. Step 1 offers the download for your system (Windows, macOS, Linux, Docker, Raspberry Pi).
 - My device shows the downloads of the latest release instead of "Downloads will be published soon": your system first, the others with their sizes, the release page and the checksums.
 
+- My device, before linking, puts the code form first and shows the go-link window as it really looks (its texts in each language), with the downloads below.
+
+### Fixed (device window)
+
+- The countdown to a new pairing code is translated, and it no longer runs under the "Copy code" button.
+
 ### Changed (release)
 
 - The device image is published on the GitHub Container Registry, `ghcr.io/lordbasex/go-link-device` (`:vX.Y.Z` and `:latest`, amd64 and arm64), by a workflow on every release; the website and the guide use it (`docker run … ghcr.io/lordbasex/go-link-device:latest`).

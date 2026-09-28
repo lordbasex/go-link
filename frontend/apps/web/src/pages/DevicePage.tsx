@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { AppWindowPreview } from "../components/device/AppWindowPreview";
 import { DownloadCard } from "../components/DownloadCard";
 import {
   useRef,
@@ -196,7 +197,7 @@ export function DevicePage({
             {showForm && (
               <form
                 onSubmit={submit}
-                className="card pair-card stack-md"
+                className="card pair-card is-focus stack-md"
                 noValidate
               >
                 <label htmlFor="d1" className="field-label">
@@ -254,44 +255,10 @@ export function DevicePage({
               </form>
             )}
 
-            {showForm && <DownloadCard />}
           </section>
 
           <aside className="pair-aside" aria-label={t.pairing.previewCaption}>
-            <div className="pair-window" aria-hidden="true">
-              <div className="preview-bar">
-                <span className="preview-light" />
-                <span className="preview-light" />
-                <span className="preview-light" />
-                <span className="preview-url">go-link device</span>
-              </div>
-              <div className="pair-window-body">
-                <span className="dash-mini-title">{t.pairing.windowCode}</span>
-                <span className="pair-window-code">482 915 306</span>
-                <svg width="84" height="84" viewBox="0 0 84 84">
-                  <circle
-                    cx="42"
-                    cy="42"
-                    r="36"
-                    fill="none"
-                    stroke="var(--color-divider)"
-                    strokeWidth="6"
-                  />
-                  <circle
-                    className="pair-countdown"
-                    cx="42"
-                    cy="42"
-                    r="36"
-                    fill="none"
-                    stroke="var(--color-voice)"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    transform="rotate(-90 42 42)"
-                  />
-                </svg>
-                <span className="small faint">{t.pairing.windowHint}</span>
-              </div>
-            </div>
+            <AppWindowPreview />
             <ol className="pair-steps">
               {t.pairing.steps.map((step, i) => (
                 <li key={step.title}>
@@ -305,6 +272,11 @@ export function DevicePage({
               ))}
             </ol>
           </aside>
+          {showForm && (
+            <div className="pair-downloads">
+              <DownloadCard />
+            </div>
+          )}
         </div>
       )}
     </div>

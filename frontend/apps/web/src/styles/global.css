@@ -2026,3 +2026,45 @@ body .video-stage.has-touchpad.is-console .video-rec { top: calc(var(--sy) + 44p
   .dl-others { grid-template-columns: 1fr 1fr; }
   .dl-main .button { width: 100%; justify-content: center; }
 }
+
+/* My device before linking: the code form stands out, the go-link window
+   is shown as it really looks (AppWindowPreview), downloads go below. */
+.pair-card.is-focus { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent), 0 24px 60px var(--shadow-strong); }
+.pair-downloads { grid-column: 1 / -1; }
+.appwin { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.appwin-frame { border-radius: 14px; overflow: hidden; border: 1px solid rgb(255 255 255 / .1); box-shadow: 0 30px 80px var(--shadow-strong); background: #1a1030; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+.appwin-bar { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; background: #2a1f45; border-bottom: 1px solid rgb(255 255 255 / .08); }
+.appwin-light { width: 12px; height: 12px; border-radius: 50%; }
+.appwin-light.is-red { background: #ff5f57; } .appwin-light.is-yellow { background: #febc2e; } .appwin-light.is-green { background: #28c840; }
+.appwin-name { flex: 1; text-align: center; margin-right: 52px; font-size: 13px; font-weight: 600; color: #d9d2ee; }
+.appwin-body { padding: 26px 24px 22px; display: flex; flex-direction: column; gap: 18px; color: #fff; background: radial-gradient(90% 70% at 15% 30%, rgb(170 90 255 / .35) 0%, transparent 60%), linear-gradient(140deg, #5b2bc8 0%, #3f1d98 45%, #1d1250 100%); }
+.appwin-head { display: flex; gap: 18px; align-items: flex-start; }
+.appwin-tile { width: 76px; height: 76px; flex-shrink: 0; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(145deg, #d58cf5 0%, #9a47e8 50%, #6a2bd0 100%); border: 1px solid rgb(255 255 255 / .25); box-shadow: 0 0 40px rgb(190 110 255 / .45); }
+.appwin-titles { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.appwin-title { font-size: 26px; font-weight: 700; line-height: 1.15; }
+.appwin-text { font-size: 13.5px; line-height: 1.5; color: #d6cdef; }
+.appwin-card { padding: 16px; border-radius: 16px; background: rgb(255 255 255 / .07); border: 1px solid rgb(255 255 255 / .14); display: flex; flex-direction: column; gap: 12px; }
+.appwin-card hr { width: 100%; margin: 0; border: 0; border-top: 1px solid rgb(255 255 255 / .18); }
+.appwin-step { display: flex; align-items: flex-start; gap: 12px; }
+.appwin-num { width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: #9b4ee6; font-size: 12px; font-weight: 700; }
+.appwin-step-text { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; font-size: 14px; }
+.appwin-url { font-weight: 700; color: #d68cff; }
+.appwin-hint { font-size: 12px; color: #cfc4ea; }
+.appwin-btn { flex-shrink: 0; padding: 8px 12px; border-radius: 4px; background: #34313d; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.appwin-code { display: flex; justify-content: center; gap: 14px; }
+.appwin-group { display: flex; gap: 6px; }
+.appwin-digit { width: 34px; height: 46px; border-radius: 8px; display: grid; place-items: center; background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .2); font: 500 24px var(--font-mono); }
+.appwin-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.appwin-countdown { font-size: 12px; color: #bfb3e0; }
+.appwin-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.appwin-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #d6cdef; }
+.appwin-status i { width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; }
+.appwin-open { padding: 9px 20px; border-radius: 999px; font-size: 14px; font-weight: 600; background: linear-gradient(135deg, #a64ef0, #7b35d9); border: 1px solid rgb(255 255 255 / .3); }
+@media (max-width: 520px) {
+  .appwin-body { padding: 18px 14px; }
+  .appwin-tile { width: 56px; height: 56px; border-radius: 16px; }
+  .appwin-title { font-size: 21px; }
+  .appwin-code { gap: 8px; }
+  .appwin-group { gap: 3px; }
+  .appwin-digit { width: 26px; height: 38px; font-size: 19px; }
+}
