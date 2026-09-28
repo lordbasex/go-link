@@ -10,6 +10,8 @@ export const PLATFORMS: readonly Platform[] = ["windows", "macos", "linux", "doc
 
 export const RELEASE_VERSION: string = release.version;
 export const RELEASE_PAGE = `${REPO_URL}/releases/tag/${release.version}`;
+/** The device image on the GitHub Container Registry (amd64 and arm64). */
+export const DOCKER_IMAGE = "ghcr.io/lordbasex/go-link-device:latest";
 export const CHECKSUMS_URL = `${REPO_URL}/releases/download/${release.version}/SHA256SUMS`;
 
 const assets: Record<string, number> = release.assets;

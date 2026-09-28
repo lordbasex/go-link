@@ -417,10 +417,11 @@ export const docsPt: Docs = {
       title: "Docker",
       lead: "A imagem Docker é o go-link sem janela, com o painel web na porta 7373. Tudo o que ele guarda fica no volume /data.",
       blocks: [
-        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device:vX.Y.Z" },
+        { t: "code", code: "docker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  ghcr.io/lordbasex/go-link-device:latest" },
         {
           t: "list",
           items: [
+            "Sem internet nessa máquina, baixe `go-link-vX.Y.Z-docker.oci.tar.gz` da versão e rode `docker load < go-link-vX.Y.Z-docker.oci.tar.gz`; a imagem fica como `go-link-device:vX.Y.Z`.",
             "Monte as suas ROMs em `/data/go-link/roms` e as imagens em `/data/go-link/thumbnails/MAME`. Adicione `:ro` às ROMs para bloquear envios pelo site.",
             "A chave do painel: `docker exec go-link go-link-device panel token --config /data/device.json`.",
             "Sem a rede do host (Docker Desktop), publique o painel e uma porta UDP fixa, e anuncie o endereço do seu computador: `-p 7373:7373 -p 50000:50000/udp` e `--udp-port 50000 --announce 192.168.1.20`.",

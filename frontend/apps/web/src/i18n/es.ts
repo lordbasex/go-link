@@ -119,6 +119,7 @@ export const es: Messages = {
       pi: "Para Raspberry Pi con sistema de 64 bits. Sin ventana: se maneja desde su panel web en el puerto 7373.",
     },
     arm: (mb: number) => `Versión ARM · ${mb} MB`,
+    dockerOffline: (mb: number) => `sin internet: archivo de la imagen (${mb} MB) para docker load`,
     dockerGuide: "Guía de Docker",
     allDownloads: "todas las descargas",
     checksums: "SHA-256",

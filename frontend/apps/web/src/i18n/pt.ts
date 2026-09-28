@@ -119,6 +119,7 @@ export const pt: Messages = {
       pi: "Para Raspberry Pi com sistema de 64 bits. Sem janela: é gerenciado pelo painel web na porta 7373.",
     },
     arm: (mb: number) => `Versão ARM · ${mb} MB`,
+    dockerOffline: (mb: number) => `sem internet: arquivo da imagem (${mb} MB) para docker load`,
     dockerGuide: "Guia do Docker",
     allDownloads: "todos os downloads",
     checksums: "SHA-256",

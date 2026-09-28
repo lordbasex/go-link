@@ -33,7 +33,7 @@ export function DownloadCard() {
   }, [how]);
   const others = PLATFORMS.filter((p) => p !== main).flatMap((p) => {
     const rows: { key: string; name: string; href: string; size: string; internal?: boolean }[] = [];
-    const f = downloadFor(p);
+    const f = p === "docker" ? null : downloadFor(p);
     if (f) rows.push({ key: p, name: t.wizard.platform[p], href: f.url, size: `${f.mb} MB` });
     else if (p === "docker") rows.push({ key: p, name: t.wizard.platform[p], href: "/docs/docker", size: t.downloads.guide, internal: true });
     const arm = armDownloadFor(p);

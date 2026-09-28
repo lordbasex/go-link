@@ -125,6 +125,7 @@ export const en = {
       pi: "For a Raspberry Pi with a 64 bit system. No window: you manage it from its web panel on port 7373.",
     },
     arm: (mb: number) => `ARM version · ${mb} MB`,
+    dockerOffline: (mb: number) => `offline: image file (${mb} MB) for docker load`,
     dockerGuide: "Docker guide",
     allDownloads: "all downloads",
     checksums: "SHA-256",

@@ -417,10 +417,11 @@ export const docsEs: Docs = {
       title: "Docker",
       lead: "La imagen de Docker es go-link sin ventana, con su panel web en el puerto 7373. Todo lo que guarda vive en el volumen /data.",
       blocks: [
-        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device:vX.Y.Z" },
+        { t: "code", code: "docker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  ghcr.io/lordbasex/go-link-device:latest" },
         {
           t: "list",
           items: [
+            "Sin internet en esa máquina, descarga `go-link-vX.Y.Z-docker.oci.tar.gz` de la versión y ejecuta `docker load < go-link-vX.Y.Z-docker.oci.tar.gz`; la imagen queda como `go-link-device:vX.Y.Z`.",
             "Monta tus ROMs en `/data/go-link/roms` y tus imágenes en `/data/go-link/thumbnails/MAME`. Agrega `:ro` a las ROMs para bloquear subidas desde el sitio.",
             "La clave del panel: `docker exec go-link go-link-device panel token --config /data/device.json`.",
             "Sin red del host (Docker Desktop), publica el panel y un puerto UDP fijo, y anuncia la dirección de tu computadora: `-p 7373:7373 -p 50000:50000/udp` y `--udp-port 50000 --announce 192.168.1.20`.",

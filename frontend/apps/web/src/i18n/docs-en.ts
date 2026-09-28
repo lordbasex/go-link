@@ -417,10 +417,11 @@ export const docsEn: Docs = {
       title: "Docker",
       lead: "The Docker image is go-link without a window, with its web panel on port 7373. Everything it keeps lives in the /data volume.",
       blocks: [
-        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device:vX.Y.Z" },
+        { t: "code", code: "docker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  ghcr.io/lordbasex/go-link-device:latest" },
         {
           t: "list",
           items: [
+            "Without internet on that machine, download `go-link-vX.Y.Z-docker.oci.tar.gz` from the release and run `docker load < go-link-vX.Y.Z-docker.oci.tar.gz`; the image is then `go-link-device:vX.Y.Z`.",
             "Mount your ROMs at `/data/go-link/roms` and your pictures at `/data/go-link/thumbnails/MAME`. Add `:ro` to the ROMs to block uploads from the website.",
             "The panel key: `docker exec go-link go-link-device panel token --config /data/device.json`.",
             "Without host networking (Docker Desktop), publish the panel and a fixed UDP port, and announce your computer's address: `-p 7373:7373 -p 50000:50000/udp` and `--udp-port 50000 --announce 192.168.1.20`.",

@@ -154,7 +154,7 @@ Every 2 seconds the device measures CPU and RAM of the machine and of go-link it
 
 ## Docker
 
-The `go-link-device` image (`backend-device/build/docker.Dockerfile`, `make device-docker`) is the headless binary with the panel on port 7373. Everything it keeps lives in the `/data` volume (configuration, core, saves, history). The core downloads on first use and is never in the image.
+The `go-link-device` image (`backend-device/build/docker.Dockerfile`, `make device-docker`) is the headless binary with the panel on port 7373. Each release publishes it for amd64 and arm64 on the GitHub Container Registry as `ghcr.io/lordbasex/go-link-device:vX.Y.Z` and `:latest` (`.github/workflows/docker.yml`, on every published release or by hand with a tag), so `docker run … ghcr.io/lordbasex/go-link-device:latest` is enough; the release also carries it as an OCI archive for machines without internet (`docker load`, it loads as `go-link-device:vX.Y.Z`). Everything it keeps lives in the `/data` volume (configuration, core, saves, history). The core downloads on first use and is never in the image.
 
 ROMs and thumbnails are **volumes you mount from outside**:
 

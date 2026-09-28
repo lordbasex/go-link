@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { t } from "../../i18n";
 import {
   CHECKSUMS_URL,
+  DOCKER_IMAGE,
   PLATFORMS,
   RELEASE_PAGE,
   RELEASE_VERSION,
@@ -161,12 +162,11 @@ function DownloadChoice({ platform, onPick }: { platform: Platform; onPick: (p: 
         ))}
       </div>
       {platform === "docker" && (
-        <pre className="wz-command">{`docker load < go-link-${RELEASE_VERSION}-docker.oci.tar.gz
-docker run -d --name go-link --network host \\
+        <pre className="wz-command">{`docker run -d --name go-link --network host \\
   -v go-link:/data -v ~/roms:/data/go-link/roms \\
-  go-link-device:${RELEASE_VERSION}`}</pre>
+  ${DOCKER_IMAGE}`}</pre>
       )}
-      {file && (
+      {file && platform !== "docker" && (
         <a className="button button-primary wz-get" href={file.url}>
           <DownloadIcon size={18} />
           {t.wizard.download(t.wizard.platform[platform], file.mb)}
@@ -184,6 +184,12 @@ docker run -d --name go-link --network host \\
           <>
             {" "}
             <Link to="/docs/docker">{t.wizard.dockerGuide}</Link>
+            {file && (
+              <>
+                {" · "}
+                <a href={file.url}>{t.wizard.dockerOffline(file.mb)}</a>
+              </>
+            )}
           </>
         )}
       </span>
