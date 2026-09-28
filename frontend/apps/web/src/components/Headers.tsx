@@ -113,6 +113,9 @@ export function MainHeader() {
           <NavLink to="/device" className={navClass}>
             {t.nav.myDevice}
           </NavLink>
+          <NavLink to="/docs" className={navClass}>
+            {t.nav.docs}
+          </NavLink>
         </nav>
       </div>
       <div className="header-right">

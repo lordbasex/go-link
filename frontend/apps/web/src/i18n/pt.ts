@@ -10,6 +10,7 @@ export const pt: Messages = {
   theme: { toLight: "Modo claro", toDark: "Modo escuro" },
   ordinal: (n: number) => `${n}º`,
   nav: {
+    docs: "Docs",
     label: "Principal",
     rooms: "Salas",
     myDevice: "Meu dispositivo",

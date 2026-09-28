@@ -8,6 +8,9 @@ import { panelProof } from "@go-link/shared";
 import { setLang } from "./i18n";
 import { es } from "./i18n/es";
 import { TERMS_VERSION } from "./legal";
+import { docsEn } from "./i18n/docs-en";
+import { docsEs } from "./i18n/docs-es";
+import { docsPt } from "./i18n/docs-pt";
 
 const ROOM = "3f2b9c1e-7a4d-4e0b-9c52-1d8e6f0aa71d";
 const HOST = "host".padEnd(32, "0");
@@ -53,8 +56,8 @@ describe("lobby", () => {
     renderApp("/");
     const menu = screen.getByRole("navigation", { name: "Main" });
     const links = within(menu).getAllByRole("link");
-    expect(links.map((a) => a.textContent)).toEqual(["How it works", "Rooms", "My device"]);
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/rooms", "/device"]);
+    expect(links.map((a) => a.textContent)).toEqual(["How it works", "Rooms", "My device", "Docs"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/rooms", "/device", "/docs"]);
     expect(await screen.findByRole("heading", { level: 1, name: /Your arcade, online/ })).toBeInTheDocument();
     expect(screen.getByText(/MAME 2003-Plus sets/)).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "Join a game" })[0]!);
@@ -379,7 +382,7 @@ describe("local web panel", () => {
     );
     renderApp("/how-it-works", { panelUrl: PANEL });
     const menu = await screen.findByRole("navigation", { name: "Main" });
-    await waitFor(() => expect(within(menu).getAllByRole("link").map((a) => a.textContent)).toEqual(["Rooms", "My device"]));
+    await waitFor(() => expect(within(menu).getAllByRole("link").map((a) => a.textContent)).toEqual(["Rooms", "My device", "Docs"]));
     // A linked panel opens on its rooms.
     expect(await screen.findByRole("heading", { level: 1, name: "Rooms" })).toBeInTheDocument();
     localStorage.removeItem("go-link.panel-token");
@@ -421,5 +424,27 @@ describe("legal", () => {
     renderApp("/g");
     expect(await screen.findByLabelText("PIN")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /I have read and accept/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("docs", () => {
+  it("opens the first page, lists every page, filters them and moves page by page", async () => {
+    FakeSocket.reset((env) => (env.type === "rooms_list" ? { type: "rooms" } : undefined));
+    renderApp("/docs");
+    expect(await screen.findByRole("heading", { level: 1, name: "Introduction" })).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Documentation menu" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(docsEn.pages.length);
+    expect(within(screen.getByRole("navigation", { name: "On this page" })).getByRole("link", { name: "How it works" })).toHaveAttribute("href", "#how");
+    await userEvent.type(within(nav).getByRole("searchbox"), "raspberry");
+    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toContain("Install");
+    expect(within(nav).queryByRole("link", { name: "Voice and chat" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: /Next.*Install/ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Install" })).toBeInTheDocument();
+  });
+
+  it("has the same pages in every language", () => {
+    const slugs = (d: typeof docsEn) => d.pages.map((p) => `${p.slug}:${p.blocks.map((b) => b.t).join(",")}`);
+    expect(slugs(docsEs)).toEqual(slugs(docsEn));
+    expect(slugs(docsPt)).toEqual(slugs(docsEn));
   });
 });

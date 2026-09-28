@@ -23,6 +23,7 @@ export function SiteFooter() {
           <Link to="/">{t.nav.howItWorks}</Link>
           <Link to="/rooms">{t.nav.rooms}</Link>
           <Link to="/device">{t.nav.myDevice}</Link>
+          <Link to="/docs">{t.nav.docs}</Link>
         </nav>
         <nav className="site-footer-col" aria-label={f.project}>
           <h2 className="site-footer-title">{f.project}</h2>

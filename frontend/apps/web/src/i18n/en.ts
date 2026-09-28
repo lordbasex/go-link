@@ -16,6 +16,7 @@ export const en = {
     return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
   },
   nav: {
+    docs: "Docs",
     label: "Main",
     rooms: "Rooms",
     myDevice: "My device",

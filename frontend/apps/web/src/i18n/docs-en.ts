@@ -1,0 +1,454 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+// User documentation in English, the reference for docs-es.ts and docs-pt.ts.
+import type { Docs } from "./docs-types";
+
+export const docsEn: Docs = {
+  title: "Documentation",
+  eyebrow: "Docs",
+  search: "Search the docs",
+  noResults: "No page matches.",
+  onThisPage: "On this page",
+  previous: "Previous",
+  next: "Next",
+  menu: "Documentation menu",
+  copy: "Copy",
+  edit: "Improve this page on GitHub",
+  pages: [
+    {
+      slug: "introduction",
+      group: "Get started",
+      title: "Introduction",
+      lead: "go-link turns your computer into a small arcade server: you run the games, your friends play them from their browsers.",
+      blocks: [
+        { t: "h2", id: "what", text: "What go-link does" },
+        {
+          t: "p",
+          text: "You (the **host**) install the go-link app on your computer, with your own game files. Your friends (the **guests**) open an invitation in their browser and play: they receive the game's video and sound, and send their controls back. They install nothing and never need the game files.",
+        },
+        {
+          t: "list",
+          items: [
+            "Up to **4 players** at once (P1 to P4). Everyone else watches live and waits in an arcade-style queue.",
+            "Voice between the players, and chat for everyone.",
+            "Several games running at once, with pause, saved games and a history.",
+            "Keyboard, gamepads (several per browser) and an on-screen gamepad on phones.",
+          ],
+        },
+        { t: "h2", id: "how", text: "How it works" },
+        {
+          t: "p",
+          text: "The game runs only on your computer. The video, the sound and the controls travel directly between your computer and each browser over WebRTC, encrypted. The go-link servers only introduce you to each other; they never see the game.",
+        },
+        { t: "code", code: "friends' browsers  <-- video, sound, voice, controls, chat -->  your computer (go-link app)\n        \\                                                          /\n         `-----------> signaling server (introductions) <--------'" },
+        { t: "h2", id: "games", text: "About the games" },
+        {
+          t: "p",
+          text: "go-link is based on MAME: it runs the mame2003-plus engine, which plays **MAME 0.78** sets. go-link does not include, host or download any game. Use only files you have the right to use, such as backups of arcade boards you own. See the [terms of use](/terms).",
+        },
+        { t: "h2", id: "next", text: "Where to start" },
+        { t: "steps", items: ["[Install](/docs/install) the app on the computer that has your games.", "[Link your browser](/docs/link) with the 9-digit code.", "[Set up the emulator and your ROMs](/docs/roms).", "[Start your first game](/docs/first-game) and invite your friends."] },
+      ],
+    },
+    {
+      slug: "install",
+      group: "Get started",
+      title: "Install",
+      lead: "Download go-link for your system from the releases page. The app is small: the emulator is downloaded later, from inside the app.",
+      blocks: [
+        { t: "note", tone: "info", text: "Downloads: [github.com/lordbasex/go-link/releases](https://github.com/lordbasex/go-link/releases). Each file is listed in `SHA256SUMS`." },
+        { t: "h2", id: "macos", text: "macOS" },
+        { t: "steps", items: ["Download `go-link-vX.Y.Z-macos-universal.dmg` (Intel and Apple silicon, macOS 12 or later).", "Open it and drag **go-link** to **Applications**.", "Open go-link from Applications or Launchpad. Its icon appears in the menu bar."] },
+        {
+          t: "note",
+          tone: "warn",
+          text: "While the app is not notarized by Apple, macOS blocks it the first time. Try to open it, then go to **System Settings › Privacy & Security** and click **Open Anyway**. On older macOS, right click the app and choose **Open**.",
+        },
+        { t: "p", text: "With Homebrew:" },
+        { t: "code", code: "brew tap lordbasex/go-link https://github.com/lordbasex/go-link\nbrew install --cask go-link" },
+        { t: "h2", id: "windows", text: "Windows" },
+        { t: "steps", items: ["Download `go-link-vX.Y.Z-windows-amd64.zip` (or `-arm64.zip` for ARM computers).", "Unzip it and run `go-link-device.exe`.", "If SmartScreen warns you, click **More info › Run anyway**."] },
+        { t: "h2", id: "linux", text: "Linux" },
+        { t: "p", text: "For a desktop, download `go-link-vX.Y.Z-linux-amd64.tar.gz` (or `-arm64`). It needs OpenGL and Wayland or X11, which any desktop has." },
+        { t: "code", code: "tar xzf go-link-v*-linux-amd64.tar.gz\n./go-link-device" },
+        { t: "h2", id: "raspberry", text: "Raspberry Pi and servers" },
+        {
+          t: "p",
+          text: "Use the **headless** build (`-linux-arm64-headless.tar.gz` for a Raspberry Pi with a 64-bit system). It has no window: it opens a [web panel](/docs/panel) on port 7373 and has a full [command line](/docs/cli).",
+        },
+        { t: "h2", id: "docker", text: "Docker" },
+        { t: "p", text: "There is also a Docker image; see [Docker](/docs/docker)." },
+      ],
+    },
+    {
+      slug: "link",
+      group: "Get started",
+      title: "Link your browser",
+      lead: "Linking connects a browser to your go-link app, so you can manage it from the website: games, ROMs, rooms and invitations.",
+      blocks: [
+        { t: "steps", items: ["Open go-link on your computer. Its window shows a **9-digit code**.", "In a browser, go to [go-link.org/device](/device) (My device).", "Type the code (or paste it in the first box).", "Read and accept the terms of use, then click **Link**."] },
+        { t: "p", text: "The page turns into your device's live dashboard: CPU, memory, network, players and your game library." },
+        { t: "h2", id: "remembered", text: "A remembered browser" },
+        {
+          t: "p",
+          text: "You type the code only once. The browser is remembered, and the next time it reconnects by itself, even after the computer restarts. Before your browser shows its key, the app proves it is really your device.",
+        },
+        { t: "h2", id: "more", text: "More browsers, and unlinking" },
+        {
+          t: "list",
+          items: [
+            "To link a second browser (your phone, for example), click **Link another browser** in the app window: it shows a new code.",
+            "**Unlink** on the website forgets that browser. **Unlink all** in the app window forgets every browser and shows a code again.",
+            "The code changes every few minutes and can only be used once. If it says the code is invalid, type the one the window shows now.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "roms",
+      group: "Get started",
+      title: "Emulator and ROMs",
+      lead: "go-link runs the mame2003-plus emulator, which plays MAME 0.78 sets. You download the emulator once, then point go-link at your ROM folder.",
+      blocks: [
+        { t: "h2", id: "core", text: "Download the emulator" },
+        {
+          t: "p",
+          text: "In **My device**, or in the app window (**Emulators › MAME › ROMs**), click the button to download the emulator and its game list. go-link downloads them from the official libretro build server for your system. From a terminal: `go-link-device core download`.",
+        },
+        { t: "h2", id: "folder", text: "Your ROM folder" },
+        {
+          t: "list",
+          items: [
+            "By default go-link reads `~/go-link/roms`. Choose another folder in the app window, in My device › ROMs, or with `go-link-device roms dir /path/to/roms`.",
+            "Keep each game as its `.zip`, with the MAME set name (for example `galaga.zip`).",
+            "Games that need a BIOS or a parent set need that zip in the same folder too (for example `neogeo.zip`).",
+            "To add games, drop `.zip` files on the app window or on My device › ROMs. They are copied to your folder; an existing file is never replaced.",
+          ],
+        },
+        { t: "h2", id: "check", text: "Which games run" },
+        { t: "p", text: "go-link checks every zip against the emulator's game list, without running it, and shows a status for each game:" },
+        {
+          t: "table",
+          head: ["Status", "Meaning"],
+          rows: [
+            ["Runs", "Every file is there."],
+            ["Missing files", "Files are missing, usually because the set comes from another MAME version. The list shows which zip or files."],
+            ["Not in this emulator", "The game was added to MAME after version 0.78."],
+            ["BIOS", "A BIOS that other games use, not a game."],
+            ["Broken zip", "The file is damaged."],
+          ],
+        },
+        { t: "note", tone: "info", text: "Sets must match **MAME 0.78**. A set from a recent MAME often has other file names and shows as Missing files." },
+        { t: "h2", id: "rights", text: "Your games, your responsibility" },
+        { t: "p", text: "go-link never includes or downloads games. Use only files you have the right to use; see the [terms of use](/terms)." },
+      ],
+    },
+    {
+      slug: "first-game",
+      group: "Get started",
+      title: "Your first game",
+      lead: "A room is one game running on your computer. Create it from the website, then invite your friends.",
+      blocks: [
+        { t: "steps", items: ["In **Rooms**, click **New game** (or click **Play** on a game in My device › ROMs).", "Pick the game, a name for the room, and whether the players can talk and chat.", "Click to start. go-link loads the game and opens the room.", "Click **Invite** to get the link, the QR code and a PIN for your friend."] },
+        { t: "p", text: "You enter your own room right away: your browser is the owner, so it needs no PIN." },
+        { t: "h2", id: "test", text: "The test pattern" },
+        {
+          t: "p",
+          text: "Before inviting anyone, try **Test pattern** in My device: a TV test card with a clock, a 1 kHz tone and a gamepad drawing that lights up when you press keys. If you see and hear it, the whole path works.",
+        },
+      ],
+    },
+    {
+      slug: "invite",
+      group: "Playing",
+      title: "Invite friends",
+      lead: "Every room is private. The invitation is the door; the PIN is the key, and there is one PIN per person.",
+      blocks: [
+        { t: "h2", id: "door", text: "The invitation" },
+        {
+          t: "list",
+          items: [
+            "**Invite** in the room shows a link, a QR code and a 9-digit code. Send any of them.",
+            "Your friend opens the link, or types the code in **Join a game** on the website.",
+            "**New link** replaces the link, QR and code: the old ones stop working. People already inside stay.",
+          ],
+        },
+        { t: "h2", id: "pin", text: "One PIN per person" },
+        {
+          t: "list",
+          items: [
+            "Each time you invite someone, go-link makes a new 6-digit PIN. The first person who uses it gets in, and it is spent.",
+            "An unused PIN lasts 6 hours. Every PIN ends when the room closes.",
+            "Guests who got in can come back after a reload without a PIN.",
+            "After 5 wrong tries a guest is blocked; 20 failures in 10 minutes lock the room for 10 minutes.",
+          ],
+        },
+        { t: "note", tone: "info", text: "Never put the PIN in the link. Send the link and the PIN separately, or say the PIN out loud." },
+        { t: "h2", id: "guest", text: "What a guest sees" },
+        { t: "p", text: "A guest types the code (or opens the link) and the PIN, accepts the terms the first time, and joins. Guests see the game, the players, the chat and the controls, but not the room settings." },
+      ],
+    },
+    {
+      slug: "controls",
+      group: "Playing",
+      title: "Controls",
+      lead: "Play with the keyboard, with gamepads, or with the on-screen gamepad on a phone or tablet.",
+      blocks: [
+        { t: "h2", id: "keyboard", text: "Keyboard" },
+        {
+          t: "table",
+          head: ["Key", "Action"],
+          rows: [
+            ["Arrows", "Move"],
+            ["Z X C A S D", "Buttons 1 to 6"],
+            ["5", "Insert a coin"],
+            ["Enter", "Your own Start"],
+            ["1 2 3 4", "Start of players 1 to 4, like the row of Start buttons on an arcade panel"],
+            ["P", "Pause the game for everyone"],
+            ["V (hold)", "Talk"],
+          ],
+        },
+        { t: "p", text: "Open the controls (the gamepad icon on the video) to see the keyboard map and change any key." },
+        { t: "h2", id: "gamepads", text: "Gamepads" },
+        {
+          t: "list",
+          items: [
+            "Connect it by USB or Bluetooth and press any button: browsers only show a gamepad after its first press.",
+            "Each gamepad is one player, so several people can play from one computer. The keyboard plays as the player you choose.",
+            "If a button does something unexpected, use **Remap buttons** in the controls panel.",
+          ],
+        },
+        { t: "h2", id: "touch", text: "Phones and tablets" },
+        {
+          t: "list",
+          items: [
+            "Tap the gamepad icon on the video to show the on-screen gamepad.",
+            "Arrows on the left, the game's buttons on the right (only as many as the game uses), Coin and 1P, 2P… on top.",
+            "Turn the phone sideways and use full screen for the biggest picture. On iPhone, add go-link to the home screen for a true full screen.",
+          ],
+        },
+        { t: "h2", id: "seats", text: "Seats, queue and swapping" },
+        {
+          t: "list",
+          items: [
+            "The first four people take seats P1 to P4. Everyone else waits in the queue; when a player leaves, the first in line takes that seat.",
+            "To swap controllers with someone, use the players capsule on the video: a free seat is yours at once, a taken one asks the other player.",
+            "Any seated player can press another seat's Start (1P, 2P…) to start a game together.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "voice-chat",
+      group: "Playing",
+      title: "Voice and chat",
+      lead: "Seated players can talk to each other; everyone can chat.",
+      blocks: [
+        {
+          t: "list",
+          items: [
+            "Only players in seats P1 to P4 can talk. Turn the microphone on in the room's dock, or hold **V**.",
+            "Game sound and voice have separate volumes, and you can silence one player.",
+            "Voice is never recorded: it goes from each player to the host's app and on to the other players, encrypted.",
+            "Chat messages are up to 300 characters, and you see who is typing.",
+            "The host can switch the chat off for a room.",
+          ],
+        },
+        { t: "note", tone: "info", text: "Browsers may start the game muted. Tap anywhere, or the speaker button, to hear it." },
+      ],
+    },
+    {
+      slug: "rooms",
+      group: "Playing",
+      title: "Manage rooms",
+      lead: "Your computer can run several games at once. Each room can be paused, saved, archived and restored.",
+      blocks: [
+        {
+          t: "table",
+          head: ["State", "What it means"],
+          rows: [
+            ["Live", "The game is running and people can join."],
+            ["Paused", "Paused for everyone; the game stays in memory."],
+            ["Archived", "Off. The game is saved automatically, and you can turn it on later."],
+            ["Trash", "Deleted rooms stay 30 days in the trash, then go away with their saves."],
+          ],
+        },
+        {
+          t: "list",
+          items: [
+            "**Save game** stores the game as a numbered slot. When you turn a room on again you choose: continue where it stopped, start fresh, or load a slot.",
+            "Mark favorites with the star: they come first.",
+            "Up to 4 games run at once by default (paused ones count).",
+            "Rooms that were running when the computer stopped come back by themselves.",
+          ],
+        },
+        { t: "h2", id: "no-saves", text: "Games that cannot be saved" },
+        {
+          t: "p",
+          text: "The emulator cannot save every game completely (some chips are left out of the save). go-link tests each game once and marks those as **cannot be saved**: they always start from the beginning, and instead of archiving them you can pause them, which keeps them in memory.",
+        },
+      ],
+    },
+    {
+      slug: "app",
+      group: "The go-link app",
+      title: "The app window",
+      lead: "The go-link window and its menu bar icon show what your computer is doing. Closing the window keeps go-link running.",
+      blocks: [
+        {
+          t: "table",
+          head: ["Section", "What you find"],
+          rows: [
+            ["Overview", "Rooms, spectators, CPU, memory, network, streaming, players and latency; Link another browser and Unlink all."],
+            ["Emulators › MAME › ROMs", "The emulator status, your ROM folder, each game's status with its picture, Play, and a drop zone for zips."],
+            ["Emulators › MAME › Thumbnails", "Which games have pictures, and where to put them."],
+            ["System", "Your hardware, live usage, and the version of go-link."],
+            ["Settings", "Which picture to show, list size, thumbnails folder, rooms and network information."],
+          ],
+        },
+        { t: "p", text: "Click the menu bar (tray) icon for a small panel with the status; right click it for the menu. **Quit** stops go-link." },
+        { t: "h2", id: "history", text: "History" },
+        { t: "p", text: "My device › History lists every game that ran: when, which players joined, their seats and connection. It stays on your computer and only you see it." },
+      ],
+    },
+    {
+      slug: "thumbnails",
+      group: "The go-link app",
+      title: "Game pictures",
+      lead: "go-link shows your own game pictures (thumbnails) in the library and in the rooms. It never downloads them.",
+      blocks: [
+        { t: "p", text: "Put them in `~/go-link/thumbnails/MAME`, one folder per kind, with the game's set name or title:" },
+        { t: "code", code: "Named_Boxarts/galaga.png   the box or flyer\nNamed_Titles/galaga.png    the title screen\nNamed_Snaps/galaga.png     a screenshot" },
+        {
+          t: "list",
+          items: [
+            "Drop images or a folder with those three folders on the app window's Thumbnails tab.",
+            "Choose which kind is shown in Settings, or with `go-link-device thumbnails kind boxart|title|snap`.",
+            "`go-link-device thumbnails check` counts how many games have each kind.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "panel",
+      group: "The go-link app",
+      title: "Headless and web panel",
+      lead: "On a computer without a screen (a Raspberry Pi, a server, Docker) go-link runs without a window and serves its own web panel on your network.",
+      blocks: [
+        { t: "code", code: "./go-link-device --headless\n./go-link-device panel token       # the panel's key" },
+        {
+          t: "steps",
+          items: ["Start go-link headless. The web panel opens on port 7373.", "On another computer of your network, open `http://<address of the device>:7373`.", "Paste the panel key (`go-link-device panel token`), accept the terms and open the panel."],
+        },
+        {
+          t: "list",
+          items: [
+            "The panel is the same My device and Rooms you use on the website, and it also works on a network without internet.",
+            "The key never travels over the network: the browser proves it knows it. Five wrong tries in a minute block that address for 5 minutes.",
+            "`--panel :8000` changes the port; `--no-panel` turns it off. `panel token --new` makes a new key (with go-link stopped).",
+            "Friends from the internet still join through go-link.org with their invitation.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "cli",
+      group: "The go-link app",
+      title: "Command line",
+      lead: "Everything the website does can also be done from a terminal. On macOS, the program is inside the app: `/Applications/go-link.app/Contents/MacOS/go-link-device`.",
+      blocks: [
+        {
+          t: "code",
+          code: "go-link-device                          run go-link\ngo-link-device core download            download the emulator and its game list\ngo-link-device roms dir [PATH]          show or change the ROM folder\ngo-link-device roms check [--json]      check which games run\ngo-link-device roms saves [--json]      test which games can be saved\ngo-link-device thumbnails check         count the game pictures\ngo-link-device thumbnails dir [PATH]    show or change the pictures folder\ngo-link-device thumbnails kind [KIND]   boxart, title or snap\ngo-link-device panel token [--new]      show or replace the panel key\ngo-link-device --help                   every option, and the version",
+        },
+        {
+          t: "table",
+          head: ["Option", "What it does"],
+          rows: [
+            ["--headless", "No window: log, command line and web panel"],
+            ["--server-signaling URL", "Use another signaling server for this run"],
+            ["--udp-port N, --announce IPs", "A fixed UDP port for direct connections (see Connection)"],
+            ["--config PATH", "Another settings file"],
+            ["--debug", "Detailed logs"],
+          ],
+        },
+        { t: "p", text: "Without a terminal, the log is in `~/go-link/logs/device.log`." },
+      ],
+    },
+    {
+      slug: "docker",
+      group: "The go-link app",
+      title: "Docker",
+      lead: "The Docker image is go-link without a window, with its web panel on port 7373. Everything it keeps lives in the /data volume.",
+      blocks: [
+        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device" },
+        {
+          t: "list",
+          items: [
+            "Mount your ROMs at `/data/go-link/roms` and your pictures at `/data/go-link/thumbnails/MAME`. Add `:ro` to the ROMs to block uploads from the website.",
+            "The panel key: `docker exec go-link go-link-device panel token --config /data/device.json`.",
+            "Without host networking (Docker Desktop), publish the panel and a fixed UDP port, and announce your computer's address: `-p 7373:7373 -p 50000:50000/udp` and `--udp-port 50000 --announce 192.168.1.20`.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "connection",
+      group: "Network",
+      title: "Connection",
+      lead: "go-link connects each browser directly to your computer when it can, and through a relay when it cannot.",
+      blocks: [
+        {
+          t: "p",
+          text: "The room shows the latency and the path: **direct** or **relay**. A relay always works, but adds the trip to the relay server. Direct is best for fast games.",
+        },
+        { t: "h2", id: "port", text: "A fixed UDP port" },
+        { t: "p", text: "If friends on your network or on the internet go through the relay, give go-link a fixed UDP port and forward it on your router:" },
+        { t: "steps", items: ["Choose a port, for example 50000, and start go-link with `--udp-port 50000` (or `udp_port` in its settings file).", "On your router, forward that UDP port to your computer.", "Tell go-link the address where friends reach that port: `--announce <your public address>` (or `announce_ips`)."] },
+        { t: "code", code: "{ \"udp_port\": 50000, \"announce_ips\": [\"203.0.113.7\"] }" },
+        { t: "note", tone: "info", text: "Every room uses the same port, so one forwarding rule is enough." },
+      ],
+    },
+    {
+      slug: "own-server",
+      group: "Network",
+      title: "Your own signaling server",
+      lead: "The signaling server only introduces browsers and your app. You can run your own instead of the public one.",
+      blocks: [
+        { t: "p", text: "The server is [signalhub](https://github.com/lordbasex/signalhub), open source, for any Linux server with Docker. Its README lists the ports to open and the settings." },
+        {
+          t: "steps",
+          items: ["Deploy signalhub, allowing `https://go-link.org` in `ALLOWED_ORIGINS` and the app `go-link` in `ALLOWED_APPS`.", "Start your app with `--server-signaling wss://your-server/ws`, or set `signal_url` in its settings file.", "On the website, click the **Signaling server** button in the header, type the same address and save. Every player must do the same."],
+        },
+        { t: "note", tone: "warn", text: "The website never takes the server from a link, only from that button, so nobody can send your friends to another server with a crafted link." },
+      ],
+    },
+    {
+      slug: "troubleshooting",
+      group: "Help",
+      title: "Troubleshooting",
+      lead: "The most common problems and how to fix them.",
+      blocks: [
+        { t: "h2", id: "offline", text: "My device shows “offline”" },
+        { t: "p", text: "go-link is not running on your computer, or it uses another signaling server than the website. Open the app and check the server in its Settings." },
+        { t: "h2", id: "code", text: "“That code is invalid or expired”" },
+        { t: "p", text: "The code changes every few minutes and works once. Type the one the window shows now. If you use your own server, set it on the website first." },
+        { t: "h2", id: "missing", text: "A game shows “Missing files”" },
+        { t: "p", text: "The set is from another MAME version, or its parent or BIOS zip is not in the same folder. go-link needs MAME 0.78 sets." },
+        { t: "h2", id: "sound", text: "No sound" },
+        { t: "p", text: "Browsers may start muted: tap anywhere or the speaker button. Check the game volume in the dock." },
+        { t: "h2", id: "lag", text: "The game lags" },
+        { t: "p", text: "If the room shows **relay**, set up a [fixed UDP port](/docs/connection). A wired connection on the host's computer helps too." },
+        { t: "h2", id: "browser", text: "The video never starts" },
+        { t: "p", text: "Try another browser: Chrome and Edge work best. Some networks block the connection; the relay is used then." },
+        { t: "h2", id: "pin", text: "“Someone already joined with this invitation”" },
+        { t: "p", text: "Each PIN works for one person. Ask the host for a new invitation." },
+        { t: "h2", id: "restart", text: "A game starts from the beginning" },
+        { t: "p", text: "That game cannot be saved completely by the emulator, so go-link always starts it fresh. Pause it instead of archiving it." },
+        { t: "h2", id: "macos", text: "macOS says the app cannot be opened" },
+        { t: "p", text: "Go to **System Settings › Privacy & Security** and click **Open Anyway** (see [Install](/docs/install))." },
+        { t: "h2", id: "help", text: "Still stuck?" },
+        { t: "p", text: "Open an issue on [GitHub](https://github.com/lordbasex/go-link/issues) with your system and go-link version (the app's System section, or `go-link-device --help`)." },
+      ],
+    },
+  ],
+};

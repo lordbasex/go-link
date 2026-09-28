@@ -1,0 +1,454 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+// Spanish user documentation (same pages and slugs as docs-en.ts).
+import type { Docs } from "./docs-types";
+
+export const docsEs: Docs = {
+  title: "Documentación",
+  eyebrow: "Docs",
+  search: "Buscar en la documentación",
+  noResults: "Ninguna página coincide.",
+  onThisPage: "En esta página",
+  previous: "Anterior",
+  next: "Siguiente",
+  menu: "Menú de la documentación",
+  copy: "Copiar",
+  edit: "Mejorar esta página en GitHub",
+  pages: [
+    {
+      slug: "introduction",
+      group: "Empezar",
+      title: "Introducción",
+      lead: "go-link convierte tu computadora en un pequeño servidor de arcade: tú corres los juegos y tus amigos los juegan desde su navegador.",
+      blocks: [
+        { t: "h2", id: "what", text: "Qué hace go-link" },
+        {
+          t: "p",
+          text: "Tú (el **anfitrión**) instalas la app de go-link en tu computadora, con tus propios archivos de juegos. Tus amigos (los **invitados**) abren una invitación en su navegador y juegan: reciben el video y el sonido del juego y envían sus controles. No instalan nada y nunca necesitan los archivos de los juegos.",
+        },
+        {
+          t: "list",
+          items: [
+            "Hasta **4 jugadores** a la vez (P1 a P4). El resto mira en vivo y espera en una fila como en un arcade.",
+            "Voz entre los jugadores y chat para todos.",
+            "Varios juegos a la vez, con pausa, partidas guardadas e historial.",
+            "Teclado, mandos (varios por navegador) y un mando en pantalla en el celular.",
+          ],
+        },
+        { t: "h2", id: "how", text: "Cómo funciona" },
+        {
+          t: "p",
+          text: "El juego corre solo en tu computadora. El video, el sonido y los controles viajan directo entre tu computadora y cada navegador por WebRTC, cifrados. Los servidores de go-link solo los presentan entre sí; nunca ven el juego.",
+        },
+        { t: "code", code: "navegadores de tus amigos  <-- video, sonido, voz, controles, chat -->  tu computadora (app go-link)\n            \\                                                                /\n             `-----------> servidor de señalización (presentaciones) <-----'" },
+        { t: "h2", id: "games", text: "Sobre los juegos" },
+        {
+          t: "p",
+          text: "go-link está basado en MAME: usa el motor mame2003-plus, que juega sets de **MAME 0.78**. go-link no incluye, aloja ni descarga ningún juego. Usa solo archivos que tengas derecho a usar, como copias de seguridad de placas arcade propias. Mira los [términos de uso](/terms).",
+        },
+        { t: "h2", id: "next", text: "Por dónde empezar" },
+        { t: "steps", items: ["[Instala](/docs/install) la app en la computadora que tiene tus juegos.", "[Vincula tu navegador](/docs/link) con el código de 9 dígitos.", "[Prepara el emulador y tus ROMs](/docs/roms).", "[Empieza tu primera partida](/docs/first-game) e invita a tus amigos."] },
+      ],
+    },
+    {
+      slug: "install",
+      group: "Empezar",
+      title: "Instalación",
+      lead: "Descarga go-link para tu sistema desde la página de versiones. La app es liviana: el emulador se descarga después, desde la propia app.",
+      blocks: [
+        { t: "note", tone: "info", text: "Descargas: [github.com/lordbasex/go-link/releases](https://github.com/lordbasex/go-link/releases). Cada archivo está en `SHA256SUMS`." },
+        { t: "h2", id: "macos", text: "macOS" },
+        { t: "steps", items: ["Descarga `go-link-vX.Y.Z-macos-universal.dmg` (Intel y Apple Silicon, macOS 12 o posterior).", "Ábrelo y arrastra **go-link** a **Aplicaciones**.", "Abre go-link desde Aplicaciones o Launchpad. Su ícono aparece en la barra de menú."] },
+        {
+          t: "note",
+          tone: "warn",
+          text: "Mientras la app no esté notarizada por Apple, macOS la bloquea la primera vez. Intenta abrirla, luego ve a **Ajustes del Sistema › Privacidad y seguridad** y haz clic en **Abrir de todos modos**. En versiones anteriores de macOS, haz clic derecho sobre la app y elige **Abrir**.",
+        },
+        { t: "p", text: "Con Homebrew:" },
+        { t: "code", code: "brew tap lordbasex/go-link https://github.com/lordbasex/go-link\nbrew install --cask go-link" },
+        { t: "h2", id: "windows", text: "Windows" },
+        { t: "steps", items: ["Descarga `go-link-vX.Y.Z-windows-amd64.zip` (o `-arm64.zip` para equipos ARM).", "Descomprímelo y ejecuta `go-link-device.exe`.", "Si SmartScreen te avisa, haz clic en **Más información › Ejecutar de todas formas**."] },
+        { t: "h2", id: "linux", text: "Linux" },
+        { t: "p", text: "Para un escritorio, descarga `go-link-vX.Y.Z-linux-amd64.tar.gz` (o `-arm64`). Necesita OpenGL y Wayland o X11, que tiene cualquier escritorio." },
+        { t: "code", code: "tar xzf go-link-v*-linux-amd64.tar.gz\n./go-link-device" },
+        { t: "h2", id: "raspberry", text: "Raspberry Pi y servidores" },
+        {
+          t: "p",
+          text: "Usa la versión **sin ventana** (`-linux-arm64-headless.tar.gz` para una Raspberry Pi con sistema de 64 bits). No tiene ventana: abre un [panel web](/docs/panel) en el puerto 7373 y tiene una [línea de comandos](/docs/cli) completa.",
+        },
+        { t: "h2", id: "docker", text: "Docker" },
+        { t: "p", text: "También hay una imagen de Docker; mira [Docker](/docs/docker)." },
+      ],
+    },
+    {
+      slug: "link",
+      group: "Empezar",
+      title: "Vincula tu navegador",
+      lead: "Vincular conecta un navegador con tu app de go-link, para manejarla desde el sitio: juegos, ROMs, salas e invitaciones.",
+      blocks: [
+        { t: "steps", items: ["Abre go-link en tu computadora. Su ventana muestra un **código de 9 dígitos**.", "En un navegador, entra a [go-link.org/device](/device) (Mi dispositivo).", "Escribe el código (o pégalo en el primer casillero).", "Lee y acepta los términos de uso, y haz clic en **Vincular**."] },
+        { t: "p", text: "La página pasa a ser el panel en vivo de tu dispositivo: CPU, memoria, red, jugadores y tu biblioteca de juegos." },
+        { t: "h2", id: "remembered", text: "Un navegador recordado" },
+        {
+          t: "p",
+          text: "Escribes el código una sola vez. El navegador queda recordado y la próxima vez se reconecta solo, incluso después de reiniciar la computadora. Antes de que tu navegador muestre su clave, la app demuestra que es realmente tu dispositivo.",
+        },
+        { t: "h2", id: "more", text: "Más navegadores y desvincular" },
+        {
+          t: "list",
+          items: [
+            "Para vincular un segundo navegador (tu celular, por ejemplo), haz clic en **Link another browser** en la ventana de la app: muestra un código nuevo.",
+            "**Desvincular** en el sitio olvida ese navegador. **Unlink all** en la ventana de la app olvida todos y vuelve a mostrar un código.",
+            "El código cambia cada pocos minutos y sirve una sola vez. Si dice que es inválido, escribe el que muestra la ventana ahora.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "roms",
+      group: "Empezar",
+      title: "Emulador y ROMs",
+      lead: "go-link usa el emulador mame2003-plus, que juega sets de MAME 0.78. Descargas el emulador una vez y le indicas a go-link tu carpeta de ROMs.",
+      blocks: [
+        { t: "h2", id: "core", text: "Descarga el emulador" },
+        {
+          t: "p",
+          text: "En **Mi dispositivo**, o en la ventana de la app (**Emulators › MAME › ROMs**), haz clic en el botón para descargar el emulador y su lista de juegos. go-link los descarga del servidor oficial de libretro para tu sistema. Desde una terminal: `go-link-device core download`.",
+        },
+        { t: "h2", id: "folder", text: "Tu carpeta de ROMs" },
+        {
+          t: "list",
+          items: [
+            "Por defecto go-link lee `~/go-link/roms`. Elige otra carpeta en la ventana de la app, en Mi dispositivo › ROMs o con `go-link-device roms dir /ruta/a/roms`.",
+            "Deja cada juego como su `.zip`, con el nombre del set de MAME (por ejemplo `galaga.zip`).",
+            "Los juegos que necesitan una BIOS o un set padre necesitan también ese zip en la misma carpeta (por ejemplo `neogeo.zip`).",
+            "Para agregar juegos, suelta archivos `.zip` sobre la ventana de la app o en Mi dispositivo › ROMs. Se copian a tu carpeta; nunca se reemplaza un archivo existente.",
+          ],
+        },
+        { t: "h2", id: "check", text: "Qué juegos funcionan" },
+        { t: "p", text: "go-link revisa cada zip contra la lista de juegos del emulador, sin ejecutarlo, y muestra un estado para cada juego:" },
+        {
+          t: "table",
+          head: ["Estado", "Qué significa"],
+          rows: [
+            ["Funciona", "Están todos los archivos."],
+            ["Faltan archivos", "Faltan archivos, casi siempre porque el set es de otra versión de MAME. La lista indica qué zip o archivos."],
+            ["No está en este emulador", "El juego se agregó a MAME después de la versión 0.78."],
+            ["BIOS", "Una BIOS que usan otros juegos, no un juego."],
+            ["Zip dañado", "El archivo está dañado."],
+          ],
+        },
+        { t: "note", tone: "info", text: "Los sets tienen que ser de **MAME 0.78**. Un set de un MAME reciente suele tener otros nombres de archivo y aparece como Faltan archivos." },
+        { t: "h2", id: "rights", text: "Tus juegos, tu responsabilidad" },
+        { t: "p", text: "go-link nunca incluye ni descarga juegos. Usa solo archivos que tengas derecho a usar; mira los [términos de uso](/terms)." },
+      ],
+    },
+    {
+      slug: "first-game",
+      group: "Empezar",
+      title: "Tu primera partida",
+      lead: "Una sala es un juego corriendo en tu computadora. Créala desde el sitio y luego invita a tus amigos.",
+      blocks: [
+        { t: "steps", items: ["En **Salas**, haz clic en **Nueva partida** (o en **Jugar** sobre un juego en Mi dispositivo › ROMs).", "Elige el juego, un nombre para la sala y si los jugadores pueden hablar y chatear.", "Haz clic para empezar. go-link carga el juego y abre la sala.", "Haz clic en **Invitar** para obtener el link, el código QR y un PIN para tu amigo."] },
+        { t: "p", text: "Entras a tu propia sala enseguida: tu navegador es el dueño, así que no necesita PIN." },
+        { t: "h2", id: "test", text: "La carta de ajuste" },
+        {
+          t: "p",
+          text: "Antes de invitar a alguien, prueba la **Carta de ajuste** en Mi dispositivo: una carta de ajuste de TV con un reloj, un tono de 1 kHz y el dibujo de un mando que se ilumina al presionar teclas. Si la ves y la escuchas, todo el camino funciona.",
+        },
+      ],
+    },
+    {
+      slug: "invite",
+      group: "Jugar",
+      title: "Invita a tus amigos",
+      lead: "Todas las salas son privadas. La invitación es la puerta; el PIN es la llave, y hay un PIN por persona.",
+      blocks: [
+        { t: "h2", id: "door", text: "La invitación" },
+        {
+          t: "list",
+          items: [
+            "**Invitar** en la sala muestra un link, un código QR y un código de 9 dígitos. Envía cualquiera de ellos.",
+            "Tu amigo abre el link, o escribe el código en **Únete a una partida** en el sitio.",
+            "**Nuevo enlace** reemplaza el link, el QR y el código: los anteriores dejan de funcionar. Quienes ya están adentro se quedan.",
+          ],
+        },
+        { t: "h2", id: "pin", text: "Un PIN por persona" },
+        {
+          t: "list",
+          items: [
+            "Cada vez que invitas a alguien, go-link crea un PIN nuevo de 6 dígitos. La primera persona que lo usa entra, y queda gastado.",
+            "Un PIN sin usar dura 6 horas. Todos los PIN terminan cuando se cierra la sala.",
+            "Los invitados que ya entraron pueden volver después de recargar sin PIN.",
+            "Tras 5 intentos fallidos un invitado queda bloqueado; 20 fallos en 10 minutos bloquean la sala por 10 minutos.",
+          ],
+        },
+        { t: "note", tone: "info", text: "Nunca pongas el PIN en el link. Envía el link y el PIN por separado, o dilo en voz alta." },
+        { t: "h2", id: "guest", text: "Qué ve un invitado" },
+        { t: "p", text: "Un invitado escribe el código (o abre el link) y el PIN, acepta los términos la primera vez y entra. Los invitados ven el juego, los jugadores, el chat y los controles, pero no la configuración de la sala." },
+      ],
+    },
+    {
+      slug: "controls",
+      group: "Jugar",
+      title: "Controles",
+      lead: "Juega con el teclado, con mandos o con el mando en pantalla en un celular o tablet.",
+      blocks: [
+        { t: "h2", id: "keyboard", text: "Teclado" },
+        {
+          t: "table",
+          head: ["Tecla", "Acción"],
+          rows: [
+            ["Flechas", "Moverse"],
+            ["Z X C A S D", "Botones 1 a 6"],
+            ["5", "Insertar una moneda"],
+            ["Enter", "Tu propio Start"],
+            ["1 2 3 4", "Start de los jugadores 1 a 4, como la fila de botones Start de un panel arcade"],
+            ["P", "Pausar el juego para todos"],
+            ["V (mantener)", "Hablar"],
+          ],
+        },
+        { t: "p", text: "Abre los controles (el ícono del mando sobre el video) para ver el mapa del teclado y cambiar cualquier tecla." },
+        { t: "h2", id: "gamepads", text: "Mandos" },
+        {
+          t: "list",
+          items: [
+            "Conéctalo por USB o Bluetooth y presiona cualquier botón: los navegadores solo muestran un mando después de su primera pulsación.",
+            "Cada mando es un jugador, así que varias personas pueden jugar desde una computadora. El teclado juega como el jugador que elijas.",
+            "Si un botón hace algo inesperado, usa **Reasignar botones** en el panel de controles.",
+          ],
+        },
+        { t: "h2", id: "touch", text: "Celulares y tablets" },
+        {
+          t: "list",
+          items: [
+            "Toca el ícono del mando sobre el video para mostrar el mando en pantalla.",
+            "Flechas a la izquierda, los botones del juego a la derecha (solo los que usa el juego), Moneda y 1P, 2P… arriba.",
+            "Gira el celular y usa pantalla completa para ver la imagen más grande. En iPhone, agrega go-link a la pantalla de inicio para tener pantalla completa real.",
+          ],
+        },
+        { t: "h2", id: "seats", text: "Puestos, fila y cambio de mando" },
+        {
+          t: "list",
+          items: [
+            "Las primeras cuatro personas toman los puestos P1 a P4. El resto espera en la fila; cuando un jugador sale, el primero de la fila toma ese puesto.",
+            "Para cambiar de mando con alguien, usa la cápsula de jugadores sobre el video: un puesto libre es tuyo al instante; uno ocupado se lo pide al otro jugador.",
+            "Cualquier jugador sentado puede presionar el Start de otro puesto (1P, 2P…) para empezar una partida juntos.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "voice-chat",
+      group: "Jugar",
+      title: "Voz y chat",
+      lead: "Los jugadores sentados pueden hablar entre sí; todos pueden chatear.",
+      blocks: [
+        {
+          t: "list",
+          items: [
+            "Solo los jugadores en los puestos P1 a P4 pueden hablar. Activa el micrófono en el panel de la sala, o mantén **V**.",
+            "El sonido del juego y la voz tienen volúmenes separados, y puedes silenciar a un jugador.",
+            "La voz nunca se graba: va de cada jugador a la app del anfitrión y de ahí a los otros jugadores, cifrada.",
+            "Los mensajes de chat tienen hasta 300 caracteres, y ves quién está escribiendo.",
+            "El anfitrión puede apagar el chat de una sala.",
+          ],
+        },
+        { t: "note", tone: "info", text: "Los navegadores pueden empezar el juego silenciado. Toca en cualquier parte, o el botón de sonido, para escucharlo." },
+      ],
+    },
+    {
+      slug: "rooms",
+      group: "Jugar",
+      title: "Administra las salas",
+      lead: "Tu computadora puede correr varios juegos a la vez. Cada sala se puede pausar, guardar, archivar y restaurar.",
+      blocks: [
+        {
+          t: "table",
+          head: ["Estado", "Qué significa"],
+          rows: [
+            ["En vivo", "El juego está corriendo y se puede entrar."],
+            ["En pausa", "En pausa para todos; el juego sigue en memoria."],
+            ["Archivada", "Apagada. El juego se guarda automáticamente y puedes encenderla después."],
+            ["Papelera", "Las salas borradas quedan 30 días en la papelera y luego se eliminan con sus partidas guardadas."],
+          ],
+        },
+        {
+          t: "list",
+          items: [
+            "**Guardar partida** guarda el juego en un espacio numerado. Al encender una sala de nuevo eliges: seguir donde quedó, empezar de cero o cargar una partida guardada.",
+            "Marca favoritas con la estrella: aparecen primero.",
+            "Por defecto corren hasta 4 juegos a la vez (cuentan los pausados).",
+            "Las salas que estaban andando cuando se apagó la computadora vuelven solas.",
+          ],
+        },
+        { t: "h2", id: "no-saves", text: "Juegos que no se pueden guardar" },
+        {
+          t: "p",
+          text: "El emulador no puede guardar algunos juegos por completo (hay chips que quedan fuera del guardado). go-link prueba cada juego una vez y los marca como **no se puede guardar**: siempre empiezan desde el principio y, en lugar de archivarlos, puedes pausarlos, lo que los mantiene en memoria.",
+        },
+      ],
+    },
+    {
+      slug: "app",
+      group: "La app go-link",
+      title: "La ventana de la app",
+      lead: "La ventana de go-link y su ícono en la barra de menú muestran qué está haciendo tu computadora. Cerrar la ventana deja go-link funcionando.",
+      blocks: [
+        {
+          t: "table",
+          head: ["Sección", "Qué encuentras"],
+          rows: [
+            ["Overview", "Salas, espectadores, CPU, memoria, red, transmisión, jugadores y latencia; Link another browser y Unlink all."],
+            ["Emulators › MAME › ROMs", "El estado del emulador, tu carpeta de ROMs, el estado de cada juego con su imagen, Play y una zona para soltar zips."],
+            ["Emulators › MAME › Thumbnails", "Qué juegos tienen imágenes y dónde ponerlas."],
+            ["System", "Tu hardware, el uso en vivo y la versión de go-link."],
+            ["Settings", "Qué imagen mostrar, el tamaño de la lista, la carpeta de imágenes, e información de salas y red."],
+          ],
+        },
+        { t: "p", text: "Haz clic en el ícono de la barra de menú para ver un pequeño panel con el estado; clic derecho para el menú. **Quit** detiene go-link." },
+        { t: "h2", id: "history", text: "Historial" },
+        { t: "p", text: "Mi dispositivo › Historial lista cada juego que corrió: cuándo, qué jugadores entraron, sus puestos y su conexión. Queda en tu computadora y solo tú lo ves." },
+      ],
+    },
+    {
+      slug: "thumbnails",
+      group: "La app go-link",
+      title: "Imágenes de los juegos",
+      lead: "go-link muestra tus propias imágenes de los juegos (thumbnails) en la biblioteca y en las salas. Nunca las descarga.",
+      blocks: [
+        { t: "p", text: "Ponlas en `~/go-link/thumbnails/MAME`, una carpeta por tipo, con el nombre del set o el título del juego:" },
+        { t: "code", code: "Named_Boxarts/galaga.png   la caja o el flyer\nNamed_Titles/galaga.png    la pantalla de título\nNamed_Snaps/galaga.png     una captura" },
+        {
+          t: "list",
+          items: [
+            "Suelta imágenes, o una carpeta con esas tres carpetas, en la pestaña Thumbnails de la ventana de la app.",
+            "Elige qué tipo se muestra en Settings, o con `go-link-device thumbnails kind boxart|title|snap`.",
+            "`go-link-device thumbnails check` cuenta cuántos juegos tienen cada tipo.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "panel",
+      group: "La app go-link",
+      title: "Sin ventana y panel web",
+      lead: "En una computadora sin pantalla (una Raspberry Pi, un servidor, Docker) go-link corre sin ventana y sirve su propio panel web en tu red.",
+      blocks: [
+        { t: "code", code: "./go-link-device --headless\n./go-link-device panel token       # la clave del panel" },
+        {
+          t: "steps",
+          items: ["Inicia go-link sin ventana. El panel web se abre en el puerto 7373.", "En otra computadora de tu red, abre `http://<dirección del dispositivo>:7373`.", "Pega la clave del panel (`go-link-device panel token`), acepta los términos y abre el panel."],
+        },
+        {
+          t: "list",
+          items: [
+            "El panel es el mismo Mi dispositivo y las mismas Salas que usas en el sitio, y también funciona en una red sin internet.",
+            "La clave nunca viaja por la red: el navegador demuestra que la conoce. Cinco intentos fallidos en un minuto bloquean esa dirección por 5 minutos.",
+            "`--panel :8000` cambia el puerto; `--no-panel` lo apaga. `panel token --new` crea una clave nueva (con go-link detenido).",
+            "Los amigos desde internet siguen entrando por go-link.org con su invitación.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "cli",
+      group: "La app go-link",
+      title: "Línea de comandos",
+      lead: "Todo lo que hace el sitio también se puede hacer desde una terminal. En macOS, el programa está dentro de la app: `/Applications/go-link.app/Contents/MacOS/go-link-device`.",
+      blocks: [
+        {
+          t: "code",
+          code: "go-link-device                          corre go-link\ngo-link-device core download            descarga el emulador y su lista de juegos\ngo-link-device roms dir [RUTA]          muestra o cambia la carpeta de ROMs\ngo-link-device roms check [--json]      revisa qué juegos funcionan\ngo-link-device roms saves [--json]      prueba qué juegos se pueden guardar\ngo-link-device thumbnails check         cuenta las imágenes de los juegos\ngo-link-device thumbnails dir [RUTA]    muestra o cambia la carpeta de imágenes\ngo-link-device thumbnails kind [TIPO]   boxart, title o snap\ngo-link-device panel token [--new]      muestra o reemplaza la clave del panel\ngo-link-device --help                   todas las opciones y la versión",
+        },
+        {
+          t: "table",
+          head: ["Opción", "Qué hace"],
+          rows: [
+            ["--headless", "Sin ventana: log, línea de comandos y panel web"],
+            ["--server-signaling URL", "Usa otro servidor de señalización en esta ejecución"],
+            ["--udp-port N, --announce IPs", "Un puerto UDP fijo para conexiones directas (mira Conexión)"],
+            ["--config RUTA", "Otro archivo de configuración"],
+            ["--debug", "Logs detallados"],
+          ],
+        },
+        { t: "p", text: "Sin terminal, el log está en `~/go-link/logs/device.log`." },
+      ],
+    },
+    {
+      slug: "docker",
+      group: "La app go-link",
+      title: "Docker",
+      lead: "La imagen de Docker es go-link sin ventana, con su panel web en el puerto 7373. Todo lo que guarda vive en el volumen /data.",
+      blocks: [
+        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device" },
+        {
+          t: "list",
+          items: [
+            "Monta tus ROMs en `/data/go-link/roms` y tus imágenes en `/data/go-link/thumbnails/MAME`. Agrega `:ro` a las ROMs para bloquear subidas desde el sitio.",
+            "La clave del panel: `docker exec go-link go-link-device panel token --config /data/device.json`.",
+            "Sin red del host (Docker Desktop), publica el panel y un puerto UDP fijo, y anuncia la dirección de tu computadora: `-p 7373:7373 -p 50000:50000/udp` y `--udp-port 50000 --announce 192.168.1.20`.",
+          ],
+        },
+      ],
+    },
+    {
+      slug: "connection",
+      group: "Red",
+      title: "Conexión",
+      lead: "go-link conecta cada navegador directo con tu computadora cuando puede, y a través de un relay cuando no.",
+      blocks: [
+        {
+          t: "p",
+          text: "La sala muestra la latencia y el camino: **directo** o **relay**. El relay siempre funciona, pero suma el viaje hasta el servidor del relay. Directo es lo mejor para juegos rápidos.",
+        },
+        { t: "h2", id: "port", text: "Un puerto UDP fijo" },
+        { t: "p", text: "Si amigos de tu red o de internet pasan por el relay, dale a go-link un puerto UDP fijo y redirígelo en tu router:" },
+        { t: "steps", items: ["Elige un puerto, por ejemplo 50000, e inicia go-link con `--udp-port 50000` (o `udp_port` en su archivo de configuración).", "En tu router, redirige ese puerto UDP a tu computadora.", "Indica a go-link la dirección donde tus amigos llegan a ese puerto: `--announce <tu dirección pública>` (o `announce_ips`)."] },
+        { t: "code", code: "{ \"udp_port\": 50000, \"announce_ips\": [\"203.0.113.7\"] }" },
+        { t: "note", tone: "info", text: "Todas las salas usan el mismo puerto, así que alcanza con una sola regla de redirección." },
+      ],
+    },
+    {
+      slug: "own-server",
+      group: "Red",
+      title: "Tu propio servidor de señalización",
+      lead: "El servidor de señalización solo presenta a los navegadores y a tu app. Puedes usar el tuyo en lugar del público.",
+      blocks: [
+        { t: "p", text: "El servidor es [signalhub](https://github.com/lordbasex/signalhub), de código abierto, para cualquier servidor Linux con Docker. Su README lista los puertos a abrir y la configuración." },
+        {
+          t: "steps",
+          items: ["Instala signalhub, permitiendo `https://go-link.org` en `ALLOWED_ORIGINS` y la app `go-link` en `ALLOWED_APPS`.", "Inicia tu app con `--server-signaling wss://tu-servidor/ws`, o pon `signal_url` en su archivo de configuración.", "En el sitio, haz clic en el botón **Servidor de señalización** del encabezado, escribe la misma dirección y guarda. Cada jugador tiene que hacer lo mismo."],
+        },
+        { t: "note", tone: "warn", text: "El sitio nunca toma el servidor de un link, solo de ese botón, así nadie puede mandar a tus amigos a otro servidor con un link armado." },
+      ],
+    },
+    {
+      slug: "troubleshooting",
+      group: "Ayuda",
+      title: "Problemas frecuentes",
+      lead: "Los problemas más comunes y cómo resolverlos.",
+      blocks: [
+        { t: "h2", id: "offline", text: "Mi dispositivo aparece “desconectado”" },
+        { t: "p", text: "go-link no está corriendo en tu computadora, o usa otro servidor de señalización que el sitio. Abre la app y revisa el servidor en su Settings." },
+        { t: "h2", id: "code", text: "“Ese código no es válido o ya venció”" },
+        { t: "p", text: "El código cambia cada pocos minutos y sirve una vez. Escribe el que muestra la ventana ahora. Si usas tu propio servidor, configúralo primero en el sitio." },
+        { t: "h2", id: "missing", text: "Un juego muestra “Faltan archivos”" },
+        { t: "p", text: "El set es de otra versión de MAME, o su zip padre o BIOS no está en la misma carpeta. go-link necesita sets de MAME 0.78." },
+        { t: "h2", id: "sound", text: "No hay sonido" },
+        { t: "p", text: "Los navegadores pueden empezar silenciados: toca en cualquier parte o el botón de sonido. Revisa el volumen del juego en el panel de la sala." },
+        { t: "h2", id: "lag", text: "El juego va lento" },
+        { t: "p", text: "Si la sala muestra **relay**, configura un [puerto UDP fijo](/docs/connection). Una conexión por cable en la computadora del anfitrión también ayuda." },
+        { t: "h2", id: "browser", text: "El video nunca empieza" },
+        { t: "p", text: "Prueba otro navegador: Chrome y Edge funcionan mejor. Algunas redes bloquean la conexión; entonces se usa el relay." },
+        { t: "h2", id: "pin", text: "“Ya entró alguien con esta invitación”" },
+        { t: "p", text: "Cada PIN sirve para una persona. Pídele al anfitrión una invitación nueva." },
+        { t: "h2", id: "restart", text: "Un juego empieza desde el principio" },
+        { t: "p", text: "El emulador no puede guardar ese juego por completo, así que go-link siempre lo empieza de cero. Pausa la sala en lugar de archivarla." },
+        { t: "h2", id: "macos", text: "macOS dice que no se puede abrir la app" },
+        { t: "p", text: "Ve a **Ajustes del Sistema › Privacidad y seguridad** y haz clic en **Abrir de todos modos** (mira [Instalación](/docs/install))." },
+        { t: "h2", id: "help", text: "¿Sigues con problemas?" },
+        { t: "p", text: "Abre un issue en [GitHub](https://github.com/lordbasex/go-link/issues) con tu sistema y la versión de go-link (la sección System de la app, o `go-link-device --help`)." },
+      ],
+    },
+  ],
+};

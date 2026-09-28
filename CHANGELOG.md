@@ -4,6 +4,11 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added
+
+- User guide at `/docs` (English, Spanish and Portuguese): install, linking, ROMs, first game, invitations, controls, voice and chat, rooms, the app, pictures, headless panel, command line, Docker, network and troubleshooting. "Docs" in the menu and the footer.
+- An arcade 404 page, and the website's version in the footer and in a `go-link-version` meta tag.
+
 ### Legal
 
 - Terms of use and privacy policy (`docs/legal.md`, and `/terms` and `/privacy` on the website in English, Spanish and Portuguese), with the MAME trademark notice and the non-commercial license of mame2003-plus.

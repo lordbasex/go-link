@@ -55,6 +55,7 @@ STUN and TURN are **not** configured: they arrive in signalhub's `hello` and liv
 | `/r/:roomId` | A room by id (the owner's own rooms) |
 | `/device` | My device: linking with the code, then the live dashboard |
 | `/device/roms`, `/device/history` | My device tabs |
+| `/docs`, `/docs/:page` | The user guide ([below](#user-guide)) |
 | `/terms`, `/privacy` | Terms of use and privacy policy ([docs/legal.md](legal.md) in three languages) |
 
 On a headless device's local panel, `/` goes to `/device` (not linked yet) or `/rooms`, and there is no landing page.
@@ -71,6 +72,10 @@ All visible text lives in `apps/web/src/i18n/`: `en.ts` (English, default and re
 - **New game:** pick a game (`GamePicker`: search, arrows, Enter, Escape; any library size), a name, voice and chat, with a preview of the game's thumbnail.
 - **Room:** the video with a floating **players capsule** (seat colors, speaking glow, muted mic, free seats) on the left and a **dock** on the right: Start 1P-4P, voice (mic, level, game and voice volumes), pause, controls, sound and full screen. The owner also gets Invite (dialog with QR, link, code and a new PIN per person), Close game, and the chat switch. Chat with bubbles and a "typing…" indicator. A "How to play" dialog (`components/HelpDialog.tsx`) explains seats, keyboard, gamepads, touch, full screen, sound and voice.
 - **My device:** without a device, the linking view with the 9-digit code. With a device, a live dashboard (`components/device/DeviceDashboard.tsx`): system CPU, go-link CPU, memory, latency, players, CPU chart (1, 2 or 5 min), network, disk space used by ROMs, thumbnails and saves, library, connection path; tabs **ROMs** (cards or list, search, sort, status chips, Play, drop zone for zips, ROM folder) and **History** (every game that ran, with players and their connection path).
+
+## User guide
+
+`/docs` is the user documentation for hosts and players: getting started (install, link, emulator and ROMs, first game), playing (invitations, controls, voice and chat, rooms), the go-link app (window, pictures, headless panel, command line, Docker), network (connection, own signaling server) and troubleshooting. Its content is data in `src/i18n/docs-{en,es,pt}.ts` (typed by `docs-types.ts`: paragraphs, headings, lists, steps, code, tables and notes, with `code`, **bold** and [links](/path) inline), rendered by `pages/DocsPage.tsx` with a searchable sidebar, an "On this page" list and previous/next links. The three languages must keep the same pages and blocks (a test checks it). Keep it in sync when a user-facing feature changes.
 
 ## Terms of use
 

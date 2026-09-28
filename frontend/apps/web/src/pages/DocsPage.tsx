@@ -1,0 +1,239 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
+import { useLang, type Lang } from "../i18n";
+import type { DocBlock, DocPage, Docs } from "../i18n/docs-types";
+import { docsEn } from "../i18n/docs-en";
+import { docsEs } from "../i18n/docs-es";
+import { docsPt } from "../i18n/docs-pt";
+import { CopyButton } from "../components/CopyButton";
+import { SiteFooter } from "../components/legal/SiteFooter";
+import { REPO_URL } from "../config";
+import { NotFoundPage } from "./NotFoundPage";
+
+const DOCS: Record<Lang, Docs> = { en: docsEn, es: docsEs, pt: docsPt };
+
+/**
+ * Renders inline text: `code`, **bold** and [links](/path). Internal links
+ * use the router, external ones open in a new tab. Never raw HTML.
+ */
+function inline(text: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /`([^`]+)`|\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
+  let last = 0;
+  let key = 0;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    if (m[1] !== undefined) out.push(<code key={key++}>{m[1]}</code>);
+    else if (m[2] !== undefined) out.push(<strong key={key++}>{m[2]}</strong>);
+    else if (m[4]!.startsWith("/"))
+      out.push(
+        <Link key={key++} to={m[4]!}>
+          {m[3]}
+        </Link>,
+      );
+    else if (m[4]!.startsWith("https://"))
+      out.push(
+        <a key={key++} href={m[4]} target="_blank" rel="noopener">
+          {m[3]}
+        </a>,
+      );
+    else out.push(m[3]);
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+function Block({ block, copy }: { block: DocBlock; copy: string }) {
+  switch (block.t) {
+    case "p":
+      return <p>{inline(block.text)}</p>;
+    case "h2":
+      return (
+        <h2 id={block.id}>
+          <a href={`#${block.id}`} className="docs-anchor">
+            {block.text}
+          </a>
+        </h2>
+      );
+    case "list":
+      return (
+        <ul>
+          {block.items.map((item) => (
+            <li key={item}>{inline(item)}</li>
+          ))}
+        </ul>
+      );
+    case "steps":
+      return (
+        <ol className="docs-steps">
+          {block.items.map((item) => (
+            <li key={item}>{inline(item)}</li>
+          ))}
+        </ol>
+      );
+    case "code":
+      return (
+        <div className="docs-code">
+          {/* Focusable: a long line scrolls sideways with the keyboard too. */}
+          <pre tabIndex={0}>
+            <code>{block.code}</code>
+          </pre>
+          <CopyButton text={block.code} label={copy} />
+        </div>
+      );
+    case "table":
+      return (
+        <div className="docs-table" tabIndex={0}>
+          <table>
+            <thead>
+              <tr>
+                {block.head.map((h) => (
+                  <th key={h} scope="col">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row) => (
+                <tr key={row.join("|")}>
+                  {row.map((cell, i) => (i === 0 ? <th key={i} scope="row">{inline(cell)}</th> : <td key={i}>{inline(cell)}</td>))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    case "note":
+      return <p className={`docs-note docs-note-${block.tone}`}>{inline(block.text)}</p>;
+  }
+}
+
+/** Sidebar: the pages by group, with a filter. */
+function DocsNav({ docs, current, onPick }: { docs: Docs; current: string; onPick: () => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const pages = q
+    ? docs.pages.filter((p) => `${p.title} ${p.lead} ${p.blocks.map((b) => ("text" in b ? b.text : "")).join(" ")}`.toLowerCase().includes(q))
+    : docs.pages;
+  const groups = [...new Set(pages.map((p) => p.group))];
+  return (
+    <nav className="docs-nav" aria-label={docs.menu}>
+      <input
+        type="search"
+        className="input docs-search"
+        placeholder={docs.search}
+        aria-label={docs.search}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {groups.length === 0 && <p className="small faint">{docs.noResults}</p>}
+      {groups.map((g) => (
+        <div key={g} className="docs-group">
+          <p className="docs-group-title">{g}</p>
+          <ul>
+            {pages
+              .filter((p) => p.group === g)
+              .map((p) => (
+                <li key={p.slug}>
+                  <Link to={`/docs/${p.slug}`} aria-current={p.slug === current ? "page" : undefined} onClick={onPick}>
+                    {p.title}
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+/** The user documentation: /docs/<page>, in the site's language. */
+export function DocsPage() {
+  const lang = useLang();
+  const docs = DOCS[lang];
+  const { slug } = useParams();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const index = docs.pages.findIndex((p) => p.slug === slug);
+  const page: DocPage | undefined = docs.pages[index];
+  const headings = useMemo(
+    () => (page ? page.blocks.filter((b): b is Extract<DocBlock, { t: "h2" }> => b.t === "h2") : []),
+    [page],
+  );
+
+  useEffect(() => {
+    if (!window.location.hash) window.scrollTo(0, 0);
+  }, [slug]);
+
+  if (!slug) return <Navigate to={`/docs/${docs.pages[0]!.slug}`} replace />;
+  if (!page) return <NotFoundPage />;
+  const prev = docs.pages[index - 1];
+  const next = docs.pages[index + 1];
+
+  return (
+    <div className="page">
+      <div className="page-body docs-page">
+        <aside className={`docs-sidebar${menuOpen ? " is-open" : ""}`}>
+          <button type="button" className="button button-secondary docs-menu-toggle" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>
+            {docs.menu}
+          </button>
+          <DocsNav docs={docs} current={page.slug} onPick={() => setMenuOpen(false)} />
+        </aside>
+
+        <article className="docs-article" aria-labelledby="docs-title">
+          <p className="eyebrow eyebrow-accent">
+            {docs.eyebrow} · {page.group}
+          </p>
+          <h1 id="docs-title" className="page-title">
+            {page.title}
+          </h1>
+          <p className="lead muted docs-lead">{inline(page.lead)}</p>
+          <div className="docs-body">
+            {page.blocks.map((b, i) => (
+              <Fragment key={i}>
+                <Block block={b} copy={docs.copy} />
+              </Fragment>
+            ))}
+          </div>
+          <nav className="docs-pager" aria-label={`${docs.previous} / ${docs.next}`}>
+            {prev ? (
+              <Link to={`/docs/${prev.slug}`} className="docs-pager-link">
+                <span className="small faint">← {docs.previous}</span>
+                <span>{prev.title}</span>
+              </Link>
+            ) : (
+              <span />
+            )}
+            {next && (
+              <Link to={`/docs/${next.slug}`} className="docs-pager-link docs-pager-next">
+                <span className="small faint">{docs.next} →</span>
+                <span>{next.title}</span>
+              </Link>
+            )}
+          </nav>
+          <p className="small">
+            <a href={`${REPO_URL}/blob/main/frontend/apps/web/src/i18n/docs-${lang}.ts`} target="_blank" rel="noopener">
+              {docs.edit}
+            </a>
+          </p>
+        </article>
+
+        {headings.length > 0 && (
+          <nav className="docs-toc" aria-label={docs.onThisPage}>
+            <p className="docs-group-title">{docs.onThisPage}</p>
+            <ul>
+              {headings.map((h) => (
+                <li key={h.id}>
+                  <a href={`#${h.id}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </div>
+      <SiteFooter />
+    </div>
+  );
+}

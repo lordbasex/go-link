@@ -9,6 +9,8 @@ import { LobbyPage, readRoomsView } from "./pages/LobbyPage";
 // The lobby shows the join form to guests, so it comes with the lobby.
 import { GuestJoinPage } from "./pages/GuestJoinPage";
 import { prefetchThumbnails } from "./components/device/useThumbnail";
+import { LegalPage } from "./pages/LegalPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 // The lobby comes with the first load; the other pages download when
 // opened, so a guest joining a room does not get the device dashboard.
 const CreateRoomPage = lazy(() =>
@@ -23,11 +25,12 @@ const HowItWorksPage = lazy(() =>
 const PanelLoginPage = lazy(() =>
   import("./pages/PanelLoginPage").then((m) => ({ default: m.PanelLoginPage })),
 );
+const DocsPage = lazy(() =>
+  import("./pages/DocsPage").then((m) => ({ default: m.DocsPage })),
+);
 const DevicePage = lazy(() =>
   import("./pages/DevicePage").then((m) => ({ default: m.DevicePage })),
 );
-import { LegalPage } from "./pages/LegalPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
 
 /**
  * Keeps the logo of index.html up until the first screen can show real
@@ -135,6 +138,8 @@ export function App() {
               path="/device/history"
               element={<DevicePage tab="history" />}
             />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/docs/:slug" element={<DocsPage />} />
             <Route path="/terms" element={<LegalPage doc="terms" />} />
             <Route path="/privacy" element={<LegalPage doc="privacy" />} />
             <Route path="*" element={<NotFoundPage />} />

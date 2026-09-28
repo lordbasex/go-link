@@ -77,7 +77,7 @@ On macOS the device ships as one universal **`go-link.app`** (Intel and Apple si
 
 It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from the repository's tap) and, with `gh`, creates the `v0.1.0` release on `lordbasex/go-link` (`REPO=…` changes it) with every file and generated notes. `SKIP_BUILD=1` packs what is already in `dist/device`, and `GITHUB_RELEASE=0` only builds the files.
 
-**Development mode (today):** without an Apple Developer ID, the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: right click › Open.
+**Development mode (today):** without an Apple Developer ID, the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: open it, then System Settings › Privacy & Security › Open Anyway (right click › Open on macOS 14 and earlier).
 
 **With an Apple Developer ID:**
 
