@@ -136,7 +136,7 @@ code, kbd, .mono { font-family: var(--font-mono); }
 /* ---------- server banner and dialog ---------- */
 .server-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; padding: 8px 16px; background: var(--color-surface-2); border-bottom: 1px solid var(--color-accent); color: var(--color-text-2); font-size: 13px; }
 .server-banner code { color: var(--color-accent); word-break: break-all; }
-.dialog-backdrop { position: fixed; inset: 0; z-index: 10; background: var(--backdrop); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 40; background: var(--backdrop); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .dialog { width: min(560px, 100%); background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: var(--radius-card); padding: 24px; display: flex; flex-direction: column; gap: 14px; }
 .dialog-title { margin: 0; font-family: var(--font-title); font-size: 22px; }
 .dialog-current { margin: 0; font-size: 13px; color: var(--color-text-muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -1861,6 +1861,8 @@ body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48
   body:has(.room-page) .app-header-main .main-nav { display: none; }
   body:has(.room-page) { padding-bottom: 0; }
   body:has(.room-page) .app-header-main { height: 48px; }
+  /* Out of the way while typing (the keyboard pushes it up) or in a dialog. */
+  body:has(input:focus, textarea:focus, .dialog-backdrop) .app-header-main .main-nav { display: none; }
 }
 @media (max-width: 700px) {
   .page-title, .dash-title { font-size: 28px; }
@@ -1871,3 +1873,4 @@ body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48
   .code-digit { width: calc((100vw - 110px) / 9); max-width: 40px; height: 48px; font-size: 20px; border-radius: 8px; }
 }
 @media (max-width: 700px) { .pair-title { font-size: 28px; } }
+@media (max-width: 700px) { .grooms-toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
