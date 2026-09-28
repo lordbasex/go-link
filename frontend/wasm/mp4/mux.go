@@ -100,6 +100,7 @@ func (m *Muxer) Finish() ([]byte, error) {
 	if len(tracks) == 0 {
 		return nil, errors.New("mp4: no samples")
 	}
+	order := interleave(tracks)
 	ftyp := box("ftyp", []byte("isom"), u32(0x200), []byte("isomiso2avc1mp41"))
 	large := len(m.data)+8 > 0xFFFFFFFF
 	mdatHead := 8
@@ -124,7 +125,59 @@ func (m *Muxer) Finish() ([]byte, error) {
 		out = append(out, u32(uint32(len(m.data)+8))...)
 		out = append(out, "mdat"...)
 	}
-	return append(out, m.data...), nil
+	// The data in time order across tracks (see interleave); m.data holds
+	// it in the order it was added.
+	for _, r := range order {
+		s := &r.t.samples[r.i]
+		out = append(out, m.data[r.from:r.from+int64(s.size)]...)
+	}
+	return out, nil
+}
+
+type sampleRef struct {
+	t    *mp4Track
+	i    int
+	from int64 // where it was added in m.data
+}
+
+// interleave lays the samples of every track out in time order, so a
+// phone that plays the file while it downloads (Safari on the iPhone)
+// finds sound next to its picture: with all the sound at the end it
+// plays the video silent. Each track keeps its decode order; the tracks
+// are merged by decode time. It sets every sample's new position.
+func interleave(tracks []*mp4Track) []sampleRef {
+	type cursor struct {
+		t   *mp4Track
+		dts []int64
+		i   int
+	}
+	var cs []*cursor
+	total := 0
+	for _, t := range tracks {
+		dts := make([]int64, len(t.samples))
+		for i, s := range t.samples {
+			dts[i] = s.ptsUs
+		}
+		slices.Sort(dts)
+		cs = append(cs, &cursor{t: t, dts: dts})
+		total += len(t.samples)
+	}
+	order := make([]sampleRef, 0, total)
+	var pos int64
+	for len(order) < total {
+		var best *cursor
+		for _, c := range cs {
+			if c.i < len(c.t.samples) && (best == nil || c.dts[c.i] < best.dts[best.i]) {
+				best = c
+			}
+		}
+		s := &best.t.samples[best.i]
+		order = append(order, sampleRef{t: best.t, i: best.i, from: s.pos})
+		s.pos = pos
+		pos += int64(s.size)
+		best.i++
+	}
+	return order
 }
 
 // timescale of a track: 90 kHz for video, the sample rate for audio.

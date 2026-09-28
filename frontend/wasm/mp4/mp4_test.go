@@ -244,3 +244,28 @@ func TestMuxerDecodeTimesMoveForward(t *testing.T) {
 		}
 	}
 }
+
+func TestMuxerInterleavesTracksByTime(t *testing.T) {
+	m, _ := NewMuxer([]TrackConfig{{Kind: "video", Width: 64, Height: 64}, {Kind: "audio", Rate: 48000, Channels: 2, Default: true}})
+	_ = m.SetDescription(0, []byte{1, 0x42, 0xE0, 0x28, 0xFF, 0xE0, 0})
+	// All video first, then all sound, as the browser adds them.
+	for i := range 3 {
+		_ = m.Add(0, int64(i)*1_000_000, i == 0, []byte{'v', byte(i)})
+	}
+	for i := range 3 {
+		_ = m.Add(1, int64(i)*1_000_000+500_000, true, []byte{'a', byte(i)})
+	}
+	out, _ := m.Finish()
+	mdat := out[bytes.LastIndex(out, []byte("mdat"))+4:]
+	if string(mdat) != "v\x00a\x00v\x01a\x01v\x02a\x02" {
+		t.Fatalf("data order %q, want video and sound alternating", mdat)
+	}
+	// And the index still points at each sample.
+	co := find(out, "co64")
+	for i := range 3 {
+		off := binary.BigEndian.Uint64(co[8+8*i:])
+		if out[off] != 'v' || out[off+1] != byte(i) {
+			t.Fatalf("video sample %d moved", i)
+		}
+	}
+}
