@@ -6,6 +6,9 @@ All notable changes to go-link. Newest first.
 
 ### Added
 
+- Released v0.1.0 (pre-release): universal macOS dmg, Windows, Linux, Raspberry Pi and Docker, with licenses in every file.
+- Install page with one tab per system (it opens on the visitor's own), like Docker's install docs.
+
 - User guide at `/docs` (English, Spanish and Portuguese): install, linking, ROMs, first game, invitations, controls, voice and chat, rooms, the app, pictures, headless panel, command line, Docker, network and troubleshooting. "Docs" in the menu and the footer.
 - An arcade 404 page, and the website's version in the footer and in a `go-link-version` meta tag.
 

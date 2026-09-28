@@ -440,10 +440,21 @@ describe("docs", () => {
     expect(within(nav).queryByRole("link", { name: "Voice and chat" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: /Next.*Install/ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Install" })).toBeInTheDocument();
+    // One tab per system; arrows move between them.
+    const tabs = screen.getByRole("tablist", { name: "Your system" });
+    const macos = within(tabs).getByRole("tab", { name: "macOS" });
+    await userEvent.click(macos);
+    expect(screen.getByRole("tabpanel", { name: "macOS" })).toHaveTextContent("macos-universal.dmg");
+    await userEvent.keyboard("{ArrowRight}");
+    expect(within(tabs).getByRole("tab", { name: "Windows" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Windows" })).toHaveTextContent("go-link-device.exe");
   });
 
   it("has the same pages in every language", () => {
-    const slugs = (d: typeof docsEn) => d.pages.map((p) => `${p.slug}:${p.blocks.map((b) => b.t).join(",")}`);
+    type Blocks = (typeof docsEn)["pages"][number]["blocks"];
+    const shape = (blocks: Blocks): string =>
+      blocks.map((b) => (b.t === "tabs" ? `tabs(${b.tabs.map((tab) => `${tab.id}:${shape(tab.blocks)}`).join(";")})` : b.t)).join(",");
+    const slugs = (d: typeof docsEn) => d.pages.map((p) => `${p.slug}:${shape(p.blocks)}`);
     expect(slugs(docsEs)).toEqual(slugs(docsEn));
     expect(slugs(docsPt)).toEqual(slugs(docsEn));
   });

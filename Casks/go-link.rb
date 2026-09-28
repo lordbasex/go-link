@@ -7,7 +7,7 @@
 # version and sha256 on every release.
 cask "go-link" do
   version "0.1.0"
-  sha256 "e85496db76f82fc048777ca8af91a93aeebf5990ec8ddbe63dee5d05b63b07ab"
+  sha256 "d5cce64c75c2fc70d24d4c6577be1b353f262e85ca7ab18a1fecd5a4e9504fa7"
 
   url "https://github.com/lordbasex/go-link/releases/download/v#{version}/go-link-v#{version}-macos-universal.dmg"
   name "go-link"

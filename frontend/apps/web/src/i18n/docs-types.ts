@@ -10,7 +10,19 @@ export type DocBlock =
   | { readonly t: "steps"; readonly items: readonly string[] }
   | { readonly t: "code"; readonly code: string }
   | { readonly t: "table"; readonly head: readonly string[]; readonly rows: readonly (readonly string[])[] }
-  | { readonly t: "note"; readonly tone: "info" | "warn"; readonly text: string };
+  | { readonly t: "note"; readonly tone: "info" | "warn"; readonly text: string }
+  | { readonly t: "tabs"; readonly label: string; readonly tabs: readonly DocTab[] };
+
+/**
+ * One tab of a tabs block. `os` marks the tab for a system, so the page
+ * opens on the visitor's own (macos, windows, linux).
+ */
+export interface DocTab {
+  readonly id: string;
+  readonly label: string;
+  readonly os?: "macos" | "windows" | "linux";
+  readonly blocks: readonly DocBlock[];
+}
 
 export interface DocPage {
   readonly slug: string;

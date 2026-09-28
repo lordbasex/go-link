@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useLang, type Lang } from "../i18n";
-import type { DocBlock, DocPage, Docs } from "../i18n/docs-types";
+import type { DocBlock, DocPage, DocTab, Docs } from "../i18n/docs-types";
 import { docsEn } from "../i18n/docs-en";
 import { docsEs } from "../i18n/docs-es";
 import { docsPt } from "../i18n/docs-pt";
@@ -108,7 +108,108 @@ function Block({ block, copy }: { block: DocBlock; copy: string }) {
       );
     case "note":
       return <p className={`docs-note docs-note-${block.tone}`}>{inline(block.text)}</p>;
+    case "tabs":
+      return <Tabs label={block.label} tabs={block.tabs} copy={copy} />;
   }
+}
+
+/** The visitor's system, to open the matching tab first. */
+function visitorOS(): DocTab["os"] {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (/Windows/i.test(ua)) return "windows";
+  if (/Mac OS X|Macintosh/i.test(ua) && !/iPhone|iPad/i.test(ua)) return "macos";
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) return "linux";
+  return undefined;
+}
+
+/**
+ * Tabs, like a choice of system: arrows, Home and End move between them
+ * (WAI-ARIA tabs pattern). The address's #tab opens that one.
+ */
+function Tabs({ label, tabs, copy }: { label: string; tabs: readonly DocTab[]; copy: string }) {
+  const base = useId();
+  const [selected, setSelected] = useState(() => {
+    const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
+    const byHash = tabs.findIndex((tab) => tab.id === hash);
+    if (byHash >= 0) return byHash;
+    const os = visitorOS();
+    return Math.max(0, tabs.findIndex((tab) => os !== undefined && tab.os === os));
+  });
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const pick = (i: number) => {
+    setSelected(i);
+    buttons.current[i]?.focus();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const last = tabs.length - 1;
+    const next = { ArrowRight: selected + 1, ArrowLeft: selected - 1, Home: 0, End: last }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    pick(next < 0 ? last : next > last ? 0 : next);
+  };
+  return (
+    <div className="docs-tabs">
+      <div role="tablist" aria-label={label} className="docs-tablist" onKeyDown={onKey}>
+        {tabs.map((tab, i) => (
+          <button
+            key={tab.id}
+            ref={(el) => {
+              buttons.current[i] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`${base}-tab-${tab.id}`}
+            aria-selected={i === selected}
+            aria-controls={`${base}-panel-${tab.id}`}
+            tabIndex={i === selected ? 0 : -1}
+            className="docs-tab"
+            onClick={() => setSelected(i)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {tabs.map((tab, i) => (
+        <div
+          key={tab.id}
+          role="tabpanel"
+          id={`${base}-panel-${tab.id}`}
+          aria-labelledby={`${base}-tab-${tab.id}`}
+          hidden={i !== selected}
+          className="docs-tabpanel"
+        >
+          {tab.blocks.map((b, j) => (
+            <Fragment key={j}>
+              <Block block={b} copy={copy} />
+            </Fragment>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Every word of some blocks, tabs included, for the search. */
+function searchText(blocks: readonly DocBlock[]): string {
+  return blocks
+    .map((b) => {
+      switch (b.t) {
+        case "p":
+        case "h2":
+        case "note":
+          return b.text;
+        case "list":
+        case "steps":
+          return b.items.join(" ");
+        case "code":
+          return b.code;
+        case "table":
+          return [...b.head, ...b.rows.flat()].join(" ");
+        case "tabs":
+          return b.tabs.map((tab) => `${tab.label} ${searchText(tab.blocks)}`).join(" ");
+      }
+    })
+    .join(" ");
 }
 
 /** Sidebar: the pages by group, with a filter. */
@@ -116,7 +217,7 @@ function DocsNav({ docs, current, onPick }: { docs: Docs; current: string; onPic
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const pages = q
-    ? docs.pages.filter((p) => `${p.title} ${p.lead} ${p.blocks.map((b) => ("text" in b ? b.text : "")).join(" ")}`.toLowerCase().includes(q))
+    ? docs.pages.filter((p) => `${p.title} ${p.lead} ${searchText(p.blocks)}`.toLowerCase().includes(q))
     : docs.pages;
   const groups = [...new Set(pages.map((p) => p.group))];
   return (
