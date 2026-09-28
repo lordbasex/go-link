@@ -2,6 +2,7 @@
 
 # Homebrew cask for the go-link device on macOS. Install from this repo's tap:
 #   brew tap lordbasex/go-link https://github.com/lordbasex/go-link
+#   brew trust --cask lordbasex/go-link/go-link   (newer Homebrew asks to trust third-party taps once)
 #   brew install --cask go-link
 # One universal app (Intel + Apple silicon). scripts/release.sh rewrites
 # version and sha256 on every release.
@@ -14,7 +15,7 @@ cask "go-link" do
   desc "Retro arcade that streams live from your computer to your friends' browsers"
   homepage "https://go-link.org"
 
-  depends_on macos: ">= :monterey"
+  depends_on macos: :monterey
 
   app "go-link.app"
   binary "#{appdir}/go-link.app/Contents/MacOS/go-link-device", target: "go-link-device"

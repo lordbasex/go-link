@@ -30,7 +30,7 @@ A **host** runs the go-link app (the **device**) on their own computer, with **t
 
 | You have | Do this |
 |---|---|
-| **macOS 12+** | Download the [`.dmg`](https://github.com/lordbasex/go-link/releases/latest), or `brew tap lordbasex/go-link https://github.com/lordbasex/go-link && brew install --cask go-link` |
+| **macOS 12+** | Download the [`.dmg`](https://github.com/lordbasex/go-link/releases/latest), or `brew tap lordbasex/go-link https://github.com/lordbasex/go-link && brew trust --cask lordbasex/go-link/go-link && brew install --cask go-link` |
 | **Windows 10/11** | Download the [`.zip`](https://github.com/lordbasex/go-link/releases/latest), unzip, run `go-link-device.exe` |
 | **Linux** | Download the [`.tar.gz`](https://github.com/lordbasex/go-link/releases/latest), unpack, run `./go-link-device` |
 | **Raspberry Pi / server** | The `-headless` build: a web panel on port 7373 and a full CLI |
@@ -72,7 +72,7 @@ Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
 
 | System | File | Notes |
 |---|---|---|
-| **macOS 12+** (Intel and Apple silicon) | `go-link-vX.Y.Z-macos-universal.dmg` | Drag go-link to Applications. Until the app is notarized, macOS blocks it the first time: open it, then System Settings › Privacy & Security › Open Anyway. Or `brew install --cask go-link` from this repository's tap |
+| **macOS 12+** (Intel and Apple silicon) | `go-link-vX.Y.Z-macos-universal.dmg` | Drag go-link to Applications. Until the app is notarized, macOS blocks it the first time: open it, then System Settings › Privacy & Security › Open Anyway. Or with Homebrew from this repository's tap (see [Install in a minute](#install-in-a-minute)) |
 | **Windows 10/11** (x64 and ARM) | `go-link-vX.Y.Z-windows-amd64.zip` / `-arm64.zip` | Unzip and run `go-link-device.exe` |
 | **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
 | **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
