@@ -417,7 +417,7 @@ export const docsEs: Docs = {
       title: "Docker",
       lead: "La imagen de Docker es go-link sin ventana, con su panel web en el puerto 7373. Todo lo que guarda vive en el volumen /data.",
       blocks: [
-        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device" },
+        { t: "code", code: "docker load < go-link-vX.Y.Z-docker.oci.tar.gz\ndocker run -d --name go-link --network host \\\n  -v go-link:/data \\\n  -v ~/roms:/data/go-link/roms \\\n  -v ~/thumbnails/MAME:/data/go-link/thumbnails/MAME:ro \\\n  go-link-device:vX.Y.Z" },
         {
           t: "list",
           items: [

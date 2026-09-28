@@ -4,6 +4,15 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (website)
+
+- "How it works" is an animated walkthrough on the landing page and on My device: four steps (download, link, add ROMs and play, share) that play like a video, with a progress bar, pause and previous/next. Step 1 offers the download for your system (Windows, macOS, Linux, Docker, Raspberry Pi).
+- My device shows the downloads of the latest release instead of "Downloads will be published soon": your system first, the others with their sizes, the release page and the checksums.
+
+### Changed (release)
+
+- Releases include the Docker image by default (`DOCKER=0` skips it); v0.1.2 got its image afterwards. The Docker guide runs the image by its version tag (`go-link-device:vX.Y.Z`), which is how `docker load` names it.
+
 ## [0.1.2] - 2026-09-28
 
 ### Added (website)

@@ -15,7 +15,7 @@
 #     NOTARY_PROFILE=go-link-notary ./scripts/release.sh
 #
 # Other knobs: REPO=owner/name (default lordbasex/go-link), SKIP_BUILD=1
-# (pack what is already in dist/device), DOCKER=1 (also the Docker image as
+# (pack what is already in dist/device), DOCKER=0 (skip the Docker image, built by default as
 # an OCI archive), GITHUB_RELEASE=0 (only the files).
 #
 # Outputs: dist/release/v<version>/
@@ -47,7 +47,7 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   if [[ "$(uname -s)" == "Darwin" ]]; then
     make -C "$ROOT" device-dmg VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
   fi
-  if [[ "${DOCKER:-0}" == "1" ]]; then
+  if [[ "${DOCKER:-1}" == "1" ]]; then
     make -C "$ROOT" device-docker-oci VERSION="$TAG"
   fi
 fi
@@ -94,6 +94,9 @@ cp "$ROOT/THIRD_PARTY_NOTICES.md" "$OUT/THIRD_PARTY_NOTICES.md"
 
 echo "▶ SHA256SUMS"
 (cd "$OUT" && shasum -a 256 -- * > SHA256SUMS && cat SHA256SUMS)
+
+echo "▶ Website downloads (frontend/apps/web/src/release.json)"
+"$ROOT/scripts/release-info.sh" "$OUT"
 
 echo "▶ Updating Casks/go-link.rb"
 CASK="$ROOT/Casks/go-link.rb"

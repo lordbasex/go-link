@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { DownloadCard } from "../components/DownloadCard";
 import {
   useRef,
   useState,
@@ -253,21 +254,7 @@ export function DevicePage({
               </form>
             )}
 
-            {showForm && (
-              <div className="download stack-sm">
-                <span className="muted small-plus">
-                  {t.pairing.downloadTitle}
-                </span>
-                <div className="chip-row">
-                  {t.pairing.platforms.map((p) => (
-                    <span key={p} className="platform-chip">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-                <span className="small faint">{t.pairing.downloadSoon}</span>
-              </div>
-            )}
+            {showForm && <DownloadCard />}
           </section>
 
           <aside className="pair-aside" aria-label={t.pairing.previewCaption}>

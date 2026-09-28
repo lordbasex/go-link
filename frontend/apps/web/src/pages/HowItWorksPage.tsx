@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { Wizard } from "../components/landing/Wizard";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../i18n";
@@ -15,11 +16,9 @@ import {
   MonitorIcon,
   PlayIcon,
   RecordIcon,
-  UserPlusIcon,
 } from "../components/Icons";
 
-/** Icons of the three steps and of the features, in their order. */
-const STEP_ICONS = [<MonitorIcon key="d" size={26} />, <GamepadIcon key="g" size={26} />, <UserPlusIcon key="p" size={24} />];
+/** Icons of the features, in their order. */
 const FEATURE_ICONS: ReactNode[] = [
   <PlayIcon key="live" />,
   <GamepadIcon key="seats" />,
@@ -63,23 +62,12 @@ export function HowItWorksPage() {
         <FightScene />
       </section>
 
-      <section className="lp-section" aria-labelledby="lp-steps">
-        <span className="eyebrow eyebrow-accent">{t.landing.stepsEyebrow}</span>
+      <section className="lp-section" id="how" aria-labelledby="lp-steps">
+        <span className="eyebrow eyebrow-accent">{t.wizard.eyebrow}</span>
         <h2 id="lp-steps" className="lp-h2">
-          {t.landing.stepsTitle}
+          {t.wizard.title}
         </h2>
-        <ol className="lp-steps">
-          {t.landing.steps.map((step, i) => (
-            <li key={step.title} className="lp-step">
-              <span className="lp-step-number">{i + 1}</span>
-              <span className="lp-step-icon" aria-hidden="true">
-                {STEP_ICONS[i]}
-              </span>
-              <h3 className="lp-h3">{step.title}</h3>
-              <p className="muted">{step.text}</p>
-            </li>
-          ))}
-        </ol>
+        <Wizard />
       </section>
 
       <section className="lp-section" aria-labelledby="lp-features">
