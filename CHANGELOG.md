@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Fixed
+
+- The update notice reaches My device on the website (it only showed in the window).
+
 ## [0.1.1] - 2026-09-28
 
 ### Changed (device window)

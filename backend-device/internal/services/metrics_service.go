@@ -26,6 +26,8 @@ type DeviceStatusMessage struct {
 	Rooms     []models.ManagedRoom `json:"rooms"`
 	// SavesBytes is the space the rooms' saved games take.
 	SavesBytes int64 `json:"saves_bytes"`
+	// Update is a newer go-link release, when there is one.
+	Update *models.UpdateInfo `json:"update,omitempty"`
 }
 
 // NewDeviceStatusMessage builds the message from a status snapshot.
@@ -43,6 +45,7 @@ func NewDeviceStatusMessage(st models.Status) DeviceStatusMessage {
 		Linked:     len(st.Peers),
 		Rooms:      st.Rooms,
 		SavesBytes: st.SavesBytes,
+		Update:     st.Update,
 	}
 }
 
