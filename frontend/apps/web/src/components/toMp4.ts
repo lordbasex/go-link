@@ -7,8 +7,10 @@
 // small Go program compiled to WebAssembly (public/mp4) reads the WebM and
 // writes the MP4. The device takes no part.
 //
-// The MP4 has two sound tracks: the game with the voices mixed in (what
-// players and chat apps play) and the voices alone (an alternative track).
+// When someone spoke the MP4 has three sound tracks, alternatives of one
+// another (a player plays one): the game with the voices mixed in (the
+// default, what phones and chat apps play), the game alone and the voices
+// alone, each at the volume set in the preview.
 
 const BASE = import.meta.env.BASE_URL;
 const SCRIPT = `${BASE}mp4/wasm_exec.js`;
@@ -93,8 +95,6 @@ const check = <T>(v: T | { error: string } | null): T => {
 /** a[i] of a typed array, 0 past the end (the index is always in range). */
 const at = (a: ArrayLike<number>, i: number): number => a[i] ?? 0;
 
-const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function toBytes(buf: AllowSharedBufferSource): Uint8Array {
@@ -147,12 +147,23 @@ export function canMakeMp4(): boolean {
   );
 }
 
-/**
- * Converts a recording. onProgress gets 0..1; signal cancels it.
- * Throws Mp4Unsupported when the browser cannot do it.
- */
-export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => void, signal: AbortSignal): Promise<Blob> {
-  if (!canMakeMp4()) throw new Mp4Unsupported("no WebCodecs");
+/** A recording opened for preview and conversion: its tracks and where each frame is. */
+export interface Recording {
+  webm: Uint8Array;
+  video: WebmTrack;
+  game: WebmTrack | undefined;
+  audios: WebmTrack[];
+  frames: ReturnType<GoMp4["demux"]>["frames"];
+  byTrack: Map<number, number[]>;
+  endUs: number;
+  /** Someone spoke: the MP4 gets a voices track and the preview a voices volume. */
+  hasVoices: boolean;
+  payload: (i: number) => Uint8Array;
+}
+
+/** Reads a recording (loads the Go helper the first time). */
+export async function openRecording(webm: Uint8Array): Promise<Recording> {
+  if (typeof WebAssembly === "undefined") throw new Mp4Unsupported("no WebAssembly");
   const go = await loadGo();
   const file = go.demux(webm);
   if (file.error) throw new Error(file.error);
@@ -160,9 +171,7 @@ export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => voi
   const video = tracks.find((t) => t.type === 1 && t.codec === "V_VP8");
   const audios = tracks.filter((t) => t.type === 2 && t.codec === "A_OPUS");
   const game = audios.find((t) => /game/i.test(t.name)) ?? audios[0];
-  const voices = audios.filter((t) => t !== game);
   if (!video || !video.width || !video.height) throw new Error("the recording has no video");
-
   // Frame indexes per track, in file order (the recording keeps each track in time order).
   const byTrack = new Map<number, number[]>();
   for (let i = 0; i < frames.track.length; i++) {
@@ -170,12 +179,98 @@ export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => voi
     list.push(i);
     byTrack.set(at(frames.track, i), list);
   }
-  const videoFrames = byTrack.get(video.number) ?? [];
-  const hasVoices = voices.some((v) => (byTrack.get(v.number)?.length ?? 0) > 0);
+  const hasVoices = audios.some((v) => v !== game && (byTrack.get(v.number)?.length ?? 0) > 0);
   let endUs = 0;
   for (let i = 0; i < frames.time.length; i++) endUs = Math.max(endUs, at(frames.time, i));
-  endUs += 20_000;
-  const payload = (i: number) => webm.subarray(at(frames.offset, i), at(frames.offset, i) + at(frames.size, i));
+  return {
+    webm,
+    video,
+    game,
+    audios,
+    frames,
+    byTrack,
+    endUs: endUs + 20_000,
+    hasVoices,
+    payload: (i: number) => webm.subarray(at(frames.offset, i), at(frames.offset, i) + at(frames.size, i)),
+  };
+}
+
+/**
+ * The players' voices between two times, mixed to one channel at 48 kHz:
+ * what the preview plays next to the video.
+ */
+export async function decodeVoices(rec: Recording, startUs: number, endUs: number): Promise<Float32Array<ArrayBuffer>> {
+  const n = Math.max(0, Math.round(((endUs - startUs) * RATE) / 1e6));
+  const out = new Float32Array(n);
+  const voices = rec.audios.filter((t) => t !== rec.game);
+  await Promise.all(
+    voices.map(async (t) => {
+      const list = (rec.byTrack.get(t.number) ?? []).filter((i) => {
+        const ts = at(rec.frames.time, i);
+        return ts >= startUs - 20_000 && ts < endUs;
+      });
+      if (list.length === 0) return;
+      let failed = false;
+      const d = new AudioDecoder({
+        output: (a) => {
+          const at0 = Math.round(((a.timestamp - startUs) * RATE) / 1e6);
+          const tmp = new Float32Array(a.numberOfFrames);
+          a.copyTo(tmp, { planeIndex: 0, format: "f32-planar" });
+          for (let k = 0; k < tmp.length; k++) {
+            const p = at0 + k;
+            if (p >= 0 && p < n) out[p] = at(out, p) + at(tmp, k);
+          }
+          a.close();
+        },
+        error: () => (failed = true),
+      });
+      d.configure({
+        codec: "opus",
+        sampleRate: RATE,
+        numberOfChannels: t.channels || 1,
+        ...(t.codecPrivate.length ? { description: t.codecPrivate } : {}),
+      });
+      for (const i of list) {
+        d.decode(new EncodedAudioChunk({ type: "key", timestamp: at(rec.frames.time, i), data: rec.payload(i) }));
+      }
+      await d.flush().catch(() => undefined);
+      d.close();
+      if (failed) return;
+    }),
+  );
+  return out;
+}
+
+/** How loud each part goes into the MP4 (1 = as recorded). */
+export interface Mp4Gains {
+  game: number;
+  voices: number;
+}
+
+/**
+ * A soft limiter: untouched below 0.9, then bent towards 1 so peaks never
+ * clip (a hard cut crackles).
+ */
+export function limit(v: number): number {
+  const a = Math.abs(v);
+  if (a <= 0.9) return v;
+  return Math.sign(v) * (0.9 + 0.1 * Math.tanh((a - 0.9) / 0.1));
+}
+
+/**
+ * Converts a recording. onProgress gets 0..1; signal cancels it.
+ * Throws Mp4Unsupported when the browser cannot do it.
+ */
+export async function webmToMp4(
+  rec: Recording,
+  gains: Mp4Gains,
+  onProgress: (f: number) => void,
+  signal: AbortSignal,
+): Promise<Blob> {
+  if (!canMakeMp4()) throw new Mp4Unsupported("no WebCodecs");
+  const go = await loadGo();
+  const { video, game, audios, frames, byTrack, endUs, hasVoices, payload } = rec;
+  const videoFrames = byTrack.get(video.number) ?? [];
 
   const scale = Math.max(1, Math.min(4, Math.floor(TARGET_HEIGHT / video.height)));
   const W = (video.width * scale) & ~1;
@@ -185,7 +280,12 @@ export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => voi
   const config = [
     { kind: "video", width: W, height: H, name: "Game" },
     { kind: "audio", rate: RATE, channels: 2, name: hasVoices ? "Game and voices" : "Game", default: true },
-    ...(hasVoices ? [{ kind: "audio", rate: RATE, channels: 2, name: "Voices", default: false }] : []),
+    ...(hasVoices
+      ? [
+          { kind: "audio", rate: RATE, channels: 2, name: "Game", default: false },
+          { kind: "audio", rate: RATE, channels: 2, name: "Voices", default: false },
+        ]
+      : []),
   ];
   const id = check(go.create(JSON.stringify(config)));
   let failure: unknown = null;
@@ -254,7 +354,7 @@ export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => voi
 
     // ---- Sound: Opus -> mixed PCM -> AAC, a few seconds at a time.
     const outputs = [new AudioEncoder({ output: sink(1), error: fail })];
-    if (hasVoices) outputs.push(new AudioEncoder({ output: sink(2), error: fail }));
+    if (hasVoices) outputs.push(new AudioEncoder({ output: sink(2), error: fail }), new AudioEncoder({ output: sink(3), error: fail }));
     function sink(track: number) {
       return (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
         const desc = meta?.decoderConfig?.description;
@@ -314,14 +414,19 @@ export async function webmToMp4(webm: Uint8Array, onProgress: (f: number) => voi
       const n = Math.min(WINDOW_S * RATE, Math.ceil(((endUs - winStartUs) * RATE) / 1e6));
       if (n > 0) {
         const mix = new Float32Array(2 * n);
+        const gameOnly = hasVoices ? new Float32Array(2 * n) : null;
         const only = hasVoices ? new Float32Array(2 * n) : null;
         for (let k = 0; k < n; k++) {
-          const v = at(voice, k);
-          mix[k] = clamp(at(gameL, k) + v);
-          mix[n + k] = clamp(at(gameR, k) + v);
-          if (only) only[k] = only[n + k] = clamp(v);
+          const v = at(voice, k) * gains.voices;
+          mix[k] = limit(at(gameL, k) * gains.game + v);
+          mix[n + k] = limit(at(gameR, k) * gains.game + v);
+          if (gameOnly) {
+            gameOnly[k] = limit(at(gameL, k) * gains.game);
+            gameOnly[n + k] = limit(at(gameR, k) * gains.game);
+          }
+          if (only) only[k] = only[n + k] = limit(v);
         }
-        const pcm: Float32Array<ArrayBuffer>[] = only ? [mix, only] : [mix];
+        const pcm: Float32Array<ArrayBuffer>[] = gameOnly && only ? [mix, gameOnly, only] : [mix];
         pcm.forEach((data, j) =>
           outputs[j]?.encode(
             new AudioData({ format: "f32-planar", sampleRate: RATE, numberOfFrames: n, numberOfChannels: 2, timestamp: winStartUs, data }),

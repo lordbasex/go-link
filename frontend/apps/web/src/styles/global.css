@@ -1523,7 +1523,7 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
 .lp-step-number { position: absolute; top: 18px; right: 22px; font: 700 44px/1 var(--font-title); color: var(--color-accent); opacity: 0.22; }
 .lp-step-icon, .lp-feature-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--tint-accent-bg); border: 1px solid var(--tint-accent-border); color: var(--color-accent); }
 .lp-feature-icon { width: 44px; height: 44px; border-radius: 12px; }
-.lp-features { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lp-features { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .lp-pads { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .lp-pad { align-items: center; text-align: center; gap: 6px; }
 .lp-pad svg { width: 100%; max-width: 220px; height: auto; margin-bottom: 6px; }
@@ -1908,3 +1908,16 @@ body .video-stage.has-touchpad.is-console .video-rec { top: calc(var(--sy) + 44p
 .lrow-end { white-space: nowrap; }
 .lrow-end > * + * { margin-left: 6px; }
 @media (max-width: 700px) { .rec-tiles { grid-template-columns: 1fr 1fr; } }
+
+/* Recording preview: the video, the game and voices volumes and a level meter. */
+.rec-preview { display: flex; flex-direction: column; gap: 12px; }
+.rec-preview-video { width: 100%; max-height: 42dvh; border-radius: 12px; background: #000; }
+.rec-mix { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--color-surface-2); }
+.rec-mix-row { display: grid; grid-template-columns: minmax(90px, auto) 1fr 56px; align-items: center; gap: 12px; font-size: 14px; }
+.rec-mix-row input { width: 100%; accent-color: var(--color-accent); min-height: 32px; }
+.rec-mix-row b { text-align: right; font-weight: 600; }
+.rec-mix-row.is-off { color: var(--color-text-muted); }
+.rec-meter { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; color: var(--color-text-2); }
+.rec-meter-bar { height: 8px; border-radius: 999px; background: var(--color-bg); overflow: hidden; }
+.rec-meter-bar i { display: block; height: 100%; background: linear-gradient(90deg, #4fc3d9 0%, #4fc3d9 70%, #f2a33a 85%, #e0627a 100%); background-size: 100% 100%; transition: width 80ms linear; }
+.rec-meter.is-clipping { color: var(--color-danger-text); font-weight: 600; }

@@ -31,7 +31,8 @@ export const docsEn: Docs = {
             "Up to **4 players** at once (P1 to P4). Everyone else watches live and waits in an arcade-style queue.",
             "Voice between the players, and chat for everyone.",
             "Several games running at once, with pause, saved games and a history.",
-            "Keyboard, gamepads (several per browser) and an on-screen gamepad on phones.",
+            "Keyboard, gamepads (several per browser) and an on-screen gamepad on phones, which turn into a handheld console (Game Boy upright, Switch sideways).",
+            "Recordings with everyone's voices, exported to MP4 for WhatsApp or a phone, and one-tap screenshots. See [Recordings, screenshots and MP4](/docs/recordings).",
           ],
         },
         { t: "h2", id: "how", text: "How it works" },
@@ -207,9 +208,11 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "Tap the gamepad icon on the video to show the on-screen gamepad.",
-            "Arrows on the left, the game's buttons on the right (only as many as the game uses), Coin and 1P, 2P… on top.",
-            "Turn the phone sideways and use full screen for the biggest picture. On iPhone, add go-link to the home screen for a true full screen.",
+            "On a phone or tablet the room becomes a handheld console that fills the screen: held upright it is like a Game Boy (the picture on top, the gamepad below), sideways like a Switch (the picture in the middle, one half of the gamepad on each side).",
+            "Arrows on the left, the game's buttons on the right (only as many as the game uses); Coin and 1P, 2P… sit next to them, like Select and Start.",
+            "The first touch hides the browser's bars where the phone allows it (Android). On iPhone, add go-link to the home screen for a true full screen.",
+            "Chat, players, the queue, How to play and Leave open from the tab on the right edge; it counts new messages.",
+            "The buttons over the video are see-through and fade out after 3 seconds; tap the picture to bring them back. The gamepad icon turns the on-screen gamepad off (and back on).",
           ],
         },
         { t: "h2", id: "seats", text: "Seats, queue and swapping" },
@@ -234,12 +237,61 @@ export const docsEn: Docs = {
           items: [
             "Only players in seats P1 to P4 can talk. Turn the microphone on in the room's dock, or hold **V**.",
             "Game sound and voice have separate volumes, and you can silence one player.",
-            "Voice is never recorded: it goes from each player to the host's app and on to the other players, encrypted.",
+            "Voice travels encrypted from each player to the host's app and on to the other players. It is only recorded when the host records the game, and then everyone sees **REC** over the video and a notice in the chat.",
             "Chat messages are up to 300 characters, and you see who is typing.",
             "The host can switch the chat off for a room.",
           ],
         },
         { t: "note", tone: "info", text: "Browsers may start the game muted. Tap anywhere, or the speaker button, to hear it." },
+      ],
+    },
+    {
+      slug: "recordings",
+      group: "Playing",
+      title: "Recordings, screenshots and MP4",
+      lead: "The host can record a game with everyone's voices and export it as an MP4 ready for WhatsApp or a phone.",
+      blocks: [
+        { t: "h2", id: "record", text: "Record a game" },
+        {
+          t: "list",
+          items: [
+            "Only the host records: press the red dot in the room's dock (game rooms only). Press the square to stop.",
+            "Everyone in the room sees **REC** over the video and a notice in the chat, because their voices are recorded too.",
+            "A recording stops by itself after **2 hours or 2 GB**, when the game is paused (you are asked first) and when the room is closed or deleted.",
+            "Recording costs almost nothing: the device saves the picture and sound it already sends, without encoding them again. Files live in `~/go-link/rec/` on the host's computer (WebM).",
+          ],
+        },
+        { t: "h2", id: "export", text: "Download and export to MP4" },
+        {
+          t: "steps",
+          items: [
+            "When a recording ends, the host's browser offers to download it (also later, from **My device › History**).",
+            "The file comes from the device over the direct connection in 60 KB parts, with progress, a cancel button and a SHA-256 check.",
+            "If someone spoke, a **preview** opens: play the recording and set the **Game** and **Voices** volumes (0 to 300 %). A meter warns when the mix would clip.",
+            "**Export MP4**: your browser turns it into an MP4 (H.264 video, AAC sound, the picture enlarged with crisp pixels). The device takes no part in it.",
+          ],
+        },
+        {
+          t: "table",
+          head: ["MP4 sound track", "What it has"],
+          rows: [
+            ["1 · Game and voices", "The mix with your volumes. The default: the one phones, WhatsApp and most players play."],
+            ["2 · Game", "Only the game, at its volume."],
+            ["3 · Voices", "Only the players' voices, at their volume."],
+          ],
+        },
+        { t: "note", tone: "info", text: "A player plays one sound track at a time; VLC and QuickTime let you switch (Audio › Track). Without voices the MP4 has only the game track. Browsers that cannot convert (no WebCodecs) save the original WebM, which Chrome, Firefox and VLC play." },
+        { t: "h2", id: "screenshot", text: "Screenshots" },
+        { t: "p", text: "Anyone in the room can press the camera button in the dock: a PNG of the game (crisp pixels, the game's shape) goes to your downloads. Only your browser takes part." },
+        { t: "h2", id: "manage", text: "Manage and delete" },
+        {
+          t: "list",
+          items: [
+            "**My device › History** lists each game with its recordings: download or delete each one, or delete a game from the history with its recordings.",
+            "Clearing the history deletes every recording. **Factory reset** (My device) deletes rooms, saved games, history, recordings, remembered browsers and settings; your ROMs, pictures and the emulator stay.",
+            "From the command line: `device rec list`, `device rec rm ID` and `device reset --yes` (with the device stopped).",
+          ],
+        },
       ],
     },
     {

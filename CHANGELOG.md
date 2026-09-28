@@ -6,10 +6,11 @@ All notable changes to go-link. Newest first.
 
 ### Changed (website)
 
+- The landing page and the user guide describe recordings, MP4 export, screenshots and the phone console; a new guide page, "Recordings, screenshots and MP4". The guide no longer says voice is never recorded.
 - Phones and tablets play in a full-screen console: upright like a Game Boy (picture on top, gamepad below), sideways like a Switch (picture in the middle, gamepad halves on the sides). The touch gamepad is on by default; chat, players and room actions open from a side tab.
 - The controls over the video are see-through and hide after 3 seconds without moving the mouse or tapping, as in video players.
 - On phones, a one-row header with a "…" tools menu, and the sections as a tab bar at the bottom of the screen.
-- Recordings download as MP4 (H.264 + AAC, the picture enlarged with crisp pixels) ready for chat apps and phones: the browser converts them with WebCodecs and a small Go WebAssembly helper, the device takes no part. Sound track 1 is the game with the voices, track 2 the voices alone. Browsers that cannot convert save the original WebM.
+- Recordings download as MP4 (H.264 + AAC, the picture enlarged with crisp pixels) ready for chat apps and phones: the browser converts them with WebCodecs and a small Go WebAssembly helper, the device takes no part. When someone spoke, a preview plays the recording first ("Preview and export"), with a Game and a Voices volume and a clipping meter, and "Export MP4" applies them; with voices the MP4 has three sound tracks (game and voices, the default; game alone; voices alone). Browsers that cannot convert save the original WebM.
 
 ### Added (device)
 

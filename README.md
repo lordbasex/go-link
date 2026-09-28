@@ -19,6 +19,8 @@ A **host** runs the go-link app (the **device**) on their own computer, with **t
 - **A small game server:** several games running at once, pause, save slots, automatic save and resume, favorites, trash and a game history.
 - **Arcade play:** seats P1 to P4, an arcade-style queue, spectators, Start 1P-4P, swap controllers, gamepads (several per browser), keyboard and a touch gamepad on phones.
 - **Voice and chat:** voice between seated players (forwarded by the device, with per-player volume), and chat with a typing indicator.
+- **Recordings:** the host records a game with everyone's voices (everyone sees REC); the browser exports it to an MP4 ready for WhatsApp, with a preview to set the game and voices volumes. Screenshots in one tap.
+- **Phones:** the room becomes a handheld console, a Game Boy upright and a Switch sideways.
 - **ROM validation without running the game:** each set is checked against the core's game list with the MAME 0.78 loader rules.
 - **Native app:** a window and tray icon on macOS, Windows and Linux; headless mode with a local web panel for a Raspberry Pi, a server or Docker; and a full CLI.
 - **Your own infrastructure if you want:** the signaling server is open source, and the website can switch to another one.

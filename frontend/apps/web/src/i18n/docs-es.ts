@@ -31,7 +31,8 @@ export const docsEs: Docs = {
             "Hasta **4 jugadores** a la vez (P1 a P4). El resto mira en vivo y espera en una fila como en un arcade.",
             "Voz entre los jugadores y chat para todos.",
             "Varios juegos a la vez, con pausa, partidas guardadas e historial.",
-            "Teclado, mandos (varios por navegador) y un mando en pantalla en el celular.",
+            "Teclado, mandos (varios por navegador) y un mando en pantalla en el celular, que se vuelve una consola portátil (Game Boy en vertical, Switch en horizontal).",
+            "Grabaciones con las voces de todos, exportadas a MP4 para WhatsApp o el celular, y capturas de pantalla en un toque. Mira [Grabaciones, capturas y MP4](/docs/recordings).",
           ],
         },
         { t: "h2", id: "how", text: "Cómo funciona" },
@@ -207,9 +208,11 @@ export const docsEs: Docs = {
         {
           t: "list",
           items: [
-            "Toca el ícono del mando sobre el video para mostrar el mando en pantalla.",
-            "Flechas a la izquierda, los botones del juego a la derecha (solo los que usa el juego), Moneda y 1P, 2P… arriba.",
-            "Gira el celular y usa pantalla completa para ver la imagen más grande. En iPhone, agrega go-link a la pantalla de inicio para tener pantalla completa real.",
+            "En un celular o tablet la sala se vuelve una consola portátil que ocupa toda la pantalla: en vertical es como una Game Boy (la imagen arriba, el mando abajo) y en horizontal como una Switch (la imagen al centro y medio mando a cada lado).",
+            "Flechas a la izquierda y los botones del juego a la derecha (solo los que usa el juego); Moneda y 1P, 2P… van junto a ellos, como Select y Start.",
+            "El primer toque esconde las barras del navegador donde el celular lo permite (Android). En iPhone, agrega go-link a la pantalla de inicio para tener pantalla completa real.",
+            "El chat, los jugadores, la fila, Cómo jugar y Salir se abren desde la pestaña del borde derecho, que cuenta los mensajes nuevos.",
+            "Los botones sobre el video son transparentes y se ocultan a los 3 segundos; toca la imagen para que vuelvan. El ícono del mando apaga (y vuelve a encender) el mando en pantalla.",
           ],
         },
         { t: "h2", id: "seats", text: "Puestos, fila y cambio de mando" },
@@ -234,12 +237,61 @@ export const docsEs: Docs = {
           items: [
             "Solo los jugadores en los puestos P1 a P4 pueden hablar. Activa el micrófono en el panel de la sala, o mantén **V**.",
             "El sonido del juego y la voz tienen volúmenes separados, y puedes silenciar a un jugador.",
-            "La voz nunca se graba: va de cada jugador a la app del anfitrión y de ahí a los otros jugadores, cifrada.",
+            "La voz viaja cifrada de cada jugador a la app del anfitrión y de ahí a los otros jugadores. Solo se graba cuando el anfitrión graba la partida, y entonces todos ven **REC** sobre el video y un aviso en el chat.",
             "Los mensajes de chat tienen hasta 300 caracteres, y ves quién está escribiendo.",
             "El anfitrión puede apagar el chat de una sala.",
           ],
         },
         { t: "note", tone: "info", text: "Los navegadores pueden empezar el juego silenciado. Toca en cualquier parte, o el botón de sonido, para escucharlo." },
+      ],
+    },
+    {
+      slug: "recordings",
+      group: "Jugar",
+      title: "Grabaciones, capturas y MP4",
+      lead: "El anfitrión puede grabar una partida con las voces de todos y exportarla como MP4 listo para WhatsApp o el celular.",
+      blocks: [
+        { t: "h2", id: "record", text: "Grabar una partida" },
+        {
+          t: "list",
+          items: [
+            "Solo graba el anfitrión: toca el punto rojo en los controles de la sala (solo en salas de juego). El cuadrado la detiene.",
+            "Todos en la sala ven **REC** sobre el video y un aviso en el chat, porque también se graban sus voces.",
+            "Una grabación se detiene sola a las **2 horas o 2 GB**, cuando se pausa la partida (antes te pregunta) y cuando se cierra o borra la sala.",
+            "Grabar casi no gasta nada: el dispositivo guarda la imagen y el sonido que ya envía, sin volver a codificarlos. Los archivos quedan en `~/go-link/rec/` en la computadora del anfitrión (WebM).",
+          ],
+        },
+        { t: "h2", id: "export", text: "Descargar y exportar a MP4" },
+        {
+          t: "steps",
+          items: [
+            "Cuando termina una grabación, el navegador del anfitrión ofrece descargarla (también después, desde **Mi dispositivo › Historial**).",
+            "El archivo llega del dispositivo por la conexión directa, en partes de 60 KB, con progreso, botón para cancelar y verificación SHA-256.",
+            "Si alguien habló, se abre una **vista previa**: dale play y ajusta los volúmenes de **Juego** y **Voces** (de 0 a 300 %). Un medidor avisa si la mezcla satura.",
+            "**Exportar MP4**: tu navegador la convierte a MP4 (video H.264, sonido AAC, la imagen ampliada con píxeles nítidos). El dispositivo no participa.",
+          ],
+        },
+        {
+          t: "table",
+          head: ["Pista de sonido del MP4", "Qué tiene"],
+          rows: [
+            ["1 · Juego y voces", "La mezcla con tus volúmenes. La predeterminada: la que suenan los celulares, WhatsApp y la mayoría de los reproductores."],
+            ["2 · Juego", "Solo el juego, con su volumen."],
+            ["3 · Voces", "Solo las voces de los jugadores, con su volumen."],
+          ],
+        },
+        { t: "note", tone: "info", text: "Un reproductor suena una pista de sonido a la vez; VLC y QuickTime permiten cambiarla (Audio › Pista). Sin voces, el MP4 trae solo la pista del juego. Los navegadores que no pueden convertir (sin WebCodecs) guardan el WebM original, que se ve en Chrome, Firefox y VLC." },
+        { t: "h2", id: "screenshot", text: "Capturas de pantalla" },
+        { t: "p", text: "Cualquiera en la sala puede tocar el botón de la cámara en los controles: un PNG del juego (píxeles nítidos, con la forma del juego) queda en tus descargas. Solo participa tu navegador." },
+        { t: "h2", id: "manage", text: "Administrar y borrar" },
+        {
+          t: "list",
+          items: [
+            "**Mi dispositivo › Historial** muestra cada partida con sus grabaciones: descarga o borra cada una, o borra una partida del historial junto con sus grabaciones.",
+            "Vaciar el historial borra todas las grabaciones. **Reiniciar de fábrica** (Mi dispositivo) borra salas, partidas guardadas, historial, grabaciones, navegadores recordados y ajustes; tus ROMs, imágenes y el emulador quedan.",
+            "Desde la línea de comandos: `device rec list`, `device rec rm ID` y `device reset --yes` (con el dispositivo detenido).",
+          ],
+        },
       ],
     },
     {

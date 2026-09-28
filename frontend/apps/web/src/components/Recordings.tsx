@@ -13,7 +13,8 @@ import { t } from "../i18n";
 import { useSignal } from "../signal/SignalProvider";
 import { formatDuration } from "./device/HistoryTab";
 import { DownloadIcon } from "./Icons";
-import { canMakeMp4, Mp4Unsupported, webmToMp4 } from "./toMp4";
+import { canMakeMp4, Mp4Unsupported, openRecording, webmToMp4, type Mp4Gains, type Recording } from "./toMp4";
+import { RecordingPreview } from "./RecordingPreview";
 
 /** "Video · Game · Voice P1": the tracks of a recording. */
 export function trackNames(tracks: readonly RecordingTrack[]): string {
@@ -87,6 +88,7 @@ export function RecordingFacts({ rec }: { rec: RecordingInfo }) {
 
 type Phase =
   | { kind: "running"; progress: DownloadProgress | null }
+  | { kind: "preview" }
   | { kind: "converting"; fraction: number }
   | { kind: "done"; mp4: boolean; note: string }
   | { kind: "cancelled" }
@@ -106,6 +108,17 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
   const current = useRef<RecordingDownload | null>(null);
   const converting = useRef<AbortController | null>(null);
   const original = useRef<{ parts: BlobPart[]; name: string } | null>(null);
+  const [preview, setPreview] = useState<{ rec: Recording; url: string } | null>(null);
+  const [gains, setGains] = useState<Mp4Gains>({ game: 1, voices: 1 });
+  const alive = useRef(true);
+  const convertRef = useRef<(rec: Recording | undefined, gains: Mp4Gains) => Promise<void>>(async () => undefined);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  useEffect(() => () => void (preview && URL.revokeObjectURL(preview.url)), [preview]);
 
   useEffect(() => {
     const stream = hostLink?.stream;
@@ -140,17 +153,21 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
         saveOriginal(t.rec.webmOnly);
         return;
       }
-      setPhase({ kind: "converting", fraction: 0 });
       try {
-        const webm = new Uint8Array(await new Blob(parts).arrayBuffer());
-        const mp4 = await webmToMp4(webm, (fraction) => live && setPhase({ kind: "converting", fraction }), abort.signal);
+        // The preview: play it and set the game and voices volumes first.
+        const rec = await openRecording(new Uint8Array(await new Blob(parts).arrayBuffer()));
         if (!live) return;
-        saveFile([mp4], name.replace(/\.webm$/i, "") + ".mp4", "video/mp4");
-        setPhase({ kind: "done", mp4: true, note: "" });
+        // Only a recording with voices has something to mix: the others
+        // become an MP4 right away.
+        if (!rec.hasVoices) {
+          void convertRef.current(rec, { game: 1, voices: 1 });
+          return;
+        }
+        setPreview({ rec, url: URL.createObjectURL(new Blob(parts, { type: "video/webm" })) });
+        setPhase({ kind: "preview" });
       } catch (e) {
         if (!live) return;
-        if (abort.signal.aborted) setPhase({ kind: "cancelled" });
-        else if (e instanceof Mp4Unsupported) saveOriginal(t.rec.webmOnly);
+        if (e instanceof Mp4Unsupported) saveOriginal(t.rec.webmOnly);
         else saveOriginal(t.rec.mp4Failed(e instanceof Error ? e.message : String(e)));
       }
     });
@@ -161,11 +178,40 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
     };
   }, [hostLink, rec.id, rec.file, attempt]);
 
+  // "Download MP4": the browser converts it with the chosen volumes.
+  const convert = async (rec: Recording | undefined, gains: Mp4Gains) => {
+    const orig = original.current;
+    if (!rec || !orig) return;
+    const abort = new AbortController();
+    converting.current = abort;
+    setPhase({ kind: "converting", fraction: 0 });
+    try {
+      const mp4 = await webmToMp4(rec, gains, (fraction) => alive.current && setPhase({ kind: "converting", fraction }), abort.signal);
+      if (!alive.current) return;
+      saveFile([mp4], orig.name.replace(/\.webm$/i, "") + ".mp4", "video/mp4");
+      setPhase({ kind: "done", mp4: true, note: "" });
+    } catch (e) {
+      if (!alive.current) return;
+      if (abort.signal.aborted) setPhase(rec.hasVoices ? { kind: "preview" } : { kind: "cancelled" });
+      else if (e instanceof Mp4Unsupported) {
+        saveFile(orig.parts, orig.name, "video/webm");
+        setPhase({ kind: "done", mp4: false, note: t.rec.webmOnly });
+      } else {
+        saveFile(orig.parts, orig.name, "video/webm");
+        setPhase({ kind: "done", mp4: false, note: t.rec.mp4Failed(e instanceof Error ? e.message : String(e)) });
+      }
+    }
+  };
+
+  convertRef.current = convert;
+
   const cancel = () => {
     current.current?.cancel();
     converting.current?.abort();
   };
   const busy = phase.kind === "running" || phase.kind === "converting";
+  // With voices the download leads to the preview (to set the mix).
+  const withVoices = rec.tracks.some((tr) => tr.startsWith("voice"));
   const p = phase.kind === "running" ? phase.progress : null;
   const size = p?.size || rec.size;
   const got = phase.kind === "running" ? (p?.received ?? 0) : size;
@@ -185,11 +231,36 @@ export function DownloadDialog({ rec, onClose }: { rec: RecordingInfo; onClose: 
           ? t.rec.downloadFailed
           : phase.kind === "converting"
             ? t.rec.preparing
-            : t.rec.downloadTitle;
+            : phase.kind === "preview"
+              ? t.rec.previewTitle
+              : withVoices
+                ? t.rec.loadingRecording
+                : t.rec.downloadTitle;
   const fileName =
     phase.kind === "converting" || (phase.kind === "done" && phase.mp4)
       ? rec.file.replace(/\.webm$/i, "") + ".mp4"
       : rec.file;
+
+  if (phase.kind === "preview" && preview)
+    return (
+      <Modal title={title} onClose={onClose}>
+        <RecordingPreview rec={preview.rec} src={preview.url} gains={gains} onGains={setGains} />
+        <p className="small muted">{t.rec.previewHint}</p>
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => original.current && saveFile(original.current.parts, original.current.name, "video/webm")}
+          >
+            {t.rec.original}
+          </button>
+          <button type="button" className="button button-primary" onClick={() => void convert(preview.rec, gains)}>
+            <DownloadIcon size={16} />
+            {t.rec.downloadMp4}
+          </button>
+        </div>
+      </Modal>
+    );
 
   return (
     <Modal title={title} onClose={() => (busy ? cancel() : onClose())}>
@@ -325,7 +396,7 @@ export function RecordingNotices() {
             setEvent(null);
           }}
         >
-          {t.rec.downloadNow}
+          {event.recording.tracks.some((tr) => tr.startsWith("voice")) ? t.rec.previewAndExport : t.rec.downloadNow}
         </button>
       </div>
     </Modal>
