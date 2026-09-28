@@ -1,9 +1,19 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { LANGS, setLang, t, useLang } from "../i18n";
 import { useSignal } from "../signal/SignalProvider";
 import { DEMO_DEVICE_NAME } from "../fixtures";
-import { GamepadIcon, MonitorIcon, MoonIcon, ServerIcon, SunIcon } from "./Icons";
+import {
+  BookIcon,
+  GamepadIcon,
+  HelpIcon,
+  MonitorIcon,
+  MoonIcon,
+  MoreIcon,
+  ServerIcon,
+  SunIcon,
+} from "./Icons";
 import { setTheme, useTheme } from "../theme";
 import { GithubIcon } from "./Icons";
 import { REPO_URL } from "../config";
@@ -96,6 +106,25 @@ export function MainHeader() {
   const { panel } = useSignal();
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `nav-link${isActive ? " is-active" : ""}`;
+  // On phones the tools fold behind one button and the sections become a
+  // tab bar at the bottom of the screen, as in a phone app.
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => setToolsOpen(false), [pathname]);
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const away = (e: PointerEvent) => {
+      if (!toolsRef.current?.contains(e.target as Node)) setToolsOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setToolsOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [toolsOpen]);
   return (
     <header className="app-header app-header-main">
       <div className="header-left">
@@ -104,35 +133,50 @@ export function MainHeader() {
           {/* The device's own panel is for managing it: no landing page. */}
           {!panel && (
             <NavLink to="/" end className={navClass}>
-              {t.nav.howItWorks}
+              <HelpIcon />
+              <span>{t.nav.howItWorks}</span>
             </NavLink>
           )}
           <NavLink to="/rooms" className={navClass}>
-            {t.nav.rooms}
+            <GamepadIcon size={18} />
+            <span>{t.nav.rooms}</span>
           </NavLink>
           <NavLink to="/device" className={navClass}>
-            {t.nav.myDevice}
+            <MonitorIcon size={18} />
+            <span>{t.nav.myDevice}</span>
           </NavLink>
           <NavLink to="/docs" className={navClass}>
-            {t.nav.docs}
+            <BookIcon />
+            <span>{t.nav.docs}</span>
           </NavLink>
         </nav>
       </div>
-      <div className="header-right">
-        <LangSwitch />
-        <ServerButton />
+      <div className="header-right" ref={toolsRef}>
         <DeviceBadge />
-        <ThemeButton />
-        <a
-          className="icon-button tip-below"
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener"
-          aria-label={t.legal.footer.github}
-          data-tip={t.legal.footer.github}
+        <button
+          type="button"
+          className={`icon-button header-more${toolsOpen ? " is-on" : ""}`}
+          aria-expanded={toolsOpen}
+          aria-label={t.nav.tools}
+          onClick={() => setToolsOpen(!toolsOpen)}
         >
-          <GithubIcon />
-        </a>
+          <MoreIcon />
+        </button>
+        <div className={`header-tools${toolsOpen ? " is-open" : ""}`}>
+          <LangSwitch />
+          <ServerButton />
+          <ThemeButton />
+          <a
+            className="icon-button tip-below"
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener"
+            aria-label={t.legal.footer.github}
+            data-tip={t.legal.footer.github}
+          >
+            <GithubIcon />
+          </a>
+        </div>
       </div>
     </header>
   );

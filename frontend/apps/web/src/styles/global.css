@@ -1687,3 +1687,187 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
   .video-stage:not(.has-touchpad) .dock-group { flex-direction: row; padding: 0 5px 0 0; margin: 0; border-bottom: none; border-right: 1px solid var(--color-border-input); gap: 5px; }
   .video-stage:not(.has-touchpad) .mini-meter { display: none; }
 }
+
+/* Controls over the video fade out after a few seconds without a mouse
+   movement or a tap (RoomPage IDLE_MS), as video players do. They are
+   see-through so the game shows behind them. */
+.video-toolbar, .players-capsule { background: rgb(12 14 20 / 0.5); }
+.video-toolbar, .players-capsule, .video-live, .stream-info, .console-title, .dock-toggle { transition: opacity 0.25s ease; }
+.video-stage.is-idle { cursor: none; }
+.video-stage.is-idle :is(.video-toolbar, .players-capsule, .video-live, .stream-info, .console-title, .dock-toggle) { opacity: 0; pointer-events: none; }
+
+/* Console mode: a phone or tablet with the on-screen gamepad. The stage
+   fills the screen and becomes a handheld: upright it is a Game Boy (the
+   screen on top, the pad below), sideways a Switch (the screen in the
+   middle, one half of the pad on each side). Everything else lives in a
+   drawer opened from the side tab. --sx/--sy/--sw/--sh are the screen's
+   box, so the overlays stay on the picture. */
+body .video-stage.has-touchpad.is-console {
+  --tp-dpad: clamp(124px, 34vmin, 220px);
+  --tp-button: clamp(50px, 13vmin, 84px);
+  --ctl: clamp(30px, 4.2vmax, 36px);
+  position: fixed !important; inset: 0; z-index: 50; margin: 0;
+  width: 100vw; height: 100dvh !important; min-height: 0 !important; max-height: none !important; aspect-ratio: auto !important;
+  border: none; border-radius: 0;
+  display: grid !important; align-items: stretch; justify-items: stretch;
+  background: radial-gradient(120% 70% at 50% 100%, #1d2231 0%, #10131b 60%, #0b0d12 100%);
+  overscroll-behavior: none;
+}
+body .video-stage.has-touchpad.is-console .touchpad { --tp-dpad: inherit; --tp-button: inherit; display: contents; }
+body .video-stage.has-touchpad.is-console .video {
+  grid-area: screen; min-width: 0; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; min-height: 0;
+  aspect-ratio: auto !important; object-fit: contain; background: #000; align-self: stretch; justify-self: stretch;
+}
+body .video-stage.has-touchpad.is-console .touchpad-side { position: static; align-self: center; justify-self: center; align-items: center; gap: 22px; }
+body .video-stage.has-touchpad.is-console .touchpad-left { grid-area: left; }
+body .video-stage.has-touchpad.is-console .touchpad-right { grid-area: right; }
+
+@media (orientation: portrait) {
+  body .video-stage.has-touchpad.is-console {
+    --sy: env(safe-area-inset-top, 0px); --sx: 0px; --sw: 100vw;
+    --sh: min(calc(100vw / var(--ar, 1.333)), 56dvh);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: var(--sy) var(--sh) minmax(0, 1fr);
+    grid-template-areas: ". ." "screen screen" "left right";
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Game Boy: Coin and the start buttons below, like Select and Start. */
+  body .video-stage.has-touchpad.is-console .touchpad-side { flex-direction: column-reverse; }
+  body .video-stage.has-touchpad.is-console .video { border-bottom: 1px solid rgb(255 255 255 / 0.06); }
+  /* The maker's mark under the screen, as on a handheld. */
+  body .video-stage.has-touchpad.is-console::after {
+    content: "go-link"; position: absolute; pointer-events: none; left: 50%; transform: translateX(-50%);
+    top: calc(var(--sy) + var(--sh) + 14px); font-family: var(--font-title); font-weight: 700; font-style: italic;
+    font-size: 13px; letter-spacing: 0.08em; color: rgb(255 255 255 / 0.22);
+  }
+}
+@media (orientation: landscape) {
+  body .video-stage.has-touchpad.is-console {
+    --side: max(calc(var(--tp-dpad) + 28px + env(safe-area-inset-left, 0px)), calc((100vw - 100dvh * var(--ar, 1.333)) / 2));
+    --sy: 0px; --sx: var(--side); --sw: calc(100vw - 2 * var(--side)); --sh: 100dvh;
+    --tp-dpad: clamp(108px, 30vmin, 210px);
+    --tp-button: clamp(44px, 12vmin, 80px);
+    grid-template-columns: var(--side) minmax(0, 1fr) var(--side);
+    grid-template-rows: 100%;
+    grid-template-areas: "left screen right";
+  }
+  body .video-stage.has-touchpad.is-console .touchpad-side { flex-direction: column; gap: 16px; max-width: 100%; }
+  body .video-stage.has-touchpad.is-console .touchpad-starts { flex-wrap: wrap; justify-content: center; }
+  body .video-stage.has-touchpad.is-console .touchpad-left { padding-left: env(safe-area-inset-left, 0px); }
+  body .video-stage.has-touchpad.is-console .touchpad-right { padding-right: env(safe-area-inset-right, 0px); }
+}
+
+/* Overlays, kept on the picture. */
+body .video-stage.has-touchpad.is-console .video-live,
+body .video-stage.has-touchpad.is-console .video-controls,
+body .video-stage.has-touchpad.is-console .dock-toggle { display: none; }
+.console-title {
+  position: absolute; z-index: 4; top: calc(var(--sy) + 10px); left: calc(var(--sx) + 10px);
+  max-width: calc(var(--sw) * 0.5); padding: 5px 11px 5px 9px; border-radius: 999px;
+  display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--color-text);
+  background: rgb(12 14 20 / 0.5); border: 1px solid rgb(255 255 255 / 0.08); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+.console-title::before { content: ""; width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--color-accent); }
+body .video-stage.has-touchpad.is-console .stream-info { top: calc(var(--sy) + 10px); right: calc(var(--sx) + 10px); left: auto; }
+body .video-stage.has-touchpad.is-console .players-capsule {
+  position: absolute; flex-direction: column; gap: 6px; padding: 6px 5px; margin: 0;
+  top: calc(var(--sy) + var(--sh) / 2); bottom: auto; left: calc(var(--sx) + 10px); right: auto; transform: translateY(-50%);
+}
+body .video-stage.has-touchpad.is-console .capsule-avatar { width: var(--ctl); height: var(--ctl); font-size: 11px; }
+body .video-stage.has-touchpad.is-console .capsule-menu { top: 0; bottom: auto; left: calc(100% + 10px); right: auto; transform: none; }
+body .video-stage.has-touchpad.is-console .video-toolbar,
+body .video-stage.has-touchpad.is-console.is-fullscreen .video-toolbar {
+  position: absolute; display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; padding: 4px 6px; margin: 0;
+  top: calc(var(--sy) + var(--sh) - var(--ctl) - 20px); bottom: auto; left: calc(var(--sx) + var(--sw) / 2); right: auto; transform: translateX(-50%);
+  width: max-content; max-width: calc(var(--sw) - 16px); overflow-x: auto;
+}
+body .video-stage.has-touchpad.is-console .dock-group { flex-direction: row; gap: 6px; margin: 0; padding: 0 6px 0 0; border-bottom: none; border-right: 1px solid var(--color-border-input); }
+body .video-stage.has-touchpad.is-console .voice-pop { top: auto; bottom: calc(100% + 12px); left: 50%; right: auto; transform: translateX(-50%); }
+body .video-stage.has-touchpad.is-console .video-paused { inset: auto; top: var(--sy); left: var(--sx); width: var(--sw); height: var(--sh); }
+body .video-stage.has-touchpad.is-console .sound-hint,
+body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48px); left: calc(var(--sx) + var(--sw) / 2); max-width: calc(var(--sw) - 24px); }
+
+/* The side tab that opens the drawer (chat, players, room). */
+.console-tab {
+  position: absolute; z-index: 6; right: 0; top: calc(var(--sy) + var(--sh) + 12px);
+  width: 38px; height: 46px; padding: 0 0 0 4px; display: flex; align-items: center; justify-content: center;
+  border-radius: 999px 0 0 999px; border: 1px solid rgb(255 255 255 / 0.12); border-right: none;
+  background: rgb(12 14 20 / 0.55); color: var(--color-text-2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+.console-tab .toggle-badge { top: 2px; left: 2px; right: auto; }
+@media (orientation: landscape) { .console-tab { top: 12px; } }
+
+.console-scrim { position: fixed; inset: 0; z-index: 61; padding: 0; border: none; background: rgb(0 0 0 / 0.45); }
+.console-drawer {
+  position: fixed; z-index: 62; top: 0; right: 0; bottom: 0; width: min(380px, 90vw);
+  display: flex; flex-direction: column; background: var(--color-bg); border-left: 1px solid var(--color-border);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) 0;
+  transform: translateX(100%); transition: transform 0.22s ease; visibility: hidden;
+}
+.console-drawer.is-open { transform: none; visibility: visible; }
+.console-drawer-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+.console-drawer-title { flex: 1; min-width: 0; font-family: var(--font-title); font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console-drawer .room-side { width: 100%; flex: 1; min-height: 0 !important; max-height: none; position: static; border: none; border-radius: 0; }
+.room-page.is-console-mode .dialog-backdrop { z-index: 70; }
+
+/* Phones without the gamepad: the room's title shrinks to one line, the
+   game comes first. */
+@media (max-width: 700px) {
+  .room-hero, .room-hero.page-hero { flex-wrap: nowrap; align-items: center; gap: 10px; padding: 8px 12px 0; }
+  .room-hero .hero-tile, .room-hero .dash-chips, .room-hero .hero-eyebrow { display: none; }
+  .room-hero .dash-hero-id { flex: 1; min-width: 0; }
+  .room-hero .dash-title { font-size: 17px; }
+  .room-hero .room-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room-hero .dash-hero-actions { width: auto; flex-shrink: 0; gap: 6px; }
+  .room-page .room-layout { padding-top: 8px; }
+}
+
+/* Main header. On large screens the tools sit in a row; on phones they
+   fold behind the "…" button and the sections become a tab bar at the
+   bottom of the screen, as in a phone app. */
+.header-tools { display: contents; }
+.header-more { display: none; }
+.main-nav svg { display: none; }
+.nav-link { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 700px) {
+  .app-header, .app-header-main { height: 56px; min-height: 0; flex-wrap: nowrap; padding: 0 12px; padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box; gap: 8px; }
+  .app-header-main .header-left { width: auto; gap: 0; }
+  .app-header-main .header-right { width: auto; flex-wrap: nowrap; gap: 8px; position: relative; margin-left: auto; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-name { font-size: 18px; }
+  .header-more { display: inline-flex; }
+  .header-more.is-on { border-color: var(--color-accent); color: var(--color-accent); }
+  .header-tools { display: none; }
+  .header-tools.is-open {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; position: absolute; z-index: 30; top: calc(100% + 10px); right: 0;
+    width: max-content; max-width: calc(100vw - 24px); padding: 12px; border-radius: 18px;
+    background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+  }
+  .header-tools .icon-button[data-tip]::after { display: none; }
+
+  .app-header-main .main-nav {
+    position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; gap: 0; font-size: 11px;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    padding: 4px 6px env(safe-area-inset-bottom, 0px); background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+    border-top: 1px solid var(--color-divider); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .app-header-main .main-nav .nav-link { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 0; min-height: 50px; border-bottom: none; white-space: nowrap; font-weight: 500; }
+  .app-header-main .main-nav .nav-link.is-active { color: var(--color-accent); font-weight: 600; }
+  .main-nav svg { display: block; }
+  body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  /* A room is a place to play: no tab bar there. */
+  body:has(.room-page) .app-header-main .main-nav { display: none; }
+  body:has(.room-page) { padding-bottom: 0; }
+  body:has(.room-page) .app-header-main { height: 48px; }
+}
+@media (max-width: 700px) {
+  .page-title, .dash-title { font-size: 28px; }
+  .page-title-xl { font-size: 32px; }
+  /* The 9 digit code fits one row on a phone. */
+  .code-inputs { flex-wrap: nowrap; gap: 8px; }
+  .code-group { gap: 3px; min-width: 0; }
+  .code-digit { width: calc((100vw - 110px) / 9); max-width: 40px; height: 48px; font-size: 20px; border-radius: 8px; }
+}
+@media (max-width: 700px) { .pair-title { font-size: 28px; } }

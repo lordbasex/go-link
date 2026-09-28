@@ -16,6 +16,7 @@ export const en = {
     return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
   },
   nav: {
+    tools: "Settings",
     docs: "Docs",
     label: "Main",
     rooms: "Rooms",
@@ -196,6 +197,8 @@ export const en = {
     freeSeat: "Free seat",
     dockOpen: "Show the controls",
     dockClose: "Hide the controls",
+    consoleMenu: "Chat, players and room",
+    consoleClose: "Back to the game",
     voiceSettings: "Volume and voice",
     statsButton: "Connection details",
     statsLatency: "Latency",

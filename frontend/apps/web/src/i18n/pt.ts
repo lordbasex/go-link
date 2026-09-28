@@ -10,6 +10,7 @@ export const pt: Messages = {
   theme: { toLight: "Modo claro", toDark: "Modo escuro" },
   ordinal: (n: number) => `${n}º`,
   nav: {
+    tools: "Ajustes",
     docs: "Docs",
     label: "Principal",
     rooms: "Salas",
@@ -190,6 +191,8 @@ export const pt: Messages = {
     freeSeat: "Vaga livre",
     dockOpen: "Mostrar os controles",
     dockClose: "Ocultar os controles",
+    consoleMenu: "Chat, jogadores e sala",
+    consoleClose: "Voltar ao jogo",
     voiceSettings: "Volume e voz",
     statsButton: "Detalhes da conexão",
     statsLatency: "Latência",

@@ -1,5 +1,14 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   DEFAULT_CONTROLS,
@@ -77,6 +86,8 @@ const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";
 const CHAT_HIDDEN_KEY = "go-link.chat-hidden";
 const CHAT_SOUND_KEY = "go-link.chat-sound";
+/** How long the controls over the video stay without a movement or tap. */
+const IDLE_MS = 3000;
 
 /** play() as a promise, also where it returns nothing (old browsers, tests). */
 function tryPlay(media: HTMLMediaElement): Promise<void> {
@@ -895,7 +906,7 @@ export function RoomPage() {
   // Phones and tablets get the on-screen gamepad instead of the keyboard map.
   const [touch] = useState(() => isTouchDevice());
   const [touchPad, setTouchPad] = useState(
-    () => readStorage(TOUCH_KEY) === "true",
+    () => readStorage(TOUCH_KEY) !== "false",
   );
   // Sound is on by default. A browser may refuse to play sound before the
   // person touched the page (autoplay rules): then the video plays muted
@@ -919,6 +930,8 @@ export function RoomPage() {
     () => readStorage(CHAT_SOUND_KEY) !== "false",
   );
   const [unread, setUnread] = useState(0);
+  // Whether the chat is out of sight (hidden, or the closed console drawer).
+  const sideHidden = useRef(chatHidden);
   // A new message from someone else: a chime, and a count while hidden.
   const seenChat = useRef(0);
   useEffect(() => {
@@ -932,8 +945,8 @@ export function RoomPage() {
     ).length;
     if (!others) return;
     if (chatSound) playDing();
-    if (chatHidden) setUnread((n) => n + others);
-  }, [live.chat, live.room?.you.name, chatSound, chatHidden]);
+    if (sideHidden.current) setUnread((n) => n + others);
+  }, [live.chat, live.room?.you.name, chatSound]);
   const [ptt, setPtt] = useState(false);
 
   // Voice: only seated players talk (the device enforces it too).
@@ -1101,6 +1114,65 @@ export function RoomPage() {
   }, [soundBlocked]);
   const hearing = soundOn && !soundBlocked;
 
+  // Console mode: a phone or tablet with the on-screen gamepad turns the
+  // room into a handheld console that fills the screen (a Game Boy held
+  // upright, a Switch held sideways). Everything but the game folds into a
+  // drawer opened from the side.
+  const consoleMode = live.media !== null && touch && touchPad;
+  const [drawer, setDrawer] = useState(false);
+  sideHidden.current = consoleMode ? !drawer : chatHidden;
+  useEffect(() => {
+    if (!consoleMode) {
+      setDrawer(false);
+      return;
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [consoleMode]);
+
+  // The controls over the video fade out after a few seconds without the
+  // mouse moving or a tap, as video players do, and come back on the next
+  // movement or tap. A tap on the bare video hides them at once.
+  const [idle, setIdle] = useState(false);
+  const idleTimer = useRef(0);
+  const wake = useCallback(() => {
+    setIdle(false);
+    window.clearTimeout(idleTimer.current);
+    const sleep = () => {
+      const stage = stageRef.current;
+      // Keep them while a menu is open or the mouse rests on them.
+      const busy =
+        stage?.querySelector('[aria-expanded="true"]') ||
+        (window.matchMedia?.("(hover: hover)").matches &&
+          stage?.querySelector(".video-toolbar:hover, .players-capsule:hover"));
+      if (busy) idleTimer.current = window.setTimeout(sleep, IDLE_MS);
+      else setIdle(true);
+    };
+    idleTimer.current = window.setTimeout(sleep, IDLE_MS);
+  }, []);
+  useEffect(() => {
+    if (live.media !== null) wake();
+    else setIdle(false);
+    return () => window.clearTimeout(idleTimer.current);
+  }, [live.media, wake]);
+  const onStagePointer = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Playing on the gamepad is not a request to see the controls.
+    if (target.closest(".touchpad-side")) return;
+    if (e.type === "pointermove") {
+      if (e.pointerType === "mouse") wake();
+      return;
+    }
+    const bare = !target.closest("button, a, input, [role='dialog'], .video-toolbar, .players-capsule, .stream-info");
+    if (bare && !idle && e.pointerType !== "mouse") {
+      window.clearTimeout(idleTimer.current);
+      setIdle(true);
+    } else wake();
+  };
+
   if (!demo) {
     switch (status.kind) {
       case "invalid":
@@ -1208,7 +1280,7 @@ export function RoomPage() {
   const swapOffers = demo ? [] : (live.room?.you.swapOffers ?? []);
 
   return (
-    <div className="page room-page">
+    <div className={`page room-page${consoleMode ? " is-console-mode" : ""}`}>
       <PageHero
         className="room-hero room-bar"
         tile={
@@ -1314,7 +1386,12 @@ export function RoomPage() {
         <div className="room-main">
           <div
             ref={stageRef}
-            className={`video-stage${touchOn ? " has-touchpad" : ""}${!streaming && live.pin.needed ? " needs-pin" : ""}${fullscreen.pseudo ? " is-pseudo-fullscreen" : ""}${fullscreen.active ? " is-fullscreen" : ""}`}
+            className={`video-stage${touchOn ? " has-touchpad is-console" : ""}${!streaming && live.pin.needed ? " needs-pin" : ""}${fullscreen.pseudo ? " is-pseudo-fullscreen" : ""}${fullscreen.active ? " is-fullscreen" : ""}${idle && streaming && !paused ? " is-idle" : ""}`}
+            style={
+              { "--ar": String(live.aspect ?? 4 / 3) } as CSSProperties
+            }
+            onPointerDown={onStagePointer}
+            onPointerMove={onStagePointer}
           >
             <video
               ref={videoRef}
@@ -1453,6 +1530,24 @@ export function RoomPage() {
                 </button>
               </div>
             ))}
+            {consoleMode && (
+              <>
+                <span className="console-title">{title}</span>
+                <button
+                  type="button"
+                  className="console-tab"
+                  aria-expanded={drawer}
+                  aria-label={t.room.consoleMenu}
+                  onClick={() => {
+                    setDrawer(true);
+                    setUnread(0);
+                  }}
+                >
+                  <ChatIcon size={16} />
+                  {unread > 0 && <span className="toggle-badge">{unread}</span>}
+                </button>
+              </>
+            )}
             {/* Phones held sideways: the dock folds behind one button. */}
             <button
               type="button"
@@ -1689,7 +1784,55 @@ export function RoomPage() {
 
         </div>
 
-        {!(chatHidden && !demo) && <SidePanel model={model} actions={actions} />}
+        {consoleMode ? (
+          <>
+            {drawer && (
+              <button
+                type="button"
+                className="console-scrim"
+                aria-label={t.room.consoleClose}
+                onClick={() => setDrawer(false)}
+              />
+            )}
+            <div
+              className={`console-drawer${drawer ? " is-open" : ""}`}
+              role="dialog"
+              aria-label={t.room.consoleMenu}
+              aria-hidden={!drawer}
+              inert={!drawer}
+            >
+              <div className="console-drawer-head">
+                <span className="console-drawer-title">{title}</span>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={t.help.button}
+                  onClick={() => setHelpOpen(true)}
+                >
+                  <HelpIcon />
+                </button>
+                <Link
+                  to="/rooms"
+                  className="icon-button"
+                  aria-label={t.room.leave}
+                >
+                  <LogOutIcon />
+                </Link>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={t.room.consoleClose}
+                  onClick={() => setDrawer(false)}
+                >
+                  <CloseIcon size={16} />
+                </button>
+              </div>
+              <SidePanel model={model} actions={actions} />
+            </div>
+          </>
+        ) : (
+          !(chatHidden && !demo) && <SidePanel model={model} actions={actions} />
+        )}
       </div>
     </div>
   );
