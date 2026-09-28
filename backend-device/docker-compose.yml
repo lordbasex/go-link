@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+# The go-link device in Docker (Linux host). Build and start:
+#   docker compose up -d --build
+# The web panel is then at http://<this computer's LAN address>:7373 and
+# asks for its token:
+#   docker compose exec device go-link-device panel token --config /data/device.json
+services:
+  device:
+    build:
+      context: .
+      dockerfile: build/docker.Dockerfile
+    image: go-link-device
+    restart: unless-stopped
+    # WebRTC needs UDP straight to the players: the host's network is the
+    # simple way. Without it, see "Docker without host network" in the README.
+    network_mode: host
+    volumes:
+      # Configuration, the core, saved games and history.
+      - go-link-data:/data
+      # Your ROM sets (MAME 2003-Plus / 0.78). Writable, so ROMs dropped
+      # in the web panel can be added (":ro" to keep the folder read-only).
+      - ./roms:/data/go-link/roms
+      # Your thumbnails, libretro layout: Named_Boxarts, Named_Titles,
+      # Named_Snaps (":ro" if you only add them by hand).
+      - ./thumbnails:/data/go-link/thumbnails/MAME
+volumes:
+  go-link-data:

@@ -1,0 +1,109 @@
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+#
+# Tests on every push and pull request: the device (Linux, with its C
+# libraries), the website, the whole story end to end (with signalhub from
+# its own repository), and a scan for secrets in the history.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  device:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-device
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-device/go.mod
+          cache-dependency-path: backend-device/go.sum
+      - name: C libraries (encoders and the Fyne window)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libvpx-dev libopus-dev \
+            libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
+      - run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Build without a window (Raspberry Pi, servers)
+        run: go build -tags headless ./cmd/device
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [device, web]
+    env:
+      SIGNALING_DIR: ${{ github.workspace }}/.signaling
+    steps:
+      - uses: actions/checkout@v7
+      # signalhub lives in its own repository.
+      - uses: actions/checkout@v7
+        with:
+          repository: lordbasex/signalhub
+          path: .signaling
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-device/go.mod
+          cache-dependency-path: |
+            backend-device/go.sum
+            .signaling/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - name: C libraries (encoders)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libvpx-dev libopus-dev
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+        working-directory: e2e
+      - run: npx playwright test
+        working-directory: e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: gitleaks (the whole history)
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest git /repo --no-banner --redact

@@ -1,0 +1,131 @@
+# Building, testing and releasing
+
+## Requirements
+
+| Part | Needs |
+|---|---|
+| Device | Go (version in `backend-device/go.mod`), a C compiler, `pkg-config`, **libvpx** and **libopus** (cgo) |
+| Device window on Linux | OpenGL, X11 and Wayland development packages (`libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols`) |
+| Website | Node.js (version in `frontend/.nvmrc`) and npm |
+| Cross builds | Docker with `buildx` (Linux and Windows device builds run in containers) |
+| End-to-end tests | A clone of [signalhub](https://github.com/lordbasex/signalhub) next to this repository (`../signaling`) or `SIGNALING_DIR` |
+
+Install the device's C libraries:
+
+| System | Command |
+|---|---|
+| macOS | `brew install libvpx opus pkg-config` |
+| Debian/Ubuntu | `sudo apt install libvpx-dev libopus-dev pkg-config` |
+| Windows (MSYS2) | `pacman -S mingw-w64-x86_64-libvpx mingw-w64-x86_64-opus mingw-w64-x86_64-pkg-config` |
+
+These libraries are needed **only to build**. The `Makefile` builds link them statically, so the binaries run without them.
+
+## Makefile
+
+`make help` lists everything.
+
+| Command | What it does |
+|---|---|
+| `make all` | Website and device for every platform |
+| `make web-build` | Builds the website for `wss://signal.go-link.org/ws` (`SIGNAL_URL=…` changes it) into `frontend/apps/web/dist`, without source maps |
+| `make web-deploy` | Builds and uploads the website with the local hosting file (see [deploy.md](deploy.md#website)) |
+| `make device` | The device for macOS, Linux (window and headless) and Windows, amd64 and arm64, into `dist/device/` |
+| `make device-darwin-amd64` | One platform. Also `-darwin-arm64`, `-linux-amd64`, `-linux-arm64`, `-linux-amd64-headless`, `-linux-arm64-headless`, `-windows-amd64`, `-windows-arm64` |
+| `make device-dmg` | The macOS app in a drag-to-Applications `.dmg` |
+| `make panel` | Builds the website into `backend-device/web/panel/dist`, the panel that headless devices serve (device builds do it when it is missing) |
+| `make device-docker` | The `go-link-device` image (headless, panel on :7373) in the local Docker |
+| `make device-docker-oci` | The same image for amd64 and arm64, as an OCI archive in `dist/docker/` |
+| `make e2e` | End-to-end tests in a real browser |
+| `VERSION=x.y.z make release` | A full release (below) |
+
+How the device is built on each system (cgo: libvpx, libopus and, with the window, OpenGL):
+
+- **macOS:** natively, each Mac its own architecture. libvpx and Opus are linked statically from Homebrew's `.a` files. On an Intel Mac arm64 is skipped with a notice, and the other way around.
+- **Linux:** in Docker (`backend-device/build/linux.Dockerfile`), the other architecture through QEMU, with static libvpx and Opus.
+- **Windows:** in Docker with llvm-mingw (`backend-device/build/windows.Dockerfile`), with libvpx and libopus built statically: the `.exe` needs no DLLs.
+
+What each binary needs from the system:
+
+| Binary | System libraries |
+|---|---|
+| Windows | Nothing extra (Windows 10/11 DLLs only) |
+| macOS | Nothing extra (macOS frameworks) |
+| Linux headless (Raspberry Pi, Docker) | `libc` and `libm` |
+| Linux with the window | Also `libGL` and `libwayland-client`, which any desktop has |
+
+The emulator core is not in any binary: it is downloaded on first use (see [emulator.md](emulator.md)).
+
+## macOS app
+
+On macOS the device ships as **`go-link.app`**, not a bare executable (which the Finder would open through Terminal). It has its `Info.plist` (`org.go-link.device`), an `.icns` icon made from the logo and an ad hoc signature.
+
+`make device-dmg` builds `dist/device/go-link-<version>-macos-<arch>.dmg` (with its `.sha256`): the app on the left, a shortcut to Applications on the right, on a dark background with an amber arrow (`backend-device/build/macos/dmg-background.swift`). `backend-device/build/macos/make-dmg.sh` uses only macOS tools (`hdiutil`, `SetFile`, `osascript`, `swift`). The first time, macOS asks for permission for the terminal to control the Finder (the window layout); without it the `.dmg` is made without the background.
+
+## Releases
+
+`VERSION=0.1.0 make release` (or `./scripts/release.sh`) builds everything that goes in a GitHub release, into `dist/release/v0.1.0/`:
+
+| File | For |
+|---|---|
+| `go-link-v0.1.0-macos-amd64.dmg` (and `-arm64`, built on an Apple silicon Mac) | macOS: drag to Applications |
+| `go-link-v0.1.0-windows-amd64.zip` / `-arm64.zip` | Windows: the `.exe`, no console |
+| `go-link-v0.1.0-linux-amd64.tar.gz` / `-arm64.tar.gz` | Linux desktops |
+| `go-link-v0.1.0-linux-amd64-headless.tar.gz` / `-arm64-headless.tar.gz` | Raspberry Pi and servers (no window, web panel) |
+| `go-link-v0.1.0-docker.oci.tar.gz` (with `DOCKER=1`) | The Docker image, for `docker load` |
+| `SHA256SUMS` | To verify the downloads |
+
+It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from the repository's tap) and, with `gh`, creates the `v0.1.0` release on `lordbasex/go-link` (`REPO=…` changes it) with every file and generated notes. `SKIP_BUILD=1` packs what is already in `dist/device` (for example after adding the arm64 `.dmg` from another Mac), and `GITHUB_RELEASE=0` only builds the files.
+
+**Development mode (today):** without an Apple Developer ID, the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: right click › Open.
+
+**With an Apple Developer ID:**
+
+1. Install the "Developer ID Application: Name (TEAMID)" certificate in the keychain.
+2. Store the notarization credentials once: `xcrun notarytool store-credentials "go-link-notary" --apple-id you@example.com --team-id TEAMID --password <app-specific-password>`.
+3. `VERSION=0.1.0 CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" NOTARY_PROFILE=go-link-notary make release`
+
+The app is then signed with the hardened runtime and `backend-device/build/macos/entitlements.plist` (`disable-library-validation`, because the device loads the libretro core, which is downloaded separately and not signed by us). The `.dmg` is signed, notarized and stapled (`build/macos/notarize.sh`), and the release is no longer a pre-release.
+
+## Tests
+
+| Where | Command |
+|---|---|
+| Device | `cd backend-device && go test -race ./...` |
+| One device test | `go test -race -run TestName ./internal/services/` |
+| Headless build check | `go build -tags headless ./cmd/device` |
+| Website | `cd frontend && npm test && npm run typecheck` |
+| One website test | `npx vitest run apps/web/src/app.test.tsx -t "<name>"` |
+
+Before pushing Go code, in `backend-device/`: `gofmt -l .` (must print nothing), `go vet ./...`, `go test -race ./...` and `go run golang.org/x/vuln/cmd/govulncheck@latest ./...`. CI fails on any of them.
+
+### End-to-end tests
+
+`e2e/` drives a **real Chromium** (Playwright) against its own stack, started by `e2e/global-setup.ts`: a signalhub on `:8191` (built from `../signaling` or `SIGNALING_DIR`), a headless device on `:7391` with a temporary `HOME` (it never touches anyone's configuration, rooms or history) and the website on `:5191`. It first builds the website and embeds it in the device as its panel, so the latest code is tested. It covers:
+
+1. The landing page: menu and the "Join a game" dialog.
+2. Linking with the 9-digit code and the live dashboard (data over WebRTC).
+3. Reload: the remembered browser comes back, the device proves itself, and only then does the browser show its token.
+4. The test pattern room: the video plays.
+5. Invitations: a guest joins with code and PIN and sees the video; another with the same PIN sees "someone already joined with this invitation".
+6. The device's local panel with its token (challenge and proof), and a room played from the panel.
+7. Accessibility: axe on every page.
+
+```bash
+make e2e                                          # or, inside e2e/:
+npm test
+npx playwright test tests/<file> -g "<name>"      # a single test
+npm run report                                    # the HTML report
+```
+
+Rooms with real games are not covered, because they need the core and ROMs.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request, with read-only permissions:
+
+| Job | What it does |
+|---|---|
+| `device` | Installs libvpx, Opus and the window libraries, then `gofmt`, `go vet`, `go test -race`, a headless build and `govulncheck` |
+| `web` | `npm ci`, typecheck, tests, build and `npm audit` |
+| `e2e` | Clones signalhub and runs the end-to-end tests, after the other jobs pass |
+| `secrets` | `gitleaks` over the whole history |

@@ -1,0 +1,50 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+package services
+
+import (
+	"testing"
+
+	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
+)
+
+func TestMAMEsOwnButtonsNeverReachTheCore(t *testing.T) {
+	// mame2003-plus: L3 turns the sound off, R2 opens MAME's menu.
+	for _, id := range []int{libretro.JoypadL2, libretro.JoypadR2, libretro.JoypadL3, libretro.JoypadR3} {
+		if _, ok := retroButton[id]; ok {
+			t.Errorf("RetroPad id %d reaches the core", id)
+		}
+	}
+	for _, id := range []int{libretro.JoypadB, libretro.JoypadA, libretro.JoypadY, libretro.JoypadX, libretro.JoypadL, libretro.JoypadR, libretro.JoypadStart, libretro.JoypadSelect} {
+		if _, ok := retroButton[id]; !ok {
+			t.Errorf("game button %d is missing", id)
+		}
+	}
+}
+
+func TestSavesCompleteNeedsEveryCPUsRegisters(t *testing.T) {
+	line := func(item string) string { return "[MAME 2003+]     " + item + ": b003..b022" }
+	generic := []string{line("cpu.0.irq enable"), line("cpu.0.watchdog count"), line("memory.0.ram"), line("bank.1.bank")}
+	for _, c := range []struct {
+		name  string
+		items []string
+		want  bool
+	}{
+		// X-Men vs. Street Fighter: 68000 (CPU 0) and Z80 (CPU 1) both save.
+		{"xmvsf", []string{line("m68000.0.D"), line("m68000.0.PC"), line("z80.1.AF"), line("z80.1.PC")}, true},
+		// The Simpsons, Aliens: the Konami CPU 0 saves nothing of its own.
+		{"simpsons", []string{line("z80.1.AF"), line("z80.1.PC"), line("k052109.0.ram")}, false},
+		// One CPU that saves nothing.
+		{"none", nil, false},
+		// A core that logs no list: nothing to go by.
+		{"no list", []string{"[MAME 2003+] Git Version 3141930"}, true},
+	} {
+		lines := c.items
+		if c.name != "no list" {
+			lines = append(append([]string{}, generic...), c.items...)
+		}
+		if got := savesComplete(lines); got != c.want {
+			t.Errorf("%s: savesComplete = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

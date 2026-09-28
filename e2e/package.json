@@ -1,0 +1,14 @@
+{
+  "name": "go-link-e2e",
+  "private": true,
+  "description": "End-to-end tests: a real browser against a real signalhub, device and website",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.57.0"
+  }
+}

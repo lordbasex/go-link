@@ -1,0 +1,31 @@
+# builds
+**/dist/
+**/bin/
+backend-device/web/panel/dist/
+node_modules/
+
+# secrets
+.env
+**/.env
+**/.env.*
+!**/.env.example
+
+# local tool files (never committed)
+CLAUDE.md
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# test coverage reports
+coverage/
+
+# the kickoff brief (local only)
+PROMPT-inicio.md
+
+# design prototype (local reference only, Spanish mockups)
+design/
+
+# website hosting of this computer (see docs/deploy.md)
+deploy/local/

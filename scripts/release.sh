@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+#
+# Cuts a release of the go-link device: builds every platform, packs each
+# one, writes SHA256SUMS, updates the Homebrew cask and, when `gh` is
+# available, creates the GitHub release with every file.
+#
+# Development mode (the default, while there is no Developer ID): the macOS
+# app has an ad hoc signature and the GitHub release is marked as a
+# pre-release. With a Developer ID the app is signed with the hardened
+# runtime and the .dmg is notarized:
+#
+#   VERSION=0.1.0 ./scripts/release.sh
+#   VERSION=0.1.0 CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" \
+#     NOTARY_PROFILE=go-link-notary ./scripts/release.sh
+#
+# Other knobs: REPO=owner/name (default lordbasex/go-link), SKIP_BUILD=1
+# (pack what is already in dist/device), DOCKER=1 (also the Docker image as
+# an OCI archive), GITHUB_RELEASE=0 (only the files).
+#
+# Outputs: dist/release/v<version>/
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION="${VERSION:?Set VERSION, e.g. VERSION=0.1.0}"
+VERSION="${VERSION#v}"
+TAG="v$VERSION"
+REPO="${REPO:-lordbasex/go-link}"
+CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+DEVICE="$ROOT/dist/device"
+OUT="$ROOT/dist/release/$TAG"
+NAME="go-link-$TAG"
+ARCH="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+
+if [[ "$CODESIGN_IDENTITY" == "-" || -z "${NOTARY_PROFILE:-}" ]]; then
+  DEV=1
+  echo "▶ Development release: ad hoc signature, not notarized (a pre-release on GitHub)"
+else
+  DEV=0
+  echo "▶ Signed release: $CODESIGN_IDENTITY, notarized with $NOTARY_PROFILE"
+fi
+
+if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+  echo "▶ Building every platform ($TAG)"
+  make -C "$ROOT" panel
+  make -C "$ROOT" device VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    make -C "$ROOT" device-dmg VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
+  fi
+  if [[ "${DOCKER:-0}" == "1" ]]; then
+    make -C "$ROOT" device-docker-oci VERSION="$TAG"
+  fi
+fi
+
+rm -rf "$OUT"
+mkdir -p "$OUT"
+
+# macOS: the .dmg of each architecture this Mac (or another Mac) built.
+for arch in amd64 arm64; do
+  dmg="$DEVICE/$NAME-macos-$arch.dmg"
+  [[ -f "$dmg" ]] || continue
+  if [[ "$DEV" == "0" ]]; then
+    "$ROOT/backend-device/build/macos/notarize.sh" "$dmg"
+  fi
+  cp "$dmg" "$OUT/"
+done
+
+# Linux: a .tar.gz per build; "headless" is the one without a window
+# (Raspberry Pi, servers), which opens the web panel.
+for variant in linux-amd64 linux-arm64 linux-amd64-headless linux-arm64-headless; do
+  bin="$DEVICE/$variant/go-link-device"
+  [[ -f "$bin" ]] || { echo "  (no $variant build, skipped)"; continue; }
+  tar -C "$DEVICE/$variant" -czf "$OUT/$NAME-$variant.tar.gz" go-link-device
+done
+
+# Windows: a .zip with the .exe (no console; the log goes to a file).
+for arch in amd64 arm64; do
+  exe="$DEVICE/windows-$arch/go-link-device.exe"
+  [[ -f "$exe" ]] || { echo "  (no windows-$arch build, skipped)"; continue; }
+  (cd "$DEVICE/windows-$arch" && zip -q -j "$OUT/$NAME-windows-$arch.zip" go-link-device.exe)
+done
+
+oci="$ROOT/dist/docker/go-link-device-$TAG.oci.tar"
+if [[ -f "$oci" ]]; then
+  gzip -c "$oci" > "$OUT/$NAME-docker.oci.tar.gz"
+fi
+
+echo "▶ SHA256SUMS"
+(cd "$OUT" && shasum -a 256 -- * > SHA256SUMS && cat SHA256SUMS)
+
+echo "▶ Updating Casks/go-link.rb"
+CASK="$ROOT/Casks/go-link.rb"
+sed -i '' -e "s/^  version \".*\"/  version \"$VERSION\"/" "$CASK"
+for arch in amd64 arm64; do
+  f="$OUT/$NAME-macos-$arch.dmg"
+  [[ -f "$f" ]] || continue
+  sum="$(shasum -a 256 "$f" | awk '{print $1}')"
+  key=$([[ "$arch" == "arm64" ]] && echo "arm" || echo "intel")
+  sed -i '' -E "s/($key: +\")[0-9a-f]{64}\"/\1$sum\"/" "$CASK"
+done
+
+# gh may live in a PATH only the login shell knows (Homebrew, ~/.local/bin).
+GH="$(command -v gh || /bin/zsh -lc 'command -v gh' 2>/dev/null || true)"
+if [[ -n "$GH" && "${GITHUB_RELEASE:-1}" == "1" ]]; then
+  flags=(--repo "$REPO" --title "go-link $VERSION" --generate-notes)
+  [[ "$DEV" == "1" ]] && flags+=(--prerelease)
+  echo "▶ Creating the GitHub release $TAG on $REPO"
+  "$GH" release create "$TAG" "$OUT"/* "${flags[@]}" \
+    || echo "  (gh release failed or already exists: upload dist/release/$TAG by hand)"
+else
+  echo "▶ GitHub release skipped ($([[ -n "$GH" ]] && echo 'GITHUB_RELEASE=0' || echo 'gh not installed')): upload dist/release/$TAG to https://github.com/$REPO/releases/new (tag $TAG)"
+fi
+echo "✔ Release files in dist/release/$TAG"
+[[ "$ARCH" == "amd64" && ! -f "$OUT/$NAME-macos-arm64.dmg" ]] && echo "  (the Apple silicon .dmg is made with 'make device-dmg' on an Apple silicon Mac, then SKIP_BUILD=1)"
+exit 0

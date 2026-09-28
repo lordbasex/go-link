@@ -1,0 +1,48 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+import { describe, expect, it } from "vitest";
+import { ordinal, parseChat, parseRoomState } from "../src";
+
+describe("room state", () => {
+  it("parses a room_state message", () => {
+    const st = parseRoomState({
+      type: "room_state",
+      max_players: 4,
+      seats: [{ port: 1, name: "Ana", local_player: 0, you: true }, null, { port: 3, name: "Leo", local_player: 1, you: false }],
+      queue: [{ position: 1, name: "Pedro", you: false }],
+      spectators: [{ name: "Sofi", you: false }],
+      you: { name: "Ana", ports: [1], queue_positions: [], spectator: false },
+    });
+    expect(st?.seats).toEqual([{ port: 1, name: "Ana", localPlayer: 0, you: true }, null, { port: 3, name: "Leo", localPlayer: 1, you: false }, null]);
+    expect(st?.queue).toEqual([{ position: 1, name: "Pedro", you: false }]);
+    expect(st?.you.ports).toEqual([1]);
+  });
+  it("bounds hostile values", () => {
+    const st = parseRoomState({ type: "room_state", max_players: 99, seats: "x", you: null });
+    expect(st?.maxPlayers).toBe(4);
+    expect(st?.seats).toEqual([null, null, null, null]);
+    expect(st?.you.ports).toEqual([]);
+    expect(parseRoomState({ type: "chat" })).toBeNull();
+  });
+});
+
+describe("chat", () => {
+  it("parses user and system lines", () => {
+    expect(parseChat({ type: "chat", name: "Ana", port: 2, role: "P2", text: "hi", ts: 5 })).toEqual({ kind: "user", name: "Ana", port: 2, role: "P2", text: "hi", ts: 5 });
+    expect(parseChat({ type: "chat", system: "Ana took seat P2", ts: 6 })).toEqual({ kind: "system", text: "Ana took seat P2", ts: 6 });
+    expect(parseChat({ type: "chat", name: "x", port: 9, text: "y" })).toMatchObject({ port: null });
+    expect(parseChat({ type: "chat", text: 3 })).toBeNull();
+  });
+  it("orders", () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"]);
+  });
+});
+
+describe("pause in room_state", () => {
+  it("reads who paused and whether the game can pause", () => {
+    const st = parseRoomState({ type: "room_state", max_players: 4, seats: [], pausable: true, paused: true, paused_by: "Ana", you: {} });
+    expect(st).toMatchObject({ pausable: true, paused: true, pausedBy: "Ana" });
+    const idle = parseRoomState({ type: "room_state", max_players: 4, seats: [], you: {} });
+    expect(idle).toMatchObject({ pausable: false, paused: false, pausedBy: "" });
+  });
+});

@@ -1,0 +1,187 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+// Room state and chat sent by the device's Room Manager on the "control"
+// DataChannel. It comes from the host, but names and chat are typed by
+// other guests, so everything is validated and rendered as text.
+
+export interface SeatView {
+  port: number;
+  name: string;
+  localPlayer: number;
+  you: boolean;
+}
+
+export interface RoomStateView {
+  maxPlayers: number;
+  /** Voice between players is enabled in this room. */
+  voice: boolean;
+  /** The room's chat is on (the host can turn it off). */
+  chat: boolean;
+  /** The room's name, game, host and picture, sent to guests after they get in. */
+  info: RoomInfoView;
+  /** Index 0 is P1; null means a free seat. */
+  seats: (SeatView | null)[];
+  queue: { position: number; name: string; you: boolean }[];
+  spectators: { name: string; you: boolean }[];
+  you: {
+    name: string;
+    ports: number[];
+    queuePositions: number[];
+    spectator: boolean;
+    /** Requests to swap controllers waiting for your answer. */
+    swapOffers: SwapView[];
+    /** Your requests waiting for someone else's answer. */
+    swapAsked: SwapView[];
+  };
+  /** A game is running: seated players may pause it. */
+  pausable: boolean;
+  paused: boolean;
+  pausedBy: string;
+  /** The running game's control panel, for the on-screen gamepad. */
+  controls: GameControls;
+}
+
+/** What the device tells guests about the room. */
+export interface RoomInfoView {
+  title: string;
+  game: string;
+  host: string;
+  /** A data: URL of a small JPEG, or null. */
+  art: string | null;
+}
+
+/** A request to swap controllers: from port asks to move to port to. */
+export interface SwapView {
+  from: number;
+  to: number;
+  /** The other player. */
+  name: string;
+}
+
+export interface GameControls {
+  /** Players the game takes at once, 1 to 4 (0 = unknown). */
+  players: number;
+  /** Action buttons per player, 0 to 6. */
+  buttons: number;
+  /** MAME control type: joy4way, joy8way, stick, dial... ("" = unknown). */
+  control: string;
+}
+
+/** What an unknown game (or an older device) offers. */
+export const DEFAULT_CONTROLS: GameControls = { players: 0, buttons: 6, control: "joy8way" };
+
+function parseControls(v: unknown): GameControls {
+  if (typeof v !== "object" || v === null) return DEFAULT_CONTROLS;
+  const o = v as Record<string, unknown>;
+  const buttons = typeof o.buttons === "number" && Number.isFinite(o.buttons) ? Math.min(Math.max(Math.round(o.buttons), 0), 6) : 6;
+  const players = typeof o.players === "number" && Number.isFinite(o.players) ? Math.min(Math.max(Math.round(o.players), 0), 4) : 0;
+  return { players, buttons, control: typeof o.control === "string" ? o.control.slice(0, 20) : "" };
+}
+
+export type ChatLine =
+  | { kind: "system"; text: string; ts: number }
+  | { kind: "user"; name: string; port: number | null; role: string; text: string; ts: number };
+
+const str = (v: unknown, max = 300): string => (typeof v === "string" ? v.slice(0, max) : "");
+const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+const obj = (v: unknown): Record<string, unknown> => (typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {});
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+function parseInfo(v: unknown): RoomInfoView {
+  const o = obj(v);
+  const art = typeof o.art === "string" && o.art.length <= 6000 && /^[A-Za-z0-9+/]+={0,2}$/.test(o.art) ? `data:image/jpeg;base64,${o.art}` : null;
+  return { title: str(o.title, 80), game: str(o.game, 160), host: str(o.host, 60), art };
+}
+
+function parseSwaps(v: unknown, maxPlayers: number): SwapView[] {
+  const port = (x: unknown) => {
+    const n = num(x);
+    return Number.isInteger(n) && n >= 1 && n <= maxPlayers ? n : 0;
+  };
+  return arr(v)
+    .slice(0, 8)
+    .flatMap((x) => {
+      const o = obj(x);
+      const from = port(o.from);
+      const to = port(o.to);
+      return from && to && from !== to ? [{ from, to, name: str(o.name, 40) }] : [];
+    });
+}
+
+export function parseRoomState(msg: unknown): RoomStateView | null {
+  const m = obj(msg);
+  if (m.type !== "room_state") return null;
+  const maxPlayers = Math.min(Math.max(num(m.max_players), 1), 4);
+  const seats: (SeatView | null)[] = Array.from({ length: maxPlayers }, () => null);
+  arr(m.seats).forEach((s, i) => {
+    if (i >= maxPlayers || s === null) return;
+    const o = obj(s);
+    seats[i] = { port: i + 1, name: str(o.name, 40), localPlayer: num(o.local_player), you: o.you === true };
+  });
+  const you = obj(m.you);
+  return {
+    maxPlayers,
+    voice: m.voice !== false,
+    chat: m.chat !== false,
+    info: parseInfo(m.info),
+    seats,
+    queue: arr(m.queue).slice(0, 64).map((q) => {
+      const o = obj(q);
+      return { position: num(o.position), name: str(o.name, 40), you: o.you === true };
+    }),
+    spectators: arr(m.spectators).slice(0, 64).map((p) => {
+      const o = obj(p);
+      return { name: str(o.name, 40), you: o.you === true };
+    }),
+    you: {
+      name: str(you.name, 40),
+      ports: arr(you.ports).slice(0, 4).map(num),
+      queuePositions: arr(you.queue_positions).slice(0, 4).map(num),
+      spectator: you.spectator === true,
+      swapOffers: parseSwaps(you.swap_offers, maxPlayers),
+      swapAsked: parseSwaps(you.swap_asked, maxPlayers),
+    },
+    pausable: m.pausable === true,
+    paused: m.paused === true,
+    pausedBy: str(m.paused_by, 40),
+    controls: parseControls(m.controls),
+  };
+}
+
+export function parseChat(msg: unknown): ChatLine | null {
+  const m = obj(msg);
+  if (m.type !== "chat") return null;
+  const ts = num(m.ts);
+  if (typeof m.system === "string") return { kind: "system", text: str(m.system), ts };
+  if (typeof m.text !== "string" || typeof m.name !== "string") return null;
+  const port = num(m.port);
+  return { kind: "user", name: str(m.name, 40), port: port >= 1 && port <= 4 ? port : null, role: str(m.role, 20), text: str(m.text), ts };
+}
+
+/** Someone else typing a chat message ("typing" from the device). */
+export interface TypingView {
+  name: string;
+  port: number | null;
+}
+
+/** Returns who is typing when msg is a "typing" message. */
+export function parseTyping(msg: unknown): TypingView[] | null {
+  const m = obj(msg);
+  if (m.type !== "typing") return null;
+  return arr(m.names)
+    .slice(0, 20)
+    .map((x) => {
+      const o = obj(x);
+      const port = num(o.port);
+      return { name: str(o.name, 40), port: port >= 1 && port <= 4 ? port : null };
+    })
+    .filter((x) => x.name !== "");
+}
+
+/** 1 -> "1st", 2 -> "2nd", 11 -> "11th"... */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  const suffix = ["th", "st", "nd", "rd"][n % 10] ?? "th";
+  return `${n}${suffix}`;
+}

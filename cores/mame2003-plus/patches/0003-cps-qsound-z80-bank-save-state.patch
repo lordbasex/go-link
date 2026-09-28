@@ -1,0 +1,118 @@
+diff --git a/src/drivers/cps1.c b/src/drivers/cps1.c
+index 8dcf577..8fd30f2 100644
+--- a/src/drivers/cps1.c
++++ b/src/drivers/cps1.c
+@@ -231,22 +231,39 @@ static WRITE16_HANDLER( qsound_sharedram2_w )
+ 		qsound_sharedram2[offset] = data;
+ }
+ 
+-static WRITE_HANDLER( qsound_banksw_w )
++static int qsound_bank;	/* Z80 bank, kept for save states */
++
++static void qsound_banksw_set(void)
+ {
+-	/*
+-	Z80 bank register for music note data. It's odd that it isn't encrypted
+-	though.
+-	*/
+ 	unsigned char *RAM = memory_region(REGION_CPU2);
+-	int bankaddress=0x10000+((data&0x0f)*0x4000);
++	int bankaddress=0x10000+(qsound_bank*0x4000);
+ 	if (bankaddress >= memory_region_length(REGION_CPU2))
+ 	{
+-		log_cb(RETRO_LOG_DEBUG, LOGPRE "WARNING: Q sound bank overflow (%02x)\n", data);
++		log_cb(RETRO_LOG_DEBUG, LOGPRE "WARNING: Q sound bank overflow (%02x)\n", qsound_bank);
+ 		bankaddress=0x10000;
+ 	}
+ 	cpu_setbank(1, &RAM[bankaddress]);
+ }
+ 
++static WRITE_HANDLER( qsound_banksw_w )
++{
++	/*
++	Z80 bank register for music note data. It's odd that it isn't encrypted
++	though.
++	*/
++	qsound_bank = data & 0x0f;
++	qsound_banksw_set();
++}
++
++/* Save the Z80 bank of the QSound games: after loading a save state the
++   music code runs from the right bank again. */
++void cps_qsound_state_register(void)
++{
++	qsound_bank = 0;
++	state_save_register_int("qsound_z80", 0, "bank", &qsound_bank);
++	state_save_register_func_postload(qsound_banksw_set);
++}
++
+ 
+ /********************************************************************
+ *
+@@ -8063,24 +8080,28 @@ static DRIVER_INIT( wof )
+ {
+ 	wof_decode();
+ 	init_cps1();
++	cps_qsound_state_register();
+ }
+ 
+ static DRIVER_INIT( dino )
+ {
+ 	dino_decode();
+ 	init_cps1();
++	cps_qsound_state_register();
+ }
+ 
+ static DRIVER_INIT( punisher )
+ {
+ 	punisher_decode();
+ 	init_cps1();
++	cps_qsound_state_register();
+ }
+ 
+ static DRIVER_INIT( slammast )
+ {
+ 	slammast_decode();
+ 	init_cps1();
++	cps_qsound_state_register();
+ }
+ 
+ static DRIVER_INIT( pang3 )
+diff --git a/src/includes/cps1.h b/src/includes/cps1.h
+index 76ef02d..4d910dd 100644
+--- a/src/includes/cps1.h
++++ b/src/includes/cps1.h
+@@ -38,4 +38,7 @@ extern struct QSound_interface qsound_interface;
+ 
+ extern int scanline;
+ 
++/* cps1.c: the QSound Z80 bank, saved for save states */
++void cps_qsound_state_register(void);
++
+ #endif
+diff --git a/src/machine/cps2crypt.c b/src/machine/cps2crypt.c
+index 9c35b85..afed5ec 100644
+--- a/src/machine/cps2crypt.c
++++ b/src/machine/cps2crypt.c
+@@ -748,6 +748,8 @@ DRIVER_INIT( my_cps2 )
+ /*	data16_t *decrypted_opcodes = (data16_t *)memory_region(REGION_USER1); */
+ 	data16_t *decrypted_opcodes = (data16_t *)auto_malloc(0x0400000);
+ 
++	cps_qsound_state_register();
++
+ 	if (m_region_key)
+ 	{
+ 		uint32_t key[2];
+diff --git a/src/vidhrdw/cps1_vidhrdw.c b/src/vidhrdw/cps1_vidhrdw.c
+index 1dfb47a..dc2ab91 100644
+--- a/src/vidhrdw/cps1_vidhrdw.c
++++ b/src/vidhrdw/cps1_vidhrdw.c
+@@ -786,6 +786,8 @@ DRIVER_INIT( cps2 )
+ 	data16_t *xor = (data16_t *)memory_region(REGION_USER1);
+ 	int i;
+ 
++	cps_qsound_state_register();
++
+ 
+ 	for (i = 0;i < memory_region_length(REGION_CPU1)/2;i++)
+ 		xor[i] ^= rom[i];

@@ -1,0 +1,1125 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+package services
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/lordbasex/go-link/backend-device/internal/models"
+	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
+	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
+	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
+	"github.com/lordbasex/go-link/backend-device/pkg/thumbnails"
+)
+
+// Errors returned when a game room cannot be created or changed.
+var (
+	ErrNoCore       = errors.New("the emulator core is not installed")
+	ErrUnknownRom   = errors.New("that ROM is not in the library")
+	ErrUnknownRoom  = errors.New("that room does not exist")
+	ErrTooManyRooms = errors.New("the device runs as many games as it can at once")
+	ErrRoomState    = errors.New("the room cannot do that in its current state")
+	ErrTooManySaves = fmt.Errorf("a room keeps up to %d saved games: delete one first", MaxSaveSlots)
+	// ErrNoSaves: the emulator does not save this game whole (SavedRoom.NoSaves).
+	ErrNoSaves = errors.New("this game cannot be saved in this emulator: it always starts from the beginning")
+)
+
+// MaxSaveSlots caps the saved games of one room, so saves cannot fill the
+// disk.
+const MaxSaveSlots = 20
+
+// GameRequest asks to open a room playing a ROM.
+type GameRequest struct {
+	Rom    string `json:"rom"`
+	Title  string `json:"title"`
+	Public bool   `json:"public"`
+	Voice  bool   `json:"voice"`
+	Art    string `json:"art,omitempty"` // lobby picture: boxart, title or snap ("" = Settings)
+	// Pin for a private room (6 digits); empty picks a random one.
+	// Chat false turns the room's chat off; absent (older clients) is on.
+	Chat *bool `json:"chat,omitempty"`
+}
+
+// TooManyRoomsError says the device already runs its limit of games.
+// Paused games count: they keep their emulator in memory. It matches
+// ErrTooManyRooms with errors.Is.
+type TooManyRoomsError struct{ Limit int }
+
+func (e *TooManyRoomsError) Error() string {
+	return fmt.Sprintf("this device runs at most %d games at once (live or paused) and all %d are on: archive a room to turn it off, or raise max_rooms in device.json", e.Limit, e.Limit)
+}
+
+// Is makes errors.Is(err, ErrTooManyRooms) true.
+func (e *TooManyRoomsError) Is(target error) bool { return target == ErrTooManyRooms }
+
+// ErrorCode is a stable code for errors the web explains in its own
+// words, plus the limit for "too_many_rooms".
+func ErrorCode(err error) (code string, limit int) {
+	var tooMany *TooManyRoomsError
+	if errors.As(err, &tooMany) {
+		return "too_many_rooms", tooMany.Limit
+	}
+	if errors.Is(err, ErrNoSaves) {
+		return "no_saves", 0
+	}
+	return "", 0
+}
+
+// GameReply is sent back to the owner who asked.
+type GameReply struct {
+	Type   string `json:"type"` // "room_created", "room_error" or "room_closed"
+	ID     string `json:"id,omitempty"`
+	RoomID string `json:"room_id,omitempty"`
+	Rom    string `json:"rom,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Error  string `json:"error,omitempty"`
+	// Code and Limit come from ErrorCode.
+	Code  string `json:"code,omitempty"`
+	Limit int    `json:"limit,omitempty"`
+}
+
+// RoomSource is a game that runs in a room: the emulator (in its own
+// process), which can hold its picture and save its state.
+type RoomSource interface {
+	MediaSource
+	SetPaused(paused bool)
+	SaveState(ctx context.Context, path string) error
+}
+
+// savesReporter is a source that knows whether the emulator saves its game
+// whole (WorkerSource).
+type savesReporter interface {
+	SavesIncomplete() bool
+}
+
+// RoomSourceFactory makes the game of a room. statePath, when not empty,
+// is a save state to load right after the game.
+type RoomSourceFactory func(rom, statePath string, onReady func(libretro.AVInfo)) RoomSource
+
+// RoomsConfig wires RoomsService.
+type RoomsConfig struct {
+	Library   *LibraryService
+	Status    *StatusService
+	ICE       *ICEStore
+	Stream    StreamConfig // for each room's stream: set API to share the UDP port
+	Opener    *RoomOpener
+	HostName  string
+	SavesDir  string // saved games, one folder per room
+	MaxRooms  int    // rooms with a running game; 0 means models.DefaultMaxRooms
+	Rooms     []models.SavedRoom
+	Save      func([]models.SavedRoom) error // keeps the list in device.json
+	NewSource RoomSourceFactory
+	// ProbeSaves tells whether the emulator saves a game whole (see the
+	// package function ProbeSaves; the device caches it by ROM). Optional.
+	ProbeSaves func(ctx context.Context, rom string) (bool, error)
+	// History records every finished game (nil: no history).
+	History *HistoryService
+	// Trusted tells the device's own linked browsers, who skip the PIN.
+	Trusted func(peerID string) bool
+	Logger  *slog.Logger
+	Now     func() time.Time
+}
+
+// RoomsService turns the device into a game server: each room is one game,
+// several can run at once, and each can be paused, saved, archived,
+// deleted (to a trash) and started again. A room's game runs in its own
+// process; its stream, Room Manager and signalhub room live here, and all
+// rooms share one UDP port and one signaling connection.
+type RoomsService struct {
+	cfg RoomsConfig
+	log *slog.Logger
+
+	mu        sync.Mutex
+	rooms     []*gameRoom // in creation order
+	sender    Sender
+	connected bool
+	// games is the context of every room's game. It outlives Run's ctx so
+	// Shutdown can still save the games; Shutdown ends it.
+	games    context.Context
+	endGames context.CancelFunc
+	streams  sync.WaitGroup // each room's stream (and so its game process)
+	stopping bool           // Shutdown began: games ending is expected
+	// resume are the rooms device.json had running at startup; Run starts
+	// only those (a room created meanwhile must not start twice).
+	resume []*gameRoom
+}
+
+// gameRoom is one room and, while its game runs, the parts that serve it.
+type gameRoom struct {
+	saved models.SavedRoom
+	game  string // the game's title
+
+	cancel  context.CancelFunc
+	stream  *StreamService
+	signal  *TestRoomService
+	manager *RoomManager
+	source  RoomSource
+	ready   bool
+	roomID  string
+	summary RoomSummary
+	art     string          // Boxart for the lobby, base64 JPEG
+	reply   func(GameReply) // pending answer to the owner who started it
+	invite  string          // current invitation (link, QR) while it runs
+	code    string          // its 9 digit code
+	// The running session, for the history of games.
+	startedAt      time.Time
+	peakPlayers    int
+	peakSpectators int
+	people         []string                  // peers, in order of arrival
+	person         map[string]*HistoryPerson // by peer
+}
+
+// GameService is the older name of RoomsService, used by the window.
+type GameService = RoomsService
+
+// NewRoomsService builds the service from the rooms saved in device.json.
+// Call Run to start the ones that were running.
+func NewRoomsService(cfg RoomsConfig) *RoomsService {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	if cfg.MaxRooms <= 0 {
+		cfg.MaxRooms = models.DefaultMaxRooms
+	}
+	r := &RoomsService{cfg: cfg, log: cfg.Logger}
+	r.games, r.endGames = context.WithCancel(context.Background())
+	for _, s := range cfg.Rooms {
+		if s.ID == "" || s.Rom == "" {
+			continue
+		}
+		gr := &gameRoom{saved: s, game: r.title(s.Rom)}
+		r.rooms = append(r.rooms, gr)
+		if s.Running() {
+			r.resume = append(r.resume, gr)
+		}
+	}
+	return r
+}
+
+// Run starts the rooms that were running when the device stopped (from
+// where they left off), empties the trash of old rooms every hour, and
+// saves every running game when ctx ends.
+func (r *RoomsService) Run(ctx context.Context) {
+	r.publish()
+	r.mu.Lock()
+	restart := r.resume
+	r.resume = nil
+	r.mu.Unlock()
+	for _, gr := range restart {
+		state := ""
+		if gr.saved.Autosave {
+			state = r.statePath(gr.saved.ID, "auto")
+		}
+		wasPaused := gr.saved.State == models.RoomPaused
+		if err := r.launch(gr, state); err != nil {
+			r.log.Warn("cannot restart room", "room", gr.saved.Name, "err", err)
+			r.update(gr, func(s *models.SavedRoom) { s.State, s.LastError = models.RoomArchived, err.Error() })
+			continue
+		}
+		if m := r.managerOf(gr); m != nil && wasPaused {
+			m.Pause(true, "The host")
+		}
+	}
+	r.purgeTrash()
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			r.purgeTrash()
+		}
+	}
+}
+
+// Shutdown saves every running game (auto.state) so the rooms come back
+// on the next start, then stops the games. Their state stays live or
+// paused in device.json.
+func (r *RoomsService) Shutdown(ctx context.Context) {
+	r.mu.Lock()
+	r.stopping = true
+	r.mu.Unlock()
+	for _, gr := range r.running() {
+		r.autosave(ctx, gr)
+		r.record(gr, "device_stopped")
+	}
+	r.persist()
+	r.endGames()
+	// Wait for the game processes to quit: MAME writes its settings on
+	// the way out.
+	done := make(chan struct{})
+	go func() {
+		r.streams.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		r.log.Warn("some games did not stop in time")
+	}
+}
+
+// SetSender wires the signaling client.
+func (r *RoomsService) SetSender(s Sender) {
+	r.mu.Lock()
+	r.sender = s
+	parts := r.runningLocked()
+	r.mu.Unlock()
+	for _, gr := range parts {
+		gr.stream.SetSender(s)
+		gr.signal.SetSender(s)
+	}
+}
+
+var _ signalclient.Handler = (*RoomsService)(nil)
+
+// OnConnect opens every running room again: rooms die with the signaling
+// connection.
+func (r *RoomsService) OnConnect(env signalclient.Envelope) {
+	r.mu.Lock()
+	r.connected = true
+	var ready []*gameRoom
+	for _, gr := range r.runningLocked() {
+		if gr.ready {
+			ready = append(ready, gr)
+		}
+	}
+	r.mu.Unlock()
+	for _, gr := range ready {
+		gr.signal.OnConnect(env)
+	}
+}
+
+// OnMessage hands guests and their WebRTC signaling to their room.
+func (r *RoomsService) OnMessage(env signalclient.Envelope) {
+	for _, gr := range r.running() {
+		gr.signal.OnMessage(env) // each room keeps only its own guests
+	}
+}
+
+// OnDisconnect drops every guest; the rooms reopen on the next connection.
+func (r *RoomsService) OnDisconnect(err error) {
+	r.mu.Lock()
+	r.connected = false
+	for _, gr := range r.rooms {
+		gr.roomID = ""
+	}
+	parts := r.runningLocked()
+	r.mu.Unlock()
+	for _, gr := range parts {
+		gr.signal.OnDisconnect(err)
+	}
+	r.publish()
+}
+
+// Create starts a new room playing a ROM. reply receives room_created
+// (once the game runs and the room is open) or room_error; it may be
+// called from another goroutine.
+func (r *RoomsService) Create(req GameRequest, reply func(GameReply)) error {
+	lib := r.cfg.Library
+	if !lib.HasRom(req.Rom) {
+		return ErrUnknownRom
+	}
+	if !lib.HasCore() {
+		return ErrNoCore
+	}
+	// Refuse a set the core cannot run, before loading anything.
+	if res, ok := lib.CheckRom(req.Rom); ok && res.Status != romcheck.StatusOK {
+		return errors.New(res.Reason())
+	}
+	game := r.title(req.Rom)
+	name := cleanText(req.Title, 60)
+	if name == "" {
+		name = game
+	}
+	now := r.cfg.Now()
+	gr := &gameRoom{
+		saved: models.SavedRoom{
+			ID: newRoomID(), Name: name, Rom: req.Rom, Public: false, Voice: req.Voice, Art: artKind(req.Art),
+			ChatOff: req.Chat != nil && !*req.Chat,
+			State:   models.RoomLive, CreatedAt: now, Since: now,
+		},
+		game:  game,
+		reply: reply,
+	}
+	r.mu.Lock()
+	if r.countRunningLocked() >= r.cfg.MaxRooms {
+		r.mu.Unlock()
+		return &TooManyRoomsError{Limit: r.cfg.MaxRooms}
+	}
+	r.rooms = append(r.rooms, gr)
+	r.mu.Unlock()
+	if err := r.launch(gr, ""); err != nil {
+		r.remove(gr)
+		return err
+	}
+	r.persist()
+	return nil
+}
+
+// Start turns on an archived or deleted room. from is "continue" (the
+// automatic save), "fresh" or "slot" (a saved game, slot).
+func (r *RoomsService) Start(id, from string, slot int, reply func(GameReply)) error {
+	gr := r.find(id)
+	if gr == nil {
+		return ErrUnknownRoom
+	}
+	r.mu.Lock()
+	if gr.saved.Running() {
+		r.mu.Unlock()
+		return ErrRoomState
+	}
+	if r.countRunningLocked() >= r.cfg.MaxRooms {
+		r.mu.Unlock()
+		return &TooManyRoomsError{Limit: r.cfg.MaxRooms}
+	}
+	saved := gr.saved
+	r.mu.Unlock()
+	if !r.cfg.Library.HasRom(saved.Rom) {
+		return ErrUnknownRom
+	}
+	state := ""
+	switch from {
+	case "continue":
+		if saved.Autosave {
+			state = r.statePath(id, "auto")
+		}
+	case "slot":
+		if !slices.ContainsFunc(saved.Saves, func(s models.SaveSlot) bool { return s.Slot == slot }) {
+			return fmt.Errorf("saved game %d does not exist", slot)
+		}
+		state = r.statePath(id, fmt.Sprintf("slot-%d", slot))
+	}
+	r.mu.Lock()
+	gr.reply = reply
+	gr.saved.State, gr.saved.Since, gr.saved.DeletedAt, gr.saved.LastError = models.RoomLive, r.cfg.Now(), nil, ""
+	r.mu.Unlock()
+	if state != "" && r.cfg.ProbeSaves != nil {
+		// Resuming: first make sure the save brings the whole game back
+		// (a few seconds the first time), off the owner's message loop.
+		r.persist()
+		go func() {
+			if !r.savesWork(saved.Rom) {
+				r.log.Warn("this game cannot resume from a save in this emulator: starting it over", "room", saved.Name, "rom", saved.Rom)
+				r.markNoSaves(gr)
+				state = ""
+			}
+			if err := r.launch(gr, state); err != nil {
+				r.update(gr, func(s *models.SavedRoom) { s.State = saved.State; s.DeletedAt = saved.DeletedAt })
+				if reply != nil {
+					reply(GameReply{Type: "room_error", ID: id, Rom: saved.Rom, Error: err.Error()})
+				}
+			}
+		}()
+		return nil
+	}
+	if err := r.launch(gr, state); err != nil {
+		r.update(gr, func(s *models.SavedRoom) { s.State = saved.State; s.DeletedAt = saved.DeletedAt })
+		return err
+	}
+	r.persist()
+	return nil
+}
+
+// savesWork asks ProbeSaves about rom; when it cannot tell, the answer is
+// yes (the worker still refuses a save that leaves out a CPU).
+func (r *RoomsService) savesWork(rom string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	ok, err := r.cfg.ProbeSaves(ctx, rom)
+	if err != nil {
+		r.log.Warn("cannot test the game's saves", "rom", rom, "err", err)
+		return true
+	}
+	return ok
+}
+
+// markNoSaves remembers that a room's game cannot be saved whole: no
+// automatic save, no saved games, and its stale automatic save goes.
+func (r *RoomsService) markNoSaves(gr *gameRoom) {
+	r.mu.Lock()
+	id, done := gr.saved.ID, gr.saved.NoSaves && !gr.saved.Autosave
+	r.mu.Unlock()
+	if done {
+		return
+	}
+	_ = os.Remove(r.statePath(id, "auto"))
+	r.update(gr, func(s *models.SavedRoom) {
+		s.NoSaves = true
+		s.Autosave = false
+	})
+}
+
+// Action changes a room: pause, resume, save (name), archive, delete,
+// purge, favorite or unfavorite. For save it returns the new slot.
+func (r *RoomsService) Action(ctx context.Context, id, action, name string) (int, error) {
+	gr := r.find(id)
+	if gr == nil {
+		return 0, ErrUnknownRoom
+	}
+	r.mu.Lock()
+	state := gr.saved.State
+	r.mu.Unlock()
+	switch action {
+	case "favorite", "unfavorite":
+		r.update(gr, func(s *models.SavedRoom) { s.Favorite = action == "favorite" })
+	case "chat_on", "chat_off":
+		on := action == "chat_on"
+		r.update(gr, func(s *models.SavedRoom) { s.ChatOff = !on })
+		if m := r.managerOf(gr); m != nil {
+			m.SetChat(on)
+		}
+	case "new_link":
+		// A new invitation: the old link, QR and code stop working.
+		r.mu.Lock()
+		sig := gr.signal
+		r.mu.Unlock()
+		if sig == nil {
+			return 0, ErrRoomState
+		}
+		sig.NewInvite()
+	case "pause", "resume":
+		m := r.managerOf(gr)
+		if m == nil {
+			return 0, ErrRoomState
+		}
+		m.Pause(action == "pause", "The host")
+	case "save":
+		if r.managerOf(gr) == nil {
+			return 0, ErrRoomState
+		}
+		r.mu.Lock()
+		noSaves := gr.saved.NoSaves
+		r.mu.Unlock()
+		if noSaves {
+			return 0, ErrNoSaves
+		}
+		return r.saveSlot(ctx, gr, name)
+	case "archive":
+		if state != models.RoomLive && state != models.RoomPaused {
+			return 0, ErrRoomState
+		}
+		r.stop(ctx, gr, true, "archived")
+		r.update(gr, func(s *models.SavedRoom) { s.State, s.Since = models.RoomArchived, r.cfg.Now() })
+	case "delete":
+		if state == models.RoomTrash {
+			return 0, ErrRoomState
+		}
+		if r.managerOf(gr) != nil {
+			r.stop(ctx, gr, true, "deleted")
+		}
+		now := r.cfg.Now()
+		r.update(gr, func(s *models.SavedRoom) { s.State, s.Since, s.DeletedAt = models.RoomTrash, now, &now })
+	case "purge":
+		if state != models.RoomTrash {
+			return 0, ErrRoomState
+		}
+		r.purge(gr)
+	default:
+		return 0, fmt.Errorf("unknown room action %q", action)
+	}
+	return 0, nil
+}
+
+// Current returns the ROM of the newest running room, or "" (the window
+// shows it as the game being played).
+func (r *RoomsService) Current() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := len(r.rooms) - 1; i >= 0; i-- {
+		if r.rooms[i].saved.Running() {
+			return r.rooms[i].saved.Rom
+		}
+	}
+	return ""
+}
+
+// Close archives the newest running room (the window's Stop button, and
+// close_room from older web versions).
+func (r *RoomsService) Close(reply func(GameReply)) {
+	r.mu.Lock()
+	var gr *gameRoom
+	for i := len(r.rooms) - 1; i >= 0 && gr == nil; i-- {
+		if r.rooms[i].saved.Running() {
+			gr = r.rooms[i]
+		}
+	}
+	r.mu.Unlock()
+	if gr == nil {
+		return
+	}
+	id := gr.saved.ID
+	if _, err := r.Action(context.Background(), id, "archive", ""); err == nil && reply != nil {
+		reply(GameReply{Type: "room_closed", ID: id})
+	}
+}
+
+// launch starts a room's game, stream and Room Manager. The room opens
+// in signalhub once the game runs, so a ROM that fails never shows up in
+// the lobby.
+func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
+	stream, err := NewStreamService(r.cfg.Stream, r.cfg.ICE)
+	if err != nil {
+		return err
+	}
+	r.mu.Lock()
+	saved, game, sender := gr.saved, gr.game, r.sender
+	parent := r.games
+	r.mu.Unlock()
+
+	signal := NewTestRoomService(nil, stream, r.cfg.HostName, r.log)
+	signal.SetOpener(r.cfg.Opener)
+	signal.Configure(saved.Name, game, saved.Public)
+	signal.SetTrusted(r.cfg.Trusted)
+	signal.EnableInvites(func(invite, code string) {
+		r.mu.Lock()
+		gr.invite, gr.code = invite, code
+		r.mu.Unlock()
+		r.publish()
+	})
+	if saved.Public {
+		// Rooms saved before every room was private become private now.
+		r.update(gr, func(s *models.SavedRoom) { s.Public = false })
+	}
+	signal.Configure(saved.Name, game, false)
+	signal.SetPrivate()
+	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, OnSummary: func(s RoomSummary) {
+		signal.OnSummary(s)
+		r.mu.Lock()
+		gr.summary = s
+		gr.peakPlayers = max(gr.peakPlayers, s.Players)
+		gr.peakSpectators = max(gr.peakSpectators, s.Spectators)
+		gr.remember(s.Members)
+		r.mu.Unlock()
+		r.publish()
+	}}, stream)
+	signal.SetManager(manager)
+	stream.SetRoomHooks(RoomHooks{Opened: manager.Join, Message: manager.HandleControl, Closed: manager.Leave, PortOf: manager.PortOf})
+	stream.SetVoiceEnabled(saved.Voice)
+	signal.OnRoomID(func(roomID string) {
+		r.mu.Lock()
+		gr.roomID = roomID
+		reply := gr.reply
+		gr.reply = nil
+		id, rom, name := gr.saved.ID, gr.saved.Rom, gr.saved.Name
+		r.mu.Unlock()
+		if reply != nil {
+			reply(GameReply{Type: "room_created", ID: id, RoomID: roomID, Rom: rom, Title: name})
+		}
+		r.publish()
+	})
+
+	var once sync.Once
+	source := r.cfg.NewSource(saved.Rom, statePath, func(libretro.AVInfo) {
+		once.Do(func() {
+			manager.SetVoice(saved.Voice)
+			manager.SetChat(!saved.ChatOff)
+			manager.SetPausable(true)
+			manager.SetControls(r.controlsOf(saved.Rom))
+			r.mu.Lock()
+			gr.ready = true
+			connected := r.connected
+			src := gr.source
+			r.mu.Unlock()
+			// The worker knows by now whether this game can resume.
+			if ss, ok := src.(savesReporter); ok && ss.SavesIncomplete() {
+				r.markNoSaves(gr)
+			}
+			signal.SetMetaExtra(r.lobbyExtra(gr))
+			if connected {
+				signal.OnConnect(signalclient.Envelope{})
+			}
+		})
+	})
+	manager.OnPause(func(paused bool) {
+		source.SetPaused(paused)
+		state := models.RoomLive
+		if paused {
+			state = models.RoomPaused
+		}
+		r.update(gr, func(s *models.SavedRoom) {
+			if s.Running() && s.State != state {
+				s.State, s.Since = state, r.cfg.Now()
+			}
+		})
+		signal.SetMetaExtra(r.lobbyExtra(gr))
+	})
+	stream.OnSourceError(func(err error) { go r.failed(gr, err) })
+	stream.SetSource(source)
+	stream.SetSender(sender)
+	signal.SetSender(sender)
+
+	ctx, cancel := context.WithCancel(parent)
+	r.mu.Lock()
+	gr.cancel, gr.stream, gr.signal, gr.manager, gr.source = cancel, stream, signal, manager, source
+	gr.ready, gr.roomID, gr.summary = false, "", RoomSummary{}
+	gr.startedAt, gr.peakPlayers, gr.peakSpectators = r.cfg.Now(), 0, 0
+	gr.people, gr.person = nil, map[string]*HistoryPerson{}
+	gr.art = r.art(saved.Rom, saved.Art)
+	info := RoomInfo{Title: saved.Name, Game: game, Host: r.cfg.HostName, Art: gr.art}
+	r.mu.Unlock()
+	manager.SetInfo(info)
+	go manager.Run(ctx)
+	r.streams.Add(1)
+	go func() {
+		defer r.streams.Done()
+		if err := stream.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			r.log.Warn("room stream stopped", "room", saved.Name, "err", err)
+		}
+	}()
+	r.log.Info("room starting", "room", saved.Name, "rom", saved.Rom, "state", statePath != "")
+	if r.cfg.ProbeSaves != nil && !saved.NoSaves {
+		// Learn early whether this game can be saved, so the owner is
+		// never offered a save that would not work.
+		go func() {
+			if !r.savesWork(saved.Rom) {
+				r.markNoSaves(gr)
+			}
+		}()
+	}
+	r.publish()
+	return nil
+}
+
+// failed handles a game that could not run (or crashed): the room is
+// archived with the reason, and the owner who started it is told.
+func (r *RoomsService) failed(gr *gameRoom, err error) {
+	r.mu.Lock()
+	stopping := r.stopping
+	r.mu.Unlock()
+	if stopping {
+		return // the device is stopping: the room stays as it was, to come back
+	}
+	r.log.Warn("room game failed", "room", gr.saved.Name, "err", err)
+	r.mu.Lock()
+	reply := gr.reply
+	gr.reply = nil
+	id, rom := gr.saved.ID, gr.saved.Rom
+	r.mu.Unlock()
+	r.stop(context.Background(), gr, false, "failed")
+	r.update(gr, func(s *models.SavedRoom) {
+		s.State, s.Since, s.LastError = models.RoomArchived, r.cfg.Now(), err.Error()
+	})
+	if reply != nil {
+		reply(GameReply{Type: "room_error", ID: id, Rom: rom, Error: err.Error()})
+	}
+}
+
+// stop closes the room in signalhub and ends its game, saving it first
+// when save is true.
+func (r *RoomsService) stop(ctx context.Context, gr *gameRoom, save bool, reason string) {
+	if save {
+		r.autosave(ctx, gr)
+	}
+	r.record(gr, reason)
+	r.mu.Lock()
+	cancel, signal := gr.cancel, gr.signal
+	gr.cancel, gr.stream, gr.signal, gr.manager, gr.source = nil, nil, nil, nil, nil
+	gr.ready, gr.roomID, gr.summary = false, "", RoomSummary{}
+	r.mu.Unlock()
+	if signal != nil {
+		signal.Close()
+	}
+	if cancel != nil {
+		cancel()
+	}
+	r.publish()
+}
+
+// remember adds the room's current members to the people of this game:
+// the last name each one used and every port it played at. Callers hold
+// the RoomsService lock.
+func (gr *gameRoom) remember(members []MemberSummary) {
+	if gr.person == nil {
+		gr.person = map[string]*HistoryPerson{}
+	}
+	for _, m := range members {
+		p := gr.person[m.Peer]
+		if p == nil {
+			if len(gr.people) >= maxHistoryPeople {
+				continue
+			}
+			p = &HistoryPerson{}
+			gr.person[m.Peer] = p
+			gr.people = append(gr.people, m.Peer)
+		}
+		p.Name = m.Name
+		for _, port := range m.Ports {
+			if !slices.Contains(p.Ports, port) {
+				p.Ports = append(p.Ports, port)
+			}
+		}
+		slices.Sort(p.Ports)
+	}
+}
+
+// record adds a running room's session to the history of games.
+func (r *RoomsService) record(gr *gameRoom, reason string) {
+	if r.cfg.History == nil {
+		return
+	}
+	r.mu.Lock()
+	e := HistoryEntry{
+		RoomID: gr.saved.ID, Name: gr.saved.Name, Rom: gr.saved.Rom, Game: gr.game,
+		StartedAt: gr.startedAt, EndedAt: r.cfg.Now(),
+		PeakPlayers: gr.peakPlayers, PeakSpectators: gr.peakSpectators, Reason: reason,
+	}
+	running := gr.signal != nil && !gr.startedAt.IsZero()
+	stream := gr.stream
+	for _, peer := range gr.people {
+		p := *gr.person[peer]
+		if stream != nil {
+			if a, ok := stream.PeerAddr(peer); ok {
+				p.IP, p.Path = a.IP, a.Path
+			}
+		}
+		e.People = append(e.People, p)
+	}
+	r.mu.Unlock()
+	if !running {
+		return
+	}
+	if err := r.cfg.History.Add(e); err != nil {
+		r.log.Warn("cannot save the history of games", "err", err)
+	}
+}
+
+// autosave writes auto.state for a running room.
+func (r *RoomsService) autosave(ctx context.Context, gr *gameRoom) {
+	r.mu.Lock()
+	src, ready, id, noSaves := gr.source, gr.ready, gr.saved.ID, gr.saved.NoSaves
+	r.mu.Unlock()
+	if src == nil || !ready || noSaves {
+		return // a game the emulator cannot save whole is never resumed
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := r.writeState(ctx, src, id, "auto"); err != nil {
+		r.log.Warn("cannot save the game", "room", gr.saved.Name, "err", err)
+		return
+	}
+	r.update(gr, func(s *models.SavedRoom) { s.Autosave = true })
+}
+
+// saveSlot saves the game as a new numbered slot.
+func (r *RoomsService) saveSlot(ctx context.Context, gr *gameRoom, name string) (int, error) {
+	r.mu.Lock()
+	src, id := gr.source, gr.saved.ID
+	slot := 1
+	for _, s := range gr.saved.Saves {
+		slot = max(slot, s.Slot+1)
+	}
+	full := len(gr.saved.Saves) >= MaxSaveSlots
+	r.mu.Unlock()
+	if full {
+		return 0, ErrTooManySaves
+	}
+	if src == nil {
+		return 0, ErrRoomState
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := r.writeState(ctx, src, id, fmt.Sprintf("slot-%d", slot)); err != nil {
+		return 0, err
+	}
+	r.update(gr, func(s *models.SavedRoom) {
+		s.Saves = append(s.Saves, models.SaveSlot{Slot: slot, Name: cleanText(name, 40), At: r.cfg.Now()})
+	})
+	return slot, nil
+}
+
+func (r *RoomsService) writeState(ctx context.Context, src RoomSource, id, name string) error {
+	path := r.statePath(id, name)
+	// Saved games are the host's: readable only by the user.
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return src.SaveState(ctx, path)
+}
+
+// statePath is where a room keeps a saved game (auto or slot-N).
+func (r *RoomsService) statePath(id, name string) string {
+	return filepath.Join(r.cfg.SavesDir, id, name+".state")
+}
+
+// purge deletes a room and its saved games for good.
+func (r *RoomsService) purge(gr *gameRoom) {
+	// The id comes from device.json: only a plain id may name a folder to
+	// delete, never a path.
+	if r.cfg.SavesDir != "" && validRoomID(gr.saved.ID) {
+		_ = os.RemoveAll(filepath.Join(r.cfg.SavesDir, gr.saved.ID))
+	}
+	r.remove(gr)
+	r.persist()
+	r.publish()
+}
+
+// purgeTrash deletes the rooms that stayed in the trash too long.
+func (r *RoomsService) purgeTrash() {
+	limit := r.cfg.Now().Add(-models.TrashDays * 24 * time.Hour)
+	r.mu.Lock()
+	var old []*gameRoom
+	for _, gr := range r.rooms {
+		if gr.saved.State == models.RoomTrash && gr.saved.DeletedAt != nil && gr.saved.DeletedAt.Before(limit) {
+			old = append(old, gr)
+		}
+	}
+	r.mu.Unlock()
+	for _, gr := range old {
+		r.log.Info("room removed from the trash", "room", gr.saved.Name)
+		r.purge(gr)
+	}
+}
+
+// update changes a room's saved fields, then saves and publishes the list.
+func (r *RoomsService) update(gr *gameRoom, fn func(s *models.SavedRoom)) {
+	r.mu.Lock()
+	fn(&gr.saved)
+	r.mu.Unlock()
+	r.persist()
+	r.publish()
+}
+
+func (r *RoomsService) persist() {
+	if r.cfg.Save == nil {
+		return
+	}
+	r.mu.Lock()
+	list := make([]models.SavedRoom, 0, len(r.rooms))
+	for _, gr := range r.rooms {
+		list = append(list, gr.saved)
+	}
+	r.mu.Unlock()
+	if err := r.cfg.Save(list); err != nil {
+		r.log.Warn("cannot save the rooms", "err", err)
+	}
+}
+
+// publish puts the room list in the device status (linked browsers get it
+// in device_status).
+func (r *RoomsService) publish() {
+	if r.cfg.Status == nil {
+		return
+	}
+	r.cfg.Status.SetRooms(r.List())
+	if r.cfg.SavesDir != "" {
+		r.cfg.Status.SetSavesBytes(dirSize(r.cfg.SavesDir))
+	}
+}
+
+// dirSize adds up the bytes of the files under dir.
+func dirSize(dir string) int64 {
+	var total int64
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			if info, err := d.Info(); err == nil {
+				total += info.Size()
+			}
+		}
+		return nil
+	})
+	return total
+}
+
+// List returns the rooms as linked browsers see them.
+func (r *RoomsService) List() []models.ManagedRoom {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]models.ManagedRoom, 0, len(r.rooms))
+	for _, gr := range r.rooms {
+		out = append(out, models.ManagedRoom{
+			SavedRoom: gr.saved, Game: gr.game, RoomID: gr.roomID,
+			Players: gr.summary.Players, MaxPlayers: 4, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
+			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
+		})
+	}
+	return out
+}
+
+// Find returns the room_id of the running game room that roomID, invite or
+// code names, or "".
+func (r *RoomsService) Find(roomID, invite, code string) string {
+	for _, gr := range r.running() {
+		r.mu.Lock()
+		sig := gr.signal
+		r.mu.Unlock()
+		if sig == nil {
+			continue
+		}
+		if id := sig.Matches(roomID, invite, code); id != "" {
+			return id
+		}
+	}
+	return ""
+}
+
+// ownerKey is the running room's key for the host's own browsers.
+func ownerKey(sig *TestRoomService) string {
+	if sig == nil {
+		return ""
+	}
+	return sig.OwnerKey()
+}
+
+// Invite makes a new invitation to a running room: a PIN good for one
+// person, to share with the room's link or code.
+func (r *RoomsService) Invite(id string) (Pass, error) {
+	gr := r.find(id)
+	if gr == nil {
+		return Pass{}, ErrUnknownRoom
+	}
+	r.mu.Lock()
+	sig := gr.signal
+	r.mu.Unlock()
+	if sig == nil {
+		return Pass{}, ErrRoomState
+	}
+	return sig.IssuePass(), nil
+}
+
+// lobbyExtra adds the pause and the Boxart to the room's lobby entry.
+func (r *RoomsService) lobbyExtra(gr *gameRoom) map[string]any {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	extra := map[string]any{"paused": gr.saved.State == models.RoomPaused}
+	if gr.art != "" {
+		extra["art"] = gr.art
+	}
+	return extra
+}
+
+// maxArtBytes keeps the Boxart inside signalhub's 4 KB meta (base64 adds
+// a third).
+const maxArtBytes = 2200
+
+// artKind keeps a valid thumbnail kind, or "" (the one from Settings).
+func artKind(kind string) string {
+	if thumbnails.Kind(kind).Valid() {
+		return kind
+	}
+	return ""
+}
+
+// art is a tiny thumbnail for the lobby: the kind picked for the room, or
+// the one from Settings; "" when the host has none.
+func (r *RoomsService) art(rom, kind string) string {
+	if r.cfg.Library == nil {
+		return ""
+	}
+	k := thumbnails.Kind(kind)
+	if !k.Valid() {
+		k = r.cfg.Library.ThumbnailKind()
+	}
+	b, err := r.cfg.Library.Thumbnail(rom, k, 64, 86, maxArtBytes)
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+// controlsOf reads a game's control panel from the core's game list. An
+// unknown game offers all six buttons rather than too few.
+func (r *RoomsService) controlsOf(rom string) GameControls {
+	var game *romcheck.Game
+	if r.cfg.Library != nil {
+		game = r.cfg.Library.Catalog().Game(rom)
+	}
+	if game == nil || game.Input == (romcheck.Input{}) {
+		return GameControls{Buttons: 6, Control: "joy8way"}
+	}
+	return GameControls{Players: game.Input.Players, Buttons: game.Input.Buttons, Control: game.Input.Control}
+}
+
+func (r *RoomsService) title(rom string) string {
+	if r.cfg.Library == nil {
+		return rom
+	}
+	return r.cfg.Library.Title(rom)
+}
+
+func (r *RoomsService) find(id string) *gameRoom {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, gr := range r.rooms {
+		if gr.saved.ID == id {
+			return gr
+		}
+	}
+	return nil
+}
+
+func (r *RoomsService) remove(gr *gameRoom) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.rooms = slices.DeleteFunc(r.rooms, func(x *gameRoom) bool { return x == gr })
+}
+
+// running returns the rooms whose game is up.
+func (r *RoomsService) running() []*gameRoom {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.runningLocked()
+}
+
+func (r *RoomsService) runningLocked() []*gameRoom {
+	var out []*gameRoom
+	for _, gr := range r.rooms {
+		if gr.signal != nil {
+			out = append(out, gr)
+		}
+	}
+	return out
+}
+
+func (r *RoomsService) countRunningLocked() int {
+	n := 0
+	for _, gr := range r.rooms {
+		if gr.signal != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// managerOf returns the room's Room Manager while its game runs.
+func (r *RoomsService) managerOf(gr *gameRoom) *RoomManager {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return gr.manager
+}
+
+// newRoomID makes a stable local id for a room.
+// validRoomID reports whether id is what newRoomID makes: hex, no path.
+func validRoomID(id string) bool {
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func newRoomID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}

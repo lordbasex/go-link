@@ -1,0 +1,315 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { useState } from "react";
+import {
+  DEFAULT_KEYBOARD,
+  MAX_LOCAL_PLAYERS,
+  type InputAction,
+  type InputConfig,
+  type KeyMap,
+} from "@go-link/shared";
+import { t } from "../i18n";
+import type { ControllerInfo } from "../signal/useHostStream";
+import type { RemapTarget } from "./RemapDialog";
+import { ControllerArt, familyOf } from "./ControllerArt";
+
+/** Short label of an action, shown on keys. */
+const ACTION_LABEL: Record<InputAction, string> = {
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+  b1: "B1",
+  b2: "B2",
+  b3: "B3",
+  b4: "B4",
+  b5: "B5",
+  b6: "B6",
+  start: "Start",
+  coin: "Coin",
+  l2: "L2",
+  r2: "R2",
+  l3: "L3",
+  r3: "R3",
+  home: "Home",
+  capture: "Capture",
+  start1: "1P",
+  start2: "2P",
+  start3: "3P",
+  start4: "4P",
+  pause: "Pause",
+};
+
+type Key = { code: string; label: string; w?: number };
+
+const isMac =
+  typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
+const META = isMac ? "Cmd" : "Win";
+const ALT = isMac ? "Opt" : "Alt";
+
+const letters = (codes: string) =>
+  codes.split("").map((c) => ({ code: `Key${c}`, label: c }));
+
+const ROWS: Key[][] = [
+  [
+    { code: "Backquote", label: "`" },
+    ..."1234567890".split("").map((d) => ({ code: `Digit${d}`, label: d })),
+    { code: "Minus", label: "-" },
+    { code: "Equal", label: "=" },
+    { code: "Backspace", label: "Backspace", w: 2 },
+  ],
+  [
+    { code: "Tab", label: "Tab", w: 1.5 },
+    ...letters("QWERTYUIOP"),
+    { code: "BracketLeft", label: "[" },
+    { code: "BracketRight", label: "]" },
+    { code: "Backslash", label: "\\", w: 1.5 },
+  ],
+  [
+    { code: "CapsLock", label: "Caps", w: 1.75 },
+    ...letters("ASDFGHJKL"),
+    { code: "Semicolon", label: ";" },
+    { code: "Quote", label: "'" },
+    { code: "Enter", label: "Enter", w: 2.25 },
+  ],
+  [
+    { code: "ShiftLeft", label: "Shift", w: 2.25 },
+    ...letters("ZXCVBNM"),
+    { code: "Comma", label: "," },
+    { code: "Period", label: "." },
+    { code: "Slash", label: "/" },
+    { code: "ShiftRight", label: "Shift", w: 2.75 },
+  ],
+  [
+    { code: "ControlLeft", label: "Ctrl", w: 1.25 },
+    { code: "MetaLeft", label: META, w: 1.25 },
+    { code: "AltLeft", label: ALT, w: 1.25 },
+    { code: "Space", label: "Space", w: 6.25 },
+    { code: "AltRight", label: ALT, w: 1.25 },
+    { code: "MetaRight", label: META, w: 1.25 },
+    { code: "ContextMenu", label: "Menu", w: 1.25 },
+    { code: "ControlRight", label: "Ctrl", w: 1.25 },
+  ],
+];
+
+function KeyCap({
+  k,
+  held,
+  keymap,
+}: {
+  k: Key;
+  held: ReadonlySet<string>;
+  keymap: KeyMap;
+}) {
+  const action = keymap[k.code];
+  const mapped = action !== undefined;
+  const pressed = held.has(k.code);
+  return (
+    <span
+      className={`kb-key${mapped ? " is-mapped" : ""}${pressed ? " is-pressed" : ""}`}
+      style={{ flexGrow: k.w ?? 1 }}
+    >
+      {mapped && <span className="kb-legend">{k.label}</span>}
+      <span className="kb-label">
+        {mapped ? ACTION_LABEL[action] : k.label}
+      </span>
+    </span>
+  );
+}
+
+/** On-screen keyboard with the game keys highlighted, like an arcade key map. */
+export function KeyboardView({
+  held,
+  keymap = DEFAULT_KEYBOARD,
+}: {
+  held: ReadonlySet<string>;
+  keymap?: KeyMap;
+}) {
+  const arrow = (code: string, label: string) => (
+    <KeyCap k={{ code, label }} held={held} keymap={keymap} />
+  );
+  return (
+    <div className="kb" aria-label={t.controls.keyboardLabel}>
+      <div className="kb-main">
+        {ROWS.map((row, i) => (
+          <div key={i} className="kb-row">
+            {row.map((k) => (
+              <KeyCap key={k.code} k={k} held={held} keymap={keymap} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="kb-arrows">
+        <div className="kb-row kb-row-center">{arrow("ArrowUp", "Up")}</div>
+        <div className="kb-row">
+          {arrow("ArrowLeft", "Left")}
+          {arrow("ArrowDown", "Down")}
+          {arrow("ArrowRight", "Right")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Live drawing of one gamepad. */
+export function GamepadView({
+  controller,
+  onPlayer,
+  onRemap,
+}: {
+  controller: ControllerInfo;
+  onPlayer?: (slot: string, player: number | null) => void;
+  onRemap?: () => void;
+}) {
+  return (
+    <figure className="gp">
+      <ControllerArt
+        family={familyOf(controller.id)}
+        pad={controller.pad}
+        label={t.controls.gamepadLabel(controller.player, controller.name)}
+      />
+      <figcaption className="small gp-caption">
+        <span>
+          <span className="controller-tag">P{controller.player + 1}</span>{" "}
+          {controller.name}
+        </span>
+        {onPlayer && (
+          <label className="gp-player">
+            {t.controls.playsAs}
+            <select
+              value={controller.auto ? "auto" : String(controller.player)}
+              onChange={(e) =>
+                onPlayer(
+                  controller.slot,
+                  e.target.value === "auto" ? null : Number(e.target.value),
+                )
+              }
+            >
+              <option value="auto">{t.controls.auto}</option>
+              {Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => (
+                <option key={i} value={i}>
+                  P{i + 1}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {onRemap && (
+          <button
+            type="button"
+            className="button button-secondary button-small"
+            onClick={onRemap}
+          >
+            {t.controls.remapButtons}
+          </button>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
+export interface ControlsPanelProps {
+  controllers: ControllerInfo[];
+  heldKeys: ReadonlySet<string>;
+  keyboardPlayer: number;
+  onKeyboardPlayer: (player: number) => void;
+  input?: InputConfig;
+  onRemap?: (target: RemapTarget) => void;
+  onPlayer?: (slot: string, player: number | null) => void;
+}
+
+/**
+ * Panel under the video. With gamepads connected it offers two tabs
+ * (gamepads and keyboard); otherwise it shows the keyboard map.
+ */
+export function ControlsPanel({
+  controllers,
+  heldKeys,
+  keyboardPlayer,
+  onKeyboardPlayer,
+  input,
+  onRemap,
+  onPlayer,
+}: ControlsPanelProps) {
+  const [tab, setTab] = useState<"gamepads" | "keyboard">("gamepads");
+  const hasPads = controllers.length > 0;
+  const view = hasPads ? tab : "keyboard";
+  return (
+    <section className="controls-panel" aria-label={t.controls.title}>
+      <div className="controls-head">
+        {hasPads ? (
+          <div
+            role="tablist"
+            aria-label={t.controls.title}
+            className="tabs tabs-compact"
+          >
+            {(["gamepads", "keyboard"] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={view === id}
+                className={`tab${view === id ? " is-on" : ""}`}
+                onClick={() => setTab(id)}
+              >
+                {t.controls.tabs[id]}
+                {id === "gamepads" && (
+                  <span className="tab-count">{controllers.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="strong">{t.controls.keyboardTitle}</span>
+        )}
+        <label className="kb-player small muted">
+          {t.controls.keyboardPlaysAs}
+          <select
+            value={keyboardPlayer}
+            onChange={(e) => onKeyboardPlayer(Number(e.target.value))}
+          >
+            {Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => (
+              <option key={i} value={i}>
+                P{i + 1}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {view === "gamepads" ? (
+        <div className="gp-list">
+          {controllers.map((c) => (
+            <GamepadView
+              key={c.slot}
+              controller={c}
+              onPlayer={onPlayer}
+              onRemap={
+                onRemap
+                  ? () => onRemap({ kind: "pad", id: c.id, name: c.name })
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <>
+          <KeyboardView held={heldKeys} keymap={input?.keyboard} />
+          <div className="kb-footer">
+            <p className="small muted">{t.controls.keyboardHint}</p>
+            {onRemap && (
+              <button
+                type="button"
+                className="button button-secondary button-small"
+                onClick={() => onRemap({ kind: "keyboard" })}
+              >
+                {t.controls.remapKeys}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      {hasPads && controllers.some((c) => c.player === keyboardPlayer) && (
+        <p className="small muted">{t.controls.shared(keyboardPlayer)}</p>
+      )}
+    </section>
+  );
+}

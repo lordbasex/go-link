@@ -1,0 +1,169 @@
+# Changelog
+
+All notable changes to go-link. Newest first.
+
+## [Unreleased]
+
+### Documentation
+
+- English documentation split into `docs/` (architecture, flows, device protocol, device, emulator, website, networking, security, building, deploying, status); the README is now a summary with quick start and deployment.
+- This changelog, with the history of the private repository.
+
+### Changed
+
+- Website hosting moved to a gitignored `deploy/local/hosting.mk`; `deploy/hosting.example.mk` shows a generic upload over SSH.
+- Test fixtures use neutral values; fake test tokens are marked with `gitleaks:allow`.
+
+## History before the public repository (2026-09-26 to 2026-09-28)
+
+The project was built in a private repository first. These are its commits, grouped by day, newest first.
+
+### 2026-09-28
+
+- Deploy: signalhub is deployed from its own repository; go-link keeps only its CDN security headers, and the Makefile has no signalhub image targets
+- Cores: document what is left for the mame2003-plus save state patches
+
+### 2026-09-27
+
+- Cores: mame2003-plus save state patches (Konami CPU, QSound, QSound Z80 bank) applied at build time by build.sh; the save probe also fails a game that freezes after loading
+- Device: a game's save must hold the modules of its chips some cores leave out (Konami CPU, QSound), so a core that saves them resumes those games
+- Web: a game that cannot be saved offers pausing (it stays in memory) before archiving or closing it
+- Device: save probe per game and core (a save that leaves out a CPU or the sound, or that the core refuses, means the game always starts over), catalog marks Konami CPU and QSound games, 'device roms saves' tests the library
+- Device: a thumbnail of the same game under another version is found (title without its parentheses); a game that cannot be saved drops its stale automatic save
+- Device: games the emulator cannot save whole (a CPU without saved registers, like Konami's) never resume from a save; the web only offers a fresh start and no save
+- Panel: no landing page; the local panel opens on the device until linked, then on its rooms
+- Web: Spanish uses 'encender' instead of 'prender'
+- Web: closing a game from its room goes back to the rooms instead of 'room not found'
+- Gui: no Fyne call after the app loop ends (quitting from the menu panicked in GLFW)
+- Device: L2, R2, L3 and R3 never reach the core (mame2003-plus: L3 turned the game sound off for everyone, R2 opens MAME's menu)
+- Web: Escape closes dialogs and menus by key name too (not only the key code); the CPU headline has the peak's precision
+- Web: history shows when each game ended; the go-link CPU share hides below 1% machine load
+- Docker: ROM and thumbnail folders are volumes (image owns them, a new volume is not root); panel opens one link per page; device CPU counts its game processes; CPU peak keeps its decimal, share capped at 100; stats popover above the dock
+- Signalhub moves to its own repository (next to this one): compose, e2e, CI and make docker take it from SIGNALING_DIR / SIGNAL_DIR; docs updated
+- Web: the guest join page loads with the lobby (no ineffective dynamic import warning)
+- Panel: rooms play through the device's own socket (signalhub refuses the panel's LAN origin): room-mode login, join by room/invite/code, every request answered; client handshake before open; tested with a real game in Docker
+- A11y: axe WCAG 2.1 AA checks in e2e (every page, both themes, linked device and rooms); one main landmark, room tab list holds only tabs; landing music no longer fails when closed while resuming
+- Test: device CLI commands (roms, thumbnails, panel token, help, log file)
+- Web: parsers refuse non-object messages, ICE servers are validated, room lists and early ICE candidates are bounded, a broken thumbnail never stalls the queue
+- Test: saved game files are 0600
+- Go 1.26.8 everywhere (govulncheck clean); device: picture size cap, disk space guard on uploads, 20 saves per room, private saves, core hash checked before loading, guest control rate limit, ICE candidate cap, panel host check and bounded waiting sockets
+- Docs: CDN security headers are applied
+- E2e: Playwright tests of the whole story (landing, pairing, remembered link, test room video, single-use invitation, local panel); the join page's PIN error is shown
+- Gitleaks: fingerprints of the test tokens after the history rewrite
+- Gitleaks: fingerprints of the test tokens after the history rewrite
+- Ci: GitHub Actions for signalhub, the device, the website and secrets
+- Gitleaks: fingerprints of the test tokens after the history cleanup
+- License: MIT; the kickoff brief stays local
+- Device: x/image v0.43.0 and x/net v0.56.0 (govulncheck: no reachable vulnerabilities)
+- Signalhub: device_secret is required on register
+- Security: bind device_id to a device secret, the device proves itself before a browser's token, panel login by nonce proof, connection and message limits, hardened coturn, PIN lockout spares the host and guests, CDN security headers ready
+- Docs: neutral Spanish in the signing example
+- Release: MacDub-style release script (every platform, SHA256SUMS, Homebrew cask, GitHub pre-release), Developer ID signing and notarization ready
+- Web: the landing is the home page and the rooms move to /rooms; Spanish copy without voseo
+- MacOS: drag-to-Applications .dmg in the go-link style (make device-dmg)
+- Device: keep Go 1.25 (x/term v0.40.0), as the build containers use
+- MacOS: the device ships as go-link.app with its icon, so the Finder opens no Terminal; logs go to a file without a terminal
+- Device: local web panel for headless devices (UUID token, WebRTC only), Docker image, and libvpx/Opus linked statically
+- Landing: retro chiptune music with the fight's hits, and a mute button in the arcade screen
+- Windows build: link winpthreads for libvpx and build Opus without run time CPU detection on ARM
+- Landing: How it works page with a quick join, a retro fight animation, steps, controllers and the legal note; Linux build gets Wayland
+- Tests: run the room passes test
+- Invitations: one PIN per person, return tokens and an owner key; room: compact header, chat button, sound on by default
+- My device: test pattern button and an invite to test with someone else
+- History: who played at each port, their names and the address they came from
+- Theme: light mode next to the default dark one, switched from the header
+- Loading: wait for the device's status and room art before showing the page; skeletons instead of empty lists
+- History: ask the device again once the data link is up
+- My device: game history tab, skeletons while loading, infinite scroll for ROMs and a branded loading screen
+- Icons: the brand mark as favicon, web app icons and the device's app and tray icon
+- Rooms: no join-by-code for owners; ⋯ menus are never cut by the list or the cards
+- Rooms: New game is a + circle at the right of the filters, no longer in the header
+- Guest join page in the pairing page's layout: left-aligned fields with icons, a sample invitation and the steps
+- Rooms and ROMs: more space between the filter chips and before the cards or list
+- Header: signaling server and linked device as 36 px circles with tooltips
+- Security: every room is private with an invitation and a PIN renewed on each start; guests get a code and PIN form, a Guest badge and the room details from the device
+- Room: players on the left and the dock on the right at the same adaptive size; phone layouts that do not cover the game; gamepad buttons with depth
+- Web: capsule buttons across the site (36 px, icon circles with tooltips), and a room with one dock over the video for start, voice and tools
+- Room: the stream figures sit behind a fixed-size (i) button that opens the details
+- Rooms: guest view without owner actions, room chat the host can turn off (enforced by the device), and players in a floating capsule over the video
+- Input: keyboard maps saved before the start buttons move to 1-4 = 1P-4P, keeping custom keys
+- Invitations: signalhub makes an invite link and a 9 digit code per room, private rooms admit only them; device shows them and renews them; web joins by /g link or code, with an Invite dialog and QR
+- Web: pages other than the lobby load on demand, so no chunk is over 500 kB
+- Chat: typing indicator relayed by the device, a chime for new messages, and a panel that can be hidden with an unread count
+- Private rooms: a 6 digit PIN the device checks before streaming, with limited tries, a New PIN action and a lock in the lobby
+- All pages share the My device look: PageHero, chips and cards; New game with a searchable game picker and a preview
+- Room page in the style of My device: hero with the game's picture, chips and actions, and cards
+- Controls panel: outline drawings of the detected gamepad (PlayStation, Switch Pro, Xbox or generic) whose parts light up
+- Rooms: start buttons of players 1 to 4, swap controllers between seats, and a clear message for the games limit
+- Rooms page: the list view is a table with columns, like the ROMs list
+- My device: Space used card with ROMs, thumbnails and saved games instead of Current room
+- Rooms page: search, count and cards or list view
+- Home page is Rooms: public rooms of everyone plus the host's own with all states and actions; My device loses its Rooms tab
+- Lobby: drop the side cards; How it works in the header opens the help dialog
+- Lobby: the approved design, wide grid of cards with the room's thumbnail on the left
+- ROMs tab: search box, and Play asks for name, public or private, voice and the lobby picture
+- Device window: bigger by default, resizable with a minimum, remembers its size (and place on macOS)
+- Device window: Settings section (thumbnail kind, size and folder, rooms, network) and thumbnails dir/kind CLI
+- Docs: thumbnail kind from Settings, room action icons
+- Web: show the thumbnail kind the host chose; room actions as icons with tooltips and a ⋯ menu
+- Settings service for thumbnails (folder, kind, size); never start a new room twice
+- Fix room actions being dropped (text id), goroutine dump on SIGUSR1, quieter input logs, clearer room errors
+- Rotate vertical games in the core, and keep game workers out of the device's Ctrl-C so they are saved first
+- Deploy: let a device keep several rooms open (one per game)
+- Web: My device › Rooms to run several games, with favorites, pause, saves, archive and trash; Boxart in the lobby
+- Game server: several rooms at once, each game in its own process, with pause, save states, archive, trash and favorites
+- Thumbnails: the host's Boxart, Title and Snap in the device window (Emulators › MAME) and on the web
+
+### 2026-09-26
+
+- Remove the free ROM download: the app only says it is based on MAME and ROMs are found online
+- My device: ROMs tab with cards and list views, Play opens create room with the game chosen
+- My device: live dashboard with CPU, memory, network and ROM storage, and a new pairing view
+- Switch Node in the same shell, not a subshell
+- Build the website with the Node pinned in frontend/.nvmrc
+- One persistent header for every page, rendered once outside the routes
+- On-screen gamepad for phones and tablets, full screen, how to play dialog, one header everywhere
+- Room state carries the game's controls from the mame2003-plus list
+- Web in English, Spanish and Portuguese with a three-bubble language switch
+- Remap keys and gamepad buttons, pick each pad's player, close the game
+- One UDP port for WebRTC and announced addresses, for a direct path
+- Show whether media flows directly or through the TURN relay
+- Pause the game for everyone, and anti-spoofing DNS notes
+- Website live on go-link.org: logo, CDN invalidation from a local file
+- Makefile for web, device and signalhub builds and the website upload
+- Deploy: Caddy always on in production, with automatic certificates
+- Deploy: the production server builds signalhub from source
+- Deploy: production compose for a small server, running on a small server
+- Rename the project to go-link, on go-link.org
+- Window: capsule Open in browser button on the pairing screen
+- Window: keep the code countdown centered when Copy code changes
+- Window: copy the pairing code from the pairing screen
+- Window: roomier pairing screen with numbered steps
+- Window: move by the top band, no dark frame, responsive cards
+- Remember linked browsers, and a native window in MacDub's style
+- Signalhub: reach, to come back to a linked device without a code
+- Device: native window with Fyne, and no web server on the device
+- Check ROM sets without running them, and manage the device from the CLI
+- Emulator: answer every core option with its declared default
+- Set the ROM folder and drop ROMs from the web over WebRTC
+- Create game rooms from the web, and download the emulator core
+- Docs: native device GUI planned with Fyne, replacing the local web panel
+- Emulator: libretro frontend running mame2003-plus, playable in the browser
+- Voice between players: separate tracks, SFU forwarding, volumes
+- Free ROMs from mamedev.org, downloaded by the device on request
+- Room Manager: seats P1-P4, arcade queue, spectators and chat
+- Web: controls panel, keyboard player choice, and early offer fix
+- Input v2 with gamepads and local players; test card draws a gamepad at 60 fps
+- Test room: PM5544-style test card and 1 kHz reference tone
+- Device status and P2P latency over WebRTC for linked browsers
+- Phase 5 step 1: test pattern video over WebRTC and controller input
+- Device: avoid a double period in the panel's next-code line
+- Frontend: phase 4, shared package and web with the four design screens
+- Docs: help message when a room is not found on the current server
+- Docs: custom signaling server selectable from the web (localStorage)
+- Device: --server-signaling flag and public default server
+- Device: phase 3 skeleton, and deploy stack with coturn
+- Docs: signalhub stays in-memory, drop metrics and Redis from roadmap
+- Signaling: signalhub v0.2 rooms, directory, rate limit and TURN
+- Signaling: signalhub v0.1 pairing and signal relay
+- Docs: architecture, signaling protocol and UI prototype

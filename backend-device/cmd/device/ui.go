@@ -1,0 +1,24 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+package main
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/lordbasex/go-link/backend-device/internal/services"
+)
+
+// uiOptions is what the user interface needs from the device.
+type uiOptions struct {
+	ctx      context.Context // canceled when the device stops
+	quit     func()          // stops the device
+	headless bool
+	status   *services.StatusService
+	library  *services.LibraryService
+	settings *services.SettingsService
+	games    *services.GameService // nil when rooms are disabled
+	links    *services.LinkService
+	webURL   string // where hosts type the pairing code
+	logger   *slog.Logger
+}
