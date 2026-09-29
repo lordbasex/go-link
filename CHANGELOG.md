@@ -4,6 +4,16 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Changed (website)
+
+- The rooms search hint no longer names real games ("Search your games…").
+- The landing page shows **real screenshots** instead of drawings, in the page's language: the website (My device, its ROMs tab, a live test pattern room, the invitation with its QR code and PIN), the go-link window on the computer and the go-link Player app. Only the test pattern room and an invented ROM library appear: no real game, and nothing personal.
+- New order: hero, then the guest's quick path ("Someone sent you a QR? Three taps": scan, type the PIN, play and talk, with the app's downloads and the browser as the other way in), the how it works walkthrough (now with screenshots of each step), the features (three columns), then the **Player app** section with Android's download (iPhone and iPad as coming soon) and a **gallery** whose pictures open large in an accessible dialog (Esc, arrow keys).
+
+### Added (development)
+
+- `cd e2e && npm run shots` makes the landing's screenshots again in English, Spanish and Portuguese: the device's window from Fyne's test driver (`TestShots`, `GOLINK_SHOTS`), the website on the e2e stack with an invented ROM library (`backend-device/cmd/shotseed`, `internal/shots`) and the Player app on an Android emulator. The computer's name, user name, local paths and addresses are masked, and a picture that still shows them fails.
+
 ## [0.1.4] - 2026-09-29
 
 ### Added (Android app)

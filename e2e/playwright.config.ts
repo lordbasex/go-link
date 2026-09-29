@@ -7,9 +7,10 @@ import { PORTS } from "./ports";
 // the developer's (signalhub, device, rooms) is touched. The steps depend on
 // each other (pair, then reconnect, then invite...), so they run in order.
 //
-// Two projects: "web" (npm test) and "android" (npm run test:android: the
+// Three projects: "web" (npm test), "android" (npm run test:android: the
 // go-link Player app on an emulator or phone through adb, skipped when no
-// device is attached). E2E_CHROMIUM_SINGLE_PROCESS=1 runs Chromium as one
+// device is attached) and "shots" (npm run shots: the landing page's
+// screenshots, with an invented ROM library). E2E_CHROMIUM_SINGLE_PROCESS=1 runs Chromium as one
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
 
@@ -37,9 +38,11 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "web", testIgnore: /android\.spec\.ts$/ },
+    { name: "web", testIgnore: /(android|shots)\.spec\.ts$/ },
     // One long story on a real Android device: minutes, not seconds.
     { name: "android", testMatch: /android\.spec\.ts$/, timeout: 240_000 },
+    // The landing page's screenshots (npm run shots), never part of npm test.
+    { name: "shots", testMatch: /shots\.spec\.ts$/, timeout: 1_800_000 },
   ],
   webServer: {
     // The website in dev mode (no CSP, so ws:// to the local signalhub works).

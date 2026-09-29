@@ -124,6 +124,8 @@ PANEL_DIST = $(DEVICE_DIR)/web/panel/dist
 
 panel: web-build
 	rm -rf $(PANEL_DIST) && mkdir -p $(PANEL_DIST) && cp -R $(WEB_DIST)/. $(PANEL_DIST)/
+	# The panel has no landing page: its screenshots stay out of the binary.
+	rm -rf $(PANEL_DIST)/shots
 	@echo "$(GREEN)✓ Web panel copied into $(PANEL_DIST)$(NC)"
 
 $(PANEL_DIST)/index.html:

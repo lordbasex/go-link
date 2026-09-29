@@ -6,6 +6,7 @@
   "scripts": {
     "test": "playwright test --project=web",
     "test:android": "E2E_DEVICE_DEBUG=1 playwright test --project=android",
+    "shots": "E2E_SHOTS=1 playwright test --project=shots",
     "report": "playwright show-report"
   },
   "devDependencies": {

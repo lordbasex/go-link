@@ -6,6 +6,8 @@ import { t } from "../i18n";
 import { JoinForm } from "../components/JoinForm";
 import { FightScene } from "../components/landing/FightScene";
 import { ControllersShowcase } from "../components/landing/ControllersShowcase";
+import { GuestPath } from "../components/landing/GuestPath";
+import { PlayerApp } from "../components/landing/PlayerApp";
 import { SiteFooter } from "../components/legal/SiteFooter";
 import {
   CloseIcon,
@@ -33,10 +35,12 @@ const FEATURE_ICONS: ReactNode[] = [
 ];
 
 /**
- * "How it works": the landing page. What go-link is, a quick way into a
- * game someone invited you to, the three steps to host one, what it does,
- * and where the games come from (no game art, no game names: only that it
- * plays MAME 2003-Plus sets you have the right to use).
+ * "How it works": the landing page. What go-link is, the guest's quick way
+ * into a game someone invited them to (right under the hero: most visitors
+ * arrive with an invitation), the four steps to host one, what it does, the
+ * Player app with a gallery of real screenshots, and where the games come
+ * from (no game art, no game names: only that it plays MAME 2003-Plus sets
+ * you have the right to use).
  */
 export function HowItWorksPage() {
   const [joinOpen, setJoinOpen] = useState(false);
@@ -64,6 +68,8 @@ export function HowItWorksPage() {
         <FightScene />
       </section>
 
+      <GuestPath onJoin={() => setJoinOpen(true)} />
+
       <section className="lp-section" id="how" aria-labelledby="lp-steps">
         <span className="eyebrow eyebrow-accent">{t.wizard.eyebrow}</span>
         <h2 id="lp-steps" className="lp-h2">
@@ -89,6 +95,8 @@ export function HowItWorksPage() {
           ))}
         </ul>
       </section>
+
+      <PlayerApp />
 
       <section className="lp-section" aria-labelledby="lp-pads">
         <span className="eyebrow eyebrow-accent">{t.landing.padsEyebrow}</span>

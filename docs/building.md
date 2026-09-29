@@ -118,11 +118,22 @@ Before pushing Go code, in `backend-device/`: `gofmt -l .` (must print nothing),
 make e2e                                          # or, inside e2e/:
 npm test                                          # the web project
 npm run test:android                              # the Android app on an emulator (docs/mobile.md)
+npm run shots                                     # the landing page's screenshots (below)
 npx playwright test --project=web tests/<file> -g "<name>"   # a single test
 npm run report                                    # the HTML report
 ```
 
 Rooms with real games are not covered, because they need the core and ROMs.
+
+### Landing page screenshots
+
+The landing page shows real screenshots (`frontend/apps/web/public/shots/<lang>/<name>.webp`, sizes in `frontend/apps/web/src/components/landing/shots.json`). `cd e2e && npm run shots` makes them all again, in English, Spanish and Portuguese, with the `shots` Playwright project (never part of `npm test` or CI):
+
+- **Device window:** the Go test `TestShots` renders the real window with Fyne's test driver and made-up status data (`GOLINK_SHOTS=<dir> go test ./internal/gui -run TestShots` in `backend-device/`; skipped without the variable): the pairing view, Overview and MAME › ROMs.
+- **Website:** the e2e stack with `E2E_SHOTS=1`: the device's throwaway `HOME` gets an **invented** ROM library first (`go run ./cmd/shotseed`, `backend-device/internal/shots`: made-up games, set names, makers and geometric covers, never a real game), and the device is built with the released version. The pictures: the code form, the test pattern room, the invitation, My device and its ROMs tab.
+- **Player app:** when an emulator or phone is in `adb devices` and the debug APK is built, the app in each language (`cmd locale set-app-locales`, Android 13 or newer) with a clean status bar (demo mode): home, PIN, the room and its chat. Another build of the app installed there (a release) is kept and put back at the end.
+
+Before every web picture the page's computer name, user name and local paths are replaced (the test stack's addresses read as the public ones), and a picture that still shows any of them or an IPv4 address fails. Only the test pattern room is ever played. Pictures are converted with `cwebp` (desktop 1440 px wide, phones 600 px, each under 150 KB). Look at every picture before publishing them.
 
 ## Continuous integration
 

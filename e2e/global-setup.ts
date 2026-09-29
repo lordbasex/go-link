@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { execFileSync, spawn } from "node:child_process";
-import { closeSync, cpSync, mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PORTS } from "./ports";
@@ -43,10 +43,23 @@ export default async function globalSetup() {
   const panelDist = join(root, "backend-device", "web", "panel", "dist");
   rmSync(panelDist, { recursive: true, force: true });
   cpSync(join(root, "frontend", "apps", "web", "dist"), panelDist, { recursive: true });
-  execFileSync("go", ["build", "-tags", "headless", "-o", join(bin, "device"), "./cmd/device"], {
+  rmSync(join(panelDist, "shots"), { recursive: true, force: true }); // no landing on the panel, like `make panel`
+  // The screenshots show the released version (and no "new version" notice).
+  const release = JSON.parse(readFileSync(join(root, "frontend", "apps", "web", "src", "release.json"), "utf8")) as { version: string };
+  const ldflags = process.env.E2E_SHOTS === "1" ? ["-ldflags", `-X main.version=${release.version.replace(/^v/, "")}`] : [];
+  execFileSync("go", ["build", "-tags", "headless", ...ldflags, "-o", join(bin, "device"), "./cmd/device"], {
     cwd: join(root, "backend-device"),
     stdio: "inherit",
   });
+
+  // npm run shots: an invented ROM library (made-up games and covers) in
+  // the device's throwaway HOME, for the landing page's screenshots.
+  if (process.env.E2E_SHOTS === "1") {
+    execFileSync("go", ["run", "./cmd/shotseed", "-data", join(state, "home", "go-link")], {
+      cwd: join(root, "backend-device"),
+      stdio: "inherit",
+    });
+  }
 
   const signalLog = openSync(join(state, "signal.log"), "a");
   const signal = spawn(join(bin, "signal"), [], {
