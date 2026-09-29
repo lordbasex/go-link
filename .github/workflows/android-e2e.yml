@@ -9,8 +9,9 @@ name: android-e2e
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 6 * * 1"
+  # Weekly run paused until the cloud emulator run is stable again:
+  # schedule:
+  #   - cron: "17 6 * * 1"
 
 permissions:
   contents: read
