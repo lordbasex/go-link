@@ -62,6 +62,9 @@ test.beforeAll(async ({ browser }) => {
   A.shell(`pm grant ${A.PACKAGE} android.permission.BLUETOOTH_CONNECT || true`);
   A.shell("cmd connectivity airplane-mode disable || true");
   A.shell("settings put system screen_off_timeout 1800000");
+  // A fresh emulator shows the one-time "Viewing full screen" hint over the
+  // app the first time it goes full screen; mark it as already seen.
+  A.shell("settings put secure immersive_mode_confirmations confirmed");
   A.shell("input keyevent KEYCODE_WAKEUP");
   A.shell("wm dismiss-keyguard || true");
   probe = new A.Probe();
