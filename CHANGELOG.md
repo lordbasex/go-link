@@ -4,11 +4,12 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-28
+
 ### Added (website)
 
 - "How it works" is an animated walkthrough on the landing page and on My device: four steps (download, link, add ROMs and play, share) that play like a video, with a progress bar, pause and previous/next. Step 1 offers the download for your system (Windows, macOS, Linux, Docker, Raspberry Pi).
 - My device shows the downloads of the latest release instead of "Downloads will be published soon": your system first, the others with their sizes, the release page and the checksums.
-
 - My device, before linking, puts the code form first and shows the go-link window as it really looks (its texts in each language), with the downloads below.
 
 - The Docker page of the user guide starts with a quick start (run, pairing code from the log, emulator, ROMs, panel key), explains host and bridge networking with one full command each, and lists the useful `docker exec` commands.
