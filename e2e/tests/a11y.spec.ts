@@ -20,7 +20,9 @@ const pages = [
 
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} theme`, () => {
-    test.use({ colorScheme: scheme });
+    // Reduced motion: the checker must see the page at rest, not in the
+    // middle of a fade (the walkthrough animates its text on every step).
+    test.use({ colorScheme: scheme, reducedMotion: "reduce" });
     for (const { path, name } of pages) {
       test(`${name} has no accessibility problems`, async ({ page }) => {
         await page.goto(path);
