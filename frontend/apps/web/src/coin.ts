@@ -14,6 +14,27 @@ const GAIN = 0.12;
 
 let ctx: AudioContext | null = null;
 
+/**
+ * Plays the coin now if the browser lets this page make sound without a
+ * gesture (Chrome does for sites the visitor often plays media on). Resolves
+ * true when it played, false when the browser keeps sound blocked.
+ */
+export async function tryPlayCoinNow(): Promise<boolean> {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return false;
+    ctx ??= new Ctx();
+    if (ctx.state === "suspended") {
+      await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 250))]);
+    }
+    if (ctx.state !== "running") return false;
+    playCoin();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Plays the coin. Call it from a tap or key press: browsers block sound before one. */
 export function playCoin(): void {
   try {
