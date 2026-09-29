@@ -10,7 +10,7 @@ export interface DemoRoom {
   meta: RoomMeta;
 }
 
-export const DEMO_DEVICE_NAME = "PC-Federico";
+export const DEMO_DEVICE_NAME = "arcade-pc";
 export const DEMO_ROM_COUNT = 42;
 export const DEMO_ROOM_ID = "3f2b9c1e-7a4d-4e0b-9c52-1d8e6f0aa71d";
 
@@ -20,12 +20,12 @@ const room = (n: number, meta: Omit<RoomMeta, "paused" | "art">): DemoRoom => ({
 });
 
 export const DEMO_ROOMS: DemoRoom[] = [
-  room(1, { game: "Teenage Mutant Ninja Turtles", title: "Turtles co-op", host: "mariano", players: 3, maxPlayers: 4, queue: 0, spectators: 2, mode: "coop" }),
-  room(2, { game: "Metal Slug X", title: "Metal Slug Saturday", host: "lordbasex", players: 2, maxPlayers: 2, queue: 3, spectators: 7, mode: "coop" }),
-  room(3, { game: "The King of Fighters '98", title: "KOF ranked with friends", host: "caro_k", players: 2, maxPlayers: 2, queue: 1, spectators: 4, mode: "versus" }),
-  room(4, { game: "Sunset Riders", title: "Cowboys at sunset", host: "nico.dev", players: 1, maxPlayers: 4, queue: 0, spectators: 0, mode: "coop" }),
-  room(5, { game: "Shadow over Mystara", title: "D&D full table", host: "luli", players: 4, maxPlayers: 4, queue: 0, spectators: 3, mode: "coop" }),
-  room(6, { game: "Puzzle Bobble", title: "Chill bubbles", host: "pedro", players: 1, maxPlayers: 2, queue: 0, spectators: 1, mode: "versus" }),
+  room(1, { game: "Robo Laundry Blitz", title: "Laundry co-op", host: "mariano", players: 3, maxPlayers: 4, queue: 0, spectators: 2, mode: "coop" }),
+  room(2, { game: "Sky Pirates 2099", title: "Sky Pirates Saturday", host: "sam", players: 2, maxPlayers: 2, queue: 3, spectators: 7, mode: "coop" }),
+  room(3, { game: "Velvet Thunder Bowl", title: "Bowling ranked with friends", host: "caro_k", players: 2, maxPlayers: 2, queue: 1, spectators: 4, mode: "versus" }),
+  room(4, { game: "Cactus Circuit Racers", title: "Racers at sunset", host: "nico.dev", players: 1, maxPlayers: 4, queue: 0, spectators: 0, mode: "coop" }),
+  room(5, { game: "Lantern Moth Express", title: "Full express", host: "luli", players: 4, maxPlayers: 4, queue: 0, spectators: 3, mode: "coop" }),
+  room(6, { game: "Pickle Harbor Heist", title: "Chill heist", host: "pedro", players: 1, maxPlayers: 2, queue: 0, spectators: 1, mode: "versus" }),
 ];
 
 export interface DemoRom {
@@ -37,9 +37,9 @@ export interface DemoRom {
 }
 
 export const DEMO_ROMS: DemoRom[] = [
-  { id: "tmnt", game: "Teenage Mutant Ninja Turtles", file: "tmnt.zip", minPlayers: 1, maxPlayers: 4 },
-  { id: "mslugx", game: "Metal Slug X", file: "mslugx.zip", minPlayers: 1, maxPlayers: 2 },
-  { id: "kof98", game: "The King of Fighters '98", file: "kof98.zip", minPlayers: 2, maxPlayers: 2 },
+  { id: "robolndr", game: "Robo Laundry Blitz", file: "robolndr.zip", minPlayers: 1, maxPlayers: 4 },
+  { id: "skypir99", game: "Sky Pirates 2099", file: "skypir99.zip", minPlayers: 1, maxPlayers: 2 },
+  { id: "velvtbwl", game: "Velvet Thunder Bowl", file: "velvtbwl.zip", minPlayers: 2, maxPlayers: 2 },
 ];
 
 export interface DemoPlayer {
@@ -52,7 +52,7 @@ export interface DemoPlayer {
 
 export function demoPlayers(isPlayer: boolean, micOn: boolean): DemoPlayer[] {
   return [
-    { port: 1, name: "Federico", you: isPlayer, speaking: isPlayer ? micOn : true, muted: isPlayer ? !micOn : false },
+    { port: 1, name: "Alex", you: isPlayer, speaking: isPlayer ? micOn : true, muted: isPlayer ? !micOn : false },
     { port: 2, name: "Juan", you: false, speaking: false, muted: false },
     { port: 3, name: "Caro", you: false, speaking: false, muted: true },
     { port: 4, name: "Nico", you: false, speaking: false, muted: false },
@@ -67,7 +67,7 @@ export const DEMO_MESSAGES: DemoMessage[] = [
   { name: "Pedro", port: null, role: "queue · 1st", text: "good game! tell me when someone runs out of lives lol" },
   { system: "Lucia joined the queue (2nd)" },
   { name: "Caro", port: 3, role: "P3", text: "muted myself, it is noisy here, reading the chat" },
-  { name: "Federico", port: 1, role: "P1 · host", text: "ok, starting level 3" },
+  { name: "Alex", port: 1, role: "P1 · host", text: "ok, starting level 3" },
 ];
 
 export const DEMO_QUEUE = [

@@ -33,8 +33,8 @@ describe("room input", () => {
 
 describe("room meta", () => {
   it("parses a valid meta", () => {
-    const meta = parseRoomMeta({ title: "Coop night", game: "Metal Slug X", host: "ana", players: 1, max_players: 2, queue: 3, spectators: 7, mode: "coop" });
-    expect(meta).toEqual({ title: "Coop night", game: "Metal Slug X", host: "ana", players: 1, maxPlayers: 2, queue: 3, spectators: 7, mode: "coop", paused: false, art: null });
+    const meta = parseRoomMeta({ title: "Coop night", game: "Sky Pirates 2099", host: "ana", players: 1, max_players: 2, queue: 3, spectators: 7, mode: "coop" });
+    expect(meta).toEqual({ title: "Coop night", game: "Sky Pirates 2099", host: "ana", players: 1, maxPlayers: 2, queue: 3, spectators: 7, mode: "coop", paused: false, art: null });
     expect(freeSeats(meta!)).toBe(1);
   });
   it("bounds untrusted values", () => {

@@ -1268,11 +1268,11 @@ export function RoomPage() {
       };
   const info = live.room?.info;
   const title = demo
-    ? "Turtles co-op"
+    ? "Laundry co-op"
     : meta?.title || info?.title || t.room.private;
   const isPrivate = demo || meta === null;
   const subtitle = demo
-    ? `Teenage Mutant Ninja Turtles · ${t.room.hostLabel(DEMO_DEVICE_NAME)}`
+    ? `Robo Laundry Blitz · ${t.room.hostLabel(DEMO_DEVICE_NAME)}`
     : [
         meta?.game || info?.game,
         (meta?.host || info?.host) &&

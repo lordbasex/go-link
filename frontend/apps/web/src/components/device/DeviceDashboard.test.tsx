@@ -23,13 +23,13 @@ const status: DeviceStatus = {
   roms_dir: "/roms",
   linked_browsers: 1,
   rooms: [
-    { id: "a1", name: "Robby night", rom: "robby", game: "Robby Roto", public: true, voice: true, state: "archived", favorite: false, roomId: "", players: 0, maxPlayers: 2, spectators: 0, queue: 0, since: "2026-09-26T10:00:00Z", deletedAt: null, saves: [{ slot: 1, name: "Stage 3", at: "2026-09-26T09:00:00Z" }], autosave: true, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
-    { id: "b2", name: "Turtles co-op", rom: "robby", game: "Robby Roto", public: true, voice: true, state: "live", favorite: true, roomId: "R2", players: 2, maxPlayers: 4, spectators: 3, queue: 0, since: "2026-09-26T11:00:00Z", deletedAt: null, saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
+    { id: "a1", name: "Goalies night", rom: "glacgoal", game: "Glacier Goalies", public: true, voice: true, state: "archived", favorite: false, roomId: "", players: 0, maxPlayers: 2, spectators: 0, queue: 0, since: "2026-09-26T10:00:00Z", deletedAt: null, saves: [{ slot: 1, name: "Stage 3", at: "2026-09-26T09:00:00Z" }], autosave: true, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
+    { id: "b2", name: "Laundry co-op", rom: "glacgoal", game: "Glacier Goalies", public: true, voice: true, state: "live", favorite: true, roomId: "R2", players: 2, maxPlayers: 4, spectators: 3, queue: 0, since: "2026-09-26T11:00:00Z", deletedAt: null, saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
     { id: "c3", name: "Old one", rom: "looping", game: "Looping", public: false, voice: false, state: "trash", favorite: false, roomId: "", players: 0, maxPlayers: 2, spectators: 0, queue: 0, since: "2026-09-20T11:00:00Z", deletedAt: new Date().toISOString(), saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
   ],
   system: {
     hardware: {
-      hostname: "Mac-Pro-de-Federico",
+      hostname: "arcade-pc",
       os: "darwin",
       arch: "amd64",
       platform: "darwin 15.7.3",
@@ -50,8 +50,8 @@ const status: DeviceStatus = {
   room: {
     room_id: "d85b7fba-626d-4b73-82a4-6da4070eda2e",
     viewers: 3,
-    title: "Robby Roto",
-    game: "Robby Roto",
+    title: "Glacier Goalies",
+    game: "Glacier Goalies",
     public: true,
     players: 2,
     max_players: 4,
@@ -66,7 +66,7 @@ const status: DeviceStatus = {
       {
         name: "robby",
         size: 20 * MB,
-        title: "Robby Roto",
+        title: "Glacier Goalies",
         year: "1981",
         maker: "Bally Midway",
         thumbs: { boxart: true, title: false, snap: false },
@@ -131,7 +131,7 @@ describe("device dashboard", () => {
       </MemoryRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: "Mac-Pro-de-Federico" }),
+      screen.getByRole("heading", { name: "arcade-pc" }),
     ).toBeInTheDocument();
     const figures = screen.getByRole("region", { name: "Live figures" });
     expect(within(figures).getByText("23")).toBeInTheDocument(); // CPU, rounded
@@ -197,7 +197,7 @@ describe("device dashboard", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(localStorage.getItem("go-link.roms-view")).toBe("list");
     expect(
-      screen.getByRole("link", { name: /Play Robby Roto/ }),
+      screen.getByRole("link", { name: /Play Glacier Goalies/ }),
     ).toHaveAttribute("href", "/create?rom=robby");
 
     await userEvent.type(screen.getByRole("searchbox"), "capcom sports");
@@ -231,7 +231,7 @@ describe("rooms on the home page", () => {
       </MemoryRouter>,
     );
     const names = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(names).toEqual(["Turtles co-op", "Robby night"]); // the trash is apart
+    expect(names).toEqual(["Laundry co-op", "Goalies night"]); // the trash is apart
     expect(screen.getByRole("button", { name: /Trash/ })).toHaveTextContent("1");
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/r/R2");
 
@@ -241,7 +241,7 @@ describe("rooms on the home page", () => {
     expect(sendControl).toHaveBeenCalledWith({ type: "room_action", id: "a1", action: "favorite" });
 
     act(() => listeners.forEach((fn) => fn({ type: "room_result", id: "b2", action: "pause", ok: true })));
-    expect(screen.getByRole("status")).toHaveTextContent("“Turtles co-op” is paused for everyone");
+    expect(screen.getByRole("status")).toHaveTextContent("“Laundry co-op” is paused for everyone");
   });
 
   it("lists every action in the ⋯ menu", async () => {
@@ -265,7 +265,7 @@ describe("rooms on the home page", () => {
       </MemoryRouter>,
     );
     await userEvent.click(screen.getByRole("button", { name: "Turn on" }));
-    const dialog = screen.getByRole("dialog", { name: "Turn on “Robby night”" });
+    const dialog = screen.getByRole("dialog", { name: "Turn on “Goalies night”" });
     const options = within(dialog).getAllByRole("radio").map((o) => o.textContent);
     expect(options[0]).toContain("Continue where you left off");
     expect(options[1]).toContain("Start from the beginning");
@@ -286,7 +286,7 @@ describe("rooms on the home page", () => {
         </MemoryRouter>,
       );
       await userEvent.click(screen.getByRole("button", { name: "Turn on" }));
-      const dialog = screen.getByRole("dialog", { name: "Turn on “Robby night”" });
+      const dialog = screen.getByRole("dialog", { name: "Turn on “Goalies night”" });
       const options = within(dialog).getAllByRole("radio").map((o) => o.textContent);
       expect(options).toHaveLength(1);
       expect(options[0]).toContain("Start from the beginning");
@@ -298,7 +298,7 @@ describe("rooms on the home page", () => {
       expect(within(menu).queryByRole("menuitem", { name: "Save game" })).not.toBeInTheDocument();
       // Archiving it would end the game: pausing is offered first.
       await userEvent.click(within(menu).getByRole("menuitem", { name: "Archive" }));
-      const ask = screen.getByRole("alertdialog", { name: "Archive “Turtles co-op”?" });
+      const ask = screen.getByRole("alertdialog", { name: "Archive “Laundry co-op”?" });
       expect(within(ask).getAllByRole("button").map((b) => b.textContent)).toEqual(["Pause it", "Archive anyway", "Cancel"]);
       await userEvent.click(within(ask).getByRole("button", { name: "Pause it" }));
       expect(sendControl).toHaveBeenLastCalledWith({ type: "room_action", id: "b2", action: "pause" });
@@ -348,7 +348,7 @@ describe("charts", () => {
         fn({
           type: "history",
           items: [
-            { room_id: "b2", name: "Turtles co-op", rom: "robby", game: "Robby Roto", started_at: "2026-09-26T10:00:00Z", ended_at: "2026-09-26T11:02:00Z", peak_players: 2, peak_spectators: 3, reason: "archived" },
+            { room_id: "b2", name: "Laundry co-op", rom: "glacgoal", game: "Glacier Goalies", started_at: "2026-09-26T10:00:00Z", ended_at: "2026-09-26T11:02:00Z", peak_players: 2, peak_spectators: 3, reason: "archived" },
             { room_id: "c3", name: "Old one", rom: "looping", game: "Looping", started_at: "2026-09-25T10:00:00Z", ended_at: "2026-09-25T10:00:30Z", peak_players: 1, peak_spectators: 0, reason: "failed",
               people: [
                 { name: "Fede", ports: [1], ip: "192.0.2.10", path: "direct" },
@@ -359,7 +359,7 @@ describe("charts", () => {
         }),
       ),
     );
-    expect(screen.getByText("Turtles co-op")).toBeInTheDocument();
+    expect(screen.getByText("Laundry co-op")).toBeInTheDocument();
     expect(screen.getByText("1 h 02 min")).toBeInTheDocument();
     expect(screen.getByText("2 players · 3 spectators")).toBeInTheDocument();
     // Who played at each port, from which address, and how many watched.
@@ -371,7 +371,7 @@ describe("charts", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByPlaceholderText("Search game or room"), "192.0.2");
-    expect(screen.queryByText("Turtles co-op")).not.toBeInTheDocument();
+    expect(screen.queryByText("Laundry co-op")).not.toBeInTheDocument();
     expect(screen.getByText("Old one")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear history" }));

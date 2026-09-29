@@ -56,7 +56,7 @@ export function CreateRoomPage() {
   const [romId, setRomId] = useState(
     demo ? DEMO_ROMS[0]!.id : (params.get("rom") ?? ""),
   );
-  const [name, setName] = useState(demo ? "Turtles co-op" : "");
+  const [name, setName] = useState(demo ? "Laundry co-op" : "");
   const [nameEdited, setNameEdited] = useState(false);
   const [voice, setVoice] = useState(true);
   const [chat, setChat] = useState(true);

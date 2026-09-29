@@ -92,7 +92,7 @@ export interface RoomModel {
 }
 
 export function demoModel(isPlayer: boolean, micOn: boolean, hearVoice: boolean): RoomModel {
-  const you = isPlayer ? "Federico" : "Pedro";
+  const you = isPlayer ? "Alex" : "Pedro";
   return {
     seats: demoPlayers(isPlayer, micOn).map((p) => ({
       name: p.name,

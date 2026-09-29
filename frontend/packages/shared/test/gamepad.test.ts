@@ -45,7 +45,7 @@ describe("ROM checks in device_status", () => {
         core: { name: "mame2003_plus", installed: true, catalog: true },
         roms: [
           { name: "robby", check: { status: "ok" } },
-          { name: "kof97", check: { status: "missing", missing: Array.from({ length: 30 }, (_, i) => `f${i}`), needs: ["neogeo"] } },
+          { name: "velvtbwl", check: { status: "missing", missing: Array.from({ length: 30 }, (_, i) => `f${i}`), needs: ["neogeo"] } },
           { name: "weird", check: { status: "exploded" } },
           { name: "unchecked" },
         ],

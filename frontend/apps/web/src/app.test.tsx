@@ -18,8 +18,8 @@ const HOST = "host".padEnd(32, "0");
 const lobbyRooms: Envelope = {
   type: "rooms",
   rooms: [
-    { room_id: ROOM, meta: { title: "Coop night", game: "Metal Slug X", host: "ana", players: 1, max_players: 2, queue: 0, spectators: 3, mode: "coop" } },
-    { room_id: ROOM.replace("aa71d", "aa71e"), meta: { title: "Full house", game: "Puzzle Bobble", host: "leo", players: 2, max_players: 2, queue: 2, spectators: 0, mode: "versus" } },
+    { room_id: ROOM, meta: { title: "Coop night", game: "Sky Pirates 2099", host: "ana", players: 1, max_players: 2, queue: 0, spectators: 3, mode: "coop" } },
+    { room_id: ROOM.replace("aa71d", "aa71e"), meta: { title: "Full house", game: "Pickle Harbor Heist", host: "leo", players: 2, max_players: 2, queue: 2, spectators: 0, mode: "versus" } },
     { room_id: ROOM.replace("aa71d", "aa71f"), meta: { broken: true } },
   ],
 };
@@ -43,7 +43,7 @@ describe("lobby", () => {
   it("shows the rooms as cards or as a list", async () => {
     FakeSocket.reset();
     renderApp("/rooms", { demo: true });
-    expect(await screen.findByText("Metal Slug Saturday")).toBeInTheDocument();
+    expect(await screen.findByText("Sky Pirates Saturday")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "List" }));
     const table = screen.getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("lobby", () => {
     FakeSocket.reset();
     renderApp("/rooms", { demo: true });
     expect(screen.getAllByRole("article")).toHaveLength(6);
-    expect(screen.getByText("Metal Slug Saturday")).toBeInTheDocument();
+    expect(screen.getByText("Sky Pirates Saturday")).toBeInTheDocument();
   });
 });
 
