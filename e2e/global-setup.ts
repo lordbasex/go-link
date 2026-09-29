@@ -71,6 +71,8 @@ export default async function globalSetup() {
       RATE_LIMIT_PER_MIN: "1000",
       OWNER_RATE_PER_MIN: "1000",
       MAX_ROOMS_PER_SESSION: "8",
+      // Every test opens browsers from 127.0.0.1: the per-IP cap must not throttle the suite.
+      MAX_CONNS_PER_IP: "500",
       LOG_LEVEL: "warn",
     },
     stdio: ["ignore", signalLog, signalLog],
