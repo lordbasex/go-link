@@ -83,6 +83,9 @@ func TestWindowShowsCodeAndChecks(t *testing.T) {
 		t.Fatalf("code = %q", code)
 	}
 	test.Tap(u.onboarding.copyCode)
+	// The label comes back after 2 s on another goroutine; the test driver
+	// runs fyne.Do there too, so stop it before it races later renders.
+	u.onboarding.copyReset.Stop()
 	if got := u.app.Clipboard().Content(); got != "113134323" {
 		t.Fatalf("clipboard = %q", got)
 	}

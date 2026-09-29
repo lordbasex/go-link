@@ -30,6 +30,7 @@ type onboardingView struct {
 	refreshesAt *time.Time
 	code        string
 	copyCode    *widget.Button
+	copyReset   *time.Timer // puts "Copy code" back after "Copied"
 }
 
 func newOnboardingView(u *ui) *onboardingView {
@@ -73,7 +74,10 @@ func newOnboardingView(u *ui) *onboardingView {
 		}
 		u.app.Clipboard().SetContent(v.code)
 		v.copyCode.SetText(L("Copied"))
-		time.AfterFunc(2*time.Second, func() { fyne.Do(func() { v.copyCode.SetText(L("Copy code")) }) })
+		if v.copyReset != nil {
+			v.copyReset.Stop()
+		}
+		v.copyReset = time.AfterFunc(2*time.Second, func() { fyne.Do(func() { v.copyCode.SetText(L("Copy code")) }) })
 	})
 	// The countdown on the left, the button on the right with a fixed
 	// width: they never overlap, and neither moves when the label changes.
