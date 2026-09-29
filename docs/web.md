@@ -50,7 +50,7 @@ STUN and TURN are **not** configured: they arrive in signalhub's `hello` and liv
 | `/` | How it works: the landing page |
 | `/rooms` | Rooms: the host's own games, or the "Join a game" form in guest mode |
 | `/create` | New game (`/create?rom=<set>` preselects a game) |
-| `/g/:invite` | A room by invitation (a link or QR token, or a 9-digit code) |
+| `/g/:invite` | A room by invitation (a link or QR token, or a 9-digit code). On Android it also offers the [go-link Player app](mobile.md) (`components/AndroidAppCard.tsx`) |
 | `/g` | Guest join form (code + PIN) |
 | `/r/:roomId` | A room by id (the owner's own rooms) |
 | `/device` | My device: linking with the code, then the live dashboard |
@@ -59,6 +59,8 @@ STUN and TURN are **not** configured: they arrive in signalhub's `hello` and liv
 | `/terms`, `/privacy` | Terms of use and privacy policy ([docs/legal.md](legal.md) in three languages) |
 
 On a headless device's local panel, `/` goes to `/device` (not linked yet) or `/rooms`, and there is no landing page.
+
+`public/.well-known/assetlinks.json` lets the Android app open `/g/…` links ([App Links](mobile.md#app-links)); it must be served as `application/json`.
 
 ## Languages
 

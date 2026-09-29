@@ -10,6 +10,12 @@ export const en = {
   /** 1 -> "1st", 2 -> "2nd", 11 -> "11th"... */
   lang: { label: "Language" },
   theme: { toLight: "Light mode", toDark: "Dark mode" },
+  androidApp: {
+    title: "Playing on Android?",
+    text: "The go-link Player app has the on-screen gamepad, controllers and voice. Open this link again with the app installed and type your PIN there.",
+    get: "Get the go-link Player app",
+    browser: "Or play right here in the browser.",
+  },
   ordinal: (n: number) => {
     const tens = n % 100;
     if (tens >= 11 && tens <= 13) return `${n}th`;

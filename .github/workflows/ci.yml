@@ -77,6 +77,27 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev
 
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/android
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      # The runner has the Android SDK (ANDROID_HOME); Gradle adds the
+      # platform and build tools it needs.
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew :core:test :app:assembleDebug --no-configuration-cache
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: android-reports
+          path: mobile/android/*/build/reports
+
   e2e:
     runs-on: ubuntu-latest
     needs: [device, web]
@@ -108,7 +129,8 @@ jobs:
         working-directory: frontend
       - run: npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
         working-directory: e2e
-      - run: npx playwright test
+      # The Android project needs an emulator: .github/workflows/android-e2e.yml.
+      - run: npx playwright test --project=web
         working-directory: e2e
       - uses: actions/upload-artifact@v7
         if: failure()

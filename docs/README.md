@@ -8,6 +8,7 @@
 | [The device](device.md) | Running the host app, flags, CLI, `device.json`, the native window, the local web panel, Docker |
 | [Emulator](emulator.md) | libretro, where ROMs come from, ROM validation, thumbnails, save states, core patches |
 | [The website](web.md) | Development, routes, languages, pages, mobile, design system |
+| [The Android app](mobile.md) | go-link Player: joining by QR code or code + PIN, App Links, the room, controllers, voice, permissions, building and signing |
 | [Networking](networking.md) | STUN/TURN from signaling, your own signaling server, direct connections through one UDP port |
 | [Security](security.md) | Signaling, device and website security, HTTP headers |
 | [Building](building.md) | Requirements, Makefile, macOS app, releases, tests, CI |

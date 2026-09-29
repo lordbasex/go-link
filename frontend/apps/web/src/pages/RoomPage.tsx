@@ -28,6 +28,7 @@ import { DEMO_DEVICE_NAME } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
 import { useJoinRoom, usePublicRoomMeta } from "../signal/useJoinRoom";
 import { useHostStream } from "../signal/useHostStream";
+import { AndroidAppCard } from "../components/AndroidAppCard";
 import { forgetRoomPass, roomPass, saveRoomPass } from "../signal/roomPasses";
 import { ServerHelp } from "../components/ServerSettings";
 import {
@@ -1439,6 +1440,7 @@ export function RoomPage() {
               </p>
             )}
             {!streaming && live.pin.needed && (
+              <div className="pin-stack">
               <PinPrompt
                 busy={live.pin.busy}
                 last={typedPin ? live.pin.last : null}
@@ -1448,6 +1450,8 @@ export function RoomPage() {
                   live.sendPin(pin);
                 }}
               />
+              {routeInvite && <AndroidAppCard />}
+              </div>
             )}
             {!streaming && !live.pin.needed && (
               <div className="video-placeholder">

@@ -8,6 +8,12 @@ export const pt: Messages = {
   brand: { name: "go", dot: "-", suffix: "link", home: "Início do go-link" },
   lang: { label: "Idioma" },
   theme: { toLight: "Modo claro", toDark: "Modo escuro" },
+  androidApp: {
+    title: "Jogando no Android?",
+    text: "O app go-link Player tem o controle na tela, os controles físicos e a voz. Abra este link de novo com o app instalado e digite seu PIN lá.",
+    get: "Baixe o app go-link Player",
+    browser: "Ou jogue aqui mesmo no navegador.",
+  },
   ordinal: (n: number) => `${n}º`,
   rec: {
     start: "Gravar a partida",

@@ -115,8 +115,9 @@ Before pushing Go code, in `backend-device/`: `gofmt -l .` (must print nothing),
 
 ```bash
 make e2e                                          # or, inside e2e/:
-npm test
-npx playwright test tests/<file> -g "<name>"      # a single test
+npm test                                          # the web project
+npm run test:android                              # the Android app on an emulator (docs/mobile.md)
+npx playwright test --project=web tests/<file> -g "<name>"   # a single test
 npm run report                                    # the HTML report
 ```
 
@@ -132,3 +133,5 @@ Rooms with real games are not covered, because they need the core and ROMs.
 | `web` | `npm ci`, typecheck, tests, build and `npm audit` |
 | `e2e` | Clones signalhub and runs the end-to-end tests, after the other jobs pass |
 | `secrets` | `gitleaks` over the whole history |
+
+`.github/workflows/android-e2e.yml` runs the Android app's end-to-end test on an emulator (KVM), weekly and by hand, not on every push.

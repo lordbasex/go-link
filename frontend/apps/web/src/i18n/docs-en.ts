@@ -227,6 +227,53 @@ export const docsEn: Docs = {
       ],
     },
     {
+      slug: "android",
+      group: "Playing",
+      title: "The Android app",
+      lead: "go-link Player is a native Android app to join a game as a player: the same rooms as the website, with the gamepad, controllers and voice.",
+      blocks: [
+        { t: "h2", id: "install", text: "Install it" },
+        {
+          t: "steps",
+          items: [
+            "On your Android phone or tablet (Android 8 or newer), open the [latest release](https://github.com/lordbasex/go-link/releases/latest) and download `go-link-player-vX.Y.Z.apk`.",
+            "Open the file and allow installing apps from your browser when Android asks (it is not in Play Store yet).",
+            "Open **go-link Player**. Nothing else is installed: the games run on the host's computer.",
+          ],
+        },
+        { t: "h2", id: "join", text: "Join a game" },
+        {
+          t: "steps",
+          items: [
+            "Tap **Scan QR code** and point the camera at the invitation's QR code, or tap **Type the room code** and type the 9-digit code, or copy the invitation link and tap **Paste the invitation link**.",
+            "Type the **6-digit PIN** the host gave you, accept the terms and tap **Join**.",
+            "With the app installed, an invitation link (`go-link.org/g/…`) opens the app straight on the PIN screen.",
+          ],
+        },
+        { t: "note", tone: "info", text: "The PIN is never in the link or the QR code, and every new join asks for it. If your connection drops during the game, the app gets back in by itself without asking again." },
+        { t: "h2", id: "play", text: "Playing" },
+        {
+          t: "list",
+          items: [
+            "Held upright the room is like a Game Boy (the picture on top, the gamepad below); sideways like a Switch (one half of the gamepad on each side).",
+            "The on-screen gamepad shows only the buttons the game uses, plus Coin and 1P, 2P…; the gamepad icon turns it off.",
+            "Bluetooth and USB controllers work too: each one is a player, and the on-screen gamepad steps aside while one is connected.",
+            "Chat and players (seats, queue, swapping controllers, silencing someone's voice) open from the buttons under the picture.",
+          ],
+        },
+        { t: "h2", id: "permissions", text: "Permissions" },
+        {
+          t: "list",
+          items: [
+            "**Camera**: only on the scanner screen, to read the QR code. Without it, type the code.",
+            "**Microphone**: asked the first time you turn on your microphone. Without it you can still play and listen.",
+            "**Nearby devices** (Android 12+): lets the app use Bluetooth headphones or earbuds for the sound and your voice. Wired headphones work without it; with no headphones, the sound plays on the loudspeaker.",
+          ],
+        },
+        { t: "p", text: "The app uses the official signaling server. If the host runs their own, set it in the app's **Settings** (only `wss://` addresses); links and QR codes never change it." },
+      ],
+    },
+    {
       slug: "voice-chat",
       group: "Playing",
       title: "Voice and chat",

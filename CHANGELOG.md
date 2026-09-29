@@ -4,6 +4,23 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (Android app)
+
+- **go-link Player**, a native Android app (Kotlin, Jetpack Compose, libwebrtc; `mobile/android/`) to join a game as a player: scan the invitation's QR code, type the 9-digit code or paste the link, then type the PIN and accept the terms. Every new join asks for the PIN; the device's return token only gets the app back in after a dropped connection.
+- In the room: the game's video and sound, chat (notices in the reader's language), voice with the other players (the microphone line answered sendonly, per-player silence), the on-screen gamepad from the game's controls (portrait Game Boy, landscape Switch), Bluetooth and USB controllers as local players, start buttons 1P…NP, seats, queue, spectating, swapping controllers and pause.
+- Headphones: sound and voice go to a Bluetooth, wired or USB headset when one is connected, otherwise to the loudspeaker. Camera, microphone and Bluetooth permissions are each asked when needed, after a short explanation.
+- Invitation links (`https://go-link.org/g/…`) open the app on the PIN screen (Android App Links). QR codes are read strictly: only a go-link invitation link or a 9-digit code, never a server or a PIN.
+- Settings: player name and your own signaling server (`wss://` only, tested before saving, with a way back to the official one).
+- An end-to-end test of the app on an Android emulator (`cd e2e && npm run test:android`, also weekly in `.github/workflows/android-e2e.yml`): join by link and by code, wrong and used PINs, picture, gamepad, game sound, chat, voice both ways and coming back after the network drops. Debug builds log room events and WebRTC counters (`GoLinkE2E`) and accept `ws://` to the development machine; release builds do neither.
+- Settings' "Test and save" saved no server at all (a server that answered was reported as silent); fixed.
+- The portable protocol and room logic live in a plain Kotlin module (`:core`) with unit tests, as the base for an iOS version. `make android-debug` and `VERSION=x.y.z make android-apk` build it; CI runs its tests and a debug build.
+
+### Added (website)
+
+- On Android, an invitation page (`/g/…`) shows a card to get the go-link Player app from the latest release, next to playing in the browser.
+- `/.well-known/assetlinks.json` for the app's App Links (the release key's fingerprint is still a placeholder, see `mobile/android/README.md`).
+- The user guide has an "Android app" page (install, join, play, permissions).
+
 ## [0.1.3] - 2026-09-28
 
 ### Added (website)

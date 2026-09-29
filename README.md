@@ -76,6 +76,7 @@ Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
 | **Windows 10/11** (x64 and ARM) | `go-link-vX.Y.Z-windows-amd64.zip` / `-arm64.zip` | Unzip and run `go-link-device.exe` |
 | **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
 | **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
+| **Android 8+** (players only) | `go-link-player-vX.Y.Z.apk` | **go-link Player**, the native app to join a game: scan the invitation's QR code or type the code, then the PIN. See [docs/mobile.md](docs/mobile.md) |
 | **Docker** | `ghcr.io/lordbasex/go-link-device` or `lordbasex/go-link-device` on Docker Hub (amd64, arm64) | `docker run … ghcr.io/lordbasex/go-link-device:latest`, see [docs/device.md](docs/device.md#docker); offline: `go-link-vX.Y.Z-docker.oci.tar.gz` and `docker load` |
 
 Every download is listed in `SHA256SUMS`. The emulator core is downloaded by the app on first use; ROMs are never included. Linking a device and joining a game ask you to accept the [terms of use](https://go-link.org/terms).
@@ -88,6 +89,7 @@ To see which version you run: the device shows it in its window (System) and wit
 |---|---|
 | [`backend-device/`](backend-device/) | The device: Go + cgo, libretro, Pion WebRTC, Fyne GUI |
 | [`frontend/`](frontend/) | The website: React + TypeScript |
+| [`mobile/android/`](mobile/android/) | go-link Player, the native Android app for players (Kotlin, Jetpack Compose, libwebrtc) |
 | [`e2e/`](e2e/) | End-to-end tests (Playwright) |
 | [`cores/mame2003-plus/`](cores/mame2003-plus/) | Optional save state patches for the emulator core |
 | [`docs/`](docs/) | The documentation |
@@ -137,7 +139,7 @@ go-link is built in the open, and every bit of help counts:
 
 How to use go-link (install, link, ROMs, inviting, controls, the app, network, troubleshooting): [go-link.org/docs](https://go-link.org/docs), in English, Spanish and Portuguese.
 
-For developers, start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, networking, security, building, deploying, the roadmap and the legal texts. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+For developers, start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, the Android app, networking, security, building, deploying, the roadmap and the legal texts. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## ROMs, Copyright and Legal Disclaimers
 

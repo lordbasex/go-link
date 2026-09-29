@@ -227,6 +227,53 @@ export const docsEs: Docs = {
       ],
     },
     {
+      slug: "android",
+      group: "Jugar",
+      title: "La app para Android",
+      lead: "go-link Player es una app nativa para Android para unirte a una partida como jugador: las mismas salas que en la web, con el mando, los controles y la voz.",
+      blocks: [
+        { t: "h2", id: "install", text: "Instálala" },
+        {
+          t: "steps",
+          items: [
+            "En tu teléfono o tablet Android (Android 8 o más nuevo), abre la [última versión](https://github.com/lordbasex/go-link/releases/latest) y descarga `go-link-player-vX.Y.Z.apk`.",
+            "Abre el archivo y permite instalar apps desde tu navegador cuando Android te lo pida (todavía no está en Play Store).",
+            "Abre **go-link Player**. No se instala nada más: los juegos corren en la computadora del anfitrión.",
+          ],
+        },
+        { t: "h2", id: "join", text: "Únete a una partida" },
+        {
+          t: "steps",
+          items: [
+            "Toca **Escanear código QR** y apunta la cámara al código QR de la invitación, o toca **Escribir el código de la sala** y escribe el código de 9 dígitos, o copia el link de la invitación y toca **Pegar el link de la invitación**.",
+            "Escribe el **PIN de 6 dígitos** que te dio el anfitrión, acepta los términos y toca **Entrar**.",
+            "Con la app instalada, un link de invitación (`go-link.org/g/…`) abre la app directo en la pantalla del PIN.",
+          ],
+        },
+        { t: "note", tone: "info", text: "El PIN nunca va en el link ni en el código QR, y cada vez que entras de nuevo se pide. Si tu conexión se corta durante la partida, la app vuelve a entrar sola sin pedirlo otra vez." },
+        { t: "h2", id: "play", text: "Jugar" },
+        {
+          t: "list",
+          items: [
+            "Con el teléfono vertical la sala es como un Game Boy (la imagen arriba, el mando abajo); horizontal, como una Switch (la mitad del mando a cada lado).",
+            "El mando en pantalla muestra solo los botones que usa el juego, más Moneda y 1P, 2P…; el ícono del mando lo apaga.",
+            "También funcionan los controles Bluetooth y USB: cada uno es un jugador, y el mando en pantalla se aparta mientras hay uno conectado.",
+            "El chat y los jugadores (puestos, fila, cambiar de mando, silenciar la voz de alguien) se abren con los botones debajo de la imagen.",
+          ],
+        },
+        { t: "h2", id: "permissions", text: "Permisos" },
+        {
+          t: "list",
+          items: [
+            "**Cámara**: solo en la pantalla del escáner, para leer el código QR. Sin ella, escribe el código.",
+            "**Micrófono**: se pide la primera vez que activas tu micrófono. Sin él puedes jugar y escuchar igual.",
+            "**Dispositivos cercanos** (Android 12+): permite usar auriculares Bluetooth para el sonido y tu voz. Los auriculares con cable funcionan sin este permiso; sin auriculares, el sonido sale por el altavoz.",
+          ],
+        },
+        { t: "p", text: "La app usa el servidor de señalización oficial. Si el anfitrión usa el suyo, configúralo en **Ajustes** de la app (solo direcciones `wss://`); los links y los códigos QR nunca lo cambian." },
+      ],
+    },
+    {
       slug: "voice-chat",
       group: "Jugar",
       title: "Voz y chat",

@@ -8,7 +8,7 @@
 #   make help         everything else
 
 .PHONY: all e2e release legal panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy hosting-help \
-	device device-windows device-windows-amd64 device-windows-arm64 clean
+	device device-windows device-windows-amd64 device-windows-arm64 clean android-debug android-apk
 
 # The darwin and linux device targets are pattern rules (device-darwin-%,
 # device-linux-%): make does not apply pattern rules to .PHONY targets, so
@@ -234,6 +234,21 @@ clean:
 	rm -rf $(DIST) $(WEB_DIST)
 	@echo "$(GREEN)✓ Clean$(NC)"
 
+# The Android player app (mobile/android). Signing comes from
+# mobile/android/keystore.properties or GOLINK_* environment variables.
+ANDROID_DIR := mobile/android
+
+android-debug:
+	cd $(ANDROID_DIR) && ./gradlew :core:test :app:assembleDebug
+
+android-apk:
+	cd $(ANDROID_DIR) && ./gradlew :core:test :app:assembleRelease -PversionName=$(VERSION)
+	mkdir -p dist/android
+	@f=$$(ls $(ANDROID_DIR)/app/build/outputs/apk/release/*.apk | head -1); \
+	  cp "$$f" dist/android/go-link-player-v$(VERSION).apk; \
+	  cp "$$f" dist/android/go-link-player.apk; \
+	  echo "$(GREEN)dist/android/go-link-player-v$(VERSION).apk$(NC) (from $$f)"
+
 help:
 	@echo "$(GREEN)go-link $(VERSION)$(NC)"
 	@echo ""
@@ -256,6 +271,10 @@ help:
 	@echo "  make panel                   rebuild the web panel that headless devices serve"
 	@echo "  make device-docker           the device as a Docker image (headless, panel on :7373)"
 	@echo "  make device-docker-oci       the image for amd64 + arm64, as an OCI archive"
+	@echo ""
+	@echo "$(YELLOW)Android app (go-link Player, needs JDK 17 + Android SDK):$(NC)"
+	@echo "  make android-debug           core tests + debug APK (mobile/android)"
+	@echo "  VERSION=0.1.0 make android-apk  signed release APK in dist/android/ (see mobile/android/README.md)"
 	@echo ""
 	@$(MAKE) --no-print-directory hosting-help
 	@echo ""
