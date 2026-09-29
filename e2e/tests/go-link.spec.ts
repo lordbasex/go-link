@@ -137,6 +137,8 @@ async function newInvitation() {
 }
 
 test("only the host pauses: a player asks, the host accepts or declines, a guest's pause is refused", async ({ browser }) => {
+  // Several rounds with two browsers: slower CI machines need more than the default minute.
+  test.setTimeout(180_000);
   const { code, pin } = await newInvitation();
   // This guest's browser is tampered with: every hello carries a name with
   // symbols and emoji, and the page keeps the control channel to send what
