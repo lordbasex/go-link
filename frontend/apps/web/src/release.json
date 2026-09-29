@@ -1,13 +1,13 @@
 {
-  "version": "v0.1.2",
+  "version": "v0.1.3",
   "assets": {
-    "docker.oci.tar.gz": 78812253,
-    "linux-amd64-headless.tar.gz": 8404180,
-    "linux-amd64.tar.gz": 17473923,
-    "linux-arm64-headless.tar.gz": 7652590,
-    "linux-arm64.tar.gz": 16252960,
-    "macos-universal.dmg": 35230907,
-    "windows-amd64.zip": 17323037,
-    "windows-arm64.zip": 16119991
+    "docker.oci.tar.gz": 78856962,
+    "linux-amd64-headless.tar.gz": 8425291,
+    "linux-amd64.tar.gz": 17492356,
+    "linux-arm64-headless.tar.gz": 7671343,
+    "linux-arm64.tar.gz": 16274781,
+    "macos-universal.dmg": 35241118,
+    "windows-amd64.zip": 17343438,
+    "windows-arm64.zip": 16141190
   }
 }
