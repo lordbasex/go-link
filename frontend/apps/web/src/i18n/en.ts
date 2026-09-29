@@ -792,6 +792,7 @@ export const en = {
       { title: "Your games stay home", text: "ROMs never leave your computer: only the picture and the sound travel." },
       { title: "Record and share", text: "The host records the game with everyone's voices and exports an MP4 ready for WhatsApp, with the mix set by ear. Screenshots in one tap." },
       { title: "A console in your pocket", text: "On a phone the room becomes a handheld: a Game Boy held upright, a Switch held sideways, with the controls out of the way." },
+      { title: "An app for Android", text: "go-link Player: scan the invitation's QR code with the camera, type the PIN and play, with chat, voice, the on-screen pad or a real controller." },
     ],
     flowEyebrow: "Under the hood",
     flowTitle: "Only the host has the games",

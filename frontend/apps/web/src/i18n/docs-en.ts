@@ -236,7 +236,7 @@ export const docsEn: Docs = {
         {
           t: "steps",
           items: [
-            "On your Android phone or tablet (Android 8 or newer), open the [latest release](https://github.com/lordbasex/go-link/releases/latest) and download `go-link-player-vX.Y.Z.apk`.",
+            "On your Android phone or tablet (Android 8 or newer), open the [latest release](https://github.com/lordbasex/go-link/releases/latest) and download `go-link-vX.Y.Z-android.apk`.",
             "Open the file and allow installing apps from your browser when Android asks (it is not in Play Store yet).",
             "Open **go-link Player**. Nothing else is installed: the games run on the host's computer.",
           ],

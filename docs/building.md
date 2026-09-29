@@ -73,6 +73,7 @@ On macOS the device ships as one universal **`go-link.app`** (Intel and Apple si
 | `go-link-v0.1.0-linux-amd64.tar.gz` / `-arm64.tar.gz` | Linux desktops |
 | `go-link-v0.1.0-linux-amd64-headless.tar.gz` / `-arm64-headless.tar.gz` | Raspberry Pi and servers (no window, web panel) |
 | `go-link-v0.1.0-docker.oci.tar.gz` (skipped with `DOCKER=0`) | The Docker image (amd64 and arm64), for `docker load` without internet; it loads as `go-link-device:v0.1.0`. Publishing the release also runs `.github/workflows/docker.yml`, which pushes the same image to `ghcr.io/lordbasex/go-link-device` (`:v0.1.0` and `:latest`) |
+| `go-link-v0.1.0-android.apk` (skipped with `ANDROID=0`) | **go-link Player** for Android, signed with the release key (`ANDROID_SIGNING`, see [mobile.md](mobile.md)) |
 | `SHA256SUMS` | To verify the downloads |
 
 The release also writes `frontend/apps/web/src/release.json` (version and download sizes) for the website's downloads; commit it with `Casks/go-link.rb` and deploy the website.

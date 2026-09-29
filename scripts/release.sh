@@ -16,7 +16,9 @@
 #
 # Other knobs: REPO=owner/name (default lordbasex/go-link), SKIP_BUILD=1
 # (pack what is already in dist/device), DOCKER=0 (skip the Docker image, built by default as
-# an OCI archive), GITHUB_RELEASE=0 (only the files).
+# an OCI archive), ANDROID=0 (skip the signed Android APK, built by default:
+# it needs ANDROID_SIGNING, see mobile/android/README.md), GITHUB_RELEASE=0
+# (only the files).
 #
 # Outputs: dist/release/v<version>/
 set -euo pipefail
@@ -49,6 +51,9 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   fi
   if [[ "${DOCKER:-1}" == "1" ]]; then
     make -C "$ROOT" device-docker-oci VERSION="$TAG"
+  fi
+  if [[ "${ANDROID:-1}" == "1" ]]; then
+    make -C "$ROOT" android-apk VERSION="$TAG"
   fi
 fi
 
@@ -86,6 +91,14 @@ done
 oci="$ROOT/dist/docker/go-link-device-$TAG.oci.tar"
 if [[ -f "$oci" ]]; then
   gzip -c "$oci" > "$OUT/$NAME-docker.oci.tar.gz"
+fi
+
+# Android: the go-link Player app, signed with the release key.
+apk="$ROOT/dist/android/go-link-player-$TAG.apk"
+if [[ -f "$apk" ]]; then
+  cp "$apk" "$OUT/$NAME-android.apk"
+else
+  echo "  (no Android APK: ANDROID=0 or not built)"
 fi
 
 # The licenses also go as their own files (the .dmg has them inside the app).

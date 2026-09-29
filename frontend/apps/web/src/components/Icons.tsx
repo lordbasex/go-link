@@ -48,6 +48,12 @@ export const MonitorIcon = ({ size = 22 }: P) => (
     <path d="M8 20h8M12 16v4" />
   </svg>
 );
+export const PhoneIcon = ({ size = 20 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <rect x="6" y="2" width="12" height="20" rx="2.5" />
+    <path d="M11 18h2" />
+  </svg>
+);
 export const ChevronLeftIcon = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
     <path d="M15 18l-6-6 6-6" />

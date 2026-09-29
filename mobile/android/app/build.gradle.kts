@@ -8,10 +8,12 @@ plugins {
 }
 
 // Release signing comes from a gitignored keystore.properties next to this
-// project, or from environment variables (CI). Nothing secret is committed;
-// without them the release APK is built unsigned.
+// project (or the file GOLINK_SIGNING points to, kept outside the repository),
+// or from environment variables (CI). Nothing secret is committed; without
+// them the release APK is built unsigned.
 val signing = Properties().apply {
-    val file = rootProject.file("keystore.properties")
+    val file = System.getenv("GOLINK_SIGNING")?.takeIf { it.isNotBlank() }?.let { File(it) }
+        ?: rootProject.file("keystore.properties")
     if (file.isFile) file.inputStream().use { load(it) }
 }
 

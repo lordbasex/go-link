@@ -786,6 +786,7 @@ export const pt: Messages = {
       { title: "Seus jogos ficam em casa", text: "As ROMs nunca saem do seu computador: só viajam a imagem e o som." },
       { title: "Grave e compartilhe", text: "O anfitrião grava a partida com as vozes de todos e exporta um MP4 pronto para o WhatsApp, com a mixagem ajustada de ouvido. Capturas de tela num toque." },
       { title: "Um console no bolso", text: "No celular a sala vira um portátil: um Game Boy em pé, um Switch deitado, com os controles fora do caminho." },
+      { title: "Um app para Android", text: "go-link Player: leia o QR code do convite com a câmera, digite o PIN e jogue, com chat, voz, o controle na tela ou um controle de verdade." },
     ],
     flowEyebrow: "Por dentro",
     flowTitle: "Só o anfitrião tem os jogos",

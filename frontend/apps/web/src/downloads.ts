@@ -49,6 +49,11 @@ export function armDownloadFor(p: Platform): Download | null {
   return asset(FILES[p].arm);
 }
 
+/** The go-link Player app for Android (a signed APK), null when this release has none. */
+export function androidDownload(): Download | null {
+  return asset("android.apk");
+}
+
 /**
  * The visitor's computer, to preselect its download. null on phones and
  * tablets (go-link runs on a computer).

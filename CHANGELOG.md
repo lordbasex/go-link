@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-29
+
 ### Added (Android app)
 
 - **go-link Player**, a native Android app (Kotlin, Jetpack Compose, libwebrtc; `mobile/android/`) to join a game as a player: scan the invitation's QR code, type the 9-digit code or paste the link, then type the PIN and accept the terms. Every new join asks for the PIN; the device's return token only gets the app back in after a dropped connection.
@@ -13,6 +15,7 @@ All notable changes to go-link. Newest first.
 - Settings: player name and your own signaling server (`wss://` only, tested before saving, with a way back to the official one).
 - An end-to-end test of the app on an Android emulator (`cd e2e && npm run test:android`, also weekly in `.github/workflows/android-e2e.yml`): join by link and by code, wrong and used PINs, picture, gamepad, game sound, chat, voice both ways and coming back after the network drops. Debug builds log room events and WebRTC counters (`GoLinkE2E`) and accept `ws://` to the development machine; release builds do neither.
 - Settings' "Test and save" saved no server at all (a server that answered was reported as silent); fixed.
+- Releases publish the app signed with the release key as `go-link-vX.Y.Z-android.apk` (`make release` builds it; `ANDROID=0` skips it; the key stays outside the repository, `ANDROID_SIGNING`). The invitation page on Android downloads it directly, `/.well-known/assetlinks.json` carries the key's fingerprint so invitation links open the app, and the landing lists the app among the features.
 - The portable protocol and room logic live in a plain Kotlin module (`:core`) with unit tests, as the base for an iOS version. `make android-debug` and `VERSION=x.y.z make android-apk` build it; CI runs its tests and a debug build.
 
 ### Added (website)

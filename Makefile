@@ -235,19 +235,33 @@ clean:
 	@echo "$(GREEN)✓ Clean$(NC)"
 
 # The Android player app (mobile/android). Signing comes from
-# mobile/android/keystore.properties or GOLINK_* environment variables.
+# mobile/android/keystore.properties, the properties file ANDROID_SIGNING
+# names (kept outside the repository, e.g. set in deploy/local/hosting.mk) or
+# GOLINK_* environment variables. android-apk refuses an unsigned APK.
 ANDROID_DIR := mobile/android
+ANDROID_SIGNING ?=
+# versionCode grows with every release: 0.1.4 -> 104, 1.2.3 -> 10203.
+ANDROID_VERSION_CODE = $(shell echo "$(VERSION)" | sed 's/^v//' | awk -F. '{print $$1*10000 + $$2*100 + $$3}')
+# Gradle needs JDK 17: Homebrew's openjdk@17 when present (CI sets its own).
+ANDROID_JAVA_HOME ?= $(firstword $(wildcard /usr/local/opt/openjdk@17 /opt/homebrew/opt/openjdk@17))
+ANDROID_ENV = $(if $(ANDROID_JAVA_HOME),JAVA_HOME=$(ANDROID_JAVA_HOME))
+APKSIGNER = $(lastword $(sort $(wildcard $(HOME)/Library/Android/sdk/build-tools/*/apksigner)))
 
 android-debug:
-	cd $(ANDROID_DIR) && ./gradlew :core:test :app:assembleDebug
+	cd $(ANDROID_DIR) && $(ANDROID_ENV) ./gradlew :core:test :app:assembleDebug
 
 android-apk:
-	cd $(ANDROID_DIR) && ./gradlew :core:test :app:assembleRelease -PversionName=$(VERSION)
+	@test -n "$(VERSION)" || { echo "Set VERSION, e.g. VERSION=0.1.4"; exit 1; }
+	rm -rf $(ANDROID_DIR)/app/build/outputs/apk/release
+	cd $(ANDROID_DIR) && $(ANDROID_ENV) GOLINK_SIGNING="$(ANDROID_SIGNING)" ./gradlew :core:test :app:assembleRelease \
+	  -PversionName=$(patsubst v%,%,$(VERSION)) -PversionCode=$(ANDROID_VERSION_CODE)
 	mkdir -p dist/android
 	@f=$$(ls $(ANDROID_DIR)/app/build/outputs/apk/release/*.apk | head -1); \
-	  cp "$$f" dist/android/go-link-player-v$(VERSION).apk; \
+	  case "$$f" in *unsigned*) echo "The APK is unsigned: set ANDROID_SIGNING (see mobile/android/README.md)"; exit 1;; esac; \
+	  if [ -n "$(APKSIGNER)" ]; then "$(APKSIGNER)" verify --print-certs "$$f" | grep "SHA-256" || exit 1; fi; \
+	  cp "$$f" dist/android/go-link-player-v$(patsubst v%,%,$(VERSION)).apk; \
 	  cp "$$f" dist/android/go-link-player.apk; \
-	  echo "$(GREEN)dist/android/go-link-player-v$(VERSION).apk$(NC) (from $$f)"
+	  echo "$(GREEN)dist/android/go-link-player-v$(patsubst v%,%,$(VERSION)).apk$(NC) (from $$f)"
 
 help:
 	@echo "$(GREEN)go-link $(VERSION)$(NC)"

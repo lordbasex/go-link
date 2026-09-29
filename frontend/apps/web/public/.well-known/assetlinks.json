@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "org.golink.player",
-      "sha256_cert_fingerprints": ["REPLACE:WITH:THE:SHA256:FINGERPRINT:OF:THE:RELEASE:KEYSTORE"]
+      "sha256_cert_fingerprints": ["D6:F6:B0:CF:7A:40:92:D0:EA:7A:2D:2E:CA:79:9E:64:85:63:DC:86:33:EA:A3:7C:8C:12:E6:81:A8:EC:15:A7"]
     }
   }
 ]

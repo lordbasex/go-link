@@ -76,7 +76,7 @@ Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
 | **Windows 10/11** (x64 and ARM) | `go-link-vX.Y.Z-windows-amd64.zip` / `-arm64.zip` | Unzip and run `go-link-device.exe` |
 | **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
 | **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
-| **Android 8+** (players only) | `go-link-player-vX.Y.Z.apk` | **go-link Player**, the native app to join a game: scan the invitation's QR code or type the code, then the PIN. See [docs/mobile.md](docs/mobile.md) |
+| **Android 8+** (players only) | `go-link-vX.Y.Z-android.apk` | **go-link Player**, the native app to join a game: scan the invitation's QR code or type the code, then the PIN. See [docs/mobile.md](docs/mobile.md) |
 | **Docker** | `ghcr.io/lordbasex/go-link-device` or `lordbasex/go-link-device` on Docker Hub (amd64, arm64) | `docker run … ghcr.io/lordbasex/go-link-device:latest`, see [docs/device.md](docs/device.md#docker); offline: `go-link-vX.Y.Z-docker.oci.tar.gz` and `docker load` |
 
 Every download is listed in `SHA256SUMS`. The emulator core is downloaded by the app on first use; ROMs are never included. Linking a device and joining a game ask you to accept the [terms of use](https://go-link.org/terms).

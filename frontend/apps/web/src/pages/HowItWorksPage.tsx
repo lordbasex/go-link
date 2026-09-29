@@ -14,6 +14,7 @@ import {
   LockIcon,
   MicIcon,
   MonitorIcon,
+  PhoneIcon,
   PlayIcon,
   RecordIcon,
 } from "../components/Icons";
@@ -28,6 +29,7 @@ const FEATURE_ICONS: ReactNode[] = [
   <MonitorIcon key="home" size={20} />,
   <RecordIcon key="record" size={18} />,
   <ControllerIcon key="console" />,
+  <PhoneIcon key="android" />,
 ];
 
 /**

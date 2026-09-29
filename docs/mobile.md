@@ -6,7 +6,7 @@
 |---|---|
 | Package | `org.golink.player` |
 | Android | 8.0 (API 26) or newer; built against API 37, targets API 36 |
-| Distribution | An APK attached to the GitHub releases (`go-link-player-vX.Y.Z.apk`), not in Play Store yet |
+| Distribution | An APK attached to the GitHub releases (`go-link-vX.Y.Z-android.apk`), not in Play Store yet |
 | Build, sign, install | [`mobile/android/README.md`](../mobile/android/README.md) |
 
 ## Layout
@@ -64,7 +64,7 @@ Each one is asked when needed, after a short explanation screen:
 
 ## App Links
 
-The app declares `https://go-link.org/g/*` with `autoVerify`. Android trusts it only when `https://go-link.org/.well-known/assetlinks.json` lists the app's signing certificate. The file is in `frontend/apps/web/public/.well-known/assetlinks.json` with a **placeholder** fingerprint; fill it from the release keystore before a web deploy (steps in the [app README](../mobile/android/README.md#app-links-fingerprint)). The host must serve it as `application/json`, without redirects. Until it is verified, Android asks which app should open the link.
+The app declares `https://go-link.org/g/*` with `autoVerify`. Android trusts it only when `https://go-link.org/.well-known/assetlinks.json` lists the app's signing certificate. The file is in `frontend/apps/web/public/.well-known/assetlinks.json` with the release key's fingerprint; if the key ever changes, update it before the next web deploy (steps in the [app README](../mobile/android/README.md#app-links-fingerprint)). The host must serve it as `application/json`, without redirects. Until it is verified, Android asks which app should open the link.
 
 On Android, the website's `/g/:invite` page shows a small card under the PIN form (`components/AndroidAppCard.tsx`) linking to the latest release, with the browser as the other way to play.
 
@@ -103,4 +103,4 @@ Without a device in `adb devices` the project is skipped; `npm test` runs only t
 
 ## Releases
 
-`VERSION=x.y.z make android-apk` runs the tests and builds the signed release APK into `dist/android/`. Attach it to the GitHub release (`gh release upload vX.Y.Z dist/android/go-link-player-vX.Y.Z.apk`); the website's card and the guide point to the latest release. `scripts/release.sh` does not build it yet.
+`VERSION=x.y.z make android-apk` runs the tests and builds the signed release APK into `dist/android/`. `VERSION=x.y.z make release` builds it too (`ANDROID=0` skips it) and publishes it as `go-link-vX.Y.Z-android.apk`; the website's Android card downloads that file and the guide points to the latest release. The release key lives outside the repository (`ANDROID_SIGNING`, see the [app README](../mobile/android/README.md)).
