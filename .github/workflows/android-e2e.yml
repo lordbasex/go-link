@@ -1,0 +1,85 @@
+# Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+#
+# The go-link Player Android app end to end: an Android emulator (KVM on
+# the Linux runner) joins the e2e stack's test pattern room (its own
+# signalhub, headless device and website) as a guest. It is slow, so it
+# runs weekly and by hand, not on every push (ci.yml runs the web e2e).
+
+name: android-e2e
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SIGNALING_DIR: ${{ github.workspace }}/.signaling
+    steps:
+      - uses: actions/checkout@v7
+      # signalhub lives in its own repository.
+      - uses: actions/checkout@v7
+        with:
+          repository: lordbasex/signalhub
+          path: .signaling
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend-device/go.mod
+          cache-dependency-path: |
+            backend-device/go.sum
+            .signaling/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - name: C libraries (encoders)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libvpx-dev libopus-dev
+      - name: Debug APK (logs GoLinkE2E, accepts ws:// to the computer)
+        working-directory: mobile/android
+        run: ./gradlew :core:test :app:assembleDebug --no-configuration-cache
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm ci --no-audit --no-fund && npx playwright install --with-deps chromium
+        working-directory: e2e
+      - name: Android e2e on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          # Audio stays on: the test checks that the game sound is decoded.
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -no-boot-anim
+          working-directory: e2e
+          script: npm run test:android
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: android-e2e
+          path: |
+            e2e/playwright-report
+            e2e/test-results

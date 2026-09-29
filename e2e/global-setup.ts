@@ -77,6 +77,8 @@ export default async function globalSetup() {
       "--server-signaling", `ws://127.0.0.1:${PORTS.signal}/ws`,
       "--panel", `127.0.0.1:${PORTS.panel}`,
       "--web-url", `http://localhost:${PORTS.web}`,
+      // The Android test reads the device's input log lines (npm run test:android).
+      ...(process.env.E2E_DEVICE_DEBUG === "1" ? ["--debug"] : []),
     ],
     { env: { ...process.env, HOME: join(state, "home") }, stdio: ["ignore", out, out], detached: true },
   );

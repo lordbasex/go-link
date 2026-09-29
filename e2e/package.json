@@ -4,7 +4,8 @@
   "description": "End-to-end tests: a real browser against a real signalhub, device and website",
   "type": "module",
   "scripts": {
-    "test": "playwright test",
+    "test": "playwright test --project=web",
+    "test:android": "E2E_DEVICE_DEBUG=1 playwright test --project=android",
     "report": "playwright show-report"
   },
   "devDependencies": {
