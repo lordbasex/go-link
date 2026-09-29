@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import http2 from "node:http2";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 
 // Drives the go-link Player Android app on an emulator or a phone with adb
@@ -55,6 +56,7 @@ export interface UiNode {
   cls: string;
   checked: boolean;
   enabled: boolean;
+  pkg: string;
   bounds: [number, number, number, number];
 }
 
@@ -73,8 +75,48 @@ function decodeEntities(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** The screen's accessibility tree, as UiAutomator sees it. */
+/** The screen's accessibility tree, as UiAutomator sees it, after closing system dialogs. */
 export function dump(): UiNode[] {
+  let nodes = rawDump();
+  // A slow emulator can show "... isn't responding" or another app's crash
+  // over the app; close those and look again (a few times at most).
+  for (let i = 0; i < 3 && dismissSystemDialog(nodes); i++) {
+    spawnSync("sleep", ["1"]);
+    nodes = rawDump();
+  }
+  return nodes;
+}
+
+/** The app's name as Android shows it in system dialogs. */
+const APP_LABEL = "go-link Player";
+
+/**
+ * Handles a system dialog on screen: an ANR ("X isn't responding") gets
+ * Wait, another app's crash ("X has stopped", "X keeps stopping") gets
+ * Close. A crash of this app is never hidden: it fails the test with the
+ * dialog's text. Returns true when it tapped something.
+ */
+export function dismissSystemDialog(nodes: UiNode[]): boolean {
+  const title = nodes.find((n) => n.id === "android:id/alertTitle")?.text ?? "";
+  const wait = nodes.find((n) => n.id === "android:id/aerr_wait");
+  const close = nodes.find((n) => n.id === "android:id/aerr_close");
+  if (!wait && !close) return false;
+  const ours = title.includes(APP_LABEL) || title.includes(PACKAGE);
+  if (/isn.t responding/i.test(title) && wait) {
+    console.log(`android: system dialog "${title}": Wait`);
+    tap(wait);
+    return true;
+  }
+  if (ours) throw new Error(`Android: the app crashed: "${title}"`);
+  if (close) {
+    console.log(`android: system dialog "${title}": Close`);
+    tap(close);
+    return true;
+  }
+  return false;
+}
+
+function rawDump(): UiNode[] {
   // uiautomator refuses while the UI is busy animating; try a few times.
   for (let i = 0; i < 5; i++) {
     const r = spawnSync(adbPath(), ["exec-out", "uiautomator", "dump", "/dev/tty"], { encoding: "utf8", timeout: 30_000 });
@@ -92,6 +134,7 @@ export function dump(): UiNode[] {
           cls: attr(tag, "class"),
           checked: attr(tag, "checked") === "true",
           enabled: attr(tag, "enabled") !== "false",
+          pkg: attr(tag, "package"),
           bounds: b ? [Number(b[1]), Number(b[2]), Number(b[3]), Number(b[4])] : [0, 0, 0, 0],
         });
       }
@@ -374,4 +417,208 @@ export interface StatsLine {
   in: Record<string, TrackStats>;
   out: { mic?: { packets?: number; bytes?: number }; mic_level?: number };
   path?: string;
+}
+
+/**
+ * Installs the APK under test. A release build of the app on the device
+ * (another signing key, a higher version code) is uninstalled first.
+ */
+export function installApp(apk: string) {
+  try {
+    adb("install", "-r", apk);
+  } catch (e) {
+    const msg = String((e as { stderr?: unknown }).stderr ?? e);
+    if (!/INSTALL_FAILED_(VERSION_DOWNGRADE|UPDATE_INCOMPATIBLE)|signatures do not match/i.test(msg)) throw e;
+    console.log("android: replacing another build of the app (release key or newer version)");
+    adb("uninstall", PACKAGE);
+    adb("install", apk);
+  }
+}
+
+/** The average color of a screen rectangle (RGB 0-255). */
+export function averageColor(rect: [number, number, number, number]): [number, number, number] {
+  const { width, height, px } = rawScreen();
+  const [l, t, r, b] = [Math.max(0, rect[0]), Math.max(0, rect[1]), Math.min(width, rect[2]), Math.min(height, rect[3])];
+  let n = 0;
+  const sum: [number, number, number] = [0, 0, 0];
+  for (let y = t; y < b; y++) {
+    for (let x = l; x < r; x++) {
+      const i = (y * width + x) * 4;
+      sum[0] += px[i]!;
+      sum[1] += px[i + 1]!;
+      sum[2] += px[i + 2]!;
+      n++;
+    }
+  }
+  return n ? [sum[0] / n, sum[1] / n, sum[2] / n] : [0, 0, 0];
+}
+
+/** Holds a finger at a point for ms without waiting; resolves when it lifts. */
+export function holdAsync(at: [number, number], ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const p = spawn(adbPath(), ["shell", `input swipe ${at[0]} ${at[1]} ${at[0]} ${at[1]} ${ms}`], { stdio: "ignore" });
+    p.on("exit", () => resolve());
+  });
+}
+
+// --- The emulator's own controls (gRPC) --------------------------------------
+//
+// The Android emulator serves gRPC (EmulatorController in the SDK's
+// emulator/lib/emulator_controller.proto) on localhost with a token that it
+// writes to a discovery file; it moves the virtual scene's camera. The one
+// message used here is encoded by hand, so no gRPC library is needed.
+// (injectAudio, to feed the emulated microphone, crashed emulator 37.1.11
+// on macOS every time it was tried, so the microphone test does not use it.)
+
+/** One running emulator, from its discovery file (pid_<pid>.ini). */
+export interface EmulatorInfo {
+  pid: number;
+  grpcPort: number;
+  token: string;
+  /** The emulator's command line (qemu binary first). */
+  cmdline: string[];
+  launcherDir: string;
+}
+
+function discoveryDirs(): string[] {
+  const dirs = [join(homedir(), "Library", "Caches", "TemporaryItems", "avd", "running")];
+  if (process.env.XDG_RUNTIME_DIR) dirs.push(join(process.env.XDG_RUNTIME_DIR, "avd", "running"));
+  if (typeof process.getuid === "function") dirs.push(`/run/user/${process.getuid()}/avd/running`);
+  dirs.push(join(tmpdir(), `android-${userInfo().username}`, "avd", "running"), join(homedir(), ".android", "avd", "running"));
+  return dirs;
+}
+
+function parseCmdline(s: string): string[] {
+  return [...s.matchAll(/"((?:[^"\\]|\\.)*)"|(\S+)/g)].map((m) => m[1] ?? m[2]!);
+}
+
+/** The emulator behind an adb serial (emulator-5554), or null for a phone or when unknown. */
+export function emulatorInfo(serial: string): EmulatorInfo | null {
+  const port = serial.match(/^emulator-(\d+)$/)?.[1];
+  if (!port) return null;
+  for (const dir of discoveryDirs()) {
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir)) {
+      if (!/^pid_\d+\.ini$/.test(f)) continue;
+      const ini = readFileSync(join(dir, f), "utf8");
+      const get = (k: string) => ini.match(new RegExp(`^${k.replace(/\./g, "\\.")}=(.*)$`, "m"))?.[1]?.trim() ?? "";
+      if (get("port.serial") !== port) continue;
+      const pid = Number(f.slice(4, -4));
+      try {
+        process.kill(pid, 0); // still running (signal 0 only checks)
+      } catch {
+        continue;
+      }
+      return { pid, grpcPort: Number(get("grpc.port")), token: get("grpc.token"), cmdline: parseCmdline(get("cmdline")), launcherDir: get("launcher.dir") };
+    }
+  }
+  return null;
+}
+
+function varint(n: number): Buffer {
+  const out: number[] = [];
+  let v = n;
+  while (v > 0x7f) {
+    out.push((v & 0x7f) | 0x80);
+    v = Math.floor(v / 128);
+  }
+  out.push(v);
+  return Buffer.from(out);
+}
+
+/** A protobuf field: varint (wire type 0) for numbers, length-delimited (2) for buffers. */
+function field(num: number, value: number | Buffer): Buffer {
+  if (typeof value === "number") return Buffer.concat([varint(num << 3), varint(value)]);
+  return Buffer.concat([varint((num << 3) | 2), varint(value.length), value]);
+}
+
+function grpcFrame(msg: Buffer): Buffer {
+  const head = Buffer.alloc(5);
+  head.writeUInt32BE(msg.length, 1);
+  return Buffer.concat([head, msg]);
+}
+
+export const PhysicalType = { POSITION: 0, ROTATION: 1 } as const;
+
+export class EmulatorGrpc {
+  private readonly info: EmulatorInfo;
+
+  constructor(info: EmulatorInfo) {
+    this.info = info;
+  }
+
+  private request(method: string): { session: http2.ClientHttp2Session; req: http2.ClientHttp2Stream; done: Promise<void> } {
+    const session = http2.connect(`http://127.0.0.1:${this.info.grpcPort}`);
+    session.on("error", () => undefined);
+    const req = session.request({
+      ":method": "POST",
+      ":path": `/android.emulation.control.EmulatorController/${method}`,
+      "content-type": "application/grpc",
+      te: "trailers",
+      authorization: `Bearer ${this.info.token}`,
+    });
+    req.resume();
+    const done = new Promise<void>((resolve, reject) => {
+      let status = "";
+      let message = "";
+      const take = (h: http2.IncomingHttpHeaders) => {
+        if (h["grpc-status"] !== undefined) status = String(h["grpc-status"]);
+        if (h["grpc-message"] !== undefined) message = decodeURIComponent(String(h["grpc-message"]));
+      };
+      req.on("response", take);
+      req.on("trailers", take);
+      req.on("error", reject);
+      req.on("close", () => {
+        session.close();
+        if (status === "0") resolve();
+        else reject(new Error(`emulator gRPC ${method}: status ${status || "none"} ${message}`));
+      });
+    });
+    return { session, req, done };
+  }
+
+  /** setPhysicalModel: moves (POSITION, meters) or turns (ROTATION, degrees) the virtual device at once. */
+  async setPhysicalModel(type: number, values: [number, number, number]) {
+    const floats = Buffer.alloc(12);
+    values.forEach((v, i) => floats.writeFloatLE(v, i * 4));
+    const msg = Buffer.concat([field(1, type), field(3, field(1, floats)), field(4, 1 /* STEP */)]);
+    const { req, done } = this.request("setPhysicalModel");
+    req.end(grpcFrame(msg));
+    await done;
+  }
+}
+
+/** The emulator's launcher and its arguments, from a discovery file's command line. */
+export function emulatorArgs(info: EmulatorInfo): string[] {
+  return info.cmdline.slice(1);
+}
+
+/** Stops an emulator through its console and waits for its process to end. */
+export async function stopEmulator(info: EmulatorInfo) {
+  adb("emu", "kill");
+  const end = Date.now() + 60_000;
+  while (Date.now() < end) {
+    try {
+      process.kill(info.pid, 0);
+    } catch {
+      return;
+    }
+    await sleep(500);
+  }
+  throw new Error(`the emulator (pid ${info.pid}) did not stop`);
+}
+
+/** Starts an emulator in the background with these arguments and waits until Android has booted. */
+export async function startEmulator(launcherDir: string, args: string[], log: string) {
+  const out = openSync(log, "a");
+  const p = spawn(join(launcherDir, "emulator"), args, { stdio: ["ignore", out, out], detached: true });
+  closeSync(out);
+  p.unref();
+  const end = Date.now() + 300_000;
+  while (Date.now() < end) {
+    await sleep(2000);
+    const r = spawnSync(adbPath(), ["shell", "getprop", "sys.boot_completed"], { encoding: "utf8", timeout: 10_000 });
+    if ((r.stdout ?? "").trim() === "1") return;
+  }
+  throw new Error(`the emulator did not boot (log: ${log})`);
 }

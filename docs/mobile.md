@@ -73,7 +73,8 @@ On Android, the website's `/g/:invite` page shows a small card under the PIN for
 - `./gradlew :core:test`: protocol parsing, input packets against vectors produced by the website's `encodeInput`, invitation parsing (hostile QR codes), signaling URLs, ICE servers, the terms version, room passes, and a full `RoomClient` visit with a fake signalhub and a fake peer (join, PIN, offer/answer, candidates, control, input repeats, drop and return with the token, refused token, host leaving).
 - `./gradlew :app:assembleDebug` builds the app. CI runs both (`android` job in `.github/workflows/ci.yml`).
 - `cd e2e && npm run test:android`: the app end to end on an emulator or phone (below).
-- Not covered by automated tests: a real game with ROMs (the e2e uses the test pattern room), the camera, real headsets and controllers.
+- `cd e2e && npm run test:android:camera`: the QR scanner with the emulator's virtual camera (opt-in, below).
+- Not covered by automated tests: a real game with ROMs (the e2e uses the test pattern room), a real camera and microphone, real headsets and controllers.
 
 ### End-to-end test on an emulator
 
@@ -87,9 +88,14 @@ On Android, the website's `/g/:invite` page shows a small card under the PIN for
 6. voice both ways: the owner's fake microphone reaches the app's `voice-pN` track; with `RECORD_AUDIO` granted (`pm grant`), the app's microphone reaches the owner's `voice-pN` track (packets flowing; the emulator's microphone may be silence);
 7. airplane mode on and off: the app comes back to its seat with the return token, never asking the PIN;
 8. a wrong PIN and an already used PIN are refused (`used`), then a new invitation's PIN gets in;
-9. joins with the 9-digit code typed on the home screen.
+9. joins with the 9-digit code typed on the home screen;
+10. the start buttons: with two seated players the pad shows exactly 1P and 2P; holding each one reaches the device (`buttons=start1`, `start2` in its log) and lights that player lamp of the test card while held (the lamp's color is read from the screen where `pkg/testpattern` draws it);
+11. seats and the queue: the app leaves, three browser guests (headless Chromium, each with its own invitation, through the website's Join a game form) take P2 to P4, and the app joining next waits in the queue ("You are #1 in the queue", `me=queue:1`) while it still gets the picture; when a guest leaves, the app takes exactly the freed seat; **Just watch** makes it a spectator (listed under Watching) and **Join the queue** seats it again;
+12. swapping seats: the app asks a guest (`swap_seat`, "Waiting for P*n* to answer") and the guest accepts on the website (`swap_answer`); then the guest asks from its players capsule and the app accepts the offer over the picture. Both sides' seats are checked (the app's `GoLinkE2E` state, the guest's own avatar in the capsule).
 
 The app's debug build logs its room events and WebRTC counters (inbound/outbound RTP per track, audio levels, the candidate pair) once a second with the tag `GoLinkE2E` (`app/src/debug/.../E2eProbe.kt`; the release build has an empty probe in `app/src/release`), and the test reads them with `adb logcat -s GoLinkE2E`. Audio is proven with these counters: `screenrecord` records video only. The screen is recorded in chunks (`screenrecord`, 175 s each) and a screenshot is saved per step, all in `e2e/test-results/android/` (and copied to `E2E_EVIDENCE_DIR` when set).
+
+The harness (`e2e/android.ts`) closes system dialogs that a slow emulator shows over the app while it waits for a node: "*X* isn't responding" gets **Wait**, another app's crash gets **Close**, and a crash of go-link Player fails the test with the dialog's text. A release build on the device (another key, a higher version code) is uninstalled before the debug build is installed; reinstall the release APK afterwards if you need it.
 
 ICE with the emulator works without TURN or `--announce`: the emulator sends its checks to the device's host candidate through the emulator's NAT, and the device learns a peer-reflexive candidate (`GoLinkE2E` shows `prflx->host`).
 
@@ -99,7 +105,21 @@ emulator -avd <name> -no-window -no-snapshot -gpu swiftshader_indirect &   # kee
 cd ../../e2e && npm run test:android
 ```
 
+The emulator's microphone stays silence: `-allow-host-audio` would use the computer's real microphone, and the emulator's gRPC `injectAudio` (to feed it a tone) crashed emulator 37.1.11 on macOS every time it was tried, so the voice check proves packets from the app, not their level.
+
 Without a device in `adb devices` the project is skipped; `npm test` runs only the web project. `ANDROID_SERIAL` picks a device, `ANDROID_APK` another APK, and `ANDROID_SIGNAL_URL` another server (a phone can use `adb reverse tcp:8191 tcp:8191` and `ws://127.0.0.1:8191/ws`). `.github/workflows/android-e2e.yml` runs it weekly and by hand on an emulator with KVM. `E2E_CHROMIUM_SINGLE_PROCESS=1` runs Chromium as one process, only for a local macOS session where Chromium cannot start.
+
+### The QR scanner on the emulator's camera
+
+`cd e2e && npm run test:android:camera` (Playwright project `android-camera`, `e2e/tests/android-camera.spec.ts`) needs the Android emulator, not a phone. The emulator's `virtualscene` back camera renders a 3D room with a poster on a wall (its place is in the SDK's `emulator/resources/Toren1BD.posters`); `adb emu virtualscene-image wall <png>` changes the poster's picture, and the emulator's gRPC (`setPhysicalModel`, with the token from its discovery file `pid_<pid>.ini`) moves the virtual device in front of it. The test:
+
+1. restarts the emulator with its own command line plus `-camera-back virtualscene` when it does not already use it (`adb emu kill`, then the `emulator` launcher from the discovery file), and at the end starts it again exactly as it was;
+2. links the owner, opens the test pattern room, points the app at the test signalhub and makes an invitation;
+3. draws two QR codes with the website's encoder (`qrcode-generator`, level M, as `QrCode.tsx`): the website's own link on the test stack (not a go-link invitation for the app) and the same invitation as `https://go-link.org/g/<invite>`;
+4. opens **Scan QR code** from home, taps **Allow** on the explanation and **While using the app** on the system's camera dialog; the scanner sees the first code and refuses it ("That QR code is not a go-link invitation.");
+5. puts the real invitation on the wall: the scanner reads it, the PIN screen opens with that invitation, and the PIN and the terms join a seat.
+
+Its screenshots and screen recording go to `e2e/test-results/android-camera/` (and `E2E_EVIDENCE_DIR`).
 
 ## Releases
 

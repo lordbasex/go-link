@@ -42,9 +42,10 @@ An emulator (or a phone) in `adb devices` and the debug APK, then from the repos
 ```bash
 cd mobile/android && ./gradlew :app:assembleDebug
 cd ../../e2e && npm run test:android
+npm run test:android:camera     # opt-in: the QR scanner on the emulator's virtual camera
 ```
 
-It starts its own signalhub, device and website, points the app at `ws://10.0.2.2:8191/ws` (debug builds accept `ws://` to the development machine), and checks joining by link and by code, PIN errors, the picture, the gamepad, game sound, chat, voice both ways and reconnecting after the network drops. Debug builds log room events and WebRTC counters with the tag `GoLinkE2E` (`adb logcat -s GoLinkE2E`); release builds do not. Details: [docs/mobile.md](../../docs/mobile.md#end-to-end-test-on-an-emulator).
+It starts its own signalhub, device and website, points the app at `ws://10.0.2.2:8191/ws` (debug builds accept `ws://` to the development machine), and checks joining by link and by code, PIN errors, the picture, the gamepad, game sound, chat, voice both ways, reconnecting after the network drops, the start buttons, the queue and spectating with the seats full of browser guests, and swapping seats. The camera test restarts the emulator with `-camera-back virtualscene`, shows it a QR code of a real invitation and starts it again as it was. Debug builds log room events and WebRTC counters with the tag `GoLinkE2E` (`adb logcat -s GoLinkE2E`); release builds do not. Details: [docs/mobile.md](../../docs/mobile.md#end-to-end-test-on-an-emulator).
 
 ## Release build and signing
 

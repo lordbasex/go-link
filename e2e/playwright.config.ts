@@ -7,9 +7,11 @@ import { PORTS } from "./ports";
 // the developer's (signalhub, device, rooms) is touched. The steps depend on
 // each other (pair, then reconnect, then invite...), so they run in order.
 //
-// Three projects: "web" (npm test), "android" (npm run test:android: the
+// Four projects: "web" (npm test), "android" (npm run test:android: the
 // go-link Player app on an emulator or phone through adb, skipped when no
-// device is attached) and "shots" (npm run shots: the landing page's
+// device is attached), "android-camera" (npm run test:android:camera: the
+// app scans a QR code with the emulator's virtual camera; it restarts the
+// emulator, so it is opt-in) and "shots" (npm run shots: the landing page's
 // screenshots, with an invented ROM library). E2E_CHROMIUM_SINGLE_PROCESS=1 runs Chromium as one
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
@@ -38,9 +40,10 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "web", testIgnore: /(android|shots)\.spec\.ts$/ },
+    { name: "web", testIgnore: /(android|android-camera|shots)\.spec\.ts$/ },
     // One long story on a real Android device: minutes, not seconds.
-    { name: "android", testMatch: /android\.spec\.ts$/, timeout: 240_000 },
+    { name: "android", testMatch: /\/android\.spec\.ts$/, timeout: 240_000 },
+    { name: "android-camera", testMatch: /android-camera\.spec\.ts$/, timeout: 300_000 },
     // The landing page's screenshots (npm run shots), never part of npm test.
     { name: "shots", testMatch: /shots\.spec\.ts$/, timeout: 1_800_000 },
   ],

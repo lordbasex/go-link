@@ -118,6 +118,7 @@ Before pushing Go code, in `backend-device/`: `gofmt -l .` (must print nothing),
 make e2e                                          # or, inside e2e/:
 npm test                                          # the web project
 npm run test:android                              # the Android app on an emulator (docs/mobile.md)
+npm run test:android:camera                       # its QR scanner on the emulator's virtual camera (restarts the emulator)
 npm run shots                                     # the landing page's screenshots (below)
 npx playwright test --project=web tests/<file> -g "<name>"   # a single test
 npm run report                                    # the HTML report

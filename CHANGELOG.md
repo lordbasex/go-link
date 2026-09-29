@@ -13,6 +13,9 @@ All notable changes to go-link. Newest first.
 ### Added (development)
 
 - `cd e2e && npm run shots` makes the landing's screenshots again in English, Spanish and Portuguese: the device's window from Fyne's test driver (`TestShots`, `GOLINK_SHOTS`), the website on the e2e stack with an invented ROM library (`backend-device/cmd/shotseed`, `internal/shots`) and the Player app on an Android emulator. The computer's name, user name, local paths and addresses are masked, and a picture that still shows them fails.
+- The Android end-to-end test covers more of the room: the 1P…NP start buttons (the device's input log and the test card's player lamps), the queue when the four seats are taken by browser guests (the app waits as #1, takes the freed seat, watches and comes back) and swapping seats with a browser guest asked from either side.
+- `cd e2e && npm run test:android:camera` (opt-in): the app scans a QR code of a real invitation with the emulator's virtual camera (the poster on the virtual room's wall, the device moved in front of it over the emulator's gRPC), refuses a foreign one and joins with the PIN. It restarts the emulator with `-camera-back virtualscene` when needed and starts it again as it was.
+- The Android harness closes system dialogs that a slow emulator shows over the app ("isn't responding": Wait; another app's crash: Close) and fails with the text when the app itself crashes; a release build on the device is replaced by the debug build. The weekly workflow waits for the launcher to settle before the test.
 
 ## [0.1.4] - 2026-09-29
 

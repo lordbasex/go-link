@@ -75,7 +75,14 @@ jobs:
           # Audio stays on: the test checks that the game sound is decoded.
           emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -no-boot-anim
           working-directory: e2e
-          script: npm run test:android
+          # A fresh emulator keeps working for a while after boot (the
+          # launcher can show "isn't responding"): wait until the launcher
+          # has the focus, then give it a quiet moment. The harness also
+          # closes system dialogs of other apps while it waits for nodes.
+          script: |
+            adb shell 'for i in $(seq 1 90); do dumpsys window | grep -q "mCurrentFocus=.*[Ll]auncher" && break; sleep 2; done'
+            sleep 20
+            npm run test:android
       - uses: actions/upload-artifact@v7
         if: always()
         with:

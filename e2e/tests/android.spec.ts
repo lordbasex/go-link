@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as A from "../android";
+import { freshApp, invite as ownerInvite, joinAsBrowserGuest, joinWithPin, ownerOpensTestPattern, ownSeat, pointAppAt, trackedContext, wakeStage } from "../android-owner";
 import { PORTS } from "../ports";
-import { pairingCode, stack } from "../stack";
+import { stack } from "../stack";
 
 // The go-link Player Android app against the test stack (its own signalhub,
 // headless device and website). The owner is a Chromium page that links the
@@ -32,6 +33,9 @@ test.describe.configure({ mode: "serial" });
 
 let owner: BrowserContext;
 let page: Page;
+let browserRef: Browser;
+/** Browser guests (their own invitations) that fill the seats. */
+const guests: { context: BrowserContext; page: Page }[] = [];
 let probe: A.Probe;
 let recorder: A.ScreenRecorder;
 let shot = 0;
@@ -54,39 +58,13 @@ test.beforeAll(async ({ browser }) => {
   if (!existsSync(APK)) throw new Error(`no APK at ${APK}: run ./gradlew :app:assembleDebug in mobile/android`);
   if (process.env.ANDROID_SERIAL === undefined) process.env.ANDROID_SERIAL = serial;
   mkdirSync(OUT, { recursive: true });
-  A.adb("install", "-r", APK);
-  // A clean app: no server, no terms, no passes, no permissions.
-  A.shell(`am force-stop ${A.PACKAGE}`);
-  A.shell(`pm clear ${A.PACKAGE}`);
-  // Skip the headphones explainer (Bluetooth); the microphone is granted later on purpose.
-  A.shell(`pm grant ${A.PACKAGE} android.permission.BLUETOOTH_CONNECT || true`);
-  A.shell("cmd connectivity airplane-mode disable || true");
-  A.shell("settings put system screen_off_timeout 1800000");
-  // A fresh emulator shows the one-time "Viewing full screen" hint over the
-  // app the first time it goes full screen; mark it as already seen.
-  A.shell("settings put secure immersive_mode_confirmations confirmed");
-  A.shell("input keyevent KEYCODE_WAKEUP");
-  A.shell("wm dismiss-keyguard || true");
+  freshApp(APK);
   probe = new A.Probe();
   probe.start();
   recorder = new A.ScreenRecorder();
   recorder.start();
-
-  owner = await browser.newContext();
-  // Keep every RTCPeerConnection so the owner's WebRTC counters can be read.
-  await owner.addInitScript(() => {
-    const Native = window.RTCPeerConnection;
-    const all: RTCPeerConnection[] = [];
-    (window as unknown as { __pcs: RTCPeerConnection[] }).__pcs = all;
-    const Patched = function (this: unknown, ...args: ConstructorParameters<typeof RTCPeerConnection>) {
-      const pc = new Native(...args);
-      all.push(pc);
-      return pc;
-    } as unknown as typeof RTCPeerConnection;
-    Patched.prototype = Native.prototype;
-    Object.setPrototypeOf(Patched, Native);
-    window.RTCPeerConnection = Patched;
-  });
+  browserRef = browser;
+  owner = await trackedContext(browser);
   page = await owner.newPage();
 });
 
@@ -99,6 +77,7 @@ test.afterAll(async () => {
     // the device went away
   }
   probe?.stop();
+  for (const g of guests) await g.context.close().catch(() => undefined);
   const videos = recorder ? await recorder.stop(OUT) : [];
   await owner?.close();
   // Optional copy of the evidence (screen recording and screenshots).
@@ -110,29 +89,8 @@ test.afterAll(async () => {
   console.log(`android evidence: ${OUT} (${videos.length} recording chunk(s))`);
 });
 
-/** Opens the owner's Invite dialog: a fresh one-person PIN for the room. */
-async function invite(): Promise<{ invite: string; code: string; pin: string }> {
-  await page.getByRole("button", { name: "Invite", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: /Invite to/ });
-  await expect(dialog.locator(".invite-code").nth(1)).toHaveText(/^\d{6}$/);
-  const url = await dialog.locator(".invite-url").innerText();
-  const code = (await dialog.locator(".invite-code").first().innerText()).replace(/\s/g, "");
-  const pin = (await dialog.locator(".invite-code").nth(1).innerText()).trim();
-  await dialog.getByRole("button", { name: "Got it" }).click();
-  const token = url.split("/g/")[1]!.trim();
-  expect(token).toMatch(/^[A-Za-z0-9_-]{22}$/);
-  expect(code).toMatch(/^\d{9}$/);
-  return { invite: token, code, pin };
-}
-
-/** Fills the app's PIN form (the invitation is already on it) and joins. */
-async function joinWithPin(pin: string) {
-  await A.fill({ id: "join-pin" }, pin);
-  A.hideKeyboard();
-  const terms = await A.waitFor({ id: "terms-check" });
-  if (!terms.checked) A.tap(terms);
-  await A.tapOn({ id: "join-button" });
-}
+/** A fresh one-person invitation from the owner's Invite dialog. */
+const invite = () => ownerInvite(page);
 
 /** Waits until the app streams from a seat; returns its port. */
 async function waitSeated(from: number): Promise<number> {
@@ -153,10 +111,7 @@ async function leaveRoom() {
 
 /** Clicks a control on the owner's video dock, waking the auto-hidden overlays first. */
 async function clickOnStage(target: ReturnType<Page["locator"]>) {
-  const stage = page.locator(".video-stage");
-  const box = await stage.boundingBox();
-  if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
-  await expect(stage).not.toHaveClass(/is-idle/);
+  await wakeStage(page);
   await target.click();
 }
 
@@ -182,33 +137,11 @@ async function ownerInbound(stream: string): Promise<number> {
 }
 
 test("the owner links the device and opens the test pattern room", async () => {
-  await page.goto("/device");
-  const code = pairingCode();
-  expect(code).toMatch(/^\d{9}$/);
-  await page.locator("#d1").evaluate((el, text) => {
-    const data = new DataTransfer();
-    data.setData("text", text);
-    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
-  }, code);
-  await page.getByRole("checkbox", { name: /I have read and accept/ }).check();
-  await page.getByRole("button", { name: "Link", exact: true }).click();
-  await expect(page.getByText("Linked · live")).toBeVisible();
-  await page.getByRole("link", { name: "Test pattern" }).click();
-  await expect(page).toHaveURL(/\/r\/[0-9a-f-]{36}$/);
-  await expect
-    .poll(() => page.evaluate(() => (document.querySelector("video.video") as HTMLVideoElement | null)?.videoWidth ?? 0), { timeout: 30_000 })
-    .toBeGreaterThan(0);
+  await ownerOpensTestPattern(page);
 });
 
 test("the app is pointed at the local signalhub from Settings (debug build only)", async () => {
-  A.shell(`am start -n ${A.PACKAGE}/.MainActivity`);
-  await A.tapOn({ id: "home-settings" }, 60_000);
-  await A.fill({ id: "settings-server-url" }, SIGNAL_URL);
-  A.hideKeyboard();
-  await A.tapOn({ id: "settings-server-save" });
-  // Saved only after the server answered hello.
-  await A.waitFor({ text: "Saved: new rooms use this server." }, 20_000);
-  await A.waitFor({ text: `Custom signaling server: ${SIGNAL_URL}` });
+  await pointAppAt(SIGNAL_URL);
   snap("settings-local-server");
   A.shell("input keyevent 4");
   await A.waitFor({ id: "home-code" });
@@ -386,4 +319,168 @@ test("joins with the 9-digit code typed on the home screen", async () => {
   await A.waitFor({ id: "room-seat", text: `You are P${appPort}` });
   await expect.poll(() => appIn("video", "frames"), { timeout: 30_000 }).toBeGreaterThan(30);
   snap("code-join-streaming");
+});
+
+/** Seats taken in the app's latest room state (its GoLinkE2E "seats" summary). */
+function seatedCount(): number {
+  return (String(probe.lastUi()?.seats ?? "").match(/P\d=(?!-)\S/g) ?? []).length;
+}
+
+/**
+ * The picture's rectangle in portrait: the room's screen box spans the
+ * width, sits right above the dock (4 dp of padding above its buttons) and
+ * has the picture's aspect (the test card is 640x480, 4:3), so the video
+ * fills it. The video itself (a TextureView) is not in the UiAutomator tree.
+ */
+async function videoRect(): Promise<[number, number, number, number]> {
+  const mic = await A.waitFor({ id: "dock-mic" });
+  const density = Number(A.shell("wm density").match(/(\d+)\s*$/)?.[1] ?? 420) / 160;
+  const { width } = A.rawScreen();
+  const bottom = mic.bounds[1] - Math.round(4 * density);
+  return [0, bottom - Math.round((width * 3) / 4), width, bottom];
+}
+
+/**
+ * Where the test card draws a player lamp (1-4), as a screen rectangle
+ * inside the picture. The geometry follows pkg/testpattern (drawCard: a
+ * circle of radius 0.448 h; the gamepad box; drawPad: the lamps between
+ * the shoulders). The picture is stretched to its display aspect, so the
+ * whole frame maps onto the rectangle.
+ */
+function lampRect(video: [number, number, number, number], port: number): [number, number, number, number] {
+  const [l, t, r, b] = video;
+  const w = r - l;
+  const h = b - t;
+  const k = h / w; // frame height / width
+  const radius = 0.448;
+  const padX = 0.5 - 0.74 * radius * k;
+  const padW = 1.48 * radius * k;
+  const padY = 0.5 - radius + 0.615 * 2 * radius;
+  const padH = 0.27 * 2 * radius;
+  const unit = padH / 8;
+  const cx = l + (padX + (0.38 + (port - 1) * 0.08) * padW) * w;
+  const cy = t + (padY + 0.08 * padH + unit / 2) * h;
+  const half = Math.max(2, Math.round((unit * h) / 4));
+  return [Math.round(cx) - half, Math.round(cy) - half, Math.round(cx) + half, Math.round(cy) + half];
+}
+
+/** The lamp's lit color is the design accent (orange); off is dark gray. */
+const lampLit = ([r, g, b]: [number, number, number]) => r > 150 && r - b > 70 && g > 90;
+
+test("the 1P..NP start buttons reach the device and light the test card's player lamps", async () => {
+  // One start button per seated player (startButtonCount), like the website.
+  const seated = seatedCount();
+  expect(seated).toBeGreaterThanOrEqual(2);
+  const pills = A.dump()
+    .filter((n) => /^pad-start-\d$/.test(n.id))
+    .map((n) => n.id)
+    .sort();
+  expect(pills).toEqual(Array.from({ length: Math.min(4, seated) }, (_, i) => `pad-start-${i + 1}`));
+  const video = await videoRect();
+  for (const port of [1, 2]) {
+    const offset = deviceLog().length;
+    const rect = lampRect(video, port);
+    const before = A.averageColor(rect);
+    const lifted = A.holdAsync(A.center(await A.waitFor({ id: `pad-start-${port}` })), 3000);
+    await sleep(1500);
+    const during = A.averageColor(rect);
+    snap(`start-${port}P-held`);
+    await lifted;
+    await expect
+      .poll(() => [...deviceLog(offset).matchAll(/msg=input peer_id=\S+ player=0 buttons=(\S+)/g)].some((m) => m[1]!.split("+").includes(`start${port}`)), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+    await sleep(1000);
+    const after = A.averageColor(rect);
+    const fmt = (c: number[]) => c.map((v) => Math.round(v)).join(",");
+    console.log(`${port}P: lamp ${port} before ${fmt(before)}, held ${fmt(during)}, after ${fmt(after)}`);
+    expect(lampLit(during)).toBe(true);
+    expect(lampLit(after)).toBe(false);
+  }
+});
+
+test("with the four seats taken the app waits in the queue, takes the freed seat, and can just watch and come back", async () => {
+  await leaveRoom();
+  // The owner holds P1; three browser guests with their own invitations take the rest.
+  for (let i = 0; i < 3; i++) {
+    const inv = await invite();
+    guests.push(await joinAsBrowserGuest(browserRef, inv.code, inv.pin));
+  }
+  await expect.poll(() => page.locator(".players-capsule .capsule-avatar.is-free").count(), { timeout: 60_000 }).toBe(0);
+  for (const g of guests) await expect.poll(() => ownSeat(g.page), { timeout: 30_000 }).toBeGreaterThan(0);
+
+  const inv = await invite();
+  usedPins.push(inv.pin);
+  let mark = probe.mark();
+  A.shell(`am start -a android.intent.action.VIEW -d https://go-link.org/g/${inv.invite} ${A.PACKAGE}`);
+  await A.waitFor({ id: "join-pin" });
+  await joinWithPin(inv.pin);
+  await probe.waitFor((e) => e.ev === "ui" && e.phase === "STREAMING" && e.me === "queue:1", 60_000, mark);
+  await A.waitFor({ id: "room-seat", text: "You are #1 in the queue" });
+  expect(seatedCount()).toBe(4);
+  // The queue still watches the picture.
+  await expect.poll(() => appIn("video", "frames"), { timeout: 30_000 }).toBeGreaterThan(30);
+  snap("queue");
+
+  // A guest leaves: the head of the queue takes the freed seat.
+  const leaving = guests.shift()!;
+  const freed = await ownSeat(leaving.page);
+  mark = probe.mark();
+  await leaving.context.close();
+  appPort = await waitSeated(mark);
+  expect(appPort).toBe(freed);
+  await A.waitFor({ id: "room-seat", text: `You are P${appPort}` });
+  snap("seated-from-queue");
+
+  // Just watch: the seat is given back; then join again.
+  await A.tapOn({ id: "dock-players" });
+  mark = probe.mark();
+  await A.tapOn({ text: "Just watch" });
+  await probe.waitFor((e) => e.ev === "ui" && e.me === "spectator", 20_000, mark);
+  await A.waitFor({ text: "Watching" });
+  await A.waitFor({ text: / \(you\)$/ });
+  await A.waitFor({ text: "Join the queue" });
+  snap("spectate");
+  mark = probe.mark();
+  await A.tapOn({ text: "Join the queue" });
+  appPort = await waitSeated(mark);
+  A.shell("input keyevent 4"); // close the sheet
+  await A.waitFor({ id: "room-seat", text: `You are P${appPort}` });
+  snap("back-from-spectating");
+});
+
+test("seats are swapped between the app and a browser guest, asked from either side", async () => {
+  const g = guests[0]!;
+  const guestPort = await ownSeat(g.page);
+  const myPort = appPort;
+  expect(guestPort).toBeGreaterThan(0);
+  expect(guestPort).not.toBe(myPort);
+
+  // The app asks (swap_seat); the guest accepts on the website (swap_answer).
+  await A.tapOn({ id: "dock-players" });
+  await A.tapOn({ text: `Swap with P${guestPort}` });
+  await A.waitFor({ text: `Waiting for P${guestPort} to answer` });
+  snap("swap-asked-by-app");
+  const offer = g.page.getByRole("alertdialog", { name: /wants to swap controllers/ });
+  await expect(offer).toBeVisible();
+  let mark = probe.mark();
+  await offer.getByRole("button", { name: "Swap", exact: true }).click();
+  await probe.waitFor((e) => e.ev === "ui" && e.me === `P${guestPort}`, 20_000, mark);
+  await expect.poll(() => ownSeat(g.page)).toBe(myPort);
+  A.shell("input keyevent 4"); // close the sheet
+  await A.waitFor({ id: "room-seat", text: `You are P${guestPort}` });
+
+  // The guest asks back from the players capsule; the app accepts over the picture.
+  await wakeStage(g.page);
+  await g.page.getByRole("button", { name: new RegExp(`^P${guestPort} · `) }).click();
+  await g.page.getByRole("menuitem", { name: `Swap controllers: go to P${guestPort}` }).click();
+  await A.waitFor({ text: /asks to swap controllers/ });
+  snap("swap-offer-on-app");
+  mark = probe.mark();
+  await A.tapOn({ text: "Accept" });
+  await probe.waitFor((e) => e.ev === "ui" && e.me === `P${myPort}`, 20_000, mark);
+  await expect.poll(() => ownSeat(g.page)).toBe(guestPort);
+  await A.waitFor({ id: "room-seat", text: `You are P${myPort}` });
+  appPort = myPort;
 });
