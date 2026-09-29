@@ -2,7 +2,8 @@
 /* Design tokens. Use these variables; never repeat the raw values. */
 :root,
 :root[data-theme="light"] .video-stage,
-:root[data-theme="light"] .test-controller-stage {
+:root[data-theme="light"] .test-controller-stage,
+:root[data-theme="light"] .stage-tokens {
   color-scheme: dark;
   --color-bg: #0e1016;
   --color-video: #05060a;

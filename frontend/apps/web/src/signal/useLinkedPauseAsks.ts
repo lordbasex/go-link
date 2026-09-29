@@ -58,10 +58,20 @@ export function useLinkedPauseAsks(): {
     });
   }, [demo, hostLink, onDeviceMessage]);
 
-  // A fresh device_status is the truth again.
+  // A fresh device_status is the truth again for the game rooms it lists.
+  // It carries no asks for the test pattern room, so those live ones stay
+  // until they are answered, withdrawn or expire.
   useEffect(() => {
-    setAdded(new Map());
-    setGone(new Set());
+    const now = Date.now();
+    const keep = (id: string) => id === "test";
+    setAdded((cur) => {
+      const next = new Map([...cur].filter(([, v]) => keep(v.id) && !(v.ask.expiresAt && v.ask.expiresAt <= now)));
+      return next.size === cur.size ? cur : next;
+    });
+    setGone((cur) => {
+      const next = new Set([...cur].filter((k) => keep(k.split("\u0000")[0] ?? "")));
+      return next.size === cur.size ? cur : next;
+    });
   }, [status]);
 
   const asks = useMemo(() => {

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   DEFAULT_KEYBOARD,
   MAX_LOCAL_PLAYERS,
@@ -11,6 +11,10 @@ import { t } from "../i18n";
 import type { ControllerInfo } from "../signal/useHostStream";
 import type { RemapTarget } from "./RemapDialog";
 import { ControllerArt, familyOf } from "./ControllerArt";
+import { Select } from "./ui/Select";
+
+/** P1..P4, for the keyboard's player. */
+const PLAYER_OPTIONS = Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => ({ value: String(i), label: `P${i + 1}` }));
 
 /** Short label of an action, shown on keys. */
 const ACTION_LABEL: Record<InputAction, string> = {
@@ -160,6 +164,7 @@ export function GamepadView({
   onPlayer?: (slot: string, player: number | null) => void;
   onRemap?: () => void;
 }) {
+  const uid = `gp-player-${useId()}`;
   return (
     <figure className="gp">
       <ControllerArt
@@ -173,25 +178,22 @@ export function GamepadView({
           {controller.name}
         </span>
         {onPlayer && (
-          <label className="gp-player">
-            {t.controls.playsAs}
-            <select
+          <span className="gp-player">
+            <label id={`${uid}-label`} htmlFor={uid}>
+              {t.controls.playsAs}
+            </label>
+            <Select
+              id={uid}
+              labelId={`${uid}-label`}
+              className="select-sm"
               value={controller.auto ? "auto" : String(controller.player)}
-              onChange={(e) =>
-                onPlayer(
-                  controller.slot,
-                  e.target.value === "auto" ? null : Number(e.target.value),
-                )
-              }
-            >
-              <option value="auto">{t.controls.auto}</option>
-              {Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => (
-                <option key={i} value={i}>
-                  P{i + 1}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(v) => onPlayer(controller.slot, v === "auto" ? null : Number(v))}
+              options={[
+                { value: "auto", label: t.controls.auto },
+                ...Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => ({ value: String(i), label: `P${i + 1}` })),
+              ]}
+            />
+          </span>
         )}
         {onRemap && (
           <button
@@ -261,19 +263,19 @@ export function ControlsPanel({
         ) : (
           <span className="strong">{t.controls.keyboardTitle}</span>
         )}
-        <label className="kb-player small muted">
-          {t.controls.keyboardPlaysAs}
-          <select
-            value={keyboardPlayer}
-            onChange={(e) => onKeyboardPlayer(Number(e.target.value))}
-          >
-            {Array.from({ length: MAX_LOCAL_PLAYERS }, (_, i) => (
-              <option key={i} value={i}>
-                P{i + 1}
-              </option>
-            ))}
-          </select>
-        </label>
+        <span className="kb-player small muted">
+          <label id="kb-player-label" htmlFor="kb-player">
+            {t.controls.keyboardPlaysAs}
+          </label>
+          <Select
+            id="kb-player"
+            labelId="kb-player-label"
+            className="select-sm"
+            value={String(keyboardPlayer)}
+            onChange={(v) => onKeyboardPlayer(Number(v))}
+            options={PLAYER_OPTIONS}
+          />
+        </span>
       </div>
       {view === "gamepads" ? (
         <div className="gp-list">

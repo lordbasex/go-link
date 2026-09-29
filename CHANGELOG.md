@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Changed (website)
+
+- **The site's own dropdowns**: the Microphone and Output lists in the room's Volume and voice settings, "Plays as" and "Keyboard plays as" in the controls panel and the ROMs tab's Sort no longer open the browser's system-drawn list. A new `Select` (a capsule button with a listbox in the site's colors, in both themes) shows a check on the current choice, stays inside the window (opening upwards when needed, also inside the voice popover, the console drawer and dialogs) and works with the keyboard like a native select: arrows, Home and End, typing to jump, Enter or Space to pick, Escape to close without closing the popover around it. Touch screens get 44 px options.
+
 ## [0.1.5] - 2026-09-29
 
 ### Added (device and website)

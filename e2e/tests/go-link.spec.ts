@@ -78,8 +78,28 @@ test("the test pattern room streams video", async () => {
   await page.getByRole("button", { name: "Light mode" }).first().click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expectAccessible(page, "owner's room (light)");
+  await expectOutputList(page, "light");
   await page.getByRole("button", { name: "Dark mode" }).first().click();
+  await expectOutputList(page, "dark");
 });
+
+/** The room's Output list (the site's Select) opens inside the voice settings, passes the checker and closes alone. */
+async function expectOutputList(p: Page, theme: string) {
+  await p.mouse.move(400, 300);
+  await p.getByRole("button", { name: "Volume and voice" }).click();
+  const settings = p.getByRole("dialog", { name: /voice/i });
+  const output = settings.getByRole("combobox", { name: "Output" });
+  await output.click();
+  await expect(p.getByRole("listbox", { name: "Output" })).toBeVisible();
+  await expect(p.getByRole("option", { name: "System default" })).toHaveAttribute("aria-selected", "true");
+  await expectAccessible(p, `room output list (${theme})`);
+  await p.keyboard.press("Escape");
+  await expect(p.getByRole("listbox")).toBeHidden();
+  await expect(settings).toBeVisible();
+  await expect(output).toBeFocused();
+  await p.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
+}
 
 test("an invitation lets one person in; the same PIN refuses the next one", async ({ browser }) => {
   await page.getByRole("button", { name: "Invite", exact: true }).click();

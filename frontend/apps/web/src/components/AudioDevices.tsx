@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useState } from "react";
 import { t } from "../i18n";
+import { Select } from "./ui/Select";
 import { InfoIcon, MicIcon, SoundOnIcon } from "./Icons";
 import { isAppleMobile, playTestTone, type AudioDevices as Devices } from "../signal/useAudioDevices";
 
@@ -39,25 +40,21 @@ export function AudioDevicesBlock({
       </div>
       {showMic && (
         <div className="audio-field">
-          <label htmlFor="audio-in" className="audio-label">
+          <label htmlFor="audio-in" id="audio-in-label" className="audio-label">
             <MicIcon size={16} />
             {t.audio.microphone}
           </label>
-          <span className="audio-select-wrap">
-            <select
-              id="audio-in"
-              className="audio-select"
-              value={devices.micId}
-              onChange={(e) => devices.setMic(e.target.value)}
-            >
-              <option value="">{t.audio.systemDefault}</option>
-              {inputs.map((d, i) => (
-                <option key={d.id} value={d.id}>
-                  {d.label || t.audio.micN(i + 1)}
-                </option>
-              ))}
-            </select>
-          </span>
+          <Select
+            id="audio-in"
+            labelId="audio-in-label"
+            className="audio-select"
+            value={devices.micId}
+            onChange={devices.setMic}
+            options={[
+              { value: "", label: t.audio.systemDefault },
+              ...inputs.map((d, i) => ({ value: d.id, label: d.label || t.audio.micN(i + 1) })),
+            ]}
+          />
           {hidden && <span className="small faint">{t.audio.namesHint}</span>}
           {micLevel !== null && (
             <div className="audio-test-meter">
@@ -74,26 +71,22 @@ export function AudioDevicesBlock({
       <div className="audio-field">
         {devices.outputSupported ? (
           <>
-            <label htmlFor="audio-out" className="audio-label">
+            <label htmlFor="audio-out" id="audio-out-label" className="audio-label">
               <SoundOnIcon size={16} />
               {t.audio.output}
             </label>
             <div className="audio-row">
-              <span className="audio-select-wrap">
-                <select
-                  id="audio-out"
-                  className="audio-select"
-                  value={devices.outId}
-                  onChange={(e) => devices.setOut(e.target.value)}
-                >
-                  <option value="">{t.audio.systemDefault}</option>
-                  {outputs.map((d, i) => (
-                    <option key={d.id} value={d.id}>
-                      {d.label || t.audio.outputN(i + 1)}
-                    </option>
-                  ))}
-                </select>
-              </span>
+              <Select
+                id="audio-out"
+                labelId="audio-out-label"
+                className="audio-select"
+                value={devices.outId}
+                onChange={devices.setOut}
+                options={[
+                  { value: "", label: t.audio.systemDefault },
+                  ...outputs.map((d, i) => ({ value: d.id, label: d.label || t.audio.outputN(i + 1) })),
+                ]}
+              />
               <button
                 type="button"
                 className="button button-secondary audio-test"

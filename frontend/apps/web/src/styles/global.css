@@ -376,7 +376,6 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .tabs-compact { padding: 0; border-bottom: none; }
 .tabs-compact .tab { height: 36px; }
 .kb-player { display: flex; align-items: center; gap: 8px; }
-.kb-player select { height: 32px; border-radius: 8px; border: 1px solid var(--color-border-input); background: var(--color-bg); color: var(--color-text); padding: 0 8px; font-family: inherit; }
 .player-card.is-you { border-color: var(--port-color, var(--color-accent)); }
 .name-form { display: flex; align-items: center; gap: 8px; }
 .name-form label { white-space: nowrap; }
@@ -708,7 +707,6 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .roms-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .roms-search { width: 280px; height: 44px; }
 .roms-sort { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-muted); }
-.roms-sort select { height: 44px; padding: 0 10px; border-radius: var(--radius-control); border: 1px solid var(--color-border-input); background: var(--color-bg); color: var(--color-text); font: 14px var(--font-text); }
 .roms-toolbar-end { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .roms-view { display: flex; padding: 3px; border-radius: var(--radius-control); background: var(--color-bg); border: 1px solid var(--color-border-input); }
 .roms-view button { width: 42px; height: 38px; border-radius: 8px; border: none; background: transparent; color: var(--color-text-faint); display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -1211,8 +1209,6 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
 .platform-chip { min-height: 36px; height: 36px; border-radius: 999px; }
 .dash-segmented { border-radius: 999px; }
 .dash-segmented button { min-height: 28px; border-radius: 999px; }
-.kb-player select, .gp-player select, .roms-sort select { height: 32px; border-radius: 999px; padding: 0 12px; }
-.roms-sort select { height: 36px; }
 .dash-link-row { min-height: 36px; border-radius: 999px; padding: 0 16px; }
 .grooms-toast { border-radius: 999px; }
 .game-picker-button { border-radius: 999px; min-height: 56px; padding: 6px 18px 6px 8px; }
@@ -2195,10 +2191,8 @@ body .video-stage.has-touchpad.is-console .video-rec { top: calc(var(--sy) + 44p
 .audio-field { display: flex; flex-direction: column; gap: 8px; }
 .audio-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-2); }
 .audio-row { display: flex; gap: 8px; }
-.audio-select-wrap { position: relative; display: block; flex: 1; min-width: 0; }
-.audio-select-wrap::after { content: "▾"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; font-size: 13px; }
-.audio-select { width: 100%; height: 40px; padding: 0 34px 0 16px; border-radius: 999px; border: 1px solid var(--color-border-input); background: var(--color-surface-sunken); color: var(--color-text); font: 14px var(--font-text); appearance: none; -webkit-appearance: none; text-overflow: ellipsis; cursor: pointer; }
-.audio-select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; border-color: var(--color-accent); }
+.audio-select { width: 100%; flex: none; height: 40px; background: var(--color-surface-sunken); }
+.audio-row .audio-select { flex: 1 1 0; width: auto; }
 .audio-test { flex-shrink: 0; height: 40px; min-height: 40px; }
 .audio-pick { align-self: flex-start; }
 .audio-test-meter { display: flex; align-items: center; gap: 8px; }
@@ -2286,3 +2280,32 @@ body .video-stage.has-touchpad.is-console .pause-note { top: calc(var(--sy) + 48
 }
 .input.is-invalid:focus-visible { outline-color: var(--color-danger-text); }
 .input.name-input-large.is-invalid { border-color: var(--color-danger-text); }
+
+/* ---------- Select: the site's dropdown (components/ui/Select.tsx) ----------
+   Closed it is a capsule button like the inputs; open, a listbox in the
+   page's surface, placed with position: fixed by the component. */
+.select { position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; height: 36px; padding: 0 12px 0 16px; border-radius: 999px; border: 1px solid var(--color-border-input); background: var(--color-bg); color: var(--color-text); font: 14px var(--font-text); text-align: left; cursor: pointer; }
+.select:hover:not(:disabled) { border-color: var(--color-border-strong); }
+.select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; border-color: var(--color-accent); }
+.select.is-open { border-color: var(--color-accent); }
+.select:disabled { cursor: not-allowed; opacity: 0.55; }
+.select-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-chevron { flex-shrink: 0; color: var(--color-text-muted); }
+.select.is-open .select-chevron { transform: rotate(180deg); color: var(--color-accent-text); }
+.select.select-sm { height: 32px; padding: 0 10px 0 12px; font-size: 13px; }
+@media (pointer: coarse) {
+  .select::before { content: ""; position: absolute; inset: -4px; }
+}
+.select-list { position: fixed; z-index: 1000; box-sizing: border-box; margin: 0; padding: 6px; list-style: none; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius-card); background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: 0 18px 50px var(--shadow-strong); color: var(--color-text); font: 14px var(--font-text); outline: none; }
+.select-option { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 14px 6px 10px; border-radius: 999px; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.select-option + .select-option { margin-top: 2px; }
+.select-option.is-active { background: var(--color-surface-selected); box-shadow: inset 0 0 0 1px var(--color-accent); }
+.select-option[aria-selected="true"] { color: var(--color-accent-text); font-weight: 600; }
+.select-check { flex-shrink: 0; visibility: hidden; color: var(--color-accent-text); }
+.select-option[aria-selected="true"] .select-check { visibility: visible; }
+.select-option-text { display: flex; flex-direction: column; min-width: 0; }
+.select-option-label { overflow-wrap: anywhere; }
+.select-option-detail { font-size: 12px; font-weight: 400; color: var(--color-text-muted); }
+@media (pointer: coarse) {
+  .select-option { min-height: var(--touch-min); font-size: 15px; }
+}

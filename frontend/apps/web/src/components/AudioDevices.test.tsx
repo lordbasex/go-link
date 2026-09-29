@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { AudioDevicesBlock } from "./AudioDevices";
@@ -68,6 +68,20 @@ function withSinkSupport(on: boolean) {
 
 afterEach(cleanup);
 
+/** Opens a Select, reads its options' names and closes it again. */
+function optionNames(combo: HTMLElement): string[] {
+  fireEvent.click(combo);
+  const names = within(screen.getByRole("listbox")).queryAllByRole("option").map((o) => o.textContent ?? "");
+  fireEvent.keyDown(combo, { key: "Escape" });
+  return names;
+}
+
+/** Picks an option of a Select by its name, as a person would. */
+async function choose(combo: HTMLElement, name: string) {
+  await userEvent.click(combo);
+  await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name }));
+}
+
 describe("room sound devices", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => {
@@ -80,10 +94,9 @@ describe("room sound devices", () => {
     fakeMediaDevices(DEFAULTS);
     render(<Harness />);
     const mic = await screen.findByRole("combobox", { name: "Microphone" });
-    await waitFor(() => expect(mic.querySelectorAll("option")).toHaveLength(3));
-    expect([...mic.querySelectorAll("option")].map((o) => o.textContent)).toEqual(["System default", "Mac microphone", "USB Advanced Audio Device"]);
-    const out = screen.getByRole("combobox", { name: "Output" });
-    expect([...out.querySelectorAll("option")].map((o) => o.textContent)).toEqual(["System default", "USB headphones", "AirPods"]);
+    await waitFor(() => expect(optionNames(mic)).toHaveLength(3));
+    expect(optionNames(mic)).toEqual(["System default", "Mac microphone", "USB Advanced Audio Device"]);
+    expect(optionNames(screen.getByRole("combobox", { name: "Output" }))).toEqual(["System default", "USB headphones", "AirPods"]);
     expect(screen.getByRole("button", { name: "Test" })).toBeInTheDocument();
   });
 
@@ -94,8 +107,8 @@ describe("room sound devices", () => {
       { kind: "audioinput", deviceId: "b", label: "" },
     ]);
     render(<Harness />);
-    await screen.findByText("Microphone 2");
-    expect(screen.getByText("Microphone 1")).toBeInTheDocument();
+    const mic = await screen.findByRole("combobox", { name: "Microphone" });
+    await waitFor(() => expect(optionNames(mic)).toEqual(["System default", "Microphone 1", "Microphone 2"]));
     expect(screen.getByText(/names appear after you allow the microphone/)).toBeInTheDocument();
   });
 
@@ -116,15 +129,15 @@ describe("room sound devices", () => {
     fakeMediaDevices(DEFAULTS);
     const { unmount } = render(<Harness />);
     const mic = await screen.findByRole("combobox", { name: "Microphone" });
-    await waitFor(() => expect(mic.querySelectorAll("option")).toHaveLength(3));
-    await userEvent.selectOptions(mic, "usb-mic");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Output" }), "pods");
+    await waitFor(() => expect(optionNames(mic)).toHaveLength(3));
+    await choose(mic, "USB Advanced Audio Device");
+    await choose(screen.getByRole("combobox", { name: "Output" }), "AirPods");
     expect(JSON.parse(localStorage.getItem(AUDIO_IN_KEY)!)).toEqual({ id: "usb-mic", label: "USB Advanced Audio Device" });
     expect(JSON.parse(localStorage.getItem(AUDIO_OUT_KEY)!)).toEqual({ id: "pods", label: "AirPods" });
     unmount();
     render(<Harness />);
     await waitFor(() => expect(screen.getByTestId("ids")).toHaveTextContent("usb-mic|pods"));
-    expect(screen.getByRole("combobox", { name: "Output" })).toHaveValue("pods");
+    expect(screen.getByRole("combobox", { name: "Output" })).toHaveTextContent("AirPods");
   });
 
   it("goes back to the default and says so when the chosen device disconnects", async () => {
@@ -148,7 +161,8 @@ describe("room sound devices", () => {
     localStorage.setItem(AUDIO_OUT_KEY, JSON.stringify({ id: "gone", label: "Old speakers" }));
     fakeMediaDevices(DEFAULTS);
     render(<Harness />);
-    await screen.findByText("AirPods");
+    const out = await screen.findByRole("combobox", { name: "Output" });
+    await waitFor(() => expect(optionNames(out)).toContain("AirPods"));
     expect(screen.getByTestId("ids")).toHaveTextContent("|");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(localStorage.getItem(AUDIO_OUT_KEY)).not.toBeNull();

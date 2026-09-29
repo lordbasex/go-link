@@ -16,6 +16,7 @@ import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
 import { useThumbKind, useThumbnail } from "./useThumbnail";
 import { SkeletonCards, SkeletonRows } from "../ui/Skeleton";
 import { useInfiniteList } from "../ui/useInfiniteList";
+import { Select } from "../ui/Select";
 
 type View = "cards" | "list";
 type Sort = "name" | "size" | "year" | "status";
@@ -161,18 +162,23 @@ export function RomsTab() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
-          <label className="roms-sort">
-            {t.roms.sort}
-            <select
+          <span className="roms-sort">
+            <label id="roms-sort-label" htmlFor="roms-sort">
+              {t.roms.sort}
+            </label>
+            <Select<Sort>
+              id="roms-sort"
+              labelId="roms-sort-label"
               value={sort}
-              onChange={(e) => setSort(e.target.value as Sort)}
-            >
-              <option value="name">{t.roms.sortName}</option>
-              <option value="size">{t.roms.sortSize}</option>
-              <option value="year">{t.roms.sortYear}</option>
-              <option value="status">{t.roms.sortStatus}</option>
-            </select>
-          </label>
+              onChange={setSort}
+              options={[
+                { value: "name", label: t.roms.sortName },
+                { value: "size", label: t.roms.sortSize },
+                { value: "year", label: t.roms.sortYear },
+                { value: "status", label: t.roms.sortStatus },
+              ]}
+            />
+          </span>
           <div className="roms-toolbar-end">
             <span className="small faint">
               {t.roms.showing(visible.length, roms.length)}
