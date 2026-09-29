@@ -43,7 +43,7 @@ Then open [go-link.org/device](https://go-link.org/device), type the 9-digit cod
 - **Host streaming:** only the host has the games. ROMs never leave the host's disk and never touch any server.
 - **Private rooms:** each room has an invitation (link, QR or 9-digit code), and each invited person gets their own single-use 6-digit PIN.
 - **A small game server:** several games running at once, pause, save slots, automatic save and resume, favorites, trash and a game history.
-- **Arcade play:** seats P1 to P4, an arcade-style queue, spectators, Start 1P-4P, swap controllers, gamepads (several per browser), keyboard and a touch gamepad on phones.
+- **Arcade play:** seats P1 to P4, an arcade-style queue, spectators, Start 1P-4P, swap controllers, gamepads (several per browser), keyboard and a touch gamepad on phones. Only the host pauses; players ask for a pause. Each player picks a name (letters, digits and spaces) and can [test their controller](https://go-link.org/test-controller) first.
 - **Voice and chat:** voice between seated players (forwarded by the device, with per-player volume), and chat with a typing indicator.
 - **Recordings:** the host records a game with everyone's voices (everyone sees REC); the browser exports it to an MP4 ready for WhatsApp, with a preview to set the game and voices volumes. Screenshots in one tap.
 - **Phones:** the room becomes a handheld console, a Game Boy upright and a Switch sideways.
@@ -77,6 +77,7 @@ Get the app from the [releases](https://github.com/lordbasex/go-link/releases):
 | **Linux desktop** (x64 and ARM64) | `go-link-vX.Y.Z-linux-amd64.tar.gz` / `-arm64.tar.gz` | Window and tray icon |
 | **Raspberry Pi and servers** | `go-link-vX.Y.Z-linux-arm64-headless.tar.gz` / `-amd64-headless.tar.gz` | No window: a web panel on port 7373 and a full CLI |
 | **Android 8+** (players only) | `go-link-vX.Y.Z-android.apk` | **go-link Player**, the native app to join a game: scan the invitation's QR code or type the code, then the PIN. See [docs/mobile.md](docs/mobile.md) |
+| **iPhone and iPad** (players only) | Coming soon | go-link Player for iOS 17+ is in [`mobile/ios/`](mobile/ios/) and not distributed yet; developers can build it and install it on their own iPhone ([mobile/ios/README.md](mobile/ios/README.md)) |
 | **Docker** | `ghcr.io/lordbasex/go-link-device` or `lordbasex/go-link-device` on Docker Hub (amd64, arm64) | `docker run … ghcr.io/lordbasex/go-link-device:latest`, see [docs/device.md](docs/device.md#docker); offline: `go-link-vX.Y.Z-docker.oci.tar.gz` and `docker load` |
 
 Every download is listed in `SHA256SUMS`. The emulator core is downloaded by the app on first use; ROMs are never included. Linking a device and joining a game ask you to accept the [terms of use](https://go-link.org/terms).
@@ -90,6 +91,7 @@ To see which version you run: the device shows it in its window (System) and wit
 | [`backend-device/`](backend-device/) | The device: Go + cgo, libretro, Pion WebRTC, Fyne GUI |
 | [`frontend/`](frontend/) | The website: React + TypeScript |
 | [`mobile/android/`](mobile/android/) | go-link Player, the native Android app for players (Kotlin, Jetpack Compose, libwebrtc) |
+| [`mobile/ios/`](mobile/ios/) | go-link Player for iPhone and iPad (SwiftUI, libwebrtc), not distributed yet |
 | [`e2e/`](e2e/) | End-to-end tests (Playwright) |
 | [`cores/mame2003-plus/`](cores/mame2003-plus/) | Optional save state patches for the emulator core |
 | [`docs/`](docs/) | The documentation |
@@ -139,7 +141,7 @@ go-link is built in the open, and every bit of help counts:
 
 How to use go-link (install, link, ROMs, inviting, controls, the app, network, troubleshooting): [go-link.org/docs](https://go-link.org/docs), in English, Spanish and Portuguese.
 
-For developers, start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, the Android app, networking, security, building, deploying, the roadmap and the legal texts. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+For developers, start at [docs/README.md](docs/README.md): architecture, flows, the device protocol, the device app, the emulator, the website, the Player apps (Android and iOS), networking, security, building, deploying, the roadmap and the legal texts. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## ROMs, Copyright and Legal Disclaimers
 

@@ -35,6 +35,7 @@ export interface QueueRow {
 /** The device's notices come in English; the ones it marks are translated. */
 /** The device names guests "Guest 9F3A": shown in the reader's language. */
 export function localName(name: string): string {
+  if (name === "The host") return t.pauseAsk.theHost; // the linked browser's pauses
   const m = /^Guest ([0-9A-F]{1,8})$/.exec(name);
   return m ? t.room.guestName(m[1]!) : name;
 }
@@ -52,7 +53,9 @@ function systemText(c: ChatLine & { kind: "system" }): string {
     case "recording_stopped":
       return t.rec.stopped;
     case "game_paused":
-      return e.paused(n);
+      // name asked for the pause and name2 (the host) agreed.
+      if (a?.name2 === "The host") return t.pauseAsk.grantedByHost(n);
+      return n2 ? t.pauseAsk.granted(n, n2) : e.paused(n);
     case "game_resumed":
       return e.resumed(n);
     case "now_watching":
@@ -71,6 +74,8 @@ function systemText(c: ChatLine & { kind: "system" }): string {
       return e.free(p);
     case "took_seat":
       return e.took(n, p);
+    case "pause_declined":
+      return t.pauseAsk.declined;
     default:
       return c.text;
   }

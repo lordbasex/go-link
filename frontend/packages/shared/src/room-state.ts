@@ -32,9 +32,17 @@ export interface RoomStateView {
     swapOffers: SwapView[];
     /** Your requests waiting for someone else's answer. */
     swapAsked: SwapView[];
+    /** This browser is the host's own (it came in with the owner key). */
+    owner: boolean;
+    /** Owners only: players asking the host for a pause. */
+    pauseAsks: PauseAskView[];
+    /** Your own request for a pause, while it waits, or null. */
+    pauseAsked: { expiresAt: number } | null;
   };
-  /** A game is running: seated players may pause it. */
+  /** A game is running: the host may pause it (the others ask). */
   pausable: boolean;
+  /** The host can answer a request for a pause (it is in the room or at its device page). */
+  hostOnline: boolean;
   paused: boolean;
   pausedBy: string;
   /** The running game's control panel, for the on-screen gamepad. */
@@ -50,6 +58,16 @@ export interface RoomInfoView {
   host: string;
   /** A data: URL of a small JPEG, or null. */
   art: string | null;
+}
+
+/** A seated player asking the host for a pause. */
+export interface PauseAskView {
+  /** The player's peer id: what pause_answer names. */
+  from: string;
+  name: string;
+  port: number;
+  /** When the request expires (ms since the epoch). */
+  expiresAt: number;
 }
 
 /** A request to swap controllers: from port asks to move to port to. */
@@ -93,7 +111,8 @@ export type ChatEvent =
   | "swapped"
   | "left_seat"
   | "seat_free"
-  | "took_seat";
+  | "took_seat"
+  | "pause_declined";
 const CHAT_EVENTS: readonly ChatEvent[] = [
   "recording_started",
   "recording_stopped",
@@ -107,6 +126,7 @@ const CHAT_EVENTS: readonly ChatEvent[] = [
   "left_seat",
   "seat_free",
   "took_seat",
+  "pause_declined",
 ];
 
 /** The values of a chat event (who and which seat). */
@@ -147,6 +167,24 @@ function parseSwaps(v: unknown, maxPlayers: number): SwapView[] {
     });
 }
 
+const time = (v: unknown): number => {
+  const t = typeof v === "string" ? Date.parse(v) : NaN;
+  return Number.isFinite(t) ? t : 0;
+};
+
+/** Reads pause_asks (device_status rooms, room_state.you, pause_asked). */
+export function parsePauseAsks(v: unknown): PauseAskView[] {
+  return arr(v)
+    .slice(0, 8)
+    .flatMap((x) => {
+      const o = obj(x);
+      const from = str(o.from, 80);
+      const port = num(o.port);
+      const expiresAt = time(o.expires_at);
+      return from && expiresAt ? [{ from, name: str(o.name, 40), port: port >= 1 && port <= 4 ? port : 0, expiresAt }] : [];
+    });
+}
+
 export function parseRoomState(msg: unknown): RoomStateView | null {
   const m = obj(msg);
   if (m.type !== "room_state") return null;
@@ -179,8 +217,12 @@ export function parseRoomState(msg: unknown): RoomStateView | null {
       spectator: you.spectator === true,
       swapOffers: parseSwaps(you.swap_offers, maxPlayers),
       swapAsked: parseSwaps(you.swap_asked, maxPlayers),
+      owner: you.owner === true,
+      pauseAsks: parsePauseAsks(you.pause_asks),
+      pauseAsked: time(obj(you.pause_asked).expires_at) ? { expiresAt: time(obj(you.pause_asked).expires_at) } : null,
     },
     pausable: m.pausable === true,
+    hostOnline: m.host_online === true,
     paused: m.paused === true,
     pausedBy: str(m.paused_by, 40),
     controls: parseControls(m.controls),

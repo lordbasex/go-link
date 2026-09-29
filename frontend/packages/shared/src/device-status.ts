@@ -4,6 +4,7 @@
 // WebRTC "control" DataChannel (type "device_status").
 
 import { parseRecordingList, type RecordingInfo } from "./recordings";
+import { parsePauseAsks, type PauseAskView } from "./room-state";
 
 export interface DeviceHardware {
   /** The computer's name (older devices: absent). */
@@ -116,6 +117,8 @@ export interface ManagedRoom {
   /** The host is recording the game, since recordingSince. */
   recording?: boolean;
   recordingSince?: string;
+  /** Players asking the host for a pause (answer with pause_answer). */
+  pauseAsks?: PauseAskView[];
 }
 
 /** Days a deleted room stays in the trash. */
@@ -162,6 +165,7 @@ function parseRooms(v: unknown): ManagedRoom[] {
         inviteCode: typeof o.invite_code === "string" && /^\d{9}$/.test(o.invite_code) ? o.invite_code : "",
         recording: o.recording === true,
         recordingSince: str(o.recording_since, 40),
+        pauseAsks: parsePauseAsks(o.pause_asks),
       },
     ];
   });
@@ -383,4 +387,20 @@ export function parseInvitePass(msg: unknown): InvitePass | null {
     return { id, pin: m.pin, expiresAt: typeof m.expires_at === "string" ? m.expires_at.slice(0, 40) : "" };
   }
   return { id, error: typeof m.error === "string" ? m.error.slice(0, 200) : "unknown error" };
+}
+
+/** A player asked the host for a pause (pause_asked), or the request is gone (pause_ask_gone). */
+export type PauseAskEvent = { type: "asked"; id: string; ask: PauseAskView } | { type: "gone"; id: string; from: string };
+
+/** Reads the device's pause_asked / pause_ask_gone, sent to linked browsers. */
+export function parsePauseAskEvent(msg: unknown): PauseAskEvent | null {
+  if (typeof msg !== "object" || msg === null) return null;
+  const m = msg as Record<string, unknown>;
+  const id = typeof m.id === "string" ? m.id.slice(0, 40) : "";
+  const from = typeof m.from === "string" ? m.from.slice(0, 80) : "";
+  if (!id || !from) return null;
+  if (m.type === "pause_ask_gone") return { type: "gone", id, from };
+  if (m.type !== "pause_asked") return null;
+  const [ask] = parsePauseAsks([m]);
+  return ask ? { type: "asked", id, ask } : null;
 }

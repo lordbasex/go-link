@@ -58,8 +58,14 @@ export interface HostStreamView {
   chat: ChatLine[];
   controlOpen: boolean;
   sendChat: (text: string) => void;
-  /** Pauses or resumes the game for everyone (seated players only). */
+  /** Pauses or resumes the game for everyone (the host only: the device refuses anyone else). */
   setPaused: (paused: boolean) => void;
+  /** Asks the host for a pause, or withdraws the request (cancel). */
+  requestPause: (cancel?: boolean) => void;
+  /** The host answers a player's request for a pause (from: its peer id). */
+  answerPause: (from: string, accept: boolean) => void;
+  /** The last request the device refused (its code), with a counter so a repeat shows again. */
+  refused: { code: string; n: number } | null;
   spectate: () => void;
   joinQueue: () => void;
   /** Moves your seat from port from to port to (a taken one asks first). */
@@ -142,6 +148,7 @@ export function useHostStream(
   const [controlOpen, setControlOpen] = useState(false);
   const [pin, setPin] = useState<PinView>(NO_PIN);
   const [typing, setTyping] = useState<TypingView[]>([]);
+  const [refused, setRefused] = useState<{ code: string; n: number } | null>(null);
   const [voiceStreams, setVoiceStreams] = useState<Record<number, MediaStream>>(
     {},
   );
@@ -185,6 +192,9 @@ export function useHostStream(
         if (line) setChat((cur) => [...cur, line].slice(-MAX_CHAT_LINES));
         const who = parseTyping(msg);
         if (who) setTyping(who);
+        const e = msg as { type?: unknown; code?: unknown };
+        if (e.type === "error" && typeof e.code === "string")
+          setRefused((cur) => ({ code: String(e.code).slice(0, 40), n: (cur?.n ?? 0) + 1 }));
       },
     });
     streamRef.current = stream;
@@ -377,6 +387,9 @@ export function useHostStream(
     controlOpen,
     sendChat: (text) => send({ type: "chat", text }),
     setPaused: (paused) => send({ type: "pause", paused }),
+    requestPause: (cancel) => send(cancel ? { type: "pause_request", cancel: true } : { type: "pause_request" }),
+    answerPause: (from, accept) => send({ type: "pause_answer", from, accept }),
+    refused,
     spectate: () => send({ type: "spectate" }),
     joinQueue: () => send({ type: "queue" }),
     swapSeat: (from, to) => send({ type: "swap_seat", from, to }),

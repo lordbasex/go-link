@@ -48,11 +48,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.golink.player.Prefs
 import org.golink.player.R
+import org.golink.player.core.CodeInput
 import org.golink.player.core.InviteTarget
 import org.golink.player.core.Invites
 import org.golink.player.core.Terms
@@ -71,7 +74,9 @@ fun JoinScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    var code by rememberSaveable { mutableStateOf("") }
+    // Shown grouped as "915 355 636" while typed (CodeInput); a link stays as typed.
+    var codeField by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
+    val code = codeField.text
     var pin by rememberSaveable { mutableStateOf("") }
     var agreed by rememberSaveable { mutableStateOf(termsAccepted) }
     var askTerms by remember { mutableStateOf(false) }
@@ -113,13 +118,20 @@ fun JoinScreen(
                         }
                     } else {
                         OutlinedTextField(
-                            value = code,
-                            onValueChange = { code = it.take(120) },
+                            value = codeField,
+                            onValueChange = { v ->
+                                codeField = if (v.text == codeField.text) {
+                                    v // only the caret or the selection moved
+                                } else {
+                                    val edit = CodeInput.fromChange(codeField.text, v.text, v.selection.end)
+                                    TextFieldValue(edit.text, TextRange(edit.caret))
+                                }
+                            },
                             label = { Text(stringResource(R.string.join_code_label)) },
                             placeholder = { Text("123 456 789") },
                             singleLine = true,
                             textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 18.sp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Next),
                             isError = code.isNotBlank() && target == null,
                             supportingText = { Text(stringResource(R.string.join_code_hint)) },
                             colors = fieldColors,

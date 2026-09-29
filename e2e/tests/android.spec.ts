@@ -4,7 +4,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as A from "../android";
-import { freshApp, invite as ownerInvite, joinAsBrowserGuest, joinWithPin, ownerOpensTestPattern, ownSeat, pointAppAt, trackedContext, wakeStage } from "../android-owner";
+import { enterAlias, freshApp, invite as ownerInvite, joinAsBrowserGuest, joinWithPin, ownerOpensTestPattern, ownSeat, pointAppAt, trackedContext, wakeStage } from "../android-owner";
 import { PORTS } from "../ports";
 import { stack } from "../stack";
 
@@ -157,6 +157,8 @@ test("joins by App Link with the PIN and the terms, takes a seat and shows the p
   snap("app-link-pin-form");
   await joinWithPin(inv.pin);
   appPort = await waitSeated(from);
+  snap("alias-step");
+  await enterAlias();
   const seat = await A.waitFor({ id: "room-seat", text: `You are P${appPort}` });
   const ui = probe.lastUi()!;
   ownerPort = Number(String(ui.seats).match(/P(\d)=(?!-)\S+/g)?.map((s) => Number(s[1])).find((p) => p !== appPort) ?? 0);
@@ -206,6 +208,21 @@ test("the game's sound arrives and is decoded (inbound RTP and audio level)", as
   expect(maxLevel).toBeGreaterThan(0);
 });
 
+test("the Sound sheet lists Automatic and the loudspeaker and plays the test chime", async () => {
+  await A.tapOn({ id: "dock-players" });
+  await A.tapOn({ id: "players-sound" });
+  await A.waitFor({ id: "sound-sheet" });
+  // Each row is a tagged node with its label inside.
+  for (const id of ["sound-in-auto", "sound-in-phone", "sound-out-auto", "sound-out-speaker"]) await A.waitFor({ id });
+  await A.waitFor({ text: "Automatic" });
+  await A.waitFor({ text: "Speaker" });
+  await A.tapOn({ id: "sound-test" });
+  snap("sound-sheet");
+  A.shell("input keyevent 4"); // close the sheet
+  await A.waitGone({ id: "sound-sheet" });
+  await A.waitFor({ id: "pad-dpad" });
+});
+
 test("chat goes both ways", async () => {
   const fromOwner = `owner-says-hi-${Date.now() % 100000}`;
   const fromApp = `android-says-hi-${Date.now() % 100000}`;
@@ -219,8 +236,18 @@ test("chat goes both ways", async () => {
   await A.tapOn({ id: "dock-chat" });
   await A.waitFor({ text: fromOwner });
   await A.fill({ id: "chat-input" }, fromApp);
-  await A.tapOn({ id: "chat-send" });
-  await expect(page.getByText(fromApp)).toBeVisible();
+  // A slow CI emulator can miss the tap: send again until the device echoes
+  // the line back (an empty input sends nothing, so nothing doubles).
+  for (let i = 0; ; i++) {
+    await A.tapOn({ id: "chat-send" });
+    try {
+      await probe.waitFor((e) => e.ev === "chat" && e.text === fromApp, 15_000, mark);
+      break;
+    } catch (err) {
+      if (i === 2) throw err;
+    }
+  }
+  await expect(page.getByText(fromApp)).toBeVisible({ timeout: 30_000 });
   await probe.waitFor((e) => e.ev === "chat" && e.text === fromApp, 20_000, mark);
   A.hideKeyboard();
   snap("chat");
@@ -304,6 +331,7 @@ test("a wrong PIN and an already used PIN are refused; the new invitation's PIN 
   await A.tapOn({ id: "room-pin-send" });
   usedPins.push(inv.pin);
   appPort = await waitSeated(mark);
+  await enterAlias();
   snap("admitted-after-refusals");
 });
 
@@ -316,6 +344,7 @@ test("joins with the 9-digit code typed on the home screen", async () => {
   await joinWithPin(inv.pin);
   usedPins.push(inv.pin);
   appPort = await waitSeated(mark);
+  await enterAlias();
   await A.waitFor({ id: "room-seat", text: `You are P${appPort}` });
   await expect.poll(() => appIn("video", "frames"), { timeout: 30_000 }).toBeGreaterThan(30);
   snap("code-join-streaming");
@@ -417,6 +446,7 @@ test("with the four seats taken the app waits in the queue, takes the freed seat
   await A.waitFor({ id: "join-pin" });
   await joinWithPin(inv.pin);
   await probe.waitFor((e) => e.ev === "ui" && e.phase === "STREAMING" && e.me === "queue:1", 60_000, mark);
+  await enterAlias();
   await A.waitFor({ id: "room-seat", text: "You are #1 in the queue" });
   expect(seatedCount()).toBe(4);
   // The queue still watches the picture.
@@ -472,14 +502,24 @@ test("seats are swapped between the app and a browser guest, asked from either s
   await A.waitFor({ id: "room-seat", text: `You are P${guestPort}` });
 
   // The guest asks back from the players capsule; the app accepts over the picture.
-  await wakeStage(g.page);
-  await g.page.getByRole("button", { name: new RegExp(`^P${guestPort} · `) }).click();
-  await g.page.getByRole("menuitem", { name: `Swap controllers: go to P${guestPort}` }).click();
-  await A.waitFor({ text: /asks to swap controllers/ });
-  snap("swap-offer-on-app");
-  mark = probe.mark();
-  await A.tapOn({ text: "Accept" });
-  await probe.waitFor((e) => e.ev === "ui" && e.me === `P${myPort}`, 20_000, mark);
+  // The offer lasts 30 s on the device; a slow emulator can miss it, so the
+  // guest asks again (up to three times) until the app's Accept lands.
+  for (let i = 0; ; i++) {
+    await wakeStage(g.page);
+    await g.page.getByRole("button", { name: new RegExp(`^P${guestPort} · `) }).click();
+    await g.page.getByRole("menuitem", { name: `Swap controllers: go to P${guestPort}` }).click();
+    try {
+      await A.waitFor({ text: /asks to swap controllers/ });
+      if (i === 0) snap("swap-offer-on-app");
+      mark = probe.mark();
+      await A.tapOn({ text: "Accept" });
+      await probe.waitFor((e) => e.ev === "ui" && e.me === `P${myPort}`, 20_000, mark);
+      break;
+    } catch (err) {
+      if (i === 2) throw err;
+      await g.page.keyboard.press("Escape").catch(() => {});
+    }
+  }
   await expect.poll(() => ownSeat(g.page)).toBe(guestPort);
   await A.waitFor({ id: "room-seat", text: `You are P${myPort}` });
   appPort = myPort;

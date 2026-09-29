@@ -100,6 +100,16 @@ func (t *TestRoomService) admit(peer string) {
 	t.publish()
 }
 
+// markOwner tells the Room Manager that a guest is the host's own browser.
+func (t *TestRoomService) markOwner(peer string) {
+	t.mu.Lock()
+	m := t.manager
+	t.mu.Unlock()
+	if m != nil {
+		m.MarkOwner(peer)
+	}
+}
+
 // checkPin answers a guest's PIN and lets it in when right.
 func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 	var msg struct {
@@ -116,6 +126,9 @@ func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 		PinResult
 	}{"pin_result", res})
 	if res.OK {
+		if res.Owner {
+			t.markOwner(peer)
+		}
 		t.admit(peer)
 		return
 	}
@@ -382,6 +395,9 @@ func (t *TestRoomService) OnMessage(env signalclient.Envelope) {
 			t.log.Info("guest asked for the PIN", "peer_id", env.Remote)
 			t.signal(env.Remote, map[string]string{"kind": "pin_required"})
 			return
+		}
+		if trusted != nil && trusted(env.Remote) {
+			t.markOwner(env.Remote) // the host's linked browser itself
 		}
 		t.admit(env.Remote)
 	case signalclient.TypeSignal:

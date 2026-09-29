@@ -152,6 +152,44 @@ type StreamService struct {
 	linkGate     func(peerID string) bool // nil: every linked browser is trusted
 	onLinkFile   func(peerID string, isString bool, data []byte)
 	onLinkClosed func(peerID string)
+	onLinks      func() // a linked browser's control channel opened or closed
+}
+
+// OnLinksChanged registers who is told that a linked browser's control
+// channel opened or that its connection was removed.
+func (s *StreamService) OnLinksChanged(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onLinks = fn
+}
+
+// HasLink reports whether a linked browser the link gate accepts has its
+// control channel open: the host is at the device's website.
+func (s *StreamService) HasLink() bool {
+	s.mu.Lock()
+	gate := s.linkGate
+	var peers []string
+	for _, v := range s.viewers {
+		if v.kind == KindLink && v.control != nil && v.control.ReadyState() == webrtc.DataChannelStateOpen {
+			peers = append(peers, v.id)
+		}
+	}
+	s.mu.Unlock()
+	for _, p := range peers {
+		if gate == nil || gate(p) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *StreamService) linksChanged() {
+	s.mu.Lock()
+	fn := s.onLinks
+	s.mu.Unlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 // OnLinkFiles receives the "files" channel of linked browsers (ROM
@@ -428,6 +466,14 @@ func (s *StreamService) OnSourceError(fn func(error)) {
 
 func (s *StreamService) testCard() MediaSource {
 	return &TestCardSource{Width: s.cfg.Width, Height: s.cfg.Height, FPS: s.cfg.FPS}
+}
+
+// PausableTestCard streams the test card with a pause: while paused()
+// reports true the picture holds and the tone stops.
+func (s *StreamService) PausableTestCard(paused func() bool) {
+	card := s.testCard().(*TestCardSource)
+	card.Paused = paused
+	s.SetSource(card)
 }
 
 // Run streams the source until ctx ends and pings viewers every 2 s.
@@ -796,6 +842,9 @@ func (s *StreamService) AddPeer(peerID string, kind PeerKind) error {
 			if h := s.hooks(); h.Opened != nil {
 				h.Opened(peerID)
 			}
+		}
+		if kind == KindLink {
+			s.linksChanged()
 		}
 	})
 	control.OnMessage(func(msg webrtc.DataChannelMessage) { s.handleControl(v, msg.Data) })
@@ -1196,6 +1245,9 @@ func (s *StreamService) RemoveViewer(peerID string) {
 		}
 		if v.kind == KindLink && linkClosed != nil {
 			linkClosed(peerID)
+		}
+		if v.kind == KindLink {
+			s.linksChanged()
 		}
 	}
 }

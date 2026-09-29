@@ -74,6 +74,8 @@ type PinResult struct {
 	Reason     string `json:"reason,omitempty"`
 	Left       int    `json:"left,omitempty"`
 	RetryAfter int    `json:"retry_after,omitempty"`
+	// Owner: the guest came in with the host's own key (never sent).
+	Owner bool `json:"-"`
 }
 
 // Pass is one invitation's PIN, for the host to share.
@@ -174,7 +176,7 @@ func (g *PinGate) Check(peer, pin, token string) PinResult {
 	if token != "" {
 		if equal(token, g.owner) {
 			delete(g.tries, peer)
-			return PinResult{OK: true}
+			return PinResult{OK: true, Owner: true}
 		}
 		for _, p := range g.passes {
 			if p.token != "" && equal(token, p.token) {

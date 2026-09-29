@@ -407,7 +407,8 @@ class RoomClient(
     /** Your name and which local players (touch + gamepads) want seats. */
     fun setIdentity(name: String, localPlayers: List<Int>) {
         val players = localPlayers.filter { it in 0 until MAX_LOCAL_PLAYERS }.distinct().sorted().ifEmpty { listOf(0) }
-        val clean = name.trim().take(24)
+        // The device's rules (PlayerName): an unusable name is sent empty and the device picks one.
+        val clean = PlayerName.sanitize(name)
         if (clean == this.name && players == this.localPlayers) return
         this.name = clean
         this.localPlayers = players
@@ -427,7 +428,14 @@ class RoomClient(
 
     fun joinQueue() = sendControl(buildJsonObject { put("type", "queue") })
 
-    fun setPaused(paused: Boolean) = sendControl(buildJsonObject { put("type", "pause"); put("paused", paused) })
+    /**
+     * Only the host pauses and resumes a game: a guest asks for a pause
+     * (the answer comes as room_state.paused, or a pause_declined chat
+     * notice), or withdraws its request with cancel.
+     */
+    fun requestPause() = sendControl(buildJsonObject { put("type", "pause_request") })
+
+    fun cancelPauseRequest() = sendControl(buildJsonObject { put("type", "pause_request"); put("cancel", true) })
 
     fun swapSeat(from: Int, to: Int) = sendControl(buildJsonObject { put("type", "swap_seat"); put("from", from); put("to", to) })
 

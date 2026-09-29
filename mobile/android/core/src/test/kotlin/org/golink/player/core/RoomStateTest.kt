@@ -66,4 +66,20 @@ class RoomStateTest {
         assertEquals(StreamStatsView(59.9, 1.3333), st)
         assertEquals(StreamStatsView(null, null), RoomMessages.parseStreamStats(parseObject("""{"type":"stream_stats","aspect":9}""")!!))
     }
+
+    @Test
+    fun pauseRequestFields() {
+        val s = RoomMessages.parseRoomState(
+            parseObject("""{"type":"room_state","host_online":false,"you":{"pause_asked":{"expires_at":"2026-09-29T10:00:30Z"}}}""")!!,
+        )!!
+        assertFalse(s.hostOnline)
+        assertEquals(PauseAsk("2026-09-29T10:00:30Z"), s.you.pauseAsked)
+        val none = RoomMessages.parseRoomState(parseObject("""{"type":"room_state","host_online":true,"you":{"pause_asked":null}}""")!!)!!
+        assertTrue(none.hostOnline)
+        assertNull(none.you.pauseAsked)
+        // Older devices send neither: the host counts as online.
+        assertTrue(RoomMessages.parseRoomState(parseObject("""{"type":"room_state"}""")!!)!!.hostOnline)
+        val declined = RoomMessages.parseChat(parseObject("""{"type":"chat","system":"The host declined","event":"pause_declined","ts":3}""")!!)
+        assertEquals(ChatLine.System("The host declined", 3.0, ChatEvent.PAUSE_DECLINED), declined)
+    }
 }

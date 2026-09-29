@@ -108,18 +108,21 @@ The **local player** lets two or more people play from the same browser (for exa
 | `type` | Direction | Content |
 |---|---|---|
 | `welcome` | device → guest | Greeting when the channel opens |
-| `hello` | guest → device | `name` (up to 24 characters) and `local_players` (list of local players, 0 to 3). Sent again when they change |
-| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (your ports, queue position, `swap_offers` and `swap_asked`), `pausable`, `paused`, `paused_by`, `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad) and `recording` (the host is recording the game with the players' voices: everyone sees a REC badge). Personal to each guest, sent on every change |
+| `hello` | guest → device | `name` (the player's name, see [Player names](#player-names)) and `local_players` (list of local players, 0 to 3). Sent again when they change |
+| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (`name`: the name the device actually uses for you, after cleaning it; your `ports`, `queue_positions`, `spectator`, `swap_offers` and `swap_asked`; `owner`, `pause_asks` and `pause_asked`, see [Pausing](#pausing-is-the-hosts)), `pausable`, `paused`, `paused_by`, `host_online`, `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad) and `recording` (the host is recording the game with the players' voices: everyone sees a REC badge). Personal to each guest, sent on every change |
 | `stream_stats` | device → guest | Frames per second sent, video size, display `aspect`. Every 2 s |
 | `chat` | guest → device | `text` (up to 300 characters, 5 messages every 5 s) |
-| `chat` | device → guest | `name`, `port`, `role`, `text`, `ts`, or `system` for notices. Every notice carries an `event` and its values in `args` (`name`, `port`, `name2`, `port2`), and the website shows it in the reader's language (the English `system` text is the fallback): `recording_started`, `recording_stopped`, `game_paused`, `game_resumed` (name), `now_watching` (name), `moved` (name, port), `swap_asked` (name, port, name2, port2), `kept_seat` (name, port), `swapped` (name, port, name2, port2), `left_seat` (name, port), `seat_free` (port), `took_seat` (name, port). Generated guest names ("Guest 9F3A") are also shown translated. The last 50 on joining |
+| `chat` | device → guest | `name`, `port`, `role`, `text`, `ts`, or `system` for notices. Every notice carries an `event` and its values in `args` (`name`, `port`, `name2`, `port2`), and the website shows it in the reader's language (the English `system` text is the fallback): `recording_started`, `recording_stopped`, `game_paused`, `game_resumed` (name), `now_watching` (name), `moved` (name, port), `swap_asked` (name, port, name2, port2), `kept_seat` (name, port), `swapped` (name, port, name2, port2), `left_seat` (name, port), `seat_free` (port), `took_seat` (name, port), `pause_declined` (name, port: only to the player whose request the host declined). `game_paused` carries `name2` too when the pause answers a request: `name` asked and `name2` (the host) paused. Generated guest names ("Guest 9F3A") are also shown translated. The last 50 on joining |
 | `typing` | guest → device | `on` (`true` while typing, repeated every ~2.5 s; `false` when cleared). Sending a `chat` also clears it; the device clears it after 6 s without a repeat |
 | `typing` | device → guest | `names` (`[{name, port}]`): who else is typing, never yourself |
 | `spectate` | guest → device | Leave the seat and the queue, to just watch |
 | `queue` | guest → device | Back to the queue from spectating |
 | `swap_seat` | guest → device | `from`, `to` (ports). Swap controllers. Only from the person seated in `from` |
 | `swap_answer` | guest → device | `from`, `to`, `accept`. The answer of the player in `to` |
-| `pause` | guest → device | `paused` (`true` or `false`). Only from a seated player, only while a game runs (the test card cannot pause). While paused, the device repeats the last frame and sends no sound |
+| `pause` | guest → device | `paused` (`true` or `false`). **Only from the host** (an owner peer, see [Pausing](#pausing-is-the-hosts)), only while a game runs (the test card cannot pause). Anyone else gets `error` with `code: "pause_owner_only"`. While paused, the device repeats the last frame and sends no sound |
+| `pause_request` | guest → device | Ask the host for a pause: `{"type":"pause_request"}`; withdraw it with `{"type":"pause_request","cancel":true}` |
+| `pause_answer` | guest → device | `from` (the requester's peer id, from `you.pause_asks`), `accept`. Only from an owner peer |
+| `error` | device → guest | A refused request: `code` (`pause_owner_only`) and a readable English `error` |
 | `ping` / `pong` | device → browser → device | `id`. The device measures peer-to-peer latency every 2 s |
 
 The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTime`).
@@ -136,7 +139,10 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` the core state (`installed`, `catalog`), the device's `version` and, when a newer go-link was released, `update` (`latest`, `url` of its GitHub release page; the website only accepts go-link's own releases). Never includes the pairing code |
 | `create_room` | linked → device | `rom`, `title`, `voice`, `chat` (absent = on) and optional `art` (`boxart`, `title` or `snap`). Opens a **new** room |
 | `room_created` / `room_error` | device → linked | `id` (device room), `room_id` (signalhub) or a readable `error`. Some errors carry a `code` the website translates: `too_many_rooms` with `limit`, `no_saves` |
-| `room_action` | linked → device | `id` and `action`: `pause`, `resume`, `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off`, `record_start` / `record_stop` (see [Recordings](#recordings)) |
+| `room_action` | linked → device | `id` and `action`: `pause`, `resume` (the host's own pause; it also answers every pending request for one), `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off`, `record_start` / `record_stop` (see [Recordings](#recordings)) |
+| `pause_asked` | device → linked | A seated player asks the host for a pause: `id` (device room id, `test` for the test pattern room), `from` (the player's peer id), `name`, `port`, `expires_at`. Sent again (with a new `expires_at`) when the same player asks again |
+| `pause_ask_gone` | device → linked | `id`, `from`: that request was answered, withdrawn, expired, or the player left the seat |
+| `pause_answer` | linked → device | `id`, `from`, `accept`: the host's answer from the website. The device replies `room_result` with `action: "pause_answer"` and `ok` (`false` when there is no such request any more) |
 | `room_start` | linked → device | `id` of an archived or trashed room and `from`: `continue`, `fresh` or `slot` (with `slot`) |
 | `room_result` | device → linked | `id`, `action`, `ok`, readable `error` (and `code`: `record_paused`, `already_recording`, `not_recording`…) and, for `save`, `slot` |
 | `close_room` | linked → device | `id`: archives that room (kept for older websites) |
@@ -163,8 +169,44 @@ Each room in `device_status.rooms`:
   "invite": "…", "invite_code": "…", "owner_key": "…",
   "players": 3, "max_players": 4, "spectators": 5, "queue": 0,
   "since": "2026-09-27T01:10:00Z", "deleted_at": null, "no_saves": false,
-  "saves": [{ "slot": 1, "name": "Stage 3", "at": "2026-09-26T22:17:00Z" }], "autosave": true }
+  "saves": [{ "slot": 1, "name": "Stage 3", "at": "2026-09-26T22:17:00Z" }], "autosave": true,
+  "pause_asks": [{ "from": "<peer id>", "name": "Ana", "port": 2, "expires_at": "2026-09-27T01:12:30Z" }] }
 ```
+
+`pause_asks` (only while someone asks) lists the pending requests for a pause, so a browser that opens later sees them too.
+
+## Player names
+
+`hello.name` is what the others see in the room and in the chat. The rule:
+
+- After trimming and joining runs of spaces into one, **2 to 20 characters**.
+- Only **Unicode letters** (`\p{L}`, any case and language, accents and `ñ` included), **digits** (`\p{N}`) and **spaces**. Any whitespace counts as a space. Text is NFC-normalized first, so a letter with a separate accent mark counts as one letter.
+
+The device never trusts the browser: it removes every other character (symbols, emoji, punctuation, control characters), trims, joins spaces, cuts to 20 characters and, if fewer than 2 remain, keeps the generated name (`Guest 9F3A`). `room_state.you.name` is the name it actually uses, and every `name` in `room_state`, `chat` and `typing` is a cleaned name. The website and the apps check the same rule as the person types, to explain what is wrong.
+
+```text
+"  Ana   María "   -> "Ana María"
+"<b>Zoë</b> 😀!!"   -> "bZoëb"
+"Fede 😀"           -> "Fede"
+"!!"                -> (kept: "Guest 9F3A")
+```
+
+## Pausing is the host's
+
+The game belongs to the host, so only the host pauses and resumes it. The host is:
+
+- an **owner peer** in the room: a guest connection that came in with the room's `owner_key` (from `device_status`) instead of a PIN, or the linked browser itself. The device marks it and sends it `room_state.you.owner: true`;
+- a **linked browser**, with `room_action` `pause` / `resume` and `pause_answer`.
+
+The other players ask:
+
+1. A **seated** player sends `pause_request`, only while a pausable game runs and is not paused (anything else is ignored). One pending request per guest: asking again refreshes it. A request expires after **30 seconds**.
+2. The requester sees `room_state.you.pause_asked: {"expires_at": "…"}` (`null` when it has none) and may withdraw it with `pause_request` + `cancel: true`.
+3. Owner peers see the requests in `room_state.you.pause_asks: [{from, name, port, expires_at}]` (only owners get this field); linked browsers get `pause_asked` and `pause_ask_gone`.
+4. The host answers with `pause_answer {from, accept}` (in the room) or `pause_answer {id, from, accept}` (linked). **Accept** pauses the game for everyone (`paused_by` is the requester's name; chat `game_paused` with `name` = requester and `name2` = the host) and clears every request. **Decline** removes that request and sends the requester alone a chat notice `pause_declined`.
+5. `room_state.host_online` tells guests whether the host can answer (an owner peer is in the room, or a linked browser is connected to the device), so the website can explain why **Ask for a pause** is off.
+
+A request also goes away when the game is paused (by anyone), when the game ends, and when the requester leaves the seat. A `pause` from a guest who is not the host is refused with `error` `pause_owner_only`.
 
 ## Recordings
 

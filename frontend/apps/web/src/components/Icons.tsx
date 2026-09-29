@@ -195,6 +195,22 @@ export const SoundOffIcon = ({ size = 18 }: P) => (
     <path d="M22 9l-6 6M16 9l6 6" />
   </svg>
 );
+/** A coin: the startup intro's coin sound. */
+export const CoinIcon = ({ size = 17 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5.5" />
+    <path d="M12 9.5v5" />
+  </svg>
+);
+/** The coin, crossed out: the startup sound is off. */
+export const CoinOffIcon = ({ size = 17 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5.5" />
+    <path d="M4 4l16 16" />
+  </svg>
+);
 export const SpeakingIcon = () => (
   <svg
     width="16"
@@ -303,5 +319,17 @@ export const ScaleIcon = ({ size = 20 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
     <path d="M12 3v18M7 21h10M5 7h14M12 3l-1 1M12 3l1 1" />
     <path d="M5 7l-3 7a3 3 0 0 0 6 0L5 7ZM19 7l-3 7a3 3 0 0 0 6 0l-3-7Z" />
+  </svg>
+);
+export const InfoIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v5M12 16h.01" />
+  </svg>
+);
+export const UserIcon = ({ size = 20 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
   </svg>
 );

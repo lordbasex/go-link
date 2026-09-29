@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.golink.player.core.InviteTarget
 import org.golink.player.core.SignalUrls
 import org.golink.player.core.Terms
+import org.golink.player.input.ControllerTester
 import java.time.Instant
 
 /** The app's screens. */
@@ -30,6 +31,9 @@ sealed interface Screen {
     data object Room : Screen
 
     data object Settings : Screen
+
+    /** "Test controller": the pad and real controllers, offline. */
+    data object TestController : Screen
 }
 
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
@@ -43,6 +47,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     var session: RoomSession? = null
         private set
+
+    /** The input of the "Test controller" screen. */
+    val tester = ControllerTester(app)
+
+    /** The startup intro, shown once per process (a cold start). */
+    val intro = MutableStateFlow(false)
 
     fun go(screen: Screen) {
         _screen.value = screen
@@ -83,6 +93,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun setName(name: String) {
         prefs.playerName = name
         session?.setName(prefs.playerName)
+    }
+
+    /** The alias step before the room: saves the name and sends it. */
+    fun confirmAlias(name: String) {
+        prefs.playerName = name
+        session?.confirmAlias(prefs.playerName)
     }
 
     /** Saves a custom signaling server (already tested), or null for the official one. */

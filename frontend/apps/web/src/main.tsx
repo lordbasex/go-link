@@ -18,6 +18,7 @@ import { SignalProvider } from "./signal/SignalProvider";
 import { migrateLegacyStorage } from "@go-link/shared";
 import { useLang } from "./i18n";
 import { panelSocketUrl } from "./panel";
+import { installIntro } from "./intro";
 
 /** The device's socket when this page is its local web panel. */
 const PANEL_URL = panelSocketUrl();
@@ -28,6 +29,9 @@ try {
 } catch {
   // storage blocked
 }
+
+// The startup intro's coin sound and tap to skip.
+installIntro();
 
 /** Re-renders the whole tree when the language changes. Nothing remounts,
  * so connections and a running game survive the switch. */

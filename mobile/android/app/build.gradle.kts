@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.stream.webrtc)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.ktx)

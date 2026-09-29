@@ -761,3 +761,44 @@ func TestTheHostRecordsAGameUntilItStopsOrPauses(t *testing.T) {
 		t.Fatal("the saved games stayed")
 	}
 }
+
+func TestTheHostAnswersAPauseRequestFromItsLinkedBrowser(t *testing.T) {
+	var mu sync.Mutex
+	var events []RoomPauseAskEvent
+	h := newRoomsHarness(t, 2, nil)
+	h.rooms.cfg.OnPauseAsk = func(ev RoomPauseAskEvent) {
+		mu.Lock()
+		events = append(events, ev)
+		mu.Unlock()
+	}
+	r := h.create("robby", "R1")
+	gr := h.rooms.find(r.ID)
+	h.rooms.mu.Lock()
+	manager := gr.manager
+	h.rooms.mu.Unlock()
+	h.rooms.SetHostLinked(true)
+	manager.Join("peer-a")
+	manager.HandleControl("peer-a", []byte(`{"type":"hello","name":"Ana"}`))
+	manager.HandleControl("peer-a", []byte(`{"type":"pause_request"}`))
+	manager.Sync()
+
+	mu.Lock()
+	got := slices.Clone(events)
+	mu.Unlock()
+	if len(got) != 1 || got[0].ID != r.ID || got[0].Type != "pause_asked" || got[0].From != "peer-a" || got[0].Name != "Ana" || got[0].Port != 1 {
+		t.Fatalf("events %+v", got)
+	}
+	if asks := h.room(r.ID).PauseAsks; len(asks) != 1 || asks[0].From != "peer-a" {
+		t.Fatalf("device_status pause_asks %+v", asks)
+	}
+	if err := h.rooms.AnswerPause(r.ID, "nobody", true); err == nil {
+		t.Fatal("answered a request nobody made")
+	}
+	if err := h.rooms.AnswerPause(r.ID, "peer-a", true); err != nil {
+		t.Fatal(err)
+	}
+	manager.Sync()
+	if st := h.room(r.ID); st.State != models.RoomPaused || len(st.PauseAsks) != 0 {
+		t.Fatalf("after accepting: %+v", st)
+	}
+}

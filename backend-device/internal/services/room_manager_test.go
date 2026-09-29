@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -242,53 +243,321 @@ func TestOrdinal(t *testing.T) {
 	}
 }
 
-func TestPauseOnlyByPlayersDuringAGame(t *testing.T) {
+func TestPauseOnlyByTheHostDuringAGame(t *testing.T) {
 	m, out, _ := newManager(t)
 	var calls []bool
 	m.OnPause(func(p bool) { calls = append(calls, p) })
-	for _, p := range []string{"a", "b", "c", "d", "e"} {
+	for _, p := range []string{"host", "a", "b"} {
 		m.Join(p)
 	}
-	m.HandleControl("a", []byte(`{"type":"hello","name":"Ana"}`))
-	// The test card never pauses.
-	m.HandleControl("a", []byte(`{"type":"pause","paused":true}`))
+	m.MarkOwner("host")
+	m.HandleControl("host", []byte(`{"type":"hello","name":"Fede"}`))
+	// The test card never pauses, not even for the host.
+	m.HandleControl("host", []byte(`{"type":"pause","paused":true}`))
 	m.Sync()
 	if st := out.lastState(t, "b"); st["paused"] == true || st["pausable"] == true {
 		t.Fatalf("test card state %v", st)
 	}
 
 	m.SetPausable(true)
-	// e waits in the queue: it cannot pause.
-	m.HandleControl("e", []byte(`{"type":"pause","paused":true}`))
-	m.Sync()
-	if st := out.lastState(t, "b"); st["paused"] == true || st["pausable"] != true {
-		t.Fatalf("queued guest paused: %v", st)
-	}
-	// A seated player pauses for everyone.
+	// A seated guest who is not the host is refused, with a code.
 	m.HandleControl("a", []byte(`{"type":"pause","paused":true}`))
 	m.Sync()
-	if st := out.lastState(t, "e"); st["paused"] != true || st["paused_by"] != "Ana" {
+	if st := out.lastState(t, "b"); st["paused"] == true {
+		t.Fatalf("a guest paused: %v", st)
+	}
+	if e := lastOfType(out, "a", "error"); e == nil || e["code"] != "pause_owner_only" {
+		t.Fatalf("no pause_owner_only error: %v", e)
+	}
+	// The host pauses for everyone.
+	m.HandleControl("host", []byte(`{"type":"pause","paused":true}`))
+	m.Sync()
+	if st := out.lastState(t, "a"); st["paused"] != true || st["paused_by"] != "Fede" {
 		t.Fatalf("after pause: %v", st)
 	}
-	chats := out.chats("e")
-	if last := chats[len(chats)-1]; last["system"] != "Ana paused the game" {
+	chats := out.chats("a")
+	if last := chats[len(chats)-1]; last["system"] != "Fede paused the game" {
 		t.Fatalf("chat %v", last)
 	}
-	// Another player resumes.
+	// Guests cannot resume either; the host can.
 	m.HandleControl("b", []byte(`{"type":"pause","paused":false}`))
+	m.Sync()
+	if st := out.lastState(t, "a"); st["paused"] != true {
+		t.Fatalf("a guest resumed: %v", st)
+	}
+	m.HandleControl("host", []byte(`{"type":"pause","paused":false}`))
 	m.Sync()
 	if st := out.lastState(t, "a"); st["paused"] == true {
 		t.Fatalf("after resume: %v", st)
 	}
-	// Leaving the game ends the pause.
-	m.HandleControl("a", []byte(`{"type":"pause","paused":true}`))
+	// The linked browser pauses through Pause; leaving the game ends it.
+	m.Pause(true, "The host")
 	m.SetPausable(false)
 	m.Sync()
 	if st := out.lastState(t, "a"); st["paused"] == true || st["pausable"] == true {
 		t.Fatalf("after the game: %v", st)
 	}
-	if want := []bool{true, false, true, false}; len(calls) != len(want) {
+	if want := []bool{true, false, true, false}; !reflect.DeepEqual(calls, want) {
 		t.Fatalf("emulator calls %v, want %v", calls, want)
+	}
+}
+
+// lastOfType returns the latest message of a type sent to peer, or nil.
+func lastOfType(o *outbox, peer, typ string) map[string]any {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	for i := len(o.msgs[peer]) - 1; i >= 0; i-- {
+		if o.msgs[peer][i]["type"] == typ {
+			return o.msgs[peer][i]
+		}
+	}
+	return nil
+}
+
+// pauseRoom is a running game with the host (owner, not seated: it
+// watches) and two seated players, a (Ana, P1) and b (P2).
+func pauseRoom(t *testing.T) (*RoomManager, *outbox, *[]PauseAskEvent, *time.Time) {
+	t.Helper()
+	m, out, _ := newManager(t)
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	var mu sync.Mutex
+	m.cfg.Now = func() time.Time { mu.Lock(); defer mu.Unlock(); return now }
+	var events []PauseAskEvent
+	m.OnPauseAsk(func(ev PauseAskEvent) { events = append(events, ev) })
+	m.Join("a")
+	m.Join("b")
+	m.Join("host")
+	m.MarkOwner("host")
+	m.HandleControl("host", []byte(`{"type":"spectate"}`))
+	m.HandleControl("a", []byte(`{"type":"hello","name":"Ana"}`))
+	m.SetPausable(true)
+	m.Sync()
+	return m, out, &events, &now
+}
+
+func TestAskForAPauseAndTheHostAccepts(t *testing.T) {
+	m, out, events, _ := pauseRoom(t)
+	if st := out.lastState(t, "a"); st["host_online"] != true {
+		t.Fatalf("host in the room but not online: %v", st)
+	}
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	m.Sync()
+	asked, _ := you(out.lastState(t, "a"))["pause_asked"].(map[string]any)
+	if asked == nil || asked["expires_at"] != "2026-01-01T12:00:30Z" {
+		t.Fatalf("requester state %v", you(out.lastState(t, "a")))
+	}
+	// Only the host sees the requests.
+	if _, ok := you(out.lastState(t, "b"))["pause_asks"]; ok {
+		t.Fatal("a guest sees the requests")
+	}
+	asks, _ := you(out.lastState(t, "host"))["pause_asks"].([]any)
+	if len(asks) != 1 {
+		t.Fatalf("host asks %v", asks)
+	}
+	ask := asks[0].(map[string]any)
+	if ask["from"] != "a" || ask["name"] != "Ana" || ask["port"] != float64(1) {
+		t.Fatalf("ask %v", ask)
+	}
+	if len(*events) != 1 || (*events)[0].Type != "pause_asked" || (*events)[0].From != "a" || (*events)[0].Port != 1 {
+		t.Fatalf("link events %+v", *events)
+	}
+	// A guest cannot answer; the host accepts.
+	m.HandleControl("b", []byte(`{"type":"pause_answer","from":"a","accept":true}`))
+	m.Sync()
+	if out.lastState(t, "b")["paused"] == true {
+		t.Fatal("a guest answered")
+	}
+	m.HandleControl("host", []byte(`{"type":"pause_answer","from":"a","accept":true}`))
+	m.Sync()
+	st := out.lastState(t, "b")
+	if st["paused"] != true || st["paused_by"] != "Ana" {
+		t.Fatalf("after accept: %v", st)
+	}
+	chats := out.chats("b")
+	if last := chats[len(chats)-1]; last["event"] != EventGamePaused || last["args"].(map[string]any)["name"] != "Ana" || last["args"].(map[string]any)["name2"] != "Guest HOST" {
+		t.Fatalf("chat %v", last)
+	}
+	if you(out.lastState(t, "a"))["pause_asked"] != nil || len(you(out.lastState(t, "host"))["pause_asks"].([]any)) != 0 {
+		t.Fatal("the request is still there")
+	}
+	if last := (*events)[len(*events)-1]; last.Type != "pause_ask_gone" || last.From != "a" {
+		t.Fatalf("link events %+v", *events)
+	}
+	// Paused: no new requests.
+	m.HandleControl("b", []byte(`{"type":"pause_request"}`))
+	m.Sync()
+	if you(out.lastState(t, "b"))["pause_asked"] != nil {
+		t.Fatal("asked while paused")
+	}
+}
+
+func TestPauseRequestDeclinedCancelledOrRefused(t *testing.T) {
+	m, out, events, _ := pauseRoom(t)
+	// The host declines: only the requester is told.
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	m.HandleControl("host", []byte(`{"type":"pause_answer","from":"a","accept":false}`))
+	m.Sync()
+	if out.lastState(t, "b")["paused"] == true {
+		t.Fatal("declined but paused")
+	}
+	chats := out.chats("a")
+	if last := chats[len(chats)-1]; last["event"] != EventPauseDeclined {
+		t.Fatalf("requester chat %v", last)
+	}
+	for _, c := range out.chats("b") {
+		if c["event"] == EventPauseDeclined {
+			t.Fatal("another guest saw the decline")
+		}
+	}
+	if you(out.lastState(t, "a"))["pause_asked"] != nil {
+		t.Fatal("declined request still pending")
+	}
+	// Asking and withdrawing.
+	m.HandleControl("b", []byte(`{"type":"pause_request"}`))
+	m.HandleControl("b", []byte(`{"type":"pause_request","cancel":true}`))
+	m.Sync()
+	if len(you(out.lastState(t, "host"))["pause_asks"].([]any)) != 0 {
+		t.Fatal("withdrawn request still pending")
+	}
+	if last := (*events)[len(*events)-1]; last.Type != "pause_ask_gone" || last.From != "b" {
+		t.Fatalf("events %+v", *events)
+	}
+	// Spectators (and the queue) cannot ask.
+	m.Join("c")
+	m.HandleControl("c", []byte(`{"type":"spectate"}`))
+	m.HandleControl("c", []byte(`{"type":"pause_request"}`))
+	m.Sync()
+	if you(out.lastState(t, "c"))["pause_asked"] != nil {
+		t.Fatal("a spectator asked for a pause")
+	}
+	// Leaving the seat drops the request.
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	m.HandleControl("a", []byte(`{"type":"spectate"}`))
+	m.Sync()
+	if len(you(out.lastState(t, "host"))["pause_asks"].([]any)) != 0 {
+		t.Fatal("request kept without a seat")
+	}
+}
+
+func TestPauseRequestExpiresAndAskingAgainRefreshesIt(t *testing.T) {
+	m, out, _, now := pauseRoom(t)
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	m.Sync()
+	first := you(out.lastState(t, "a"))["pause_asked"].(map[string]any)["expires_at"]
+	m.do(func() { *now = now.Add(10 * time.Second) })
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	m.Sync()
+	if asks := you(out.lastState(t, "host"))["pause_asks"].([]any); len(asks) != 1 {
+		t.Fatalf("one guest, one request: %v", asks)
+	}
+	if again := you(out.lastState(t, "a"))["pause_asked"].(map[string]any)["expires_at"]; again == first || again != "2026-01-01T12:00:40Z" {
+		t.Fatalf("expiry %v then %v", first, again)
+	}
+	// Expiry is a timer inside the actor; run it by hand.
+	m.do(func() {
+		i := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == "a" })
+		m.dropPauseAsk(i)
+		m.broadcastState()
+	})
+	m.Sync()
+	if you(out.lastState(t, "a"))["pause_asked"] != nil {
+		t.Fatal("still asked")
+	}
+}
+
+func TestPauseRequestTimesOut(t *testing.T) {
+	if testing.Short() {
+		t.Skip("waits 30 s")
+	}
+	m, out, _, _ := pauseRoom(t)
+	m.HandleControl("a", []byte(`{"type":"pause_request"}`))
+	deadline := time.Now().Add(pauseAskFor + 5*time.Second)
+	for time.Now().Before(deadline) {
+		m.Sync()
+		if you(out.lastState(t, "a"))["pause_asked"] == nil {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatal("the request never expired")
+}
+
+func TestHostOnline(t *testing.T) {
+	m, out, _ := newManager(t)
+	m.Join("a")
+	m.Sync()
+	if out.lastState(t, "a")["host_online"] != false {
+		t.Fatal("online with no host")
+	}
+	m.SetHostLinked(true)
+	m.Sync()
+	if out.lastState(t, "a")["host_online"] != true {
+		t.Fatal("a linked browser is the host online")
+	}
+	m.SetHostLinked(false)
+	m.MarkOwner("host") // marked before its control channel opens
+	m.Sync()
+	if out.lastState(t, "a")["host_online"] != false {
+		t.Fatal("an owner not in the room yet")
+	}
+	m.Join("host")
+	m.Sync()
+	if out.lastState(t, "a")["host_online"] != true || you(out.lastState(t, "host"))["owner"] != true {
+		t.Fatal("the host in the room")
+	}
+	m.Leave("host")
+	m.Sync()
+	if out.lastState(t, "a")["host_online"] != false {
+		t.Fatal("the host left")
+	}
+}
+
+func TestCleanName(t *testing.T) {
+	for in, want := range map[string]string{
+		"Ana":                        "Ana",
+		"  Ana   María  ":            "Ana María",
+		"José Ñandú":                 "José Ñandú",
+		"Jose\u0301":                 "José", // decomposed accent, joined (NFC)
+		"<script>alert(1)</script>":  "scriptalert1script",
+		"Fede 😀🎮":                    "Fede",
+		"😀 Ana 🎮 Bo":                 "Ana Bo",
+		"a":                          "", // too short
+		"😀😀":                         "",
+		"!!":                         "",
+		"   ":                        "",
+		"A1":                         "A1",
+		"Player\tOne\nTwo":           "Player One Two",
+		"李小龍":                        "李小龍",
+		"Ölçer 2":                    "Ölçer 2",
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ": "ABCDEFGHIJKLMNOPQRST",
+		"abcdefghijklmnopqrs tuvw":   "abcdefghijklmnopqrs", // cut, no trailing space
+		"a.b":                        "ab",
+		"x_y-z":                      "xyz",
+	} {
+		if got := CleanName(in); got != want {
+			t.Errorf("CleanName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestHelloNameIsSanitizedEverywhere(t *testing.T) {
+	m, out, _ := newManager(t)
+	m.Join("a")
+	m.Join("b")
+	m.HandleControl("a", []byte(`{"type":"hello","name":"<b>Ana</b> 😀"}`))
+	m.HandleControl("a", []byte(`{"type":"chat","text":"hi"}`))
+	m.HandleControl("b", []byte(`{"type":"hello","name":"@"}`))
+	m.Sync()
+	if got := you(out.lastState(t, "a"))["name"]; got != "bAnab" {
+		t.Fatalf("you.name = %v", got)
+	}
+	if got := you(out.lastState(t, "b"))["name"]; got != "Guest B" {
+		t.Fatalf("a name too short keeps the generated one: %v", got)
+	}
+	for _, c := range out.chats("b") {
+		if c["text"] == "hi" && c["name"] != "bAnab" {
+			t.Fatalf("chat name %v", c["name"])
+		}
 	}
 }
 

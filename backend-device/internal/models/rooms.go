@@ -74,4 +74,16 @@ type ManagedRoom struct {
 	// RecordingSince.
 	Recording      bool       `json:"recording,omitempty"`
 	RecordingSince *time.Time `json:"recording_since,omitempty"`
+	// PauseAsks are the players asking the host for a pause, waiting for
+	// an answer (pause_answer).
+	PauseAsks []PauseAsk `json:"pause_asks,omitempty"`
+}
+
+// PauseAsk is a seated player asking the host for a pause: from is the
+// player's peer id, what pause_answer names.
+type PauseAsk struct {
+	From      string    `json:"from"`
+	Name      string    `json:"name"`
+	Port      int       `json:"port"`
+	ExpiresAt time.Time `json:"expires_at"`
 }

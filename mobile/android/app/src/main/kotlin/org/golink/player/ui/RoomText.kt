@@ -36,6 +36,7 @@ fun systemText(res: Resources, line: ChatLine.System): String {
         ChatEvent.LEFT_SEAT -> res.getString(R.string.ev_left, n, p)
         ChatEvent.SEAT_FREE -> res.getString(R.string.ev_free, p)
         ChatEvent.TOOK_SEAT -> res.getString(R.string.ev_took, n, p)
+        ChatEvent.PAUSE_DECLINED -> res.getString(R.string.ev_pause_declined)
         null -> line.text
     }
 }

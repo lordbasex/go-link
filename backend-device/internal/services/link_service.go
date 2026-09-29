@@ -60,6 +60,26 @@ type LinkService struct {
 	timers  map[string]*time.Timer
 	send    func(peerID string, msg []byte) bool
 	drop    func(peerID string)
+	// onChange runs (outside the lock) when a browser becomes trusted or
+	// is forgotten.
+	onChange func()
+}
+
+// OnChange registers who is told that the trusted browsers changed.
+func (l *LinkService) OnChange(fn func()) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.onChange = fn
+}
+
+// changed runs the OnChange callback. Never call it holding l.mu.
+func (l *LinkService) changed() {
+	l.mu.Lock()
+	fn := l.onChange
+	l.mu.Unlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 // NewLinkService builds the service.
@@ -125,8 +145,9 @@ func (l *LinkService) Trusted(peerID string) bool {
 // gets its token when it sends auth.
 func (l *LinkService) PairedByCode(peerID string) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	l.trusted[peerID] = ""
+	l.mu.Unlock()
+	l.changed()
 }
 
 // PanelLinkID marks a browser that came through the local web panel with
@@ -137,8 +158,9 @@ const PanelLinkID = "panel"
 // panel token over its own connection.
 func (l *LinkService) PairedByPanel(peerID string) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	l.trusted[peerID] = PanelLinkID
+	l.mu.Unlock()
+	l.changed()
 }
 
 // Reached starts the clock for a browser that came back with reach: it
@@ -160,12 +182,13 @@ func (l *LinkService) Reached(peerID string) {
 // Forget clears a browser that left.
 func (l *LinkService) Forget(peerID string) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	delete(l.trusted, peerID)
 	if t := l.timers[peerID]; t != nil {
 		t.Stop()
 		delete(l.timers, peerID)
 	}
+	l.mu.Unlock()
+	l.changed()
 }
 
 type linkMessage struct {
@@ -287,6 +310,7 @@ func (l *LinkService) auth(peerID string, m linkMessage) {
 	links := slices.Clone(l.links)
 	l.mu.Unlock()
 	l.persist(links)
+	l.changed()
 	l.status.AddPeer(peerID, "", l.cfg.Now())
 	l.cfg.Logger.Info("browser back", "peer_id", peerID, "link_id", m.LinkID)
 	l.reply(peerID, map[string]string{"type": msgAuthOK, "device_id": l.cfg.DeviceID, "link_id": m.LinkID})

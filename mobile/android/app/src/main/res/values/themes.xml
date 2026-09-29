@@ -7,4 +7,12 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:colorAccent">@color/accent</item>
     </style>
+    <!-- The first frame on a cold start (SplashScreen API): the intro's
+         background with no icon, so the animated intro pops the icon in
+         without a jump. -->
+    <style name="Theme.GoLink.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/intro_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.GoLink</item>
+    </style>
 </resources>

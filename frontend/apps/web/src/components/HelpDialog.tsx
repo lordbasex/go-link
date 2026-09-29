@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useId, useRef } from "react";
+import { Link } from "react-router-dom";
 import { t } from "../i18n";
 
 /** "How to play": every control of a room, explained in one place. */
@@ -31,6 +32,12 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
             </section>
           ))}
         </div>
+        <p className="small muted">
+          <Link to="/test-controller" className="text-link" onClick={onClose}>
+            {t.testController.link}
+          </Link>{" "}
+          · {t.testController.linkHint}
+        </p>
         <div className="dialog-actions">
           <button ref={closeRef} type="button" className="button button-primary" onClick={onClose}>
             {t.help.close}

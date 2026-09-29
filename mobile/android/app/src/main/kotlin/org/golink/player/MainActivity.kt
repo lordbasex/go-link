@@ -4,6 +4,7 @@ package org.golink.player
 import android.content.Intent
 import android.hardware.input.InputManager
 import android.os.Bundle
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.WindowManager
@@ -21,8 +22,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -32,37 +35,80 @@ import org.golink.player.core.Invites
 import org.golink.player.ui.GoLinkTheme
 import org.golink.player.ui.HeadphonesScreen
 import org.golink.player.ui.HomeScreen
+import org.golink.player.ui.IntroScreen
 import org.golink.player.ui.JoinScreen
 import org.golink.player.ui.Perms
 import org.golink.player.ui.RoomScreen
 import org.golink.player.ui.ScanScreen
 import org.golink.player.ui.SettingsScreen
+import org.golink.player.ui.TestControllerScreen
 import org.golink.player.ui.Tokens
+
+/** Set once the intro started in this process. */
+private var introPlayed = false
 
 class MainActivity : ComponentActivity() {
     private val vm: PlayerViewModel by viewModels()
 
     private val inputDevices = object : InputManager.InputDeviceListener {
-        override fun onInputDeviceAdded(deviceId: Int) = Unit
+        override fun onInputDeviceAdded(deviceId: Int) = refresh()
 
-        override fun onInputDeviceChanged(deviceId: Int) = Unit
+        override fun onInputDeviceChanged(deviceId: Int) = refresh()
 
         override fun onInputDeviceRemoved(deviceId: Int) {
             vm.session?.gamepads?.onDeviceRemoved(deviceId)
+            vm.tester.onDeviceRemoved(deviceId)
+            refresh()
+        }
+
+        private fun refresh() {
+            vm.session?.refreshControllers()
+            vm.tester.refresh()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The first frame is the intro's background (Theme.GoLink.Starting).
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (savedInstanceState == null) handleLink(intent)
+        // The intro plays once per process: a cold start, never when the app
+        // comes back from the background or the screen rotates.
+        if (!introPlayed) {
+            introPlayed = true
+            vm.intro.value = true
+        }
+        val reducedMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        // Debug builds can slow the intro down to look at it (-e introSlow 4).
+        val slow = if (BuildConfig.DEBUG) intent?.getStringExtra("introSlow")?.toFloatOrNull() ?: 1f else 1f
+        val lab = if (BuildConfig.DEBUG) intent?.getStringExtra("lab") else null
         getSystemService(InputManager::class.java).registerInputDeviceListener(inputDevices, null)
         setContent {
             GoLinkTheme {
+                val intro by vm.intro.collectAsState()
                 // Test tags show up as resource ids for UiAutomator (the
                 // Android end-to-end test finds the controls by them).
                 @OptIn(ExperimentalComposeUiApi::class)
-                Box(Modifier.fillMaxSize().background(Tokens.bg).semantics { testTagsAsResourceId = true }) { App(vm) }
+                Box(Modifier.fillMaxSize().background(Tokens.bg).semantics { testTagsAsResourceId = true }) {
+                    // Hidden from UiAutomator and TalkBack under the intro.
+                    Box(if (intro) Modifier.fillMaxSize().clearAndSetSemantics {} else Modifier.fillMaxSize()) {
+                        // Debug builds can open a lab with no room: --es lab alias|overlay.
+                        when (lab) {
+                            "alias" -> org.golink.player.ui.AliasScreen(saved = vm.prefs.playerName, onEnter = { vm.prefs.playerName = it }, onBack = {})
+                            "overlay" -> org.golink.player.ui.OverlayLab()
+                            else -> App(vm)
+                        }
+                    }
+                    if (intro) {
+                        IntroScreen(
+                            sound = vm.prefs.startupSound,
+                            reducedMotion = reducedMotion,
+                            slow = slow,
+                            onDone = { vm.intro.value = false },
+                        )
+                    }
+                }
             }
         }
     }
@@ -93,12 +139,14 @@ class MainActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val session = vm.session
         if (session != null && vm.screen.value == Screen.Room && session.gamepads.onKey(event)) return true
+        if (vm.screen.value == Screen.TestController && vm.tester.onKey(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         val session = vm.session
         if (session != null && vm.screen.value == Screen.Room && session.gamepads.onMotion(event)) return true
+        if (vm.screen.value == Screen.TestController && vm.tester.onMotion(event)) return true
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -136,6 +184,7 @@ private fun App(vm: PlayerViewModel) {
             onInvite = { vm.go(Screen.Join(it)) },
             onSettings = { vm.go(Screen.Settings) },
             onOfficialServer = { vm.setSignal(null) },
+            onTestController = { vm.go(Screen.TestController) },
         )
         Screen.Scan -> ScanScreen(
             prefs = vm.prefs,
@@ -161,15 +210,18 @@ private fun App(vm: PlayerViewModel) {
             } else {
                 // A permission granted while in the room changes the route.
                 LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { session.reroute() }
-                RoomScreen(session, vm.prefs, onLeave = { vm.leaveRoom() })
+                RoomScreen(session, vm.prefs, onLeave = { vm.leaveRoom() }, onAlias = { vm.confirmAlias(it) })
             }
         }
         Screen.Settings -> SettingsScreen(
             name = vm.prefs.playerName,
             signal = signal,
+            startupSound = vm.prefs.startupSound,
+            onStartupSound = { vm.prefs.startupSound = it },
             onName = { vm.setName(it) },
             onSignal = { vm.setSignal(it) },
             onBack = { vm.go(Screen.Home) },
         )
+        Screen.TestController -> TestControllerScreen(vm.tester, onBack = { vm.go(Screen.Home) })
     }
 }

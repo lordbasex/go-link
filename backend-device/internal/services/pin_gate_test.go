@@ -3,6 +3,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -81,7 +82,7 @@ func TestEveryInvitationLetsInOnePerson(t *testing.T) {
 		t.Fatal("a made-up token got in")
 	}
 	// The host's own key always works.
-	if r := g.Check("host", "", g.OwnerKey()); !r.OK {
+	if r := g.Check("host", "", g.OwnerKey()); !r.OK || !r.Owner {
 		t.Fatalf("owner key: %+v", r)
 	}
 	// An invitation nobody used expires; a used one keeps working.
@@ -172,5 +173,44 @@ func TestAPinGuesserCannotLockOutTheHostOrGuestsAlreadyIn(t *testing.T) {
 	}
 	if r := g.Check("ana-reload", "", in.Token); !r.OK {
 		t.Fatalf("a guest already in was locked out: %+v", r)
+	}
+}
+
+func TestTheOwnerKeyMakesTheGuestTheRoomsHost(t *testing.T) {
+	views := &fakeViewers{}
+	room := NewTestRoomService(nil, views, "mac", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	sender := newFakeSender()
+	room.SetSender(sender)
+	room.SetPrivate()
+	out := newOutbox()
+	manager := NewRoomManager(RoomManagerConfig{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, out)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go manager.Run(ctx)
+	room.SetManager(manager)
+	room.SetTrusted(func(peer string) bool { return peer == "link" })
+	room.OnConnect(signalclient.Envelope{PeerID: "A"})
+	<-sender.ch // room_open
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypeRoomOpened, RoomID: "R"})
+
+	// The host's room page comes in with the owner key; its linked browser
+	// needs no PIN at all; a guest with an invitation is not the host.
+	pin := room.IssuePass().Pin
+	for peer, payload := range map[string]string{
+		"host":  `{"kind":"pin","token":"` + room.OwnerKey() + `"}`,
+		"guest": `{"kind":"pin","pin":"` + pin + `"}`,
+	} {
+		room.OnMessage(signalclient.Envelope{Type: signalclient.TypePeerJoined, Remote: peer, RoomID: "R"})
+		room.OnMessage(signalclient.Envelope{Type: signalclient.TypeSignal, From: peer, Payload: json.RawMessage(payload)})
+	}
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypePeerJoined, Remote: "link", RoomID: "R"})
+	for _, p := range []string{"host", "guest", "link"} {
+		manager.Join(p)
+	}
+	manager.Sync()
+	for peer, want := range map[string]bool{"host": true, "guest": false, "link": true} {
+		if got := you(out.lastState(t, peer))["owner"]; got != want {
+			t.Errorf("%s owner = %v, want %v", peer, got, want)
+		}
 	}
 }

@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID00000.org.golink.player"],
+        "components": [
+          { "/": "/g/*", "comment": "Invitation links open go-link Player" }
+        ]
+      }
+    ]
+  }
+}

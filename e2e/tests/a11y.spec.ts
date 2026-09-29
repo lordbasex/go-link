@@ -15,6 +15,7 @@ const pages = [
   { path: "/docs/controls", name: "docs with tables" },
   { path: "/terms", name: "terms of use" },
   { path: "/privacy", name: "privacy policy" },
+  { path: "/test-controller", name: "test controller" },
   { path: "/nowhere", name: "not found" },
 ];
 
@@ -23,6 +24,17 @@ for (const scheme of ["light", "dark"] as const) {
     // Reduced motion: the checker must see the page at rest, not in the
     // middle of a fade (the walkthrough animates its text on every step).
     test.use({ colorScheme: scheme, reducedMotion: "reduce" });
+    // The site picks its theme from its own setting (dark by default), not
+    // from the system: set it the way the header's sun/moon button does.
+    test.beforeEach(async ({ context }) => {
+      await context.addInitScript((theme) => {
+        try {
+          localStorage.setItem("go-link.theme", theme);
+        } catch {
+          // no storage: dark
+        }
+      }, scheme);
+    });
     for (const { path, name } of pages) {
       test(`${name} has no accessibility problems`, async ({ page }) => {
         await page.goto(path);

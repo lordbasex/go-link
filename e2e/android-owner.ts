@@ -82,6 +82,11 @@ export async function joinAsBrowserGuest(browser: Browser, code: string, pin: st
   await dialog.getByPlaceholder("000000").fill(pin);
   await dialog.getByRole("checkbox", { name: /I have read and accept/ }).check();
   await dialog.getByRole("button", { name: "Join", exact: true }).click();
+  // After the PIN the website asks for the player's name.
+  const step = p.getByRole("dialog", { name: "What’s your name?" });
+  await step.getByRole("textbox", { name: "Your name" }).fill(`Guest ${pin.slice(-3)}`);
+  await step.getByRole("button", { name: "Enter the room" }).click();
+  await expect(step).toBeHidden();
   return { context, page: p };
 }
 
@@ -118,6 +123,19 @@ export async function joinWithPin(pin: string) {
   const terms = await A.waitFor({ id: "terms-check" });
   if (!terms.checked) A.tap(terms);
   await A.tapOn({ id: "join-button" });
+}
+
+/**
+ * The alias step the app shows once per visit, after the room lets it in:
+ * types the name (the device's rules: letters, digits and spaces, 2 to 20)
+ * and enters the room.
+ */
+export async function enterAlias(name = "Android Player") {
+  await A.waitFor({ id: "alias-field" }, 60_000);
+  await A.fill({ id: "alias-field" }, name);
+  A.hideKeyboard();
+  await A.tapOn({ id: "alias-enter" });
+  await A.waitGone({ id: "alias-screen" });
 }
 
 /** A clean app: installed, no server, no terms, no passes, no permissions but Bluetooth; screen on. */

@@ -15,7 +15,8 @@ import {
   SunIcon,
 } from "./Icons";
 import { setTheme, useTheme } from "../theme";
-import { GithubIcon } from "./Icons";
+import { CoinIcon, CoinOffIcon, GithubIcon } from "./Icons";
+import { setStartupSound, useStartupSound } from "../intro";
 import { REPO_URL } from "../config";
 
 export function Brand() {
@@ -166,6 +167,7 @@ export function MainHeader() {
           <LangSwitch />
           <ServerButton />
           <ThemeButton />
+          <StartupSoundButton />
           <a
             className="icon-button tip-below"
             href={REPO_URL}
@@ -179,6 +181,27 @@ export function MainHeader() {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * The startup intro's coin sound, on or off. It sits with the other
+ * per-browser preferences (language, theme) in the header's tools.
+ */
+export function StartupSoundButton() {
+  const on = useStartupSound();
+  const tip = on ? t.intro.on : t.intro.off;
+  return (
+    <button
+      type="button"
+      className="icon-button header-icon tip-below"
+      aria-label={t.intro.sound}
+      aria-pressed={on}
+      data-tip={tip}
+      onClick={() => setStartupSound(!on)}
+    >
+      {on ? <CoinIcon /> : <CoinOffIcon />}
+    </button>
   );
 }
 

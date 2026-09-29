@@ -5,4 +5,6 @@
     <color name="bg">#0E1016</color>
     <color name="accent">#F2A33A</color>
     <color name="on_accent">#1A1206</color>
+    <!-- The startup intro's outer background. -->
+    <color name="intro_bg">#05060A</color>
 </resources>

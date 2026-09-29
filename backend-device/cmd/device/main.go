@@ -19,6 +19,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -59,6 +61,7 @@ func run() error {
 		headless   = flag.Bool("headless", false, "run without window or tray icon (servers, Raspberry Pi); the pairing code goes to the log")
 		debug      = flag.Bool("debug", false, "verbose logs")
 		testRoom   = flag.Bool("test-room", true, "open the test pattern room (or the game given with --game)")
+		testPause  = flag.Bool("test-room-pause", false, "let the host pause the test pattern room (to try the pause and its requests without a game)")
 		game       = flag.String("game", "", "ROM set to play in the room, e.g. robby (from the ROM folder); empty streams the test pattern")
 		udpPort    = flag.Int("udp-port", 0, "carry every WebRTC connection on this UDP port, to forward it on a router (default: udp_port in device.json, else random ports)")
 		announce   = flag.String("announce", "", "comma-separated addresses where browsers reach --udp-port through a forwarding router (default: announce_ips in device.json)")
@@ -159,6 +162,7 @@ func run() error {
 	pairing.SetAuth(links)
 	stream.SetLinkGate(links.Trusted)
 	var room *services.TestRoomService
+	var testManager *services.RoomManager
 	if *testRoom {
 		// The test pattern room is a permanent diagnostic, like an echo
 		// test call in VoIP: it proves web, signalhub, WebRTC and device
@@ -173,6 +177,7 @@ func run() error {
 		room.SetPrivate()
 		manager := services.NewRoomManager(services.RoomManagerConfig{Logger: logger, OnSummary: room.OnSummary}, stream)
 		room.SetManager(manager)
+		testManager = manager
 		manager.SetInfo(services.RoomInfo{Title: "Test pattern", Game: "Test pattern", Host: hostName()})
 		stream.SetRoomHooks(services.RoomHooks{
 			Opened:  manager.Join,
@@ -180,6 +185,15 @@ func run() error {
 			Closed:  manager.Leave,
 			PortOf:  manager.PortOf,
 		})
+		if *testPause {
+			var paused atomic.Bool
+			stream.PausableTestCard(paused.Load)
+			manager.OnPause(paused.Store)
+			manager.SetPausable(true)
+			manager.OnPauseAsk(func(ev services.PauseAskEvent) {
+				stream.SendToLinks(services.RoomPauseAskEvent{PauseAskEvent: ev, ID: services.TestRoomID})
+			})
+		}
 		go manager.Run(ctx)
 		handlers = append(handlers, room)
 	}
@@ -204,6 +218,10 @@ func run() error {
 		OnRecording: func(ev services.RecordingEvent) {
 			stream.SendToLinks(ev)
 		},
+		// A player asks the host for a pause: every linked browser shows it.
+		OnPauseAsk: func(ev services.RoomPauseAskEvent) {
+			stream.SendToLinks(ev)
+		},
 		MaxRooms: cfg.MaxRooms,
 		Trusted:  links.Trusted,
 		Rooms:    cfg.Rooms,
@@ -220,6 +238,26 @@ func run() error {
 		Logger: logger,
 	})
 	handlers = append(handlers, games)
+
+	// Guests see whether the host can answer a request for a pause: a
+	// linked browser of the host is connected (or the host is in the room).
+	var hostMu sync.Mutex
+	hostLinked := false
+	hostChanged := func() {
+		hostMu.Lock()
+		defer hostMu.Unlock()
+		on := stream.HasLink()
+		if hostLinked == on {
+			return
+		}
+		hostLinked = on
+		games.SetHostLinked(on)
+		if testManager != nil {
+			testManager.SetHostLinked(on)
+		}
+	}
+	links.OnChange(hostChanged)
+	stream.OnLinksChanged(hostChanged)
 
 	// ROM uploads from the owner, over WebRTC.
 	uploads := services.NewUploadService(library, func(peerID string, r services.FileReply) {
@@ -257,6 +295,7 @@ func run() error {
 			From    string `json:"from"`
 			Slot    int    `json:"slot"`
 			Confirm string `json:"confirm"`
+			Accept  bool   `json:"accept"`
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -391,6 +430,21 @@ func run() error {
 			err = games.Create(msg.GameRequest, reply)
 		case "room_start":
 			err = games.Start(msg.ID, msg.From, msg.Slot, reply)
+		case "pause_answer":
+			// The host's answer to a player's request for a pause (from is
+			// the player's peer id, as in pause_asked).
+			res := map[string]any{"type": "room_result", "id": msg.ID, "action": "pause_answer", "ok": true}
+			if msg.ID == services.TestRoomID && testManager != nil {
+				if !testManager.AnswerPause(msg.From, msg.Accept) {
+					res["ok"], res["error"] = false, services.ErrRoomState.Error()
+				}
+			} else if err := games.AnswerPause(msg.ID, msg.From, msg.Accept); err != nil {
+				res["ok"], res["error"] = false, err.Error()
+			}
+			if b, jerr := json.Marshal(res); jerr == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
 		case "invite":
 			// A new invitation: a PIN good for one person, only for the
 			// host's own browsers (this is the linked control channel).
@@ -419,11 +473,17 @@ func run() error {
 				games.Close(reply)
 				return
 			}
-			// The test pattern room ("test"): only a new link.
+			// The test pattern room ("test"): a new link, and a pause with
+			// --test-room-pause.
 			if msg.ID == services.TestRoomID && room != nil {
-				ok := action == "new_link"
-				if ok {
+				ok := action == "new_link" || ((action == "pause" || action == "resume") && *testPause)
+				switch action {
+				case "new_link":
 					room.NewInvite()
+				case "pause", "resume":
+					if ok {
+						testManager.Pause(action == "pause", "The host")
+					}
 				}
 				if b, err := json.Marshal(map[string]any{"type": "room_result", "id": msg.ID, "action": action, "ok": ok}); err == nil {
 					stream.SendControl(peerID, b)

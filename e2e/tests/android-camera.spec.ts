@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as A from "../android";
-import { freshApp, invite, joinWithPin, ownerOpensTestPattern, pointAppAt, trackedContext } from "../android-owner";
+import { enterAlias, freshApp, invite, joinWithPin, ownerOpensTestPattern, pointAppAt, trackedContext } from "../android-owner";
 import { PORTS } from "../ports";
 
 // The go-link Player app scans a real QR code with the emulator's back
@@ -188,6 +188,7 @@ test("the scanner reads the invitation's QR code with the camera, then the PIN j
   snap("scanned-pin-form");
   await joinWithPin(inv.pin);
   const seated = await probe.waitFor((e) => e.ev === "ui" && e.phase === "STREAMING" && /^P\d/.test(String(e.me)), 60_000, mark);
+  await enterAlias();
   await A.waitFor({ id: "room-seat", text: `You are ${String(seated.me)}` });
   snap("joined-after-scan");
 });

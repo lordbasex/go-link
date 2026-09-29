@@ -13,7 +13,7 @@
 
 | Module | What it is |
 |---|---|
-| `:core` | Plain Kotlin, no Android types, tested on the JVM: the signalhub envelope and client (`SignalClient`, reconnect with jittered backoff, FIFO requests), invitation parsing, signaling URL rules, ICE servers from `hello`, the `input` packet (byte for byte the web's `encodeInput`), the touch pad and gamepad mapping, `room_state` / `chat` / `typing` / `stream_stats` parsing, the PIN gate, and `RoomClient`, which runs one room visit. It is the reference for an iOS (Swift) port. |
+| `:core` | Plain Kotlin, no Android types, tested on the JVM: the signalhub envelope and client (`SignalClient`, reconnect with jittered backoff, FIFO requests), invitation parsing, signaling URL rules, ICE servers from `hello`, the `input` packet (byte for byte the web's `encodeInput`), the touch pad and gamepad mapping, `room_state` / `chat` / `typing` / `stream_stats` parsing, the PIN gate, the Sound sheet's device choices (`AudioDevices.kt`), the player name rules (`PlayerName.kt`), the stats overlay's arithmetic and the input latency meter (`LiveStats.kt`), and `RoomClient`, which runs one room visit. It is the reference for an iOS (Swift) port. |
 | `:app` | Android: Compose screens, OkHttp WebSockets, `AndroidRtcPeer` (stream-webrtc-android), the audio route, controllers, CameraX + ML Kit for the QR code, SharedPreferences. |
 
 `RoomClient` is a port of the website's `useJoinRoom` + `useHostStream` + `HostStream`; the platform plugs in a WebSocket factory and an `RtcPeer` factory. Web files it mirrors: `packages/shared/src/{protocol,signal-client,stream,room-state,touch-pad,gamepad}.ts` and `apps/web/src/pages/roomModel.ts`.
@@ -23,6 +23,7 @@
 1. **Scan the QR code** (the invitation link `https://go-link.org/g/<invite>`), **type the 9-digit code** (or paste the link), or open an invitation link with the app installed (Android App Links).
 2. The PIN screen: the **6-digit PIN** the host made for this person, and the terms checkbox (`Terms.VERSION` equals `TERMS_VERSION` in `frontend/apps/web/src/legal.ts`, a test checks it).
 3. `join` with `invite` or `code` → `joined`; the device sends `pin_required` and the app sends the typed PIN; `pin_result` admits it (or says why not: wrong, used, blocked, locked). Then the device offers and the app answers.
+4. **Your name** (the first admission of each visit, not after a reconnect): a "What's your name?" screen over the room, prefilled with the saved name, and **Enter the room**. See [Your name](#your-name).
 
 Rules:
 
@@ -43,11 +44,52 @@ Settings has **Signaling server**, like the website's button: only `wss://`, tes
 
 - **Media:** VP8 video (drawn by an `EglRenderer` into a `TextureView`, stretched to the display `aspect` from `stream_stats`, since arcade pixels are not square), Opus game sound, and the `voice-p1`…`voice-p4` tracks. Per-player silence and a game sound switch use each remote track's volume.
 - **Voice:** the microphone m-line the device offers `recvonly` is answered `sendonly` (`RtcSignals.micMid`), and the mic track is set with `RtpSender.setTrack`, so turning it on never renegotiates. Only seated players can talk in rooms with voice (the device enforces it too).
-- **Channels:** `control` (JSON: `hello` with the name and local players, `chat`, `typing`, `spectate`, `queue`, `swap_seat`, `swap_answer`, `pause`, and `pong` to the device's pings) and `input` (12-byte packets, repeated every 100 ms while held, two extra releases). `files` is refused: it is only for the host's own browser.
+- **Channels:** `control` (JSON: `hello` with the name and local players, `chat`, `typing`, `spectate`, `queue`, `swap_seat`, `swap_answer`, `pause_request`, and `pong` to the device's pings) and `input` (12-byte packets, repeated every 100 ms while held, two extra releases). `files` is refused: it is only for the host's own browser.
 - **Layout:** portrait is a Game Boy (picture on top, dock, gamepad below); landscape is a Switch (gamepad halves on both sides, dock on the right). Full screen, screen kept on.
-- **On-screen gamepad:** buttons from `room_state.controls` (D-pad with 4-way games limited to four directions, 1 to 6 action buttons, Coin, 1P…NP start buttons from `startButtonCount`). Several fingers at once, a finger can slide between buttons, a short vibration on each press. Hidden while a physical controller is connected, and with the gamepad button of the dock.
+- **On-screen gamepad:** buttons from `room_state.controls` (D-pad with 4-way games limited to four directions, 1 to 6 action buttons, Coin, 1P…NP start buttons from `startButtonCount`). Several fingers at once, a finger can slide between buttons, a short vibration on each press. Hidden while a physical controller is connected (the dock's gamepad button then shows it see-through, display only: see [Controllers](#controllers-see-through-pad-and-the-controller-test)), and with the gamepad button of the dock.
 - **Controllers:** Android `KeyEvent` and `MotionEvent` from Bluetooth and USB pads, mapped to the browser's standard Gamepad layout (A = bottom = button 1, B = right, X = left, Y = top, L1/R1, L2/R2 as keys or triggers, Select = Coin, Start, sticks and hats; the left stick also presses the directions). Each controller is a local player in the order it is first used (the first one shares player 0 with the touch pad), and `hello.local_players` lists them.
-- **Chat and players:** a sheet with the chat (system notices translated from their `event`, generated guest names translated, the typing indicator) and the seats (move to a free seat, ask to swap, silence a voice), the queue, spectators, and Just watch / Join the queue. Swap requests show over the picture with Accept / Decline. Seated players can pause and resume a game.
+- **Chat and players:** a sheet with the chat (system notices translated from their `event`, generated guest names translated, the typing indicator) and the seats (move to a free seat, ask to swap, silence a voice), the queue, spectators, and Just watch / Join the queue. Swap requests show over the picture with Accept / Decline. Only the host pauses and resumes: seated players **ask for a pause** (see [Pause requests](#pause-requests)).
+- **Sound:** the **Sound** button in the players tab opens a sheet (`ui/SoundSheet.kt`) with two lists of radio rows. **Microphone:** Automatic, Phone microphone, and each connected headset's microphone (Bluetooth, wired, USB). **Output:** Automatic, Speaker, and each connected headset (Bluetooth, wired, USB, hearing aid). The earpiece is never offered. **Test sound** plays a short chime in the voice-communication path, so it comes out where the game and the voices do. See [Sound devices](#sound-devices).
+
+## Your name
+
+The same rules as the device's `hello.name` (`PlayerName` in `:core` and GoLinkCore, with the same tests): after NFC normalization, trimming and collapsing runs of spaces, **2 to 20 characters** (code points), only Unicode letters (`\p{L}`, accents and ñ included), digits (`\p{N}`) and spaces. Symbols and emoji are refused.
+
+- **The name step** (after the PIN, once per visit): the design's "What's your name?" screen. The field's border is grey, orange when valid and red when it has a symbol or emoji; the hint under it says why ("Only letters, numbers and spaces (no symbols or emoji).", "At least 2 characters.", "20 characters at most."), with an `n/20` counter. **Enter the room** is enabled only for a valid name, saves it for the next game and sends a new `hello`. Back leaves the room. The room connects behind the screen, so the first `hello` carries the saved name (or none, and the device picks a guest name) until Enter.
+- **Changing it** in the room (drawer › You on iOS, Settings) uses the same field; empty is allowed there (the device then names you).
+- Whatever is sent goes through `PlayerName.sanitize` (only the allowed characters, collapsed, cut to 20; empty when fewer than 2 are left). The device sanitizes again and reports the name it uses in `room_state.you.name`.
+
+## Pause requests
+
+Pause belongs to the host (the device's owner). The apps are always guests and never send `pause` (the device refuses it with `code: "pause_owner_only"`):
+
+- The dock's pause button (`dock-pause`, seated players only) is **Ask for a pause** → `{"type":"pause_request"}`, with a notice "You asked the host for a pause…". While `room_state.you.pause_asked` is set, a banner over the picture (`pause-banner`) and the button offer **Cancel** → `{"type":"pause_request","cancel":true}`.
+- It is dimmed, and a tap explains why, when the game is paused ("Paused by the host": only the host resumes), when the game is not pausable, or when `room_state.host_online` is false ("The host isn't in the room to answer."). Older devices without `host_online` count as online.
+- Accepted: the usual `paused: true` with `paused_by`. Declined: the chat notice event `pause_declined` (sent only to the one who asked), shown translated in the chat and as a short notice.
+
+## Stats overlay
+
+A small round stats button (cyan ring, `room-stats`) at the top left of the picture toggles a compact, see-through box next to it (`room-stats-box`) that never covers the center:
+
+```
+60 fps · 640×480 VP8
+ping 28 ms · direct
+loss 0 % · audio Opus 48 kHz
+```
+
+Read once a second from libwebrtc's statistics (Android `PeerConnection.getStats`, iOS `RTCPeerConnection.statistics`): the video `inbound-rtp` (`framesDecoded`, `frameWidth`/`frameHeight`, the codec's `mimeType`), the video and game audio packets received and lost, the game audio codec's `clockRate`, and the transport's selected candidate pair (or the nominated succeeded one): `currentRoundTripTime` and its candidate types (`relay` on either side = relay, otherwise direct). `LiveStatsMeter` turns the cumulative counters into the last second's frame rate and loss; unknown values show a dash. The choice is remembered (Android SharedPreferences `stats-overlay`, iOS UserDefaults `go-link.stats`; off by default).
+
+## Controllers, see-through pad and the controller test
+
+- **See-through pad:** with a physical controller connected, the on-screen pad stays hidden; the dock's gamepad button shows it at about 55 % opacity and **display only** (touches do nothing), lighting the directions and buttons pressed on the real controller with the same mapping that is sent to the device, plus a chip "*controller name* · display only" (`pad-display-only` on Android, `pad-controller-chip` on iOS). Controllers connecting and disconnecting are followed live.
+- **Test controller** (home screen, `home-test-controller`): an offline screen (`test-controller-screen`), no network at all. A PM5544-style test card (grey grid, color bars, circle) with a controller diagram (D-pad, buttons 1 to 6, Coin, Start) that lights up for the on-screen pad and for real controllers; the connected controller's name and connection, and the **input latency**: from the input event's time to the next frame drawn after it (Android `withFrameNanos`, iOS `CADisplayLink`), last, minimum and average of the last 60 (`LatencyMeter`). Portrait and landscape. The connection is a best guess: Android says Bluetooth when a paired Bluetooth device has the controller's name (needs `BLUETOOTH_CONNECT` on Android 12+) and USB for other external controllers; iOS reports a controller attached to the device as wired and anything else as Bluetooth (GameController does not say).
+
+## App version
+
+Home (small, faint) and the bottom of Settings show **go-link Player v*X.Y.Z* (build *N*)**, plus " · debug" in debug builds (`app-version`; a long press copies it). The build number follows one rule on both platforms: major × 10000 + minor × 100 + patch (0.1.5 → 105, 1.2.3 → 10203).
+
+- **Android:** `BuildConfig.VERSION_NAME` / `VERSION_CODE`, from `-PversionName` / `-PversionCode` (`app/build.gradle.kts`, defaults 0.1.0 and 1). A release uses `VERSION=0.1.5 make android-apk` (`scripts/release.sh` does), which computes the code.
+- **iOS:** `CFBundleShortVersionString` / `CFBundleVersion` come from the build settings `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` (defaults 0.1.0 and 1 in `Config/Base.xcconfig`). `make build-sim|device-build|test-ui VERSION=0.1.5` computes build 105, or pass `MARKETING_VERSION=0.1.5 CURRENT_PROJECT_VERSION=105` to `xcodebuild`.
 
 ## Permissions
 
@@ -60,7 +102,36 @@ Each one is asked when needed, after a short explanation screen:
 | `BLUETOOTH_CONNECT` (Android 12+) | Before the first room | Bluetooth headsets are not used; wired and USB headsets still are |
 | `MODIFY_AUDIO_SETTINGS`, `INTERNET` | Install time (normal permissions) | |
 
-**Audio route** (`audio/AudioRouter.kt`): while a room is open the app uses the communication audio mode, which gives echo cancellation and lets a headset's microphone work. It picks, in order, a Bluetooth LE headset, a Bluetooth SCO headset, a hearing aid, a USB headset or wired headphones, and otherwise the **loudspeaker** (never the earpiece). Android 12+ uses `setCommunicationDevice`; older versions use Bluetooth SCO and the speakerphone switch. It follows headsets being plugged in or out. Over Bluetooth, the communication mode means the headset's call profile (mono, lower quality than music), which is the price of using its microphone. Leaving the room restores the previous mode.
+**Audio route** (`audio/AudioRouter.kt`): while a room is open the app uses the communication audio mode, which gives echo cancellation and lets a headset's microphone work. It picks, in order, a Bluetooth LE headset, a Bluetooth SCO headset, a hearing aid, a USB headset or wired headphones, and otherwise the **loudspeaker** (never the earpiece). Android 12+ uses `setCommunicationDevice`; older versions use Bluetooth SCO and the speakerphone switch. It follows headsets being plugged in or out. Over Bluetooth, the communication mode means the headset's call profile (mono, lower quality than music), which is the price of using its microphone. Leaving the room restores the previous mode. That is **Automatic**; the Sound sheet can pick the devices by hand.
+
+### Sound devices
+
+The rules live in `:core` (`AudioDevices.kt`, tested on the JVM): the rows, a saved choice mapped back to a live device, the route plan, and when a chosen device is gone. `audio/AudioRouter.kt` lists the platform devices and applies the plan.
+
+- **Saved:** both choices are kept in SharedPreferences (`go-link.audio-output`, `go-link.audio-input`) by kind, product name and address (Bluetooth address, USB path), since Android's device ids change when a device reconnects. The phone's own speaker and microphone are saved by kind only.
+- **Absent at the start:** a saved headset that is not connected when the room opens waits: the route stays automatic, the sheet marks Automatic, and the headset is used as soon as it connects.
+- **Disconnected:** a chosen device that was connected and then disappears (`AudioDeviceCallback`) sends that choice back to Automatic, forgets it, and a snackbar says "«NAME» disconnected. Sound went back to Automatic." (or "The microphone went back to Automatic.").
+- **Output:** a chosen output is the communication device. A chosen headset microphone with an automatic output also makes that headset the communication device, since Android opens a Bluetooth headset's microphone only together with its sound.
+- **Microphone:** a chosen microphone is also given to libwebrtc's recorder as its preferred device (`JavaAudioDeviceModule.setPreferredInputDevice`), which is what lets the phone's microphone be used while the sound goes to a headset. Android treats a preferred device as a request, not a rule, and a few phones ignore it in the communication mode.
+
+API levels:
+
+| | Android 12+ (API 31) | Android 8 to 11 (API 26 to 30) |
+|---|---|---|
+| Output list | `availableCommunicationDevices` | `getDevices(GET_DEVICES_OUTPUTS)` (Bluetooth as its SCO device, no hearing aids) |
+| Choosing an output | `setCommunicationDevice` with that exact device | By kind only: Bluetooth starts SCO, Speaker turns the speakerphone on, wired and USB turn both off (with two headsets of the same kind Android picks) |
+| Microphone | Follows the communication device, plus the preferred input | The same preferred input; a Bluetooth microphone needs SCO, so it brings the Bluetooth output with it |
+| Bluetooth devices | Listed only with `BLUETOOTH_CONNECT` | Listed without it |
+
+Limits: a Bluetooth microphone cannot be used while the sound plays on the loudspeaker or another headset (Android opens it only with its own output, in the call profile). Device addresses are read on Android 9+ (API 28); older versions match a headset by kind and product name.
+
+## Startup intro and the room code
+
+- **INSERT COIN intro** (both apps, only on a cold start: not when coming back from the background or after a rotation). The first frame is the plain #05060A background (Android: the SplashScreen compat API, `Theme.GoLink.Starting`, with a transparent icon; iOS: the static launch screen, `LaunchBackground`), then the animated intro (`ui/IntroScreen.kt`, `UI/IntroView.swift`): the icon pops in (0.3 → 1.12 → 1 in 0.7 s) with an orange glow, "go-link" rises at 0.6 s, **INSERT COIN** rises at 1.1 s with the coin sound and blinks from 1.5 s; it fades out at 2.0 s. A tap skips it (before 1.1 s, silently). With reduced motion (Android "remove animations", iOS Reduce Motion) everything just fades in. INSERT COIN is 5x7 pixel letters drawn in code from `PixelText` (`:core` / GoLinkCore, the same letters as the website's inline SVG), read as "INSERT COIN" in every language.
+- **Coin sound**: `res/raw/coin.wav` and `Resources/coin.wav`, written by `node scripts/coin-sound.mjs` (three square-wave notes, 44.1 kHz mono 16-bit; an original sound, MIT like the project, the same synthesis the website plays with Web Audio). Android plays it with SoundPool (`USAGE_GAME`, no audio focus) and skips it on silent or vibrate; iOS with AVAudioPlayer in the `.ambient` session (the silent switch mutes it, other audio keeps playing; the room's audio device sets its own session when it starts). **Settings › Startup sound** (on by default; Android SharedPreferences `startup-sound`, iOS UserDefaults `go-link.startup-sound`) turns it off.
+- Debug builds open labs for screenshots with no room: Android `--es lab alias` (the name step) and `--es lab overlay` (stats box, see-through pad, pause banner); iOS `-aliasLab` and `-padLab -labStats -labGhost`.
+- Debug builds slow the intro down to look at it: Android `adb shell am start -n org.golink.player/.MainActivity --es introSlow 5`, iOS `-introSlow 8`; iOS `-noIntro` skips it (the UI tests use it).
+- **Room code field**: the Join screen shows the 9 digit code grouped as `915 355 636` while it is typed (`CodeInput` in `:core` and GoLinkCore, the same rules and tests as the website's `editCode`): the spaces are only visual, the caret stays after the same digit, backspace right after a space deletes the digit before it, and a paste with or without spaces works. A pasted invitation link is not grouped. The field also takes links, so it keeps the normal keyboard.
 
 ## App Links
 
@@ -70,7 +141,7 @@ On Android, the website's `/g/:invite` page shows a small card under the PIN for
 
 ## Tests and CI
 
-- `./gradlew :core:test`: protocol parsing, input packets against vectors produced by the website's `encodeInput`, invitation parsing (hostile QR codes), signaling URLs, ICE servers, the terms version, room passes, and a full `RoomClient` visit with a fake signalhub and a fake peer (join, PIN, offer/answer, candidates, control, input repeats, drop and return with the token, refused token, host leaving).
+- `./gradlew :core:test`: protocol parsing, input packets against vectors produced by the website's `encodeInput`, invitation parsing (hostile QR codes), signaling URLs, ICE servers, the terms version, room passes, the Sound sheet's device choices (rows, saved choices after a reconnect, the route plan, a chosen device disconnecting), the name rules (emoji, symbols, accents, ñ, spaces, lengths, sanitizing), the pause request fields (`host_online`, `pause_asked`, `pause_declined`), the stats arithmetic and the latency meter, and a full `RoomClient` visit with a fake signalhub and a fake peer (join, PIN, offer/answer, candidates, control, the cleaned name in `hello`, `pause_request` and its cancel, input repeats, drop and return with the token, refused token, host leaving).
 - `./gradlew :app:assembleDebug` builds the app. CI runs both (`android` job in `.github/workflows/ci.yml`).
 - `cd e2e && npm run test:android`: the app end to end on an emulator or phone (below).
 - `cd e2e && npm run test:android:camera`: the QR scanner with the emulator's virtual camera (opt-in, below).
@@ -81,17 +152,18 @@ On Android, the website's `/g/:invite` page shows a small card under the PIN for
 `e2e/tests/android.spec.ts` (Playwright project `android`) starts the usual e2e stack (its own signalhub on 8191, a headless device with `--debug` and its own HOME, the website on 5191). A Chromium page with a fake microphone is the owner: it links the device, opens the test pattern room (taking P1) and makes the invitations. The debug APK, driven with `adb` and UiAutomator (Compose test tags exposed as resource ids: `join-pin`, `terms-check`, `room-seat`, `dock-mic`, `pad-dpad`, `chat-input`…), then:
 
 1. points the app at `ws://10.0.2.2:8191/ws` in Settings (debug builds only);
-2. joins by App Link (`am start -d https://go-link.org/g/<invite>`), types the PIN, ticks the terms, gets a seat, and the picture area of a screenshot is lit and varied (not black);
+2. joins by App Link (`am start -d https://go-link.org/g/<invite>`), types the PIN, ticks the terms, confirms a name on the name step (`alias-field`, `alias-enter`; after every new admission in the test), gets a seat, and the picture area of a screenshot is lit and varied (not black);
 3. presses the D-pad, button 1 and Coin: the device's debug log shows each `input` packet;
 4. game sound: inbound RTP packets and audio energy grow and the audio level is above 0 (decoded, not only received);
-5. chat both ways (owner → app, app → owner);
-6. voice both ways: the owner's fake microphone reaches the app's `voice-pN` track; with `RECORD_AUDIO` granted (`pm grant`), the app's microphone reaches the owner's `voice-pN` track (packets flowing; the emulator's microphone may be silence);
-7. airplane mode on and off: the app comes back to its seat with the return token, never asking the PIN;
-8. a wrong PIN and an already used PIN are refused (`used`), then a new invitation's PIN gets in;
-9. joins with the 9-digit code typed on the home screen;
-10. the start buttons: with two seated players the pad shows exactly 1P and 2P; holding each one reaches the device (`buttons=start1`, `start2` in its log) and lights that player lamp of the test card while held (the lamp's color is read from the screen where `pkg/testpattern` draws it);
-11. seats and the queue: the app leaves, three browser guests (headless Chromium, each with its own invitation, through the website's Join a game form) take P2 to P4, and the app joining next waits in the queue ("You are #1 in the queue", `me=queue:1`) while it still gets the picture; when a guest leaves, the app takes exactly the freed seat; **Just watch** makes it a spectator (listed under Watching) and **Join the queue** seats it again;
-12. swapping seats: the app asks a guest (`swap_seat`, "Waiting for P*n* to answer") and the guest accepts on the website (`swap_answer`); then the guest asks from its players capsule and the app accepts the offer over the picture. Both sides' seats are checked (the app's `GoLinkE2E` state, the guest's own avatar in the capsule).
+5. the Sound sheet (players tab › **Sound**) lists Automatic for the microphone and the output and the Speaker row, **Test sound** plays, and Back closes it;
+6. chat both ways (owner → app, app → owner);
+7. voice both ways: the owner's fake microphone reaches the app's `voice-pN` track; with `RECORD_AUDIO` granted (`pm grant`), the app's microphone reaches the owner's `voice-pN` track (packets flowing; the emulator's microphone may be silence);
+8. airplane mode on and off: the app comes back to its seat with the return token, never asking the PIN;
+9. a wrong PIN and an already used PIN are refused (`used`), then a new invitation's PIN gets in;
+10. joins with the 9-digit code typed on the home screen;
+11. the start buttons: with two seated players the pad shows exactly 1P and 2P; holding each one reaches the device (`buttons=start1`, `start2` in its log) and lights that player lamp of the test card while held (the lamp's color is read from the screen where `pkg/testpattern` draws it);
+12. seats and the queue: the app leaves, three browser guests (headless Chromium, each with its own invitation, through the website's Join a game form) take P2 to P4, and the app joining next waits in the queue ("You are #1 in the queue", `me=queue:1`) while it still gets the picture; when a guest leaves, the app takes exactly the freed seat; **Just watch** makes it a spectator (listed under Watching) and **Join the queue** seats it again;
+13. swapping seats: the app asks a guest (`swap_seat`, "Waiting for P*n* to answer") and the guest accepts on the website (`swap_answer`); then the guest asks from its players capsule and the app accepts the offer over the picture. Both sides' seats are checked (the app's `GoLinkE2E` state, the guest's own avatar in the capsule).
 
 The app's debug build logs its room events and WebRTC counters (inbound/outbound RTP per track, audio levels, the candidate pair) once a second with the tag `GoLinkE2E` (`app/src/debug/.../E2eProbe.kt`; the release build has an empty probe in `app/src/release`), and the test reads them with `adb logcat -s GoLinkE2E`. Audio is proven with these counters: `screenrecord` records video only. The screen is recorded in chunks (`screenrecord`, 175 s each) and a screenshot is saved per step, all in `e2e/test-results/android/` (and copied to `E2E_EVIDENCE_DIR` when set).
 
@@ -124,3 +196,23 @@ Its screenshots and screen recording go to `e2e/test-results/android-camera/` (a
 ## Releases
 
 `VERSION=x.y.z make android-apk` runs the tests and builds the signed release APK into `dist/android/`. `VERSION=x.y.z make release` builds it too (`ANDROID=0` skips it) and publishes it as `go-link-vX.Y.Z-android.apk`; the website's Android card downloads that file and the guide points to the latest release. The release key lives outside the repository (`ANDROID_SIGNING`, see the [app README](../mobile/android/README.md)).
+
+## The iOS app
+
+`mobile/ios/` is **go-link Player for iPhone and iPad**: SwiftUI, iOS 17 or newer, bundle id `org.golink.player`. Same features and rules as the Android app. It is not distributed yet: the website keeps iPhone and iPad as "coming soon". Build, sign and install: [`mobile/ios/README.md`](../mobile/ios/README.md).
+
+| Part | What it is |
+|---|---|
+| `GoLinkCore` | A Swift package ported one to one from `:core` (no UIKit, no WebRTC; `swift test` on the Mac): `SignalClient`, `RoomClient`, `Invites`, `SignalUrls`, `IceServers`, `InputPacket` (byte for byte the web's `encodeInput`, same test vectors), `RoomMessages`, `RtcSignals`, `RoomPasses`, `Terms`, `AudioChoices`. Timers go through a `Scheduler`, so the tests run on a manual clock. |
+| The app | SwiftUI screens, `URLSessionWebSocketTask`, `IOSRtcPeer` on the prebuilt libwebrtc of [stasel/WebRTC](https://github.com/stasel/WebRTC) (Swift Package Manager), AVFoundation for the QR code, GameController for controllers, UserDefaults (`go-link.room-passes`, `go-link.terms`, `go-link.signal-url`, as on Android). The Xcode project is generated with XcodeGen from `project.yml`. |
+
+Differences from Android:
+
+- **Audio device.** libwebrtc's own iOS audio device opens the microphone as soon as there is sound to play, and libwebrtc starts "recording" as soon as the microphone line is negotiated, even with no track. The app plugs in its own `RTCAudioDevice` (`GoLinkAudioDevice`): a plain output unit with the playback session while listening, and the voice processing unit (echo cancellation) with play and record, `voiceChat`, `defaultToSpeaker` and Bluetooth HFP + A2DP only while the person's microphone switch is on. The microphone permission is asked the first time the microphone is turned on, and sound never goes to the earpiece.
+- **Output.** iOS apps can offer the system's route picker (`AVRoutePickerView`), so **Volume and voice** shows it for speaker, headphones, AirPods or AirPlay; the microphone is chosen from the session's inputs (Automatic, the iPhone's or a headset's) with `AudioSelection` from GoLinkCore. The sheet also has the game and voices volumes (0 to 300 %) and a test chime.
+- **Drawer.** The room's drawer has the three tabs of the approved design, **Chat** (typing indicator, unread badge), **Players** (seats, move, swap, silence, watch or queue) and **You** (name, Volume and voice, How to play, Leave); it slides in from the right sideways and from the bottom upright.
+- **Controllers.** MFi, Xbox, PlayStation and Switch Pro through GameController's extended gamepad, by position like the standard layout (A bottom, B right, X left, Y top; Options = Select = Coin, Menu = Start); each controller takes the next local player and the on-screen pad steps aside.
+- **Universal Links** instead of App Links: `applinks:go-link.org`, only `/g/*`, only the invitation is read. The website serves `frontend/apps/web/public/.well-known/apple-app-site-association` as `application/json`; its `appIDs` has the placeholder `TEAMID00000.org.golink.player`, to be replaced with the signing team before a deploy.
+- **Debug builds** accept `ws://` to `localhost` and `127.0.0.1` only (the Simulator reaches the Mac through them), and the launch arguments `-invite <link>`, `-signal <url>`, `-silentOutput` and `-resetState`. `-aliasLab` opens the name step alone, and `-padLab` takes `-labStats` (the stats box with sample values) and `-labGhost` (the see-through pad with a sample controller), for screenshots. Their probe logs the room and libwebrtc's counters to the unified log (subsystem `org.golink.player`, category `e2e`), like Android's `GoLinkE2E`.
+
+Tests: `make test-core` (73 unit tests mirroring the Android ones, plus the terms version check against `legal.ts`) and the XCUITest target (`testScreens` for screenshots; `testLiveJoin` joins a real test pattern room given `TEST_RUNNER_GL_INVITE` and `TEST_RUNNER_GL_PIN`: PIN, terms, video and game sound, pad presses on the `input` channel, chat round trip, the drawer tabs, the sound sheet, the microphone prompt and landscape; it passes the name step), `testAliasValidation` (an emoji disables Enter with the red hint, a valid name enables it), `testControllerTestScreen` (Home › Test controller opens and closes) and `testStatsAndGhostPadLab`. CI (`ios` job on `macos-latest`) runs the GoLinkCore tests and an unsigned Simulator build.

@@ -9,6 +9,7 @@ export * from "./stream";
 export * from "./device-status";
 export * from "./gamepad";
 export * from "./room-state";
+export * from "./player-name";
 export * from "./touch-pad";
 export * from "./device-link";
 export * from "./legacy-storage";

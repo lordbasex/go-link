@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Headphones
@@ -42,7 +45,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,6 +54,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
@@ -58,21 +64,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
@@ -88,6 +100,7 @@ import androidx.compose.ui.unit.sp
 import org.golink.player.Prefs
 import org.golink.player.R
 import org.golink.player.RoomSession
+import org.golink.player.core.ChatEvent
 import org.golink.player.core.ChatLine
 import org.golink.player.core.GameControls
 import org.golink.player.core.Invites
@@ -101,18 +114,45 @@ import org.golink.player.core.startButtonCount
  * The room: the game's picture with the on-screen gamepad around it, like
  * the website's console mode. Portrait is a Game Boy (picture on top, pad
  * below); landscape is a Switch (pad halves on both sides). Chat, seats
- * and the queue live in a sheet opened from the dock.
+ * and the queue live in a sheet opened from the dock; the Sound sheet
+ * (microphone and output devices) opens from the players tab.
  */
 @Composable
-fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
+fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias: (String) -> Unit) {
     val ui by session.client.ui.collectAsState()
     val video by session.video.collectAsState()
     val sound by session.sound.collectAsState()
     val controllers by session.controllers.collectAsState()
+    val connected by session.connected.collectAsState()
+    val controllerBits by session.controllerButtons.collectAsState()
+    val aliasDone by session.aliasDone.collectAsState()
+    val liveStats by session.liveStats.collectAsState()
     val output by session.audioOutput.collectAsState()
     var sheet by rememberSaveable { mutableStateOf<SheetTab?>(null) }
     var touchOn by rememberSaveable { mutableStateOf(prefs.touchPad) }
+    // With a real controller, the gamepad button shows the pad as a see-through display of it.
+    var padWithController by rememberSaveable { mutableStateOf(false) }
+    var statsOn by rememberSaveable { mutableStateOf(prefs.statsOverlay) }
+    LaunchedEffect(statsOn) { session.showStats(statsOn) }
     var micAsk by remember { mutableStateOf(false) }
+    var soundOpen by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val resources = LocalContext.current.resources
+    LaunchedEffect(session) {
+        // A chosen headset or microphone disconnected: say so, once.
+        session.audioLost.collect { snackbar.showSnackbar(lostText(resources, it)) }
+    }
+    // The host said no to this player's pause request: a notice in the chat and here.
+    var seenLine by remember { mutableStateOf(ui.chat.lastOrNull()) }
+    LaunchedEffect(ui.chat) {
+        val from = seenLine?.let { ui.chat.lastIndexOf(it) + 1 } ?: 0
+        val fresh = ui.chat.drop(from)
+        seenLine = ui.chat.lastOrNull()
+        if (fresh.any { it is ChatLine.System && it.event == ChatEvent.PAUSE_DECLINED }) {
+            snackbar.showSnackbar(resources.getString(R.string.ev_pause_declined))
+        }
+    }
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val room = ui.room
     val controls = room?.controls ?: GameControls.DEFAULT
@@ -122,19 +162,47 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
     val myPorts = (room?.me as? Me.Player)?.ports ?: emptyList()
     val starts = startButtonCount(controls.players, room?.seated ?: 1)
     val aspect = (ui.stats.aspect ?: (4.0 / 3.0)).toFloat()
-    // With a controller in hand, the on-screen pad steps aside.
-    val showPad = touchOn && streaming && controllers.isEmpty()
+    // With a controller in hand, the on-screen pad steps aside; the gamepad
+    // button can bring it back see-through, showing what the controller presses.
+    val hasController = controllers.isNotEmpty() || connected.isNotEmpty()
+    val displayOnly = hasController
+    val showPad = streaming && if (hasController) padWithController else touchOn
+    pad.extra = if (displayOnly) {
+        // The controller's Start is this player's own start button on the panel.
+        controllerBits or (if (controllerBits and org.golink.player.core.Button.START != 0) myPorts.fold(0) { a, p -> a or org.golink.player.core.startOf(p) } else 0)
+    } else {
+        0
+    }
+    val controllerName = controllers.firstOrNull()?.name ?: connected.firstOrNull()?.name ?: ""
+    val padAlpha = if (displayOnly) 0.55f else 1f
+    // The activity handles rotations itself (configChanges), so a rotation
+    // only swaps the layout: let go of every held button (the device gets
+    // 0) whenever the layout changes or the pad goes away.
+    DisposableEffect(landscape, showPad, displayOnly) { onDispose { pad.releaseAll() } }
 
     val dock: @Composable () -> Unit = {
         Dock(
             ui = ui,
             session = session,
-            touchOn = touchOn,
-            onTouch = { touchOn = !touchOn; prefs.touchPad = touchOn },
+            touchOn = if (hasController) padWithController else touchOn,
+            onTouch = {
+                if (hasController) {
+                    padWithController = !padWithController
+                } else {
+                    touchOn = !touchOn
+                    prefs.touchPad = touchOn
+                }
+            },
             onSheet = { sheet = it },
             onMicAsk = { micAsk = true },
             headset = output != org.golink.player.audio.AudioRouter.Output.SPEAKER,
             vertical = landscape,
+            onExplain = { text ->
+                scope.launch {
+                    snackbar.currentSnackbarData?.dismiss()
+                    snackbar.showSnackbar(text ?: resources.getString(R.string.room_pause_asked))
+                }
+            },
         )
     }
     val screen: @Composable (Modifier) -> Unit = { m ->
@@ -145,8 +213,22 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
                 VideoView(video, session.eglContext, fit.testTag("video"))
             }
             Overlay(ui, onLeave, onRetry = { session.client.reconnect() }, onPin = { session.client.submitPin(it) })
+            if (streaming) {
+                StatsCorner(
+                    on = statsOn,
+                    stats = liveStats,
+                    onToggle = { statsOn = !statsOn; prefs.statsOverlay = statsOn },
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                )
+            }
             if (streaming && room != null) {
-                if (room.recording) RecBadge(Modifier.align(Alignment.TopEnd).padding(8.dp))
+                Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (room.recording) RecBadge(Modifier)
+                }
+                // Bottom right, so it never meets the stats box at the top left.
+                if (showPad && displayOnly) {
+                    Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)) { ControllerChip(controllerName) }
+                }
                 if (room.paused) {
                     Surface(color = Color(0xCC05060A), shape = RoundedCornerShape(12.dp)) {
                         Text(
@@ -157,15 +239,24 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
                     }
                 }
                 SwapOffers(room, session, Modifier.align(Alignment.BottomCenter).padding(8.dp))
+                if (room.you.pauseAsked != null && !room.paused) {
+                    PauseAskedBanner(
+                        onCancel = { session.client.cancelPauseRequest() },
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = if (statsOn) 96.dp else 52.dp, start = 8.dp, end = 8.dp),
+                    )
+                }
             }
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Tokens.bg)) {
+    // The alias step: once per visit, when the room first lets this player in.
+    val admitted = ui.phase == RoomPhase.CONNECTING || ui.phase == RoomPhase.STREAMING
+    val showAlias = !aliasDone && admitted
+    Box(Modifier.fillMaxSize().background(Tokens.bg).then(if (showAlias) Modifier.clearAndSetSemantics {} else Modifier)) {
         if (landscape) {
             Row(Modifier.fillMaxSize().safeDrawingPadding()) {
                 if (showPad) {
-                    PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f)) {
+                    PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f).alpha(padAlpha), enabled = !displayOnly) {
                         Column(
                             Modifier.fillMaxSize().padding(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,10 +274,10 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
                 }
                 screen(Modifier.fillMaxHeight().weight(if (showPad) 0.48f else 1f))
                 if (showPad) {
-                    PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f)) {
+                    PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f), enabled = !displayOnly) {
                         Row(Modifier.fillMaxSize()) {
                             Column(
-                                Modifier.fillMaxHeight().weight(1f).padding(8.dp),
+                                Modifier.fillMaxHeight().weight(1f).padding(8.dp).alpha(padAlpha),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.SpaceEvenly,
                             ) {
@@ -206,7 +297,7 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
                 screen(Modifier.fillMaxWidth().aspectRatio(aspect.coerceIn(1f, 2f)))
                 dock()
                 if (showPad) {
-                    PadSurface(pad, Modifier.fillMaxWidth().weight(1f)) {
+                    PadSurface(pad, Modifier.fillMaxWidth().weight(1f).alpha(padAlpha), enabled = !displayOnly) {
                         Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Row(
                                 Modifier.fillMaxWidth().weight(1f),
@@ -236,13 +327,34 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit) {
                 }
             }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(12.dp)) { data ->
+            Snackbar(data, shape = RoundedCornerShape(50), containerColor = Tokens.surface2, contentColor = Tokens.text)
+        }
+    }
+
+    if (showAlias) {
+        AliasScreen(saved = prefs.playerName, onEnter = onAlias, onBack = onLeave)
+        return
     }
 
     if (micAsk) {
         MicExplainer(prefs, session, onDone = { micAsk = false })
     }
     sheet?.let { tab ->
-        RoomSheet(ui, session, tab, onTab = { sheet = it }, onClose = { sheet = null })
+        RoomSheet(
+            ui,
+            session,
+            tab,
+            onTab = { sheet = it },
+            onSound = {
+                sheet = null
+                soundOpen = true
+            },
+            onClose = { sheet = null },
+        )
+    }
+    if (soundOpen) {
+        SoundSheet(session, onClose = { soundOpen = false })
     }
 }
 
@@ -394,6 +506,7 @@ private fun Dock(
     onMicAsk: () -> Unit,
     headset: Boolean,
     vertical: Boolean,
+    onExplain: (String?) -> Unit,
 ) {
     val sound by session.sound.collectAsState()
     val context = LocalContext.current
@@ -435,12 +548,34 @@ private fun Dock(
             ) { session.setGameMuted(!sound.gameMuted) }
         },
         {
-            if (room?.pausable == true && seated) {
+            // Only the host pauses: a seated player asks for a pause.
+            if (room != null && seated) {
+                val asked = room.you.pauseAsked != null
+                val why = when {
+                    room.paused -> R.string.room_paused_host
+                    asked -> R.string.room_pause_cancel
+                    !room.pausable -> R.string.room_pause_not_pausable
+                    !room.hostOnline -> R.string.room_pause_host_away
+                    else -> R.string.room_pause_ask
+                }
+                val label = stringResource(why)
+                val can = room.paused || asked || (room.pausable && room.hostOnline)
                 DockButton(
-                    icon = if (room.paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                    label = stringResource(if (room.paused) R.string.room_resume else R.string.room_pause),
-                    on = room.paused,
-                ) { session.client.setPaused(!room.paused) }
+                    icon = if (asked) Icons.Filled.Close else Icons.Filled.Pause,
+                    label = label,
+                    on = room.paused || asked,
+                    dimmed = !can || room.paused,
+                    tag = "dock-pause",
+                ) {
+                    when {
+                        room.paused || !can -> onExplain(label)
+                        asked -> session.client.cancelPauseRequest()
+                        else -> {
+                            session.client.requestPause()
+                            onExplain(null)
+                        }
+                    }
+                }
             }
         },
         {
@@ -467,15 +602,25 @@ private fun Dock(
 }
 
 @Composable
-private fun DockButton(icon: ImageVector, label: String, on: Boolean, enabled: Boolean = true, badge: Boolean = false, tag: String = "", onClick: () -> Unit) {
+private fun DockButton(
+    icon: ImageVector,
+    label: String,
+    on: Boolean,
+    enabled: Boolean = true,
+    badge: Boolean = false,
+    tag: String = "",
+    /** Looks disabled but still takes a tap (to explain why). */
+    dimmed: Boolean = false,
+    onClick: () -> Unit,
+) {
     Box(if (tag.isEmpty()) Modifier else Modifier.testTag(tag)) {
         IconButton(
             onClick = onClick,
             enabled = enabled,
             modifier = Modifier.size(48.dp),
             colors = IconButtonDefaults.iconButtonColors(
-                containerColor = if (on) Tokens.accentTint else Tokens.surface,
-                contentColor = if (on) Tokens.accent else Tokens.text2,
+                containerColor = if (dimmed) Tokens.sunken else if (on) Tokens.accentTint else Tokens.surface,
+                contentColor = if (dimmed) Tokens.faint.copy(alpha = 0.6f) else if (on) Tokens.accent else Tokens.text2,
                 disabledContainerColor = Tokens.sunken,
                 disabledContentColor = Tokens.faint.copy(alpha = 0.6f),
             ),
@@ -525,7 +670,7 @@ private fun MicExplainer(prefs: Prefs, session: RoomSession, onDone: () -> Unit)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RoomSheet(ui: RoomUi, session: RoomSession, tab: SheetTab, onTab: (SheetTab) -> Unit, onClose: () -> Unit) {
+private fun RoomSheet(ui: RoomUi, session: RoomSession, tab: SheetTab, onTab: (SheetTab) -> Unit, onSound: () -> Unit, onClose: () -> Unit) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onClose, sheetState = state, containerColor = Tokens.surface) {
         // The sheet is its own window: its test tags need their own flag.
@@ -537,7 +682,7 @@ private fun RoomSheet(ui: RoomUi, session: RoomSession, tab: SheetTab, onTab: (S
             }
             when (tab) {
                 SheetTab.CHAT -> ChatPanel(ui, session, Modifier.fillMaxSize().padding(12.dp))
-                SheetTab.PLAYERS -> PlayersPanel(ui, session, Modifier.fillMaxSize().padding(12.dp))
+                SheetTab.PLAYERS -> PlayersPanel(ui, session, onSound, Modifier.fillMaxSize().padding(12.dp))
             }
         }
     }
@@ -624,7 +769,7 @@ fun ChatPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
 }
 
 @Composable
-private fun PlayersPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
+private fun PlayersPanel(ui: RoomUi, session: RoomSession, onSound: () -> Unit, modifier: Modifier) {
     val res = LocalContext.current.resources
     val room = ui.room ?: return
     val sound by session.sound.collectAsState()
@@ -669,6 +814,8 @@ private fun PlayersPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
                     is Me.Spectator -> PrimaryButton(stringResource(R.string.room_join_queue), { session.client.joinQueue() })
                     else -> SecondaryButton(stringResource(R.string.room_spectate), { session.client.spectate() })
                 }
+                // Microphone and output devices, and a test chime.
+                SecondaryButton(stringResource(R.string.sound_title), onSound, Modifier.testTag("players-sound"), icon = Icons.Filled.Tune)
             }
         }
         if (room.queue.isNotEmpty()) {
@@ -684,6 +831,91 @@ private fun PlayersPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
             item { Text(stringResource(R.string.room_spectators_title), color = Tokens.muted, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp)) }
             items(room.spectators) { s ->
                 Text(localName(res, s.name) + if (s.you) " (${res.getString(R.string.room_you)})" else "", color = if (s.you) Tokens.accent else Tokens.text2)
+            }
+        }
+    }
+}
+
+/** The pending pause request, over the picture: the host decides. */
+@Composable
+internal fun PauseAskedBanner(onCancel: () -> Unit, modifier: Modifier) {
+    Surface(
+        modifier.testTag("pause-banner"),
+        color = Tokens.surface2,
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(1.dp, Tokens.borderStrong),
+        shadowElevation = 8.dp,
+    ) {
+        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).background(Tokens.accent, CircleShape))
+            Spacer(Modifier.width(10.dp))
+            Text(stringResource(R.string.room_pause_asked), color = Tokens.text, fontSize = 14.sp, modifier = Modifier.weight(1f, fill = false))
+            TextButton(onClick = onCancel, modifier = Modifier.testTag("pause-cancel")) {
+                Text(stringResource(R.string.room_pause_cancel_short), color = Tokens.accent, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** "<controller> · display only", over the picture while the pad only shows a real controller. */
+@Composable
+internal fun ControllerChip(name: String) {
+    Surface(color = Color(0xB305060A), shape = RoundedCornerShape(50), border = BorderStroke(1.dp, Tokens.borderStrong), modifier = Modifier.widthIn(max = 300.dp).testTag("pad-display-only")) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Gamepad, contentDescription = null, tint = Tokens.accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(name, color = Tokens.text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text(" · " + stringResource(R.string.room_pad_display_only), color = Tokens.text, fontSize = 13.sp, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * The stats button (top left over the picture) and, while on, a compact
+ * see-through box next to it: frames per second decoded, the picture's
+ * size and codec, the round trip to the device and the path (direct or
+ * through the relay), packet loss, and the game sound's codec.
+ */
+@Composable
+internal fun StatsCorner(on: Boolean, stats: org.golink.player.core.LiveStatsView?, onToggle: () -> Unit, modifier: Modifier) {
+    val cyan = Tokens.voice
+    Row(modifier, verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier
+                .size(36.dp)
+                .background(Color(0x8C05060A), CircleShape)
+                .border(2.dp, if (on) cyan else cyan.copy(alpha = 0.6f), CircleShape)
+                .clip(CircleShape)
+                .toggleable(value = on, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = { onToggle() })
+                .testTag("room-stats"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.BarChart, contentDescription = stringResource(R.string.room_stats), tint = cyan, modifier = Modifier.size(18.dp))
+        }
+        if (on) {
+            Spacer(Modifier.width(8.dp))
+            val s = stats ?: org.golink.player.core.LiveStatsView()
+            val dash = "–"
+            val size = if (s.width != null && s.height != null) "${s.width}×${s.height}" else dash
+            val path = when (s.path) {
+                org.golink.player.core.NetPath.DIRECT -> stringResource(R.string.stats_direct)
+                org.golink.player.core.NetPath.RELAY -> stringResource(R.string.stats_relay)
+                org.golink.player.core.NetPath.UNKNOWN -> dash
+            }
+            val loss = s.lossPercent?.let { org.golink.player.core.LiveStatsMeter.formatLoss(it) } ?: dash
+            val audio = if (s.audioCodec != null) listOfNotNull(s.audioCodec, s.audioKhz?.let { "$it kHz" }).joinToString(" ") else dash
+            Surface(
+                color = Color(0x9E05060A),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, cyan.copy(alpha = 0.35f)),
+                modifier = Modifier.testTag("room-stats-box"),
+            ) {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Tokens.text, lineHeight = 18.sp)
+                    Text(stringResource(R.string.stats_line_video, s.fps?.toString() ?: dash, size, s.codec ?: dash), style = mono)
+                    Text(stringResource(R.string.stats_line_net, s.rttMs?.toString() ?: dash, path), style = mono)
+                    Text(stringResource(R.string.stats_line_loss, loss, audio), style = mono)
+                }
             }
         }
     }

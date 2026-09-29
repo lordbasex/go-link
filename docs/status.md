@@ -12,7 +12,7 @@
 | Game server | Several rooms at once, live/paused/archived/trash, favorites, save slots, automatic save, resume after restart, history |
 | Save detection | Per-game and per-core save probe; games that cannot be saved always start fresh |
 | Rooms | Private only: invitation link, QR and code, one PIN per person, return tokens, owner key |
-| Playing | Seats P1-P4, arcade queue, spectators, Start 1P-4P, swap controllers, pause, gamepads, several local players, remap, touch gamepad |
+| Playing | Seats P1-P4, arcade queue, spectators, Start 1P-4P, swap controllers, host-only pause with players asking for one, player names (2-20 letters, digits, spaces; cleaned by the device), gamepads, several local players, remap, touch gamepad |
 | Voice and chat | SFU-style voice between seated players, per-player volume and silence; chat with typing indicator, switchable per room |
 | Recordings | Host-only recording to WebM without re-encoding (2 h / 2 GB caps, stops on pause), REC notice for everyone, chunked download with SHA-256, in-browser MP4 export (WebCodecs + Go WebAssembly) with a preview to set the game and voices volumes and three sound tracks, screenshots, factory reset |
 | Device app | Native window and tray panel (Fyne), headless mode with a LAN web panel, full CLI, Docker image |

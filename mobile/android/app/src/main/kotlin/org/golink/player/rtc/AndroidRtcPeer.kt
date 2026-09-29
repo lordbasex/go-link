@@ -7,6 +7,7 @@ import org.golink.player.core.IceServer
 import org.golink.player.core.PeerState
 import org.golink.player.core.RtcPeer
 import org.golink.player.core.RtcPeerEvents
+import org.golink.player.core.RtcSample
 import org.golink.player.core.RtcSignals
 import org.webrtc.AudioTrack
 import org.webrtc.DataChannel
@@ -114,6 +115,59 @@ class AndroidRtcPeer(
     /** libwebrtc's statistics (RTP counters, audio levels), delivered on a WebRTC thread. */
     fun stats(done: (RTCStatsReport) -> Unit) {
         if (!closed) pc.getStats { done(it) }
+    }
+
+    /**
+     * One reading for the room's stats overlay (the video, the game sound
+     * and the candidate pair in use), delivered on a WebRTC thread.
+     */
+    fun sample(done: (RtcSample) -> Unit) = stats { report -> done(toSample(report)) }
+
+    private fun toSample(report: RTCStatsReport): RtcSample {
+        val all = report.statsMap
+        fun num(v: Any?): Long? = (v as? Number)?.toLong()
+        var sample = RtcSample(atMs = report.timestampUs / 1000.0)
+        var received = 0L
+        var lost = 0L
+        var counted = false
+        for (s in all.values) {
+            if (s.type != "inbound-rtp") continue
+            val m = s.members
+            val label = (m["trackIdentifier"] as? String)?.let { trackLabels[it] }
+            val kind = m["kind"] as? String
+            val codec = all[m["codecId"] as? String]?.members
+            when {
+                kind == "video" -> sample = sample.copy(
+                    framesDecoded = num(m["framesDecoded"]),
+                    frameWidth = num(m["frameWidth"])?.toInt(),
+                    frameHeight = num(m["frameHeight"])?.toInt(),
+                    videoMime = codec?.get("mimeType") as? String,
+                )
+                kind == "audio" && (label == "game" || label == null && sample.audioMime == null) -> sample = sample.copy(
+                    audioMime = codec?.get("mimeType") as? String,
+                    audioClockRate = num(codec?.get("clockRate"))?.toInt(),
+                )
+                else -> continue // the players' voices are not the game's stream
+            }
+            num(m["packetsReceived"])?.let { received += it; counted = true }
+            num(m["packetsLost"])?.let { lost += it }
+        }
+        if (counted) sample = sample.copy(packetsReceived = received, packetsLost = lost)
+        // The pair in use: the transport's selected pair, or the nominated one that succeeded.
+        val selected = all.values.firstOrNull { it.type == "transport" }?.members?.get("selectedCandidatePairId") as? String
+        val pair = all[selected] ?: all.values.firstOrNull {
+            it.type == "candidate-pair" && it.members["nominated"] == true && it.members["state"] == "succeeded"
+        }
+        if (pair != null) {
+            val local = all[pair.members["localCandidateId"] as? String]?.members
+            val remote = all[pair.members["remoteCandidateId"] as? String]?.members
+            sample = sample.copy(
+                rttSeconds = (pair.members["currentRoundTripTime"] as? Number)?.toDouble(),
+                localCandidateType = local?.get("candidateType") as? String,
+                remoteCandidateType = remote?.get("candidateType") as? String,
+            )
+        }
+        return sample
     }
 
     override suspend fun addCandidate(candidate: IceCandidateInit) {

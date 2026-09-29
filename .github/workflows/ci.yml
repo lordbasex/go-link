@@ -98,6 +98,23 @@ jobs:
           name: android-reports
           path: mobile/android/*/build/reports
 
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile/ios
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install xcodegen
+      # GoLinkCore: the portable logic (invitations, signaling, the input
+      # packet, room state), tested on the Mac.
+      - run: swift test
+        working-directory: mobile/ios/GoLinkCore
+      # The app for the Simulator, without signing (no team in CI).
+      - run: |
+          SIM=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [0-9]+[^(]*' | sed 's/ *$//')
+          make build-sim SIM="$SIM"
+
   e2e:
     runs-on: ubuntu-latest
     needs: [device, web]

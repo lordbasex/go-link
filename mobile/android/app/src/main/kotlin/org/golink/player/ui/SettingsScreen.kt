@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,12 +57,14 @@ import org.golink.player.net.OkHttpSockets
 /**
  * The player's name, the signaling server (official or the host's own,
  * like the website's "Signaling server" button: wss:// only, tested for a
- * hello before saving) and the permissions.
+ * hello before saving), the startup sound and the permissions.
  */
 @Composable
 fun SettingsScreen(
     name: String,
     signal: SignalUrls.Choice,
+    startupSound: Boolean,
+    onStartupSound: (Boolean) -> Unit,
     onName: (String) -> Unit,
     onSignal: (String?) -> Unit,
     onBack: () -> Unit,
@@ -68,6 +72,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var nameText by rememberSaveable { mutableStateOf(name) }
+    var coin by rememberSaveable { mutableStateOf(startupSound) }
     var url by rememberSaveable { mutableStateOf(if (signal.custom) signal.url else "") }
     var status by remember { mutableStateOf<String?>(null) }
     var statusBad by remember { mutableStateOf(false) }
@@ -85,7 +90,7 @@ fun SettingsScreen(
     )
     Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onName(nameText); onBack() }, modifier = Modifier.size(48.dp)) {
+            IconButton(onClick = { if (nameUsable(nameText)) onName(nameText); onBack() }, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Tokens.text)
             }
             Text(stringResource(R.string.settings_title), color = Tokens.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -94,16 +99,14 @@ fun SettingsScreen(
             Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Card {
                     Text(stringResource(R.string.settings_name), color = Tokens.text, fontWeight = FontWeight.SemiBold)
-                    OutlinedTextField(
-                        value = nameText,
-                        onValueChange = { nameText = it.take(24) },
-                        singleLine = true,
-                        placeholder = { Text(stringResource(R.string.settings_name_placeholder)) },
-                        supportingText = { Text(stringResource(R.string.settings_name_hint)) },
-                        colors = fieldColors,
-                        modifier = Modifier.fillMaxWidth(),
+                    Text(stringResource(R.string.settings_name_hint), color = Tokens.muted, fontSize = 14.sp)
+                    NameField(nameText, { nameText = it }, tag = "settings-name", hintTag = "settings-name-hint")
+                    SecondaryButton(
+                        stringResource(R.string.settings_save),
+                        { onName(nameText) },
+                        Modifier.fillMaxWidth().testTag("settings-name-save"),
+                        enabled = nameUsable(nameText),
                     )
-                    SecondaryButton(stringResource(R.string.settings_save), { onName(nameText) }, Modifier.fillMaxWidth())
                 }
                 Card {
                     Text(stringResource(R.string.settings_server), color = Tokens.text, fontWeight = FontWeight.SemiBold)
@@ -162,6 +165,23 @@ fun SettingsScreen(
                     Text(Protocol.OFFICIAL_SIGNAL_URL, color = Tokens.faint, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                 }
                 Card {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.settings_startup_sound),
+                            color = Tokens.text,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = coin,
+                            onCheckedChange = { coin = it; onStartupSound(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Tokens.onAccent, checkedTrackColor = Tokens.accent),
+                            modifier = Modifier.testTag("settings-startup-sound"),
+                        )
+                    }
+                    Text(stringResource(R.string.settings_startup_sound_hint), color = Tokens.muted, fontSize = 14.sp)
+                }
+                Card {
                     Text(stringResource(R.string.settings_permissions), color = Tokens.text, fontWeight = FontWeight.SemiBold)
                     PermissionRow(stringResource(R.string.settings_perm_camera), Perms.CAMERA)
                     PermissionRow(stringResource(R.string.settings_perm_mic), Perms.MIC)
@@ -169,6 +189,7 @@ fun SettingsScreen(
                     SecondaryButton(stringResource(R.string.perm_open_settings), { Perms.openAppSettings(context) }, Modifier.fillMaxWidth())
                 }
                 Text(stringResource(R.string.settings_about, BuildConfig.VERSION_NAME), color = Tokens.faint, fontSize = 13.sp)
+                AppVersion(Modifier.fillMaxWidth())
                 Spacer(Modifier.size(24.dp))
             }
         }
@@ -193,3 +214,7 @@ private fun PermissionRow(label: String, permission: String) {
         )
     }
 }
+
+/** A saved name must follow the rules; an empty one lets the host pick a guest name. */
+private fun nameUsable(name: String): Boolean =
+    org.golink.player.core.PlayerName.normalize(name).isEmpty() || org.golink.player.core.PlayerName.isValid(name)

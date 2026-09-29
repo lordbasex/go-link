@@ -4,12 +4,27 @@
 // there is no sound file to download.
 
 let ctx: AudioContext | null = null;
+let output = "";
+
+/** The output the chime plays on ("" = the system's default), where the browser can choose. */
+export function setDingOutput(id: string): void {
+  output = id;
+  applyOutput();
+}
+
+function applyOutput(): void {
+  const c = ctx as unknown as { setSinkId?: (id: string) => Promise<void> } | null;
+  if (typeof c?.setSinkId === "function") void c.setSinkId(output).catch(() => undefined);
+}
 
 export function playDing(volume = 0.12): void {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
-    ctx ??= new Ctx();
+    if (!ctx) {
+      ctx = new Ctx();
+      if (output) applyOutput();
+    }
     if (ctx.state === "suspended") void ctx.resume();
     const start = ctx.currentTime;
     [880, 1318.5].forEach((freq, i) => {

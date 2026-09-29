@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useId, useState, type FormEvent } from "react";
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { parseInvite } from "@go-link/shared";
+import { editCodeFromChange, parseInvite, type CodeEdit } from "@go-link/shared";
 import { t } from "../i18n";
 import { GamepadIcon, LockIcon } from "./Icons";
 import { TermsCheck } from "./legal/TermsCheck";
@@ -15,7 +15,14 @@ import { acceptTerms, termsAccepted } from "../legal";
 export function JoinForm({ className, autoFocus = false }: { className?: string; autoFocus?: boolean }) {
   const navigate = useNavigate();
   const id = useId();
-  const [code, setCode] = useState("");
+  // The code shows grouped as "915 355 636" while typed; a link stays as pasted.
+  const [field, setField] = useState<CodeEdit>({ text: "", caret: 0 });
+  const code = field.text;
+  const codeRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const el = codeRef.current;
+    if (el && document.activeElement === el) el.setSelectionRange(field.caret, field.caret);
+  }, [field]);
   const [pin, setPin] = useState("");
   const [needsTerms] = useState(() => !termsAccepted());
   const [agreed, setAgreed] = useState(false);
@@ -45,12 +52,18 @@ export function JoinForm({ className, autoFocus = false }: { className?: string;
           <input
             id={`${id}-code`}
             className="input input-mono"
-            inputMode="numeric"
+            ref={codeRef}
             autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             autoFocus={autoFocus}
             placeholder="123 456 789"
             value={code}
-            onChange={(e) => setCode(e.target.value.slice(0, 120))}
+            onChange={(e) => {
+              const el = e.target;
+              setField(editCodeFromChange(code, el.value, el.selectionStart ?? el.value.length));
+            }}
           />
         </div>
         <span className="small faint">{t.guest.codeHint}</span>

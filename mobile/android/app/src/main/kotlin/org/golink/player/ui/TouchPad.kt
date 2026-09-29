@@ -50,80 +50,82 @@ import androidx.compose.ui.unit.sp
 import org.golink.player.R
 import org.golink.player.core.Button
 import org.golink.player.core.GameControls
+import org.golink.player.core.PadRect
+import org.golink.player.core.PadTarget
 import org.golink.player.core.TouchPadLogic
+import org.golink.player.core.TouchPadTracker
 import org.golink.player.core.startOf
 import kotlin.math.min
 
 /**
  * State of the on-screen gamepad (the website's TouchPad): several
  * fingers at once, and a finger can slide from one button to the next, as
- * on an arcade panel. Regions register their bounds; the pad surfaces
- * hit-test every finger against them.
+ * on an arcade panel. Each drawn control registers its bounds under its
+ * own owner key (refreshed on every layout by onGloballyPositioned), and
+ * removing a control only removes its own entry: the old layout's buttons
+ * going away on a rotation never unregister the new ones. [releaseAll]
+ * (called on every layout change) lets go of all held buttons and sends 0.
  */
 class TouchPadState(private val onChange: (Int) -> Unit, private val view: View) {
     var held by mutableIntStateOf(0)
         private set
-    var fourWay = false
-    private val buttons = HashMap<Int, Rect>() // bit -> bounds in root
-    private var dpad: Rect? = null
-    private val fingers = HashMap<PointerId, Int>()
-    private val dpadFingers = HashMap<PointerId, Int>()
 
-    fun register(bit: Int, bounds: Rect) {
-        buttons[bit] = bounds
+    /**
+     * Buttons lit without a finger: a real controller's, when the pad is
+     * only a see-through display of it (or on the controller test screen).
+     */
+    var extra by mutableIntStateOf(0)
+
+    /** The uptime (ms) of the latest touch event, for the controller test's latency. */
+    var lastEventMs = 0L
+
+    /** What the pad draws as pressed. */
+    val lit: Int get() = held or extra
+    var fourWay: Boolean
+        get() = tracker.fourWay
+        set(v) {
+            tracker.fourWay = v
+        }
+    private val tracker = TouchPadTracker<PointerId>()
+    private val buttons = HashMap<Any, PadTarget>() // owner -> bit and bounds in root
+    private val dpads = HashMap<Any, PadRect>()
+
+    fun place(owner: Any, bit: Int, bounds: Rect) {
+        buttons[owner] = PadTarget(bit, bounds.toPad())
     }
 
-    fun unregister(bit: Int) {
-        buttons.remove(bit)
+    fun placeDpad(owner: Any, bounds: Rect) {
+        dpads[owner] = bounds.toPad()
     }
 
-    fun registerDpad(bounds: Rect) {
-        dpad = bounds
+    fun remove(owner: Any) {
+        buttons.remove(owner)
+        dpads.remove(owner)
     }
+
+    private fun dpad(): PadRect? = dpads.values.lastOrNull()
 
     fun down(id: PointerId, at: Offset) {
-        val d = dpad
-        if (d != null && d.contains(at)) {
-            dpadFingers[id] = dpadBits(d, at)
-        } else {
-            fingers[id] = hit(at)
-        }
+        tracker.down(id, at.x, at.y, dpad(), buttons.values.toList())
         publish()
     }
 
     fun move(id: PointerId, at: Offset) {
-        val d = dpad
-        if (id in dpadFingers && d != null) {
-            dpadFingers[id] = dpadBits(d, at)
-        } else if (id in fingers) {
-            fingers[id] = hit(at)
-        } else {
-            return
-        }
-        publish()
+        if (tracker.move(id, at.x, at.y, dpad(), buttons.values.toList())) publish()
     }
 
     fun up(id: PointerId) {
-        if (dpadFingers.remove(id) != null || fingers.remove(id) != null) publish()
-    }
-
-    fun releaseAll() {
-        fingers.clear()
-        dpadFingers.clear()
+        tracker.up(id)
         publish()
     }
 
-    private fun hit(at: Offset): Int = buttons.entries.firstOrNull { it.value.contains(at) }?.key ?: 0
-
-    private fun dpadBits(d: Rect, at: Offset): Int {
-        val radius = d.width / 2
-        return TouchPadLogic.dpadBits(((at.x - d.center.x) / radius).toDouble(), ((at.y - d.center.y) / radius).toDouble(), fourWay)
+    fun releaseAll() {
+        tracker.releaseAll()
+        publish()
     }
 
     private fun publish() {
-        var bits = 0
-        dpadFingers.values.forEach { bits = bits or it }
-        fingers.values.forEach { bits = bits or it }
+        val bits = tracker.bits
         // A short buzz on each new press.
         if (bits and held.inv() != 0) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         if (bits != held) {
@@ -133,6 +135,8 @@ class TouchPadState(private val onChange: (Int) -> Unit, private val view: View)
     }
 }
 
+private fun Rect.toPad() = PadRect(left, top, right, bottom)
+
 @Composable
 fun rememberTouchPad(onChange: (Int) -> Unit): TouchPadState {
     val view = LocalView.current
@@ -141,45 +145,68 @@ fun rememberTouchPad(onChange: (Int) -> Unit): TouchPadState {
     return state
 }
 
+/** Registers a pad control's bounds under its own key, and removes only that entry when it leaves. */
+@Composable
+private fun Modifier.padTarget(state: TouchPadState, bit: Int = 0, dpad: Boolean = false): Modifier {
+    val owner = remember { Any() }
+    DisposableEffect(state, owner) { onDispose { state.remove(owner) } }
+    return onGloballyPositioned {
+        if (dpad) state.placeDpad(owner, it.boundsInRoot()) else state.place(owner, bit, it.boundsInRoot())
+    }
+}
+
 private class OffsetRef {
     var value = Offset.Zero
 }
 
 /** A part of the pad that takes fingers (the pad is split in two in landscape). */
 @Composable
-fun PadSurface(state: TouchPadState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun PadSurface(state: TouchPadState, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable () -> Unit) {
     val origin = remember { OffsetRef() }
     Box(
         modifier
             .onGloballyPositioned { origin.value = it.positionInRoot() }
-            .pointerInput(state) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        for (change in event.changes) {
-                            val at = origin.value + change.position
-                            when {
-                                change.pressed && !change.previousPressed -> state.down(change.id, at)
-                                change.pressed -> state.move(change.id, at)
-                                !change.pressed && change.previousPressed -> state.up(change.id)
+            .then(if (!enabled) Modifier else Modifier.pointerInput(state) {
+                // Fingers that went down on this surface. When the surface
+                // leaves (the layout swapped on a rotation) this coroutine
+                // is cancelled without any "up": let go of them here, or
+                // their buttons would stay held on the device.
+                val mine = HashSet<PointerId>()
+                try {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            for (change in event.changes) {
+                                state.lastEventMs = change.uptimeMillis
+                                val at = origin.value + change.position
+                                when {
+                                    change.pressed && !change.previousPressed -> {
+                                        mine.add(change.id)
+                                        state.down(change.id, at)
+                                    }
+                                    change.pressed -> if (change.id in mine) state.move(change.id, at)
+                                    !change.pressed && change.previousPressed -> if (mine.remove(change.id)) state.up(change.id)
+                                }
+                                if (event.type != PointerEventType.Move || change.pressed) change.consume()
                             }
-                            if (event.type != PointerEventType.Move || change.pressed) change.consume()
                         }
                     }
+                } finally {
+                    mine.forEach { state.up(it) }
                 }
-            },
+            }),
     ) { content() }
 }
 
 /** The D-pad: a cross with the held directions lit. */
 @Composable
 fun DPad(state: TouchPadState, size: Dp, modifier: Modifier = Modifier) {
-    val held = state.held
+    val held = state.lit
     Box(
         modifier
             .size(size)
             .testTag("pad-dpad")
-            .onGloballyPositioned { state.registerDpad(it.boundsInRoot()) },
+            .padTarget(state, dpad = true),
     ) {
         Canvas(Modifier.size(size)) {
             val s = this.size.width
@@ -211,13 +238,12 @@ fun DPad(state: TouchPadState, size: Dp, modifier: Modifier = Modifier) {
 /** A round action button (1 to 6), with a metal ring like the website's. */
 @Composable
 fun ActionButton(state: TouchPadState, bit: Int, label: String, size: Dp) {
-    val on = state.held and bit != 0
-    DisposableEffect(bit) { onDispose { state.unregister(bit) } }
+    val on = state.lit and bit != 0
     Box(
         Modifier
             .size(size)
             .testTag("pad-button-$label")
-            .onGloballyPositioned { state.register(bit, it.boundsInRoot()) }
+            .padTarget(state, bit)
             .background(
                 Brush.radialGradient(
                     if (on) listOf(Tokens.accent, Color(0xFFB8741F)) else listOf(Color(0x40E9ECF2), Color(0x1AE9ECF2)),
@@ -234,14 +260,13 @@ fun ActionButton(state: TouchPadState, bit: Int, label: String, size: Dp) {
 /** A small capsule (Coin, 1P, 2P...). */
 @Composable
 fun PillButton(state: TouchPadState, bit: Int, label: String, mine: Boolean = false, tag: String = "") {
-    val on = state.held and bit != 0
-    DisposableEffect(bit) { onDispose { state.unregister(bit) } }
+    val on = state.lit and bit != 0
     Surface(
         modifier = Modifier
             .heightIn(min = 36.dp)
             .widthIn(min = 56.dp)
             .then(if (tag.isEmpty()) Modifier else Modifier.testTag(tag))
-            .onGloballyPositioned { state.register(bit, it.boundsInRoot()) },
+            .padTarget(state, bit),
         shape = RoundedCornerShape(50),
         color = if (on) Tokens.accent else Color(0x33E9ECF2),
         border = BorderStroke(1.dp, if (mine) Tokens.accent else Color(0x66E9ECF2)),

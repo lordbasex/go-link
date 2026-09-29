@@ -27,6 +27,7 @@ On macOS the release is `go-link.app`: open it like any app. From a terminal, us
 | `--udp-port <port>` | Carry every WebRTC connection on this UDP port (see [networking.md](networking.md#direct-connections-one-udp-port)) |
 | `--announce <ips>` | Comma-separated addresses where browsers reach `--udp-port` through a forwarding router |
 | `--test-room=false` | Do not open the test pattern room |
+| `--test-room-pause` | Let the host pause the test pattern room (the card holds and the tone stops), to try the pause and its requests without a game |
 | `--debug` | Verbose logs |
 
 Flags take one or two dashes (`-headless` or `--headless`).
@@ -147,6 +148,13 @@ A device **without a window** (Raspberry Pi, server, Docker, or `--headless`) op
 ## Updates
 
 A few seconds after starting, and every 6 hours, the device reads go-link's public releases list on GitHub. When a newer version than its own is out, the window's Overview and the linked website show it with a link to the release page. Nothing is downloaded or installed by itself, and development builds (without a version tag) never check.
+
+## Players, names and pausing
+
+Each room's **Room Manager** (`internal/services/room_manager.go`) is an actor: one goroutine owns the seats, the queue, the chat and the requests for a pause, and timers post back to it (a request for a pause expires after 30 s inside that goroutine). It enforces the rules itself, never trusting a browser:
+
+- **Names:** `CleanName` keeps letters, digits and single spaces (NFC first), cuts to 20 characters and falls back to the generated `Guest XXXX` below 2; the guest learns the name in use from `room_state.you.name` ([protocol](protocol.md#player-names)).
+- **Pausing:** only the host pauses. The PIN gate reports which guests came in with the owner key (`PinResult.Owner`), and the linked browser itself is trusted too; `TestRoomService` marks both with `MarkOwner`. Others ask with `pause_request`; the host answers in the room or from a linked browser (`RoomsService.AnswerPause`, `pause_answer`). `host_online` comes from the owners in the room plus `SetHostLinked`, which `cmd/device` updates whenever a proven linked browser's control channel opens or closes (`StreamService.HasLink`, `LinkService.OnChange`). Linked browsers hear about requests through `RoomsConfig.OnPauseAsk` (`pause_asked`, `pause_ask_gone`) and see them in `device_status` ([protocol](protocol.md#pausing-is-the-hosts)).
 
 ## Metrics
 

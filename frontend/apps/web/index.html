@@ -18,14 +18,18 @@
     <link rel="stylesheet" href="/splash.css" />
   </head>
   <body>
+    <!-- The startup intro ("INSERT COIN"): plain HTML and CSS (public/splash.css)
+         so it shows before the app loads. src/intro.ts plays the coin sound on
+         the first tap or key and lets that tap skip it. -->
     <div id="splash" role="status" aria-label="go-link">
-      <div class="splash-logo" aria-hidden="true">
-        <span class="splash-mark">
-          <svg width="56" height="56" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="4"></rect><path d="M7 11v3M5.5 12.5h3"></path><circle cx="16" cy="11.5" r="1"></circle><circle cx="18" cy="13.5" r="1"></circle></svg>
-        </span>
-        <span class="splash-name">go<span>-</span>link</span>
+      <div class="splash-mark" aria-hidden="true">
+        <svg width="84" height="84" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="5.5"></rect><path d="M7 11v3M5.5 12.5h3"></path><circle cx="16" cy="11.5" r="1.2"></circle><circle cx="18.2" cy="13.8" r="1.2"></circle></svg>
       </div>
-      <div class="splash-bar" aria-hidden="true"><i></i></div>
+      <span class="splash-name" aria-hidden="true">go<span>-</span>link</span>
+      <span class="splash-coin" aria-hidden="true">
+        <!-- "INSERT COIN" as 5x7 pixel letters drawn here (no font file). -->
+        <svg width="189" height="21" viewBox="0 0 63 7" shape-rendering="crispEdges" fill="currentColor"><path d="M0 0h5v1h-5zM2 1h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 4h1v1h-1zM2 5h1v1h-1zM0 6h5v1h-5zM6 0h1v1h-1zM10 0h1v1h-1zM6 1h1v1h-1zM10 1h1v1h-1zM6 2h2v1h-2zM10 2h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM6 4h1v1h-1zM9 4h2v1h-2zM6 5h1v1h-1zM10 5h1v1h-1zM6 6h1v1h-1zM10 6h1v1h-1zM13 0h4v1h-4zM12 1h1v1h-1zM12 2h1v1h-1zM13 3h3v1h-3zM16 4h1v1h-1zM16 5h1v1h-1zM12 6h4v1h-4zM18 0h5v1h-5zM18 1h1v1h-1zM18 2h1v1h-1zM18 3h4v1h-4zM18 4h1v1h-1zM18 5h1v1h-1zM18 6h5v1h-5zM24 0h4v1h-4zM24 1h1v1h-1zM28 1h1v1h-1zM24 2h1v1h-1zM28 2h1v1h-1zM24 3h4v1h-4zM24 4h1v1h-1zM26 4h1v1h-1zM24 5h1v1h-1zM27 5h1v1h-1zM24 6h1v1h-1zM28 6h1v1h-1zM30 0h5v1h-5zM32 1h1v1h-1zM32 2h1v1h-1zM32 3h1v1h-1zM32 4h1v1h-1zM32 5h1v1h-1zM32 6h1v1h-1zM41 0h3v1h-3zM40 1h1v1h-1zM44 1h1v1h-1zM40 2h1v1h-1zM40 3h1v1h-1zM40 4h1v1h-1zM40 5h1v1h-1zM44 5h1v1h-1zM41 6h3v1h-3zM47 0h3v1h-3zM46 1h1v1h-1zM50 1h1v1h-1zM46 2h1v1h-1zM50 2h1v1h-1zM46 3h1v1h-1zM50 3h1v1h-1zM46 4h1v1h-1zM50 4h1v1h-1zM46 5h1v1h-1zM50 5h1v1h-1zM47 6h3v1h-3zM52 0h5v1h-5zM54 1h1v1h-1zM54 2h1v1h-1zM54 3h1v1h-1zM54 4h1v1h-1zM54 5h1v1h-1zM52 6h5v1h-5zM58 0h1v1h-1zM62 0h1v1h-1zM58 1h1v1h-1zM62 1h1v1h-1zM58 2h2v1h-2zM62 2h1v1h-1zM58 3h1v1h-1zM60 3h1v1h-1zM62 3h1v1h-1zM58 4h1v1h-1zM61 4h2v1h-2zM58 5h1v1h-1zM62 5h1v1h-1zM58 6h1v1h-1zM62 6h1v1h-1z"></path></svg>
+      </span>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

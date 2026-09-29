@@ -103,7 +103,10 @@ export function HowItWorksPage() {
         <h2 id="lp-pads" className="lp-h2">
           {t.landing.padsTitle}
         </h2>
-        <p className="muted lp-section-lead">{t.landing.padsText}</p>
+        <p className="muted lp-section-lead">
+          {t.landing.padsText}{" "}
+          <Link to="/test-controller">{t.testController.link}</Link>
+        </p>
         <ControllersShowcase />
       </section>
 

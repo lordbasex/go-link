@@ -46,3 +46,35 @@ describe("pause in room_state", () => {
     expect(idle).toMatchObject({ pausable: false, paused: false, pausedBy: "" });
   });
 });
+
+describe("pause requests", () => {
+  const base = { type: "room_state", max_players: 4, seats: [], pausable: true };
+  it("reads the host's view: requests waiting for an answer", () => {
+    const st = parseRoomState({
+      ...base,
+      host_online: true,
+      you: { name: "Host", ports: [], owner: true, pause_asks: [{ from: "peer-a", name: "Ana", port: 2, expires_at: "2026-09-29T12:00:30Z" }], pause_asked: null },
+    });
+    expect(st?.hostOnline).toBe(true);
+    expect(st?.you.owner).toBe(true);
+    expect(st?.you.pauseAsks).toEqual([{ from: "peer-a", name: "Ana", port: 2, expiresAt: Date.parse("2026-09-29T12:00:30Z") }]);
+    expect(st?.you.pauseAsked).toBeNull();
+  });
+  it("reads a guest's own request and drops bad ones", () => {
+    const st = parseRoomState({
+      ...base,
+      you: { name: "Ana", ports: [2], pause_asked: { expires_at: "2026-09-29T12:00:30Z" }, pause_asks: [{ from: "", name: "x" }, { from: "p", expires_at: "nope" }] },
+    });
+    expect(st?.hostOnline).toBe(false);
+    expect(st?.you.owner).toBe(false);
+    expect(st?.you.pauseAsked).toEqual({ expiresAt: Date.parse("2026-09-29T12:00:30Z") });
+    expect(st?.you.pauseAsks).toEqual([]);
+    expect(parseRoomState({ ...base, you: { pause_asked: { expires_at: 5 } } })?.you.pauseAsked).toBeNull();
+  });
+  it("knows the pause_declined notice", () => {
+    expect(parseChat({ type: "chat", system: "The host would rather keep playing", event: "pause_declined", args: { name: "Ana", port: 2 }, ts: 1 })).toMatchObject({
+      kind: "system",
+      event: "pause_declined",
+    });
+  });
+});

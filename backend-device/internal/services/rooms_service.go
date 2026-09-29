@@ -143,8 +143,11 @@ type RoomsConfig struct {
 	OnRecording func(RecordingEvent)
 	// Trusted tells the device's own linked browsers, who skip the PIN.
 	Trusted func(peerID string) bool
-	Logger  *slog.Logger
-	Now     func() time.Time
+	// OnPauseAsk tells the host's linked browsers that a player asks for a
+	// pause (pause_asked) or that the request is gone (pause_ask_gone).
+	OnPauseAsk func(RoomPauseAskEvent)
+	Logger     *slog.Logger
+	Now        func() time.Time
 }
 
 // RoomsService turns the device into a game server: each room is one game,
@@ -169,6 +172,16 @@ type RoomsService struct {
 	// resume are the rooms device.json had running at startup; Run starts
 	// only those (a room created meanwhile must not start twice).
 	resume []*gameRoom
+	// hostLinked: a linked browser of the host is connected, so the host
+	// can answer requests for a pause.
+	hostLinked bool
+}
+
+// RoomPauseAskEvent is a PauseAskEvent of one room, for linked browsers:
+// id is the device's room id.
+type RoomPauseAskEvent struct {
+	PauseAskEvent
+	ID string `json:"id"`
 }
 
 // gameRoom is one room and, while its game runs, the parts that serve it.
@@ -196,6 +209,8 @@ type gameRoom struct {
 	peakSpectators int
 	people         []string                  // peers, in order of arrival
 	person         map[string]*HistoryPerson // by peer
+	// pauseAsks are the pending requests for a pause, for device_status.
+	pauseAsks []models.PauseAsk
 }
 
 // RecordingEvent is sent to the host's linked browsers when a recording
@@ -602,6 +617,50 @@ func (r *RoomsService) Current() string {
 	return ""
 }
 
+// SetHostLinked tells every room whether a linked browser of the host is
+// connected (guests see host_online).
+func (r *RoomsService) SetHostLinked(on bool) {
+	r.mu.Lock()
+	r.hostLinked = on
+	parts := r.runningLocked()
+	r.mu.Unlock()
+	for _, gr := range parts {
+		if m := r.managerOf(gr); m != nil {
+			m.SetHostLinked(on)
+		}
+	}
+}
+
+// AnswerPause is the host's answer, from a linked browser, to a player's
+// request for a pause in room id.
+func (r *RoomsService) AnswerPause(id, from string, accept bool) error {
+	gr := r.find(id)
+	if gr == nil {
+		return ErrUnknownRoom
+	}
+	m := r.managerOf(gr)
+	if m == nil || !m.AnswerPause(from, accept) {
+		return ErrRoomState
+	}
+	return nil
+}
+
+// pauseAsked keeps a room's requests for a pause and tells the host.
+func (r *RoomsService) pauseAsked(gr *gameRoom, ev PauseAskEvent) {
+	r.mu.Lock()
+	gr.pauseAsks = slices.DeleteFunc(gr.pauseAsks, func(a models.PauseAsk) bool { return a.From == ev.From })
+	if ev.Type == "pause_asked" && ev.ExpiresAt != nil {
+		gr.pauseAsks = append(gr.pauseAsks, models.PauseAsk{From: ev.From, Name: ev.Name, Port: ev.Port, ExpiresAt: *ev.ExpiresAt})
+	}
+	id := gr.saved.ID
+	fn := r.cfg.OnPauseAsk
+	r.mu.Unlock()
+	if fn != nil {
+		fn(RoomPauseAskEvent{PauseAskEvent: ev, ID: id})
+	}
+	r.publish()
+}
+
 // Close archives the newest running room (the window's Stop button, and
 // close_room from older web versions).
 func (r *RoomsService) Close(reply func(GameReply)) {
@@ -699,6 +758,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 			}
 		})
 	})
+	manager.OnPauseAsk(func(ev PauseAskEvent) { r.pauseAsked(gr, ev) })
 	manager.OnPause(func(paused bool) {
 		source.SetPaused(paused)
 		if paused {
@@ -728,10 +788,13 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	gr.startedAt, gr.peakPlayers, gr.peakSpectators = r.cfg.Now(), 0, 0
 	gr.people, gr.person = nil, map[string]*HistoryPerson{}
 	gr.rec, gr.recs = nil, nil
+	gr.pauseAsks = nil
+	hostLinked := r.hostLinked
 	gr.art = r.art(saved.Rom, saved.Art)
 	info := RoomInfo{Title: saved.Name, Game: game, Host: r.cfg.HostName, Art: gr.art}
 	r.mu.Unlock()
 	manager.SetInfo(info)
+	manager.SetHostLinked(hostLinked)
 	go manager.Run(ctx)
 	r.streams.Add(1)
 	go func() {
@@ -791,6 +854,7 @@ func (r *RoomsService) stop(ctx context.Context, gr *gameRoom, save bool, reason
 	r.mu.Lock()
 	cancel, signal := gr.cancel, gr.signal
 	gr.cancel, gr.stream, gr.signal, gr.manager, gr.source = nil, nil, nil, nil, nil
+	gr.pauseAsks = nil
 	gr.ready, gr.roomID, gr.summary = false, "", RoomSummary{}
 	r.mu.Unlock()
 	if signal != nil {
@@ -1107,6 +1171,7 @@ func (r *RoomsService) List() []models.ManagedRoom {
 			SavedRoom: gr.saved, Game: gr.game, RoomID: gr.roomID,
 			Players: gr.summary.Players, MaxPlayers: 4, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
+			PauseAsks: slices.Clone(gr.pauseAsks),
 		})
 		if gr.rec != nil {
 			since := gr.rec.StartedAt()

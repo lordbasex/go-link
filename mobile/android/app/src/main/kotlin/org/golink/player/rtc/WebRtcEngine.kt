@@ -2,6 +2,7 @@
 package org.golink.player.rtc
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.util.Log
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
@@ -62,6 +63,15 @@ class WebRtcEngine private constructor(context: Context) {
         val source = factory.createAudioSource(constraints)
         micSource = source
         return factory.createAudioTrack("mic", source).also { micTrack = it }
+    }
+
+    /**
+     * The microphone libwebrtc records from; null lets Android pick it
+     * (the communication device's microphone). Applied now and on every
+     * later recording start.
+     */
+    fun setPreferredInput(device: AudioDeviceInfo?) {
+        runCatching { adm.setPreferredInputDevice(device) }.onFailure { log("preferred mic: ${it.message}") }
     }
 
     private fun log(text: String) {

@@ -35,6 +35,8 @@ export default defineConfig({
         "--use-fake-ui-for-media-stream",
         "--use-fake-device-for-media-stream",
         "--autoplay-policy=no-user-gesture-required",
+        // Rooms play a 1 kHz tone: never through the developer's speakers.
+        "--mute-audio",
         ...singleProcess,
       ],
     },

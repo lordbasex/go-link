@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { CustomServerBanner, ServerDialog } from "./components/ServerSettings";
 import { MainHeader } from "./components/Headers";
 import { RecordingNotices } from "./components/Recordings";
+import { PauseAskNotices } from "./components/PauseAskNotices";
 import { useSignal } from "./signal/SignalProvider";
 import { SPLASH_MAX_MS, SPLASH_MIN_MS, hideSplash } from "./splash";
 import { LobbyPage, readRoomsView } from "./pages/LobbyPage";
@@ -31,6 +32,9 @@ const DocsPage = lazy(() =>
 );
 const DevicePage = lazy(() =>
   import("./pages/DevicePage").then((m) => ({ default: m.DevicePage })),
+);
+const TestControllerPage = lazy(() =>
+  import("./pages/TestControllerPage").then((m) => ({ default: m.TestControllerPage })),
 );
 
 /**
@@ -114,6 +118,7 @@ export function App() {
       {/* One header for every page: it stays put while the page changes. */}
       <MainHeader />
       <RecordingNotices />
+      <PauseAskNotices />
       {/* The one main landmark: every page renders inside it. */}
       <main className="app-main">
       <Suspense fallback={<div className="page" aria-busy="true" />}>
@@ -140,6 +145,7 @@ export function App() {
               path="/device/history"
               element={<DevicePage tab="history" />}
             />
+            <Route path="/test-controller" element={<TestControllerPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/docs/:slug" element={<DocsPage />} />
             <Route path="/terms" element={<LegalPage doc="terms" />} />

@@ -2,13 +2,15 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type FormEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   DEFAULT_CONTROLS,
@@ -18,11 +20,12 @@ import {
   parseInvite,
   recordStart,
   recordStop,
+  savePlayerName,
+  savedPlayerName,
   startButtonCount,
   startOf,
-  type TypingView,
 } from "@go-link/shared";
-import { playDing } from "../components/ding";
+import { playDing, setDingOutput } from "../components/ding";
 import { t } from "../i18n";
 import { DEMO_DEVICE_NAME } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
@@ -43,14 +46,10 @@ import {
   MicOffIcon,
   PauseIcon,
   PlayIcon,
-  SendIcon,
   SoundOffIcon,
   SoundOnIcon,
   SwapIcon,
-  BellIcon,
-  BellOffIcon,
   ChatIcon,
-  PanelCloseIcon,
   UserPlusIcon,
   PowerIcon,
   CameraIcon,
@@ -61,7 +60,6 @@ import {
   CloseIcon,
 } from "../components/Icons";
 import { Chip, HeroTile, PageHero } from "../components/ui/PageHero";
-import { portStyle } from "../components/Seats";
 import { ControlsPanel } from "../components/ControlsPanel";
 import {
   ConfirmDialog,
@@ -71,6 +69,9 @@ import {
 import { useInputConfig } from "../signal/useInputConfig";
 import { TouchPad } from "../components/TouchPad";
 import { InviteDialog } from "../components/InviteDialog";
+import { NameStep } from "../components/NameStep";
+import { PauseAskDialog } from "../components/PauseAskDialog";
+import { useLinkedPauseAsks } from "../signal/useLinkedPauseAsks";
 import { StreamInfo } from "../components/StreamInfo";
 import { PlayersCapsule, type SeatSwap } from "../components/PlayersCapsule";
 import { TermsCheck } from "../components/legal/TermsCheck";
@@ -85,13 +86,29 @@ import {
 import {
   useAudioLevels,
   useMicrophone,
+  useMicTest,
   type MicState,
 } from "../signal/useVoice";
+import { applySink, useAudioDevices, type AudioDevices } from "../signal/useAudioDevices";
+import { AudioDevicesBlock } from "../components/AudioDevices";
+import { SidePanel, useUnreadChat, type SideActions } from "./RoomSide";
+import { ConsoleDrawer, DRAWER_TABS, type DrawerTab } from "./ConsoleDrawer";
 
 const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";
 const CHAT_HIDDEN_KEY = "go-link.chat-hidden";
 const CHAT_SOUND_KEY = "go-link.chat-sound";
+/** The console drawer's last tab, for this browser tab's session. */
+const DRAWER_TAB_KEY = "go-link.drawer-tab";
+
+function readDrawerTab(): DrawerTab {
+  try {
+    const v = sessionStorage.getItem(DRAWER_TAB_KEY) as DrawerTab | null;
+    return v && DRAWER_TABS.includes(v) ? v : "chat";
+  } catch {
+    return "chat";
+  }
+}
 /** How long the controls over the video stay without a movement or tap. */
 const IDLE_MS = 3000;
 
@@ -100,7 +117,6 @@ function tryPlay(media: HTMLMediaElement): Promise<void> {
   return Promise.resolve().then(() => media.play());
 }
 const KEYBOARD_PLAYER_KEY = "go-link.keyboard-player";
-const NAME_KEY = "go-link.player-name";
 const GAME_VOLUME_KEY = "go-link.game-volume";
 const VOICE_VOLUME_KEY = "go-link.voice-volume";
 
@@ -131,8 +147,6 @@ function readKeyboardPlayer(): number {
   const n = Number(readStorage(KEYBOARD_PLAYER_KEY));
   return Number.isInteger(n) && n >= 0 && n < 4 ? n : 0;
 }
-
-type Tab = "chat" | "queue" | "spectators";
 
 
 /**
@@ -309,6 +323,10 @@ function VoiceControl({
   micLevel = 0.6,
   micState = "on",
   volumes,
+  devices,
+  micTestLevel = null,
+  open,
+  setOpen,
 }: {
   model: RoomModel;
   micOn: boolean;
@@ -316,13 +334,42 @@ function VoiceControl({
   micLevel?: number;
   micState?: MicState;
   volumes?: VolumeProps;
+  devices?: AudioDevices;
+  micTestLevel?: number | null;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  // Phones get the settings as a sheet from the bottom of the screen.
+  const sheet = useSheetLayout();
+  // Elsewhere the popover lives inside the video, which clips it: never
+  // taller than the video (it scrolls instead).
+  const [fitStyle, setFitStyle] = useState<CSSProperties>({});
+  useLayoutEffect(() => {
+    if (!open || sheet) return;
+    const stage = rootRef.current?.closest(".video-stage");
+    const pop = popRef.current;
+    if (!stage || !pop) return;
+    const fit = () => {
+      const s = stage.getBoundingClientRect();
+      const maxHeight = Math.max(200, s.height - 24);
+      pop.style.maxHeight = `${maxHeight}px`;
+      pop.style.marginTop = "0px";
+      // Then move it back inside the video if it sticks out.
+      const p = pop.getBoundingClientRect();
+      const shift = p.top < s.top + 12 ? s.top + 12 - p.top : p.bottom > s.bottom - 12 ? s.bottom - 12 - p.bottom : 0;
+      setFitStyle({ maxHeight, marginTop: shift });
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [open, sheet]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !popRef.current?.contains(target)) setOpen(false);
     };
     const esc = (e: KeyboardEvent) => (e.key === "Escape" || e.code === "Escape") && setOpen(false);
     document.addEventListener("mousedown", close);
@@ -397,8 +444,15 @@ function VoiceControl({
       >
         <SlidersIcon />
       </button>
-      {open && (
-        <div className="voice-pop" role="dialog" aria-label={t.room.voiceTitle}>
+      {open && inSheet(sheet, setOpen, (
+        <div
+          ref={popRef}
+          className={`voice-pop${sheet ? " is-sheet" : ""}${devices ? " has-devices" : ""}`}
+          role="dialog"
+          aria-label={t.room.voiceTitle}
+          style={sheet ? undefined : fitStyle}
+        >
+          {sheet && <span className="sheet-handle" aria-hidden="true" />}
           <span className="strong">{title}</span>
           <span className="small muted">{note}</span>
           {volumes && (
@@ -416,393 +470,53 @@ function VoiceControl({
               />
             </div>
           )}
-          {player && (
+          {player && !sheet && (
             <span className="small faint">
               {t.room.holdToTalk} <kbd>V</kbd> {t.room.holdToTalkSuffix}
             </span>
           )}
+          {devices && (
+            <AudioDevicesBlock devices={devices} showMic={player} micLevel={micTestLevel} />
+          )}
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
-interface SideActions {
-  onChat?: (text: string) => void;
-  /** Tells the room you are typing (true, repeated) or stopped. */
-  onTyping?: (on: boolean) => void;
-  /** Others typing right now. */
-  typing?: TypingView[];
-  /** The chime for new messages. */
-  sound?: boolean;
-  onSound?: (on: boolean) => void;
-  /** Folds the side panel away. */
-  onHide?: () => void;
-  /** The host turned the room's chat off: only system notices show. */
-  chatOff?: boolean;
-  /** The owner turns the room's chat on or off for everyone. */
-  onChatSwitch?: (on: boolean) => void;
-  onSpectate?: () => void;
-  onQueue?: () => void;
-  chatEnabled: boolean;
-  name: string;
-  onName?: (name: string) => void;
+const SHEET_QUERY = "(max-width: 700px), (pointer: coarse) and (max-height: 560px)";
+
+/** Whether the screen is a phone's, where popovers become bottom sheets. */
+function useSheetLayout(): boolean {
+  const query = typeof window !== "undefined" ? window.matchMedia?.(SHEET_QUERY) : undefined;
+  const [match, setMatch] = useState(() => query?.matches === true);
+  useEffect(() => {
+    if (!query) return;
+    const change = () => setMatch(query.matches);
+    query.addEventListener?.("change", change);
+    return () => query.removeEventListener?.("change", change);
+  }, [query]);
+  return match;
 }
 
-function SideStatus({
-  model,
-  actions,
-}: {
-  model: RoomModel;
-  actions: SideActions;
-}) {
-  const { me } = model;
-  if (me.kind === "unknown") return null;
-  if (me.kind === "player") {
-    const first = me.ports[0] ?? 1;
-    return (
-      <div className="side-status-row spread">
-        <div className="side-status-row">
-          <span
-            className="port-badge port-badge-small"
-            style={portStyle(first)}
-          >
-            {me.ports.map((p) => `P${p}`).join("+")}
-          </span>
-          <div className="stack-xxs">
-            <span className="strong">{t.room.playing}</span>
-            <span className="small-plus muted">
-              {t.room.waitingForSeat(model.queue.length)}
-            </span>
-          </div>
-        </div>
-        {actions.onSpectate && (
-          <button
-            type="button"
-            className="button button-secondary button-small"
-            onClick={actions.onSpectate}
-          >
-            {t.room.giveUpSeat}
-          </button>
-        )}
-      </div>
-    );
-  }
-  if (me.kind === "queue") {
-    return (
-      <div className="side-status-row spread">
-        <div className="side-status-row">
-          <span className="port-badge port-badge-small is-outline">
-            {t.ordinal(me.position)}
-          </span>
-          <div className="stack-xxs">
-            <span className="strong">
-              {me.position === 1
-                ? t.room.nextInQueue
-                : t.room.inQueue(t.ordinal(me.position))}
-            </span>
-            <span className="small-plus muted">{t.room.nextInQueueNote}</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="button button-secondary button-small"
-          onClick={actions.onSpectate}
-        >
-          {t.room.leaveQueue}
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="side-status-row spread">
-      <div className="side-status-row">
-        <span className="port-badge port-badge-small is-outline">
-          <GamepadIcon size={16} />
-        </span>
-        <div className="stack-xxs">
-          <span className="strong">{t.room.watching}</span>
-          <span className="small-plus muted">{t.room.watchingNote}</span>
-        </div>
-      </div>
+/**
+ * A bottom sheet lives outside the dock (the dock's transform and blur
+ * would trap a fixed element), over a scrim that closes it. In full
+ * screen it goes into the full screen element so it stays visible.
+ */
+function inSheet(sheet: boolean, setOpen: (open: boolean) => void, content: ReactNode): ReactNode {
+  if (!sheet || typeof document === "undefined") return content;
+  return createPortal(
+    <>
       <button
         type="button"
-        className="button button-primary button-small"
-        onClick={actions.onQueue}
-      >
-        {t.room.joinQueue}
-      </button>
-    </div>
-  );
-}
-
-function NameForm({
-  name,
-  onName,
-}: {
-  name: string;
-  onName: (name: string) => void;
-}) {
-  const [value, setValue] = useState(name);
-  useEffect(() => setValue(name), [name]);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    onName(value.trim().slice(0, 24));
-  };
-  return (
-    <form className="name-form" onSubmit={submit}>
-      <label htmlFor="playername" className="small muted">
-        {t.room.yourName}
-      </label>
-      <input
-        id="playername"
-        className="input input-dark input-small"
-        maxLength={24}
-        value={value}
-        placeholder={t.room.namePlaceholder}
-        onChange={(e) => setValue(e.target.value)}
+        className="sheet-scrim"
+        aria-label={t.audio.close}
+        onClick={() => setOpen(false)}
       />
-      <button
-        type="submit"
-        className="button button-secondary button-small"
-        disabled={value.trim() === name}
-      >
-        {t.room.saveName}
-      </button>
-    </form>
-  );
-}
-
-function SidePanel({
-  model,
-  actions,
-}: {
-  model: RoomModel;
-  actions: SideActions;
-}) {
-  const [tab, setTab] = useState<Tab>("chat");
-  const [draft, setDraft] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
-  const typingSent = useRef(0); // when "typing" last went out (0 = stopped)
-  const typing = actions.typing ?? [];
-  useEffect(() => {
-    const el = listRef.current;
-    if (el && tab === "chat") el.scrollTop = el.scrollHeight;
-  }, [model.chat.length, typing.length, tab]);
-  // Stop "typing" when the panel goes away mid-message.
-  const onTypingRef = useRef(actions.onTyping);
-  onTypingRef.current = actions.onTyping;
-  useEffect(
-    () => () => {
-      if (typingSent.current) onTypingRef.current?.(false);
-    },
-    [],
-  );
-  const noteTyping = (text: string) => {
-    const now = Date.now();
-    if (text.trim() && now - typingSent.current > 2500) {
-      typingSent.current = now;
-      actions.onTyping?.(true);
-    } else if (!text.trim() && typingSent.current) {
-      typingSent.current = 0;
-      actions.onTyping?.(false);
-    }
-  };
-  const tabs: { id: Tab; count: number | null }[] = [
-    { id: "chat", count: null },
-    { id: "queue", count: model.queue.length },
-    { id: "spectators", count: model.spectators.length },
-  ];
-  const send = (e: FormEvent) => {
-    e.preventDefault();
-    const text = draft.trim();
-    if (!text || !actions.onChat) return;
-    actions.onChat(text);
-    setDraft("");
-    typingSent.current = 0; // the device clears "typing" with the message
-  };
-  return (
-    <aside className="room-side">
-      {(model.me.kind !== "unknown" || actions.onName) && (
-        <div className="side-status stack-sm">
-          <SideStatus model={model} actions={actions} />
-          {actions.onName && (
-            <NameForm name={actions.name} onName={actions.onName} />
-          )}
-        </div>
-      )}
-
-      <div className="tabs">
-        {/* The tools sit beside the tab list, not inside it: a tablist holds only tabs. */}
-        <div role="tablist" aria-label={t.room.tabsLabel} className="tab-list">
-        {tabs.map(({ id, count }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls="room-tabpanel"
-            className={`tab${tab === id ? " is-on" : ""}`}
-            onClick={() => setTab(id)}
-          >
-            {t.room.tabs[id]}
-            {count !== null && count > 0 && (
-              <span className="tab-count">{count}</span>
-            )}
-          </button>
-        ))}
-        </div>
-        <span className="side-tools">
-          {actions.onChatSwitch && (
-            <button
-              type="button"
-              className={`icon-button icon-button-small${actions.chatOff ? " is-warning" : ""}`}
-              aria-pressed={!actions.chatOff}
-              aria-label={actions.chatOff ? t.room.chatTurnOn : t.room.chatTurnOff}
-              title={actions.chatOff ? t.room.chatTurnOn : t.room.chatTurnOff}
-              onClick={() => actions.onChatSwitch?.(!!actions.chatOff)}
-            >
-              <ChatIcon size={15} />
-            </button>
-          )}
-          {actions.onSound && (
-            <button
-              type="button"
-              className="icon-button icon-button-small"
-              aria-pressed={actions.sound}
-              aria-label={actions.sound ? t.room.chatSoundOff : t.room.chatSoundOn}
-              title={actions.sound ? t.room.chatSoundOff : t.room.chatSoundOn}
-              onClick={() => actions.onSound?.(!actions.sound)}
-            >
-              {actions.sound ? <BellIcon /> : <BellOffIcon />}
-            </button>
-          )}
-          {actions.onHide && (
-            <button
-              type="button"
-              className="icon-button icon-button-small"
-              aria-label={t.room.chatHide}
-              title={t.room.chatHide}
-              onClick={actions.onHide}
-            >
-              <PanelCloseIcon />
-            </button>
-          )}
-        </span>
-      </div>
-
-      <div
-        className="tab-panel"
-        role="tabpanel"
-        id="room-tabpanel"
-        aria-labelledby={`tab-${tab}`}
-        ref={listRef}
-      >
-        {tab === "chat" && actions.chatOff && (
-          <p className="notice small">{t.room.chatOffNote}</p>
-        )}
-        {tab === "chat" && model.chat.length === 0 && !actions.chatOff && (
-          <p className="small-plus muted">
-            {actions.chatEnabled ? t.room.chatEmpty : t.room.chatPending}
-          </p>
-        )}
-        {tab === "chat" &&
-          model.chat.map((m, i) =>
-            "system" in m ? (
-              <div key={i} className="chat-system">
-                {m.system}
-              </div>
-            ) : (
-              <div key={i} className={`chat-message${m.you ? " is-you" : ""}`}>
-                <div className="chat-meta">
-                  <span
-                    className="chat-name"
-                    style={m.port ? portStyle(m.port) : undefined}
-                  >
-                    {m.name}
-                    {m.you ? t.room.youSuffix : ""}
-                  </span>
-                  <span className="chat-role">{m.role}</span>
-                </div>
-                <span className="chat-text">{m.text}</span>
-              </div>
-            ),
-          )}
-        {tab === "chat" && typing.length > 0 && (
-          <div className="chat-typing" aria-live="polite">
-            <span className="typing-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="small muted">
-              {t.room.typing(typing.map((x) => localName(x.name)))}
-            </span>
-          </div>
-        )}
-        {tab === "queue" && (
-          <>
-            <p className="small-plus muted">{t.room.queueNote}</p>
-            {model.queue.map((q) => (
-              <div key={`${q.pos}-${q.name}`} className="queue-row">
-                <span className="queue-pos">{q.pos}</span>
-                <div className="stack-xxs">
-                  <span className="strong">
-                    {q.name}
-                    {q.you ? t.room.youSuffix : ""}
-                  </span>
-                  <span className="small muted">{q.note}</span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-        {tab === "spectators" && (
-          <>
-            <p className="small-plus muted">{t.room.spectatorsNote}</p>
-            {model.spectators.map((s, i) => (
-              <div key={`${s.name}-${i}`} className="viewer-row">
-                <span className="viewer-avatar">
-                  {s.name.charAt(0).toUpperCase()}
-                </span>
-                {s.name}
-                {s.you ? t.room.youSuffix : ""}
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-
-      {!actions.chatOff && (
-      <form className="chat-form" onSubmit={send}>
-        <label htmlFor="chatmsg" className="visually-hidden">
-          {t.room.chatLabel}
-        </label>
-        <input
-          id="chatmsg"
-          className="input input-dark grow"
-          type="text"
-          maxLength={300}
-          placeholder={t.room.chatPlaceholder}
-          disabled={!actions.chatEnabled}
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            noteTyping(e.target.value);
-          }}
-        />
-        <button
-          type="submit"
-          className="icon-button icon-button-primary"
-          aria-label={t.room.send}
-          disabled={!actions.chatEnabled || draft.trim() === ""}
-        >
-          <SendIcon />
-        </button>
-      </form>
-      )}
-    </aside>
+      {content}
+    </>,
+    document.fullscreenElement ?? document.body,
   );
 }
 
@@ -811,15 +525,19 @@ function VoiceAudio({
   stream,
   volume,
   muted,
+  sinkId,
 }: {
   stream: MediaStream;
   volume: number;
   muted: boolean;
+  /** The chosen output ("" = the system's default). */
+  sinkId: string;
 }) {
   const ref = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
+  useEffect(() => applySink(ref.current, sinkId), [sinkId]);
   useEffect(() => {
     const a = ref.current;
     if (!a) return;
@@ -891,9 +609,11 @@ export function RoomPage() {
   const [micOn, setMicOn] = useState(false);
   const joined = !demo && status.kind === "joined" ? status : null;
   const [keyboardPlayer, setKeyboardPlayer] = useState(readKeyboardPlayer);
-  const [playerName, setPlayerName] = useState(
-    () => readStorage(NAME_KEY) ?? "",
-  );
+  // The last valid name used in this browser (the device checks it too).
+  const [playerName, setPlayerName] = useState(savedPlayerName);
+  // "What's your name?" comes up once a typed PIN let this browser in.
+  const [askName, setAskName] = useState(false);
+  const pinSent = useRef(false);
   const live = useHostStream(
     joined?.hostPeerId ?? null,
     joined?.takeBacklog,
@@ -935,40 +655,55 @@ export function RoomPage() {
   const [chatSound, setChatSound] = useState(
     () => readStorage(CHAT_SOUND_KEY) !== "false",
   );
-  const [unread, setUnread] = useState(0);
-  // Whether the chat is out of sight (hidden, or the closed console drawer).
-  const sideHidden = useRef(chatHidden);
-  // A new message from someone else: a chime, and a count while hidden.
-  const seenChat = useRef(0);
-  useEffect(() => {
-    const fresh = live.chat.slice(seenChat.current);
-    seenChat.current = live.chat.length;
-    // Only new messages: the history sent on joining is older.
-    const recent = Date.now() - 10_000;
-    const others = fresh.filter(
-      (c) =>
-        c.kind === "user" && c.name !== live.room?.you.name && c.ts > recent,
-    ).length;
-    if (!others) return;
-    if (chatSound) playDing();
-    if (sideHidden.current) setUnread((n) => n + others);
-  }, [live.chat, live.room?.you.name, chatSound]);
   const [ptt, setPtt] = useState(false);
 
   // Voice: only seated players talk (the device enforces it too).
   const seated = !demo && (live.room?.you.ports.length ?? 0) > 0;
   const talking = seated && (micOn || ptt);
-  const mic = useMicrophone(seated && (micOn || ptt), talking);
+  // The microphone and output chosen for this browser; the settings open
+  // the microphone too, so the person can test it before talking.
+  const audio = useAudioDevices();
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const mic = useMicrophone(seated && (micOn || ptt || voiceOpen), talking, audio.micId);
   const micTrack = mic.stream?.getAudioTracks()[0] ?? null;
+  // A new microphone replaces the track on the same line (replaceTrack).
   useEffect(() => {
     live.setMicTrack(seated ? micTrack : null);
     // setMicTrack is a stable wrapper around the current stream
   }, [seated, micTrack, live.media]);
+  // Allowing the microphone reveals the devices' names.
+  const { refresh: refreshDevices } = audio;
+  useEffect(() => {
+    if (mic.stream) refreshDevices();
+  }, [mic.stream, refreshDevices]);
+  const micTestLevel = useMicTest(micTrack, voiceOpen && seated);
+  useEffect(() => setDingOutput(audio.outId), [audio.outId]);
 
-  // P pauses or resumes the game for everyone (seated players, games only).
-  const pausable = seated && live.room?.pausable === true;
+  // The game is the host's: only the host pauses and resumes it (the
+  // device refuses anyone else). Seated players ask the host for a pause.
+  // P, and a gamepad's pause button, do whichever this browser may.
+  const ownRoomEarly = demo
+    ? undefined
+    : linkedDevice.status?.rooms.find((r) => r.roomId === roomId);
+  const roomOwner = live.room?.you.owner === true;
+  const hostHere = roomOwner || (hostLink !== null && ownRoomEarly !== undefined);
+  const gamePausable = live.room?.pausable === true;
+  const pausable = hostHere && gamePausable;
   const paused = live.room?.paused === true;
-  const { setPaused } = live;
+  const { setPaused: sendPause, requestPause } = live;
+  const setPaused = (on: boolean) => {
+    if (roomOwner) sendPause(on);
+    else if (hostLink && ownRoomEarly)
+      sendToDevice({ type: "room_action", id: ownRoomEarly.id, action: on ? "pause" : "resume" });
+  };
+  const pauseAsked = live.room?.you.pauseAsked ?? null;
+  // A seated guest may ask while a game runs, it is not paused and the host
+  // can answer.
+  const canAskPause = seated && !hostHere && gamePausable && !paused && live.room?.hostOnline === true;
+  const askPause = () => {
+    if (pauseAsked) requestPause(true);
+    else if (canAskPause) requestPause();
+  };
   // Pausing a game that is being recorded ends the recording: ask first.
   const recordingRef = useRef(false);
   const [pauseAsk, setPauseAsk] = useState(false);
@@ -978,10 +713,12 @@ export function RoomPage() {
   };
   pauseToggleRef.current = () => {
     if (pausable) togglePause();
+    else if (seated && !hostHere) askPause();
   };
   const pauseKey = bindingOf(inputCfg.input.keyboard, "pause");
+  const pauseKeyOn = pausable || (seated && !hostHere);
   useEffect(() => {
-    if (!pausable || !pauseKey || remap) return;
+    if (!pauseKeyOn || !pauseKey || remap) return;
     const down = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (
@@ -994,7 +731,7 @@ export function RoomPage() {
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [pausable, paused, setPaused, pauseKey, remap]);
+  }, [pauseKeyOn, pauseKey, remap]);
 
   // The owner (this browser is linked to the device running this room)
   // can close the game: the room is archived, with its game saved.
@@ -1014,6 +751,21 @@ export function RoomPage() {
       ? { id: "test", name: testRoom.title ?? "Test pattern", invite: testRoom.invite ?? "", inviteCode: testRoom.invite_code ?? "", ownerKey: testRoom.owner_key ?? "" }
       : null;
   const [inviteOpen, setInviteOpen] = useState(false);
+  const linkedAsks = useLinkedPauseAsks();
+  // A short notice over the video: the host declined, or only the host pauses.
+  const [pauseNote, setPauseNote] = useState("");
+  useEffect(() => {
+    if (!pauseNote) return;
+    const id = window.setTimeout(() => setPauseNote(""), 4000);
+    return () => window.clearTimeout(id);
+  }, [pauseNote]);
+  const lastChat = live.chat[live.chat.length - 1];
+  useEffect(() => {
+    if (lastChat?.kind === "system" && lastChat.event === "pause_declined") setPauseNote(t.pauseAsk.declined);
+  }, [lastChat]);
+  useEffect(() => {
+    if (live.refused?.code === "pause_owner_only") setPauseNote(t.pauseAsk.ownerOnly);
+  }, [live.refused]);
   const [dockOpen, setDockOpen] = useState(false);
   // The device asks every browser for a PIN, the owner's too (its room
   // page is another connection than the device's link). Before showing the
@@ -1035,6 +787,11 @@ export function RoomPage() {
     const pin = live.pin;
     if (!pin.needed) {
       if (pin.token && roomId && !inviteRoom) saveRoomPass(roomId, pin.token);
+      // In with a PIN (not a key or a return token): ask for the name.
+      if (pin.token && pinSent.current) {
+        pinSent.current = false;
+        setAskName(true);
+      }
       return;
     }
     if (pin.busy) return;
@@ -1054,7 +811,10 @@ export function RoomPage() {
     if (!next) return;
     tries.next++;
     if (next.token) live.sendToken(next.token);
-    else if (next.pin) live.sendPin(next.pin);
+    else if (next.pin) {
+      pinSent.current = true;
+      live.sendPin(next.pin);
+    }
   }, [live, credentials, roomId, inviteRoom]);
   // Hold V to talk.
   useEffect(() => {
@@ -1092,6 +852,10 @@ export function RoomPage() {
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = live.media;
   }, [live.media]);
+  // The game's sound plays on the chosen output (the voices do too).
+  useEffect(() => {
+    applySink(videoRef.current, audio.outId);
+  }, [audio.outId, live.media]);
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -1136,7 +900,28 @@ export function RoomPage() {
   // drawer opened from the side.
   const consoleMode = live.media !== null && touch && touchPad;
   const [drawer, setDrawer] = useState(false);
-  sideHidden.current = consoleMode ? !drawer : chatHidden;
+  const [drawerTab, setDrawerTabState] = useState(readDrawerTab);
+  const setDrawerTab = useCallback((tab: DrawerTab) => {
+    setDrawerTabState(tab);
+    try {
+      sessionStorage.setItem(DRAWER_TAB_KEY, tab);
+    } catch {
+      // storage disabled: the tab is remembered while the page lives
+    }
+  }, []);
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+  // New lines count as unread while the chat is out of sight: hidden on a
+  // computer, or behind a closed drawer or another tab on a phone.
+  const chatOutOfSight = consoleMode
+    ? !(drawer && drawerTab === "chat")
+    : chatHidden;
+  // A new message from someone else: a chime, and a count while unseen.
+  const unread = useUnreadChat(
+    live.chat,
+    live.room?.you.name,
+    chatOutOfSight,
+    chatSound ? playDing : undefined,
+  );
   useEffect(() => {
     if (!consoleMode) {
       setDrawer(false);
@@ -1194,6 +979,23 @@ export function RoomPage() {
       window.clearTimeout(idleTimer.current);
       setIdle(true);
     } else wake();
+  };
+
+  const toggleFullscreen = () => {
+    // Where the page cannot go full screen (iPhone), the stage fills the
+    // window instead.
+    if (!(consoleMode && !fullscreen.active && fullscreen.enterQuietly()))
+      fullscreen.toggle();
+  };
+  // Phones get the voice settings as a sheet over everything; elsewhere
+  // they open from the dock, so the drawer steps aside.
+  const sheetLayout = useSheetLayout();
+  const openVoiceFromDrawer = () => {
+    if (!sheetLayout) {
+      setDrawer(false);
+      wake();
+    }
+    setVoiceOpen(true);
   };
 
   if (!demo) {
@@ -1263,7 +1065,7 @@ export function RoomPage() {
         name: playerName,
         onName: (name) => {
           setPlayerName(name);
-          writeStorage(NAME_KEY, name);
+          savePlayerName(name);
         },
       };
   const info = live.room?.info;
@@ -1301,6 +1103,22 @@ export function RoomPage() {
           ),
         };
   const swapOffers = demo ? [] : (live.room?.you.swapOffers ?? []);
+  // Requests for a pause, for the host: in the room (it came in with the
+  // owner key) or through the linked device.
+  const hostAsks = demo
+    ? []
+    : roomOwner
+      ? (live.room?.you.pauseAsks ?? []).map((ask) => ({ ask, answer: (accept: boolean) => live.answerPause(ask.from, accept) }))
+      : linkedAsks.asks
+          .filter((a) => a.roomId === roomId)
+          .map((a) => ({ ask: a.ask, answer: (accept: boolean) => linkedAsks.answer(a.id, a.ask.from, accept) }));
+  const toggleSilence = (port: number) =>
+    setSilenced((cur) => {
+      const next = new Set(cur);
+      if (next.has(port)) next.delete(port);
+      else next.add(port);
+      return next;
+    });
 
   return (
     <div className={`page room-page${consoleMode ? " is-console-mode" : ""}`}>
@@ -1353,7 +1171,6 @@ export function RoomPage() {
               onClick={() => {
                 const hide = !chatHidden;
                 setChatHidden(hide);
-                if (!hide) setUnread(0);
                 writeStorage(CHAT_HIDDEN_KEY, String(hide));
               }}
             >
@@ -1439,6 +1256,14 @@ export function RoomPage() {
                 {t.room.tapForSound}
               </p>
             )}
+            {audio.notice && (
+              <p className="video-chip audio-toast" role="status">
+                {audio.notice.kind === "in" ? <MicIcon size={16} /> : <SoundOnIcon size={16} />}
+                {audio.notice.kind === "in"
+                  ? t.audio.micGone(audio.notice.name || t.audio.microphone)
+                  : t.audio.outGone(audio.notice.name || t.audio.output)}
+              </p>
+            )}
             {!streaming && live.pin.needed && (
               <div className="pin-stack">
               <PinPrompt
@@ -1447,6 +1272,7 @@ export function RoomPage() {
                 onSend={(pin) => {
                   autoTry.current.sent = null;
                   setTypedPin(true);
+                  pinSent.current = true;
                   live.sendPin(pin);
                 }}
               />
@@ -1497,7 +1323,7 @@ export function RoomPage() {
             {streaming && paused && (
               <div className="video-paused" role="status">
                 <span className="video-paused-label">
-                  {t.room.pausedBy(live.room?.pausedBy ?? "")}
+                  {t.room.pausedBy(localName(live.room?.pausedBy ?? ""))}
                 </span>
                 {pausable && (
                   <button
@@ -1527,18 +1353,48 @@ export function RoomPage() {
               <PlayersCapsule
                 seats={model.seats}
                 swapFor={(port) => (demo ? undefined : swapFor(port))}
-                onToggleSilence={
-                  demo
-                    ? undefined
-                    : (port) =>
-                        setSilenced((cur) => {
-                          const next = new Set(cur);
-                          if (next.has(port)) next.delete(port);
-                          else next.add(port);
-                          return next;
-                        })
-                }
+                onToggleSilence={demo ? undefined : toggleSilence}
               />
+            )}
+            {streaming && pauseAsked && (
+              <div className="swap-offer swap-toast pause-asked" role="status">
+                <span className="dot dot-accent" aria-hidden="true" />
+                <span className="grow">{t.pauseAsk.asked}</span>
+                <button
+                  type="button"
+                  className="button button-secondary button-small"
+                  aria-label={t.pauseAsk.cancelAsk}
+                  onClick={() => requestPause(true)}
+                >
+                  {t.pauseAsk.cancel}
+                </button>
+              </div>
+            )}
+            {streaming && pauseNote && !pauseAsked && (
+              <p className="video-chip pause-note" role="status">
+                <PauseIcon size={14} />
+                {pauseNote}
+              </p>
+            )}
+            {hostAsks.map(({ ask, answer }) => (
+              <PauseAskDialog
+                key={`${ask.from}-${ask.expiresAt}`}
+                ask={ask}
+                className="pause-ask-stage"
+                onAnswer={answer}
+              />
+            ))}
+            {askName && !demo && (
+              <div className="name-overlay">
+                <NameStep
+                  initial={playerName}
+                  onDone={(name) => {
+                    setPlayerName(name);
+                    savePlayerName(name);
+                    setAskName(false);
+                  }}
+                />
+              </div>
             )}
             {swapOffers.map((o) => (
               <div
@@ -1576,8 +1432,9 @@ export function RoomPage() {
                   aria-expanded={drawer}
                   aria-label={t.room.consoleMenu}
                   onClick={() => {
+                    // Unread messages open the chat; else the last tab.
+                    if (unread > 0) setDrawerTab("chat");
                     setDrawer(true);
-                    setUnread(0);
                   }}
                 >
                   <ChatIcon size={16} />
@@ -1620,6 +1477,10 @@ export function RoomPage() {
                   micOn={demo ? micOn : micOn || ptt}
                   micLevel={demo ? 0.6 : (levels.mic ?? 0)}
                   micState={demo ? "on" : mic.state}
+                  devices={audio}
+                  micTestLevel={demo ? 0.5 : micTestLevel}
+                  open={voiceOpen}
+                  setOpen={setVoiceOpen}
                   toggleMic={() => {
                     if (!demo && !micOn) setSoundOn(true); // talking implies listening
                     setMicOn(!micOn);
@@ -1652,6 +1513,27 @@ export function RoomPage() {
                   onClick={togglePause}
                 >
                   {paused ? <PlayIcon /> : <PauseIcon />}
+                </button>
+              )}
+              {streaming && seated && !hostHere && !paused && (
+                <button
+                  type="button"
+                  className={`icon-button video-pause video-pause-ask${pauseAsked ? " is-on" : ""}`}
+                  aria-pressed={!!pauseAsked}
+                  aria-disabled={!pauseAsked && !canAskPause ? true : undefined}
+                  aria-label={pauseAsked ? t.pauseAsk.cancelAsk : t.pauseAsk.ask}
+                  data-tip={
+                    pauseAsked
+                      ? t.pauseAsk.cancelAsk
+                      : !gamePausable
+                        ? t.pauseAsk.notPausable
+                        : live.room?.hostOnline !== true
+                          ? t.pauseAsk.hostOffline
+                          : `${t.pauseAsk.ask} (P)`
+                  }
+                  onClick={askPause}
+                >
+                  {pauseAsked ? <CloseIcon /> : <PauseIcon />}
                 </button>
               )}
               {streaming && (
@@ -1760,12 +1642,7 @@ export function RoomPage() {
                 data-tip={
                   fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
                 }
-                onClick={() => {
-                  // Where the page cannot go full screen (iPhone), the
-                  // stage fills the window instead.
-                  if (!(consoleMode && !fullscreen.active && fullscreen.enterQuietly()))
-                    fullscreen.toggle();
-                }}
+                onClick={toggleFullscreen}
               >
                 {fullscreen.active ? (
                   <ExitFullscreenIcon />
@@ -1873,6 +1750,7 @@ export function RoomPage() {
               stream={stream}
               volume={voiceVolume / 100}
               muted={!soundOn || silenced.has(Number(port))}
+              sinkId={audio.outId}
             />
           ))}
 
@@ -1888,41 +1766,39 @@ export function RoomPage() {
                 onClick={() => setDrawer(false)}
               />
             )}
-            <div
-              className={`console-drawer${drawer ? " is-open" : ""}`}
-              role="dialog"
-              aria-label={t.room.consoleMenu}
-              aria-hidden={!drawer}
-              inert={!drawer}
-            >
-              <div className="console-drawer-head">
-                <span className="console-drawer-title">{title}</span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={t.help.button}
-                  onClick={() => setHelpOpen(true)}
-                >
-                  <HelpIcon />
-                </button>
-                <Link
-                  to="/rooms"
-                  className="icon-button"
-                  aria-label={t.room.leave}
-                >
-                  <LogOutIcon />
-                </Link>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={t.room.consoleClose}
-                  onClick={() => setDrawer(false)}
-                >
-                  <CloseIcon size={16} />
-                </button>
-              </div>
-              <SidePanel model={model} actions={actions} />
-            </div>
+            <ConsoleDrawer
+              open={drawer}
+              onClose={closeDrawer}
+              tab={drawerTab}
+              onTab={setDrawerTab}
+              unread={unread}
+              model={model}
+              actions={actions}
+              swapFor={(port) => (demo ? undefined : swapFor(port))}
+              onToggleSilence={demo ? undefined : toggleSilence}
+              swapOffers={swapOffers}
+              onAnswerSwap={live.answerSwap}
+              fullscreen={fullscreen.active}
+              onFullscreen={toggleFullscreen}
+              onVoice={openVoiceFromDrawer}
+              onHelp={() => setHelpOpen(true)}
+              onInvite={
+                inviteRoom
+                  ? () => {
+                      setDrawer(false);
+                      setInviteOpen(true);
+                    }
+                  : undefined
+              }
+              onCloseGame={
+                ownsRoom
+                  ? () => {
+                      setDrawer(false);
+                      setConfirmClose(true);
+                    }
+                  : undefined
+              }
+            />
           </>
         ) : (
           !(chatHidden && !demo) && <SidePanel model={model} actions={actions} />

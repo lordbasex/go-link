@@ -14,6 +14,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"golang.org/x/text/unicode/norm"
+
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 )
 
@@ -47,7 +49,9 @@ type RoomManagerConfig struct {
 }
 
 const (
-	maxNameLen = 24
+	// A player's name: 2 to 20 letters, digits and single spaces.
+	minNameLen = 2
+	maxNameLen = 20
 	maxChatLen = 300
 	chatBurst  = 5
 	// Any control message from a guest (hello, typing, queue...) makes the
@@ -60,6 +64,9 @@ const (
 	// swapTimeout is how long a request to swap controllers waits for an
 	// answer.
 	swapTimeout = 30 * time.Second
+	// pauseAskFor is how long a guest's request for a pause waits for the
+	// host's answer.
+	pauseAskFor = 30 * time.Second
 	// typingFor is how long "is typing…" lasts after the last keystroke
 	// notice; browsers repeat it every few seconds while typing.
 	typingFor = 6 * time.Second
@@ -94,6 +101,26 @@ type pendingSwap struct {
 	target   seatKey // who sat at to when asking
 }
 
+// pauseAsk is a seated player asking the host for a pause: only the host
+// pauses the game, so the others ask.
+type pauseAsk struct {
+	peer    string
+	name    string
+	port    int
+	expires time.Time
+}
+
+// PauseAskEvent tells the host's linked browsers about a request for a
+// pause: Type is "pause_asked" (a new or refreshed request) or
+// "pause_ask_gone" (answered, withdrawn or expired).
+type PauseAskEvent struct {
+	Type      string     `json:"type"`
+	From      string     `json:"from"`
+	Name      string     `json:"name,omitempty"`
+	Port      int        `json:"port,omitempty"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+}
+
 // RoomManager owns the state of a room: seats P1-P4, the queue, the
 // spectators and the chat. It is an actor: a single goroutine (Run) owns
 // the state and every public method posts a command to it, so no state
@@ -122,6 +149,13 @@ type RoomManager struct {
 	history   [][]byte
 	swaps     []pendingSwap
 	nextSwap  int
+	// owners are the host's own browsers in the room (they proved the
+	// owner key); hostLinked tells that a linked browser of the host is
+	// connected to the device. Either makes the host "online".
+	owners     map[string]bool
+	hostLinked bool
+	pauseAsks  []pauseAsk
+	onAsk      func(PauseAskEvent) // set by OnPauseAsk; called on the actor goroutine
 
 	ports atomic.Pointer[map[seatKey]int]
 }
@@ -144,6 +178,7 @@ func NewRoomManager(cfg RoomManagerConfig, out ControlSender) *RoomManager {
 		out:      out,
 		cmds:     make(chan func(), commandQueue),
 		members:  make(map[string]*member),
+		owners:   make(map[string]bool),
 		seats:    make([]*seatKey, cfg.MaxPlayers),
 	}
 	empty := map[seatKey]int{}
@@ -203,6 +238,7 @@ func (m *RoomManager) Leave(peerID string) {
 			return
 		}
 		delete(m.members, peerID)
+		delete(m.owners, peerID)
 		m.reconcile()
 		if m.cfg.Now().Before(mem.typingUntil) {
 			m.broadcastTyping() // who left stops "typing"
@@ -262,6 +298,50 @@ func (m *RoomManager) OnPause(fn func(paused bool)) {
 	m.do(func() { m.onPause = fn })
 }
 
+// OnPauseAsk registers who tells the host's linked browsers about
+// requests for a pause.
+func (m *RoomManager) OnPauseAsk(fn func(PauseAskEvent)) {
+	m.do(func() { m.onAsk = fn })
+}
+
+// MarkOwner records that a peer of the room is the host's own browser (it
+// came in with the owner key, or is the linked browser itself). Owners
+// pause and resume the game and answer requests for a pause. Call it
+// before or after Join; Leave forgets it.
+func (m *RoomManager) MarkOwner(peerID string) {
+	m.do(func() {
+		if m.owners[peerID] {
+			return
+		}
+		m.owners[peerID] = true
+		m.broadcastState()
+	})
+}
+
+// SetHostLinked tells whether a linked browser of the host is connected
+// to the device: the host can answer requests for a pause from there.
+func (m *RoomManager) SetHostLinked(on bool) {
+	m.do(func() {
+		if m.hostLinked != on {
+			m.hostLinked = on
+			m.broadcastState()
+		}
+	})
+}
+
+// hostOnline reports whether the host can answer a request for a pause.
+func (m *RoomManager) hostOnline() bool {
+	if m.hostLinked {
+		return true
+	}
+	for peer := range m.owners {
+		if m.members[peer] != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // GameControls is the control panel of the running game, so browsers can
 // draw a matching on-screen gamepad.
 type GameControls struct {
@@ -292,7 +372,11 @@ func (m *RoomManager) SetPausable(on bool) {
 }
 
 // setPaused changes the pause and tells the emulator. Actor goroutine.
+// A pause answers every request for one.
 func (m *RoomManager) setPaused(paused bool, by string) {
+	if paused || !m.pausable {
+		m.clearPauseAsks()
+	}
 	if m.paused == paused {
 		return
 	}
@@ -308,18 +392,126 @@ func (m *RoomManager) setPaused(paused bool, by string) {
 // Pause pauses or resumes the game for everyone on behalf of the host
 // (from the linked browser), with a line in the chat.
 func (m *RoomManager) Pause(paused bool, by string) {
-	m.do(func() {
-		if !m.pausable || paused == m.paused {
-			return
+	m.do(func() { m.pause(paused, by) })
+}
+
+// pause is Pause on the actor goroutine.
+func (m *RoomManager) pause(paused bool, by string) {
+	if !m.pausable || paused == m.paused {
+		return
+	}
+	m.setPaused(paused, by)
+	if paused {
+		m.event(EventGamePaused, fmt.Sprintf("%s paused the game", by), chatArgs{Name: by})
+	} else {
+		m.event(EventGameResumed, fmt.Sprintf("%s resumed the game", by), chatArgs{Name: by})
+	}
+	m.broadcastState()
+}
+
+// AnswerPause is the host's answer (from a linked browser) to a request
+// for a pause from the guest peer "from". It reports whether there was
+// such a request.
+func (m *RoomManager) AnswerPause(from string, accept bool) bool {
+	done := make(chan bool, 1)
+	m.do(func() { done <- m.answerPause(from, accept, "The host") })
+	return <-done
+}
+
+// askPause records (or refreshes, or withdraws) a seated player's request
+// for a pause. Only while a game runs and is not paused.
+func (m *RoomManager) askPause(mem *member, cancel bool) {
+	i := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == mem.peer })
+	if cancel {
+		if i >= 0 {
+			m.dropPauseAsk(i)
+			m.broadcastState()
 		}
-		m.setPaused(paused, by)
-		if paused {
-			m.event(EventGamePaused, fmt.Sprintf("%s paused the game", by), chatArgs{Name: by})
-		} else {
-			m.event(EventGameResumed, fmt.Sprintf("%s resumed the game", by), chatArgs{Name: by})
-		}
-		m.broadcastState()
+		return
+	}
+	role, port := m.roleOf(mem)
+	if !m.pausable || m.paused || !strings.HasPrefix(role, "P") || m.owners[mem.peer] {
+		return
+	}
+	ask := pauseAsk{peer: mem.peer, name: mem.name, port: port, expires: m.cfg.Now().Add(pauseAskFor)}
+	if i >= 0 {
+		m.pauseAsks[i] = ask // asking again refreshes the time
+	} else {
+		m.pauseAsks = append(m.pauseAsks, ask)
+	}
+	peer, until := ask.peer, ask.expires
+	time.AfterFunc(pauseAskFor, func() {
+		m.do(func() {
+			j := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == peer && a.expires.Equal(until) })
+			if j >= 0 {
+				m.dropPauseAsk(j)
+				m.broadcastState()
+			}
+		})
 	})
+	if m.onAsk != nil {
+		m.onAsk(PauseAskEvent{Type: "pause_asked", From: ask.peer, Name: ask.name, Port: ask.port, ExpiresAt: &ask.expires})
+	}
+	m.broadcastState()
+}
+
+// answerPause accepts or declines a request for a pause. Accepting pauses
+// the game in the requester's name (and so answers every request);
+// declining tells only the requester.
+func (m *RoomManager) answerPause(from string, accept bool, host string) bool {
+	i := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == from })
+	if i < 0 {
+		return false
+	}
+	ask := m.pauseAsks[i]
+	if accept {
+		if !m.pausable || m.paused {
+			return false
+		}
+		// paused_by is who asked; the chat says the host agreed.
+		m.setPaused(true, ask.name)
+		m.event(EventGamePaused, fmt.Sprintf("%s asked for a pause and %s paused the game", ask.name, host),
+			chatArgs{Name: ask.name, Name2: host})
+		m.broadcastState()
+		return true
+	}
+	m.dropPauseAsk(i)
+	b, err := json.Marshal(chatOut{Type: "chat", System: "The host would rather keep playing", Event: EventPauseDeclined, Args: &chatArgs{Name: ask.name, Port: ask.port}, TS: m.cfg.Now().UnixMilli()})
+	if err == nil {
+		m.out.SendControl(ask.peer, b)
+	}
+	m.broadcastState()
+	return true
+}
+
+// dropPauseAsk removes one request and tells the host's linked browsers.
+func (m *RoomManager) dropPauseAsk(i int) {
+	ask := m.pauseAsks[i]
+	m.pauseAsks = slices.Delete(m.pauseAsks, i, i+1)
+	if m.onAsk != nil {
+		m.onAsk(PauseAskEvent{Type: "pause_ask_gone", From: ask.peer})
+	}
+}
+
+// clearPauseAsks removes every request (the game was paused or ended).
+func (m *RoomManager) clearPauseAsks() {
+	for len(m.pauseAsks) > 0 {
+		m.dropPauseAsk(len(m.pauseAsks) - 1)
+	}
+}
+
+// errorOut is a refused request, for the guest who sent it.
+type errorOut struct {
+	Type  string `json:"type"`
+	Code  string `json:"code"`
+	Error string `json:"error"`
+}
+
+// refuse tells a guest its request was refused.
+func (m *RoomManager) refuse(peer, code, text string) {
+	if b, err := json.Marshal(errorOut{Type: "error", Code: code, Error: text}); err == nil {
+		m.out.SendControl(peer, b)
+	}
 }
 
 // Chat events: a machine-readable kind for some system lines, so the web
@@ -327,7 +519,7 @@ func (m *RoomManager) Pause(paused bool, by string) {
 const (
 	EventRecordingStarted = "recording_started"
 	EventRecordingStopped = "recording_stopped"
-	EventGamePaused       = "game_paused"  // name
+	EventGamePaused       = "game_paused"  // name (and name2: the host, when name asked for it)
 	EventGameResumed      = "game_resumed" // name
 	EventNowWatching      = "now_watching" // name
 	EventMoved            = "moved"        // name, port
@@ -337,6 +529,9 @@ const (
 	EventLeftSeat         = "left_seat"    // name, port
 	EventSeatFree         = "seat_free"    // port
 	EventTookSeat         = "took_seat"    // name, port
+	// EventPauseDeclined goes only to the guest whose request for a pause
+	// the host declined (name, port: the requester's own).
+	EventPauseDeclined = "pause_declined"
 )
 
 // chatArgs are the values of a chat event, for the web to put into the
@@ -383,10 +578,26 @@ type controlIn struct {
 	LocalPlayers []int  `json:"local_players"`
 	Text         string `json:"text"`
 	Paused       bool   `json:"paused"`
-	From         int    `json:"from"`
-	To           int    `json:"to"`
-	Accept       bool   `json:"accept"`
-	On           bool   `json:"on"`
+	// From is a port (swap_seat, swap_answer) or a peer id (pause_answer).
+	From   json.RawMessage `json:"from"`
+	To     int             `json:"to"`
+	Accept bool            `json:"accept"`
+	On     bool            `json:"on"`
+	Cancel bool            `json:"cancel"`
+}
+
+// fromPort reads "from" as a port (0 when it is not a number).
+func (c controlIn) fromPort() int {
+	var n int
+	_ = json.Unmarshal(c.From, &n)
+	return n
+}
+
+// fromPeer reads "from" as a peer id ("" when it is not text).
+func (c controlIn) fromPeer() string {
+	var s string
+	_ = json.Unmarshal(c.From, &s)
+	return s
 }
 
 // HandleControl processes a JSON message from a guest.
@@ -408,7 +619,7 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 		}
 		switch msg.Type {
 		case "hello":
-			if name := cleanText(msg.Name, maxNameLen); name != "" {
+			if name := CleanName(msg.Name); name != "" {
 				mem.name = name
 			}
 			if locals := cleanLocals(msg.LocalPlayers); len(locals) > 0 {
@@ -437,21 +648,23 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 				m.reconcile()
 			}
 		case "pause":
-			// Only a seated player pauses, and only a game.
-			if role, _ := m.roleOf(mem); !m.pausable || !strings.HasPrefix(role, "P") || msg.Paused == m.paused {
+			// The game is the host's: only the host's own browsers pause
+			// it; the others ask (pause_request).
+			if !m.owners[peerID] {
+				m.refuse(peerID, "pause_owner_only", "Only the host pauses the game: ask for a pause")
 				return
 			}
-			m.setPaused(msg.Paused, mem.name)
-			if msg.Paused {
-				m.event(EventGamePaused, fmt.Sprintf("%s paused the game", mem.name), chatArgs{Name: mem.name})
-			} else {
-				m.event(EventGameResumed, fmt.Sprintf("%s resumed the game", mem.name), chatArgs{Name: mem.name})
+			m.pause(msg.Paused, mem.name)
+		case "pause_request":
+			m.askPause(mem, msg.Cancel)
+		case "pause_answer":
+			if m.owners[peerID] {
+				m.answerPause(msg.fromPeer(), msg.Accept, mem.name)
 			}
-			m.broadcastState()
 		case "swap_seat":
-			m.askSwap(peerID, msg.From, msg.To)
+			m.askSwap(peerID, msg.fromPort(), msg.To)
 		case "swap_answer":
-			m.answerSwap(peerID, msg.From, msg.To, msg.Accept)
+			m.answerSwap(peerID, msg.fromPort(), msg.To, msg.Accept)
 		}
 	})
 }
@@ -551,6 +764,10 @@ func (m *RoomManager) reconcile() {
 	}
 	for i, s := range m.seats {
 		if s != nil && !wants(*s) {
+			// Without a seat, a request for a pause makes no sense.
+			if j := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == s.peer }); j >= 0 {
+				m.dropPauseAsk(j)
+			}
 			if mem := m.members[s.peer]; mem != nil {
 				m.event(EventLeftSeat, fmt.Sprintf("%s left P%d", mem.name, i+1), chatArgs{Name: mem.name, Port: i + 1})
 			} else {
@@ -676,6 +893,23 @@ type youOut struct {
 	// SwapAsked are yours waiting for someone else's.
 	SwapOffers []swapOut `json:"swap_offers"`
 	SwapAsked  []swapOut `json:"swap_asked"`
+	// Owner: this browser is the host's. PauseAsks (owners only) are the
+	// requests for a pause waiting for its answer; PauseAsked is this
+	// guest's own request, or null.
+	Owner      bool           `json:"owner"`
+	PauseAsks  *[]pauseAskOut `json:"pause_asks,omitempty"`
+	PauseAsked *pauseAskedOut `json:"pause_asked"`
+}
+
+type pauseAskOut struct {
+	From      string    `json:"from"`
+	Name      string    `json:"name"`
+	Port      int       `json:"port"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type pauseAskedOut struct {
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type swapOut struct {
@@ -699,14 +933,29 @@ type stateOut struct {
 	PausedBy   string       `json:"paused_by,omitempty"`
 	Controls   GameControls `json:"controls"`
 	Recording  bool         `json:"recording"`
+	HostOnline bool         `json:"host_online"`
 }
 
 // broadcastState sends each member its own view of the room.
 func (m *RoomManager) broadcastState() {
+	online := m.hostOnline()
+	var asks []pauseAskOut
+	for _, a := range m.pauseAsks {
+		asks = append(asks, pauseAskOut{From: a.peer, Name: a.name, Port: a.port, ExpiresAt: a.expires})
+	}
 	for peer, mem := range m.members {
 		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
-			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls, Recording: m.recording}
-		st.You = youOut{Name: mem.name, Ports: []int{}, QueuePositions: []int{}, Spectator: mem.spectator, SwapOffers: []swapOut{}, SwapAsked: []swapOut{}}
+			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls, Recording: m.recording, HostOnline: online}
+		st.You = youOut{Name: mem.name, Ports: []int{}, QueuePositions: []int{}, Spectator: mem.spectator, SwapOffers: []swapOut{}, SwapAsked: []swapOut{}, Owner: m.owners[peer]}
+		if st.You.Owner {
+			list := append([]pauseAskOut{}, asks...)
+			st.You.PauseAsks = &list
+		}
+		for _, a := range m.pauseAsks {
+			if a.peer == peer {
+				st.You.PauseAsked = &pauseAskedOut{ExpiresAt: a.expires}
+			}
+		}
 		for _, p := range m.swaps {
 			if p.target.peer == peer {
 				st.You.SwapOffers = append(st.You.SwapOffers, swapOut{From: p.from, To: p.to, Name: m.displayName(p.asker)})
@@ -880,6 +1129,37 @@ func cleanText(s string, limit int) string {
 		s = string([]rune(s)[:limit])
 	}
 	return s
+}
+
+// CleanName makes a player's name safe to show: it keeps only letters and
+// digits (any language, accents and ñ included) and spaces, joins runs of
+// spaces into one, trims it and cuts it to maxNameLen characters. A name
+// with fewer than minNameLen characters left returns "" (the guest keeps
+// its generated name). The device never trusts the name a browser sends.
+func CleanName(s string) string {
+	s = norm.NFC.String(s)
+	var b strings.Builder
+	space := false
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsNumber(r):
+			if space && b.Len() > 0 {
+				b.WriteByte(' ')
+			}
+			space = false
+			b.WriteRune(r)
+		case unicode.IsSpace(r):
+			space = true
+		}
+	}
+	out := b.String()
+	if utf8.RuneCountInString(out) > maxNameLen {
+		out = strings.TrimSpace(string([]rune(out)[:maxNameLen]))
+	}
+	if utf8.RuneCountInString(out) < minNameLen {
+		return ""
+	}
+	return out
 }
 
 // cleanLocals keeps valid, distinct local player numbers.

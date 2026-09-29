@@ -69,40 +69,65 @@ export function useAudioLevels(
 
 export type MicState = "off" | "starting" | "on" | "denied";
 
+const MIC_BASE: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: 1,
+};
+
 /**
  * Opens the microphone the first time it is needed and keeps it open;
  * talking is switched with track.enabled, which is instant. Echo
  * cancellation matters: the game plays through the same speakers.
+ * A new deviceId ("" = the system's default) opens that microphone and
+ * replaces the stream; the caller swaps the new track into the sender
+ * (replaceTrack), so the connection is not renegotiated. A device that
+ * cannot be opened falls back to the default.
  */
 export function useMicrophone(
   wanted: boolean,
   talking: boolean,
+  deviceId = "",
 ): { stream: MediaStream | null; state: MicState } {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [state, setState] = useState<MicState>("off");
+  // The device the current stream was opened for, and a request in flight.
+  const openedFor = useRef<string | null>(null);
+  const busy = useRef(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    if (!wanted || stream || state === "starting" || state === "denied") return;
-    if (!navigator.mediaDevices?.getUserMedia) {
+    if (!wanted || state === "denied" || busy.current) return;
+    if (stream && openedFor.current === deviceId) return;
+    const md = navigator.mediaDevices;
+    if (!md?.getUserMedia) {
       setState("denied");
       return;
     }
-    setState("starting");
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
+    busy.current = true;
+    if (!stream) setState("starting");
+    const want = deviceId;
+    const open = (id: string) =>
+      md.getUserMedia({ audio: id ? { ...MIC_BASE, deviceId: { exact: id } } : MIC_BASE });
+    open(want)
+      .catch((err: unknown) => (want ? open("") : Promise.reject(err)))
+      .then(
+        (s) => {
+          openedFor.current = want;
+          setStream(s);
+          setState("on");
         },
-      })
-      .then((s) => {
-        setStream(s);
-        setState("on");
-      })
-      .catch(() => setState("denied"));
-  }, [wanted, stream, state]);
+        () => {
+          openedFor.current = want;
+          if (!stream) setState("denied");
+        },
+      )
+      .finally(() => {
+        busy.current = false;
+        setRetry((n) => n + 1); // the device may have changed meanwhile
+      });
+  }, [wanted, stream, state, deviceId, retry]);
 
   useEffect(() => {
     stream?.getAudioTracks().forEach((t) => (t.enabled = talking));
@@ -110,4 +135,25 @@ export function useMicrophone(
 
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
   return { stream, state };
+}
+
+/**
+ * The level (0..1) of a microphone track while the person tests it, even
+ * with the microphone muted: it measures an enabled copy of the track,
+ * which never reaches the room.
+ */
+export function useMicTest(track: MediaStreamTrack | null, active: boolean): number | null {
+  const [copy, setCopy] = useState<MediaStream | null>(null);
+  useEffect(() => {
+    if (!active || !track || typeof MediaStream === "undefined") {
+      setCopy(null);
+      return;
+    }
+    const clone = track.clone();
+    clone.enabled = true;
+    setCopy(new MediaStream([clone]));
+    return () => clone.stop();
+  }, [track, active]);
+  const levels = useAudioLevels({ test: copy }, active && copy !== null);
+  return copy ? (levels.test ?? 0) : null;
 }

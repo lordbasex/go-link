@@ -138,6 +138,17 @@ class RoomClientTest {
         assertEquals(1, room.ui.value.chat.size)
         assertEquals(RoomPhase.STREAMING, room.ui.value.phase)
 
+        // A name with symbols is cleaned like the device does; guests ask the host for a pause.
+        room.setIdentity("  Ana ✨ #1 ", listOf(0, 1))
+        runCurrent()
+        assertEquals("""{"type":"hello","name":"Ana 1","local_players":[0,1]}""", peer.control.last())
+        room.requestPause()
+        runCurrent()
+        assertEquals("""{"type":"pause_request"}""", peer.control.last())
+        room.cancelPauseRequest()
+        runCurrent()
+        assertEquals("""{"type":"pause_request","cancel":true}""", peer.control.last())
+
         // Input goes out at once and repeats while held.
         room.setPad(0, Pad(Button.B1))
         runCurrent()

@@ -42,7 +42,12 @@ data class YouView(
     val spectator: Boolean,
     val swapOffers: List<SwapView>,
     val swapAsked: List<SwapView>,
+    /** Your pending request for a pause (only the host pauses), or null. */
+    val pauseAsked: PauseAsk? = null,
 )
+
+/** A pause this guest asked the host for; expiresAt is the device's RFC 3339 time ("" if not sent). */
+data class PauseAsk(val expiresAt: String)
 
 data class RoomStateView(
     val maxPlayers: Int,
@@ -59,6 +64,11 @@ data class RoomStateView(
     val pausedBy: String,
     val controls: GameControls,
     val recording: Boolean,
+    /**
+     * Whether the host (the device's owner) has a browser in the room to
+     * answer a pause request. Older devices do not send it: true.
+     */
+    val hostOnline: Boolean = true,
 ) {
     /** Where you stand: seated, waiting in the queue, or watching. */
     val me: Me
@@ -93,6 +103,9 @@ enum class ChatEvent(val wire: String) {
     LEFT_SEAT("left_seat"),
     SEAT_FREE("seat_free"),
     TOOK_SEAT("took_seat"),
+
+    /** Sent only to the guest whose pause request the host declined. */
+    PAUSE_DECLINED("pause_declined"),
     ;
 
     companion object {
@@ -145,6 +158,13 @@ object RoomMessages {
         if (from != 0 && to != 0 && from != to) SwapView(from, to, o["name"].str(40)) else null
     }
 
+    private fun parsePauseAsk(v: JsonElement?): PauseAsk? {
+        val o = v as? JsonObject ?: return null
+        val at = o["expires_at"]
+        val text = if (at.isNumber()) jsRound(at.num()).toString() else at.str(40)
+        return PauseAsk(text)
+    }
+
     fun parseRoomState(m: JsonObject): RoomStateView? {
         if (m["type"].str(40) != "room_state") return null
         val maxPlayers = m["max_players"].num().coerceIn(1.0, 4.0).toInt()
@@ -175,12 +195,14 @@ object RoomMessages {
                 spectator = you["spectator"].isTrue(),
                 swapOffers = parseSwaps(you["swap_offers"], maxPlayers),
                 swapAsked = parseSwaps(you["swap_asked"], maxPlayers),
+                pauseAsked = parsePauseAsk(you["pause_asked"]),
             ),
             pausable = m["pausable"].isTrue(),
             paused = m["paused"].isTrue(),
             pausedBy = m["paused_by"].str(40),
             controls = parseControls(m["controls"]),
             recording = m["recording"].isTrue(),
+            hostOnline = !m["host_online"].isFalse(),
         )
     }
 

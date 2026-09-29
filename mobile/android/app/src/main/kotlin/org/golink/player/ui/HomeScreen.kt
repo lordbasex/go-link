@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -51,6 +52,7 @@ fun HomeScreen(
     onInvite: (InviteTarget) -> Unit,
     onSettings: () -> Unit,
     onOfficialServer: () -> Unit,
+    onTestController: () -> Unit,
 ) {
     val context = LocalContext.current
     var pasteError by remember { mutableStateOf(false) }
@@ -92,6 +94,14 @@ fun HomeScreen(
                 }
                 Text(stringResource(R.string.home_pin_note), color = Tokens.faint, fontSize = 13.sp)
                 Text(stringResource(R.string.home_host_hint), color = Tokens.faint, fontSize = 13.sp)
+                // Works offline: the pad and any real controller, with the input latency.
+                SecondaryButton(
+                    stringResource(R.string.home_test_controller),
+                    onTestController,
+                    Modifier.fillMaxWidth().testTag("home-test-controller"),
+                    icon = Icons.Filled.Gamepad,
+                )
+                AppVersion(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
         }
     }
