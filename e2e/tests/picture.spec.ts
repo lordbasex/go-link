@@ -6,6 +6,8 @@ import { expectAccessible } from "../a11y";
 // browser and every style and side can be picked live, without a device.
 
 test("the picture demo draws every style and side with the GPU", async ({ page }) => {
+  // CI machines draw WebGL in software: every style and side takes longer there.
+  test.setTimeout(240_000);
   const problems: string[] = [];
   page.on("console", (m) => {
     if (/shader|program|picture renderer/i.test(m.text())) problems.push(m.text());
