@@ -52,20 +52,27 @@ describe("the game never touches its own interface", () => {
   it("the interface draws again after a screen fails once", async () => {
     const { render, screen, act } = await import("@testing-library/react");
     const { Guard } = await import("../ui/Guard");
-    let fail = true;
+    // React retries a failed render once by itself before an error boundary
+    // sees it, so the screen fails on both tries: then the Guard catches it
+    // and draws again on the next frame, when it works.
+    let fails = 2;
     const Flaky = () => {
-      if (fail) {
-        fail = false;
-        throw new Error("once");
+      if (fails > 0) {
+        fails--;
+        throw new Error("the screen failed");
       }
       return <p>HUD</p>;
     };
     const quiet = console.error;
     console.error = () => undefined;
+    const recovered: unknown[] = [];
     render(
       <Guard>
         <Flaky />
       </Guard>,
+      // React reports the retried render as recovered: expected here, so it
+      // is kept instead of reaching the page as an uncaught error.
+      { onRecoverableError: (e) => recovered.push(e) },
     );
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
