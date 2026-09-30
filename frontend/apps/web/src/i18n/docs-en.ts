@@ -229,7 +229,7 @@ export const docsEn: Docs = {
         { t: "h2", id: "pause", text: "Pausing" },
         { t: "list", items: ["The game belongs to the host: only the host pauses and resumes it, from the room or from My device.", "Seated players use **Ask for a pause** (the pause button, or P). The host sees “NAME wants to pause” with **Pause** and **Keep playing**; the request is dropped after 30 seconds.", "The button is off while the host is not connected, or when the room cannot pause (the test pattern)."] },
         { t: "h2", id: "test", text: "Test your controller" },
-        { t: "p", text: "Open [Test your controller](/test-controller) to check your keyboard, a Bluetooth or USB gamepad or the on-screen gamepad before playing, with no device: each press lights up the test pattern’s controller, with the gamepad’s name and the input-to-screen time." },
+        { t: "p", text: "Open [Test your controller](/test-controller) to check your keyboard, a Bluetooth or USB gamepad or the on-screen gamepad before playing, with no device: each press lights up the test pattern’s controller, with the gamepad’s name and the input-to-screen time. Each controller also gets its own card: recognized by its USB ids and drawn as it is (our own drawings, no logos), with its sticks (drift, dead zone, circularity), triggers (range and return), raw buttons with double presses, the updates per second and a vibration test; **Run the check** guides you through it and sums it up. **Event log** shows every button, stick and trigger change as it happens, and **Copy report for AI** (or **Download report**) gives you a full diagnosis to paste into an AI such as Claude; nothing is sent. Then try the [controller mini-games](/tools/games): six short games (Link, Snake, Memory, Paddle, Racer and Special moves) that show how the buttons, sticks and triggers answer while you play." },
         { t: "h2", id: "picture", text: "Picture style" },
         { t: "p", text: "Games arrive at their own small size (for example 384 × 224) and your screen enlarges them. The **Picture** button in the room's dock (on a phone: the panel's **You** tab) chooses how, only for you: nobody else sees the change, and it applies at once, without reloading." },
         {
@@ -284,6 +284,7 @@ export const docsEn: Docs = {
           t: "list",
           items: [
             "Held upright the room is like a Game Boy (the picture on top, the gamepad below); sideways like a Switch (one half of the gamepad on each side).",
+            "**Game settings › Skin** dresses the gamepad as a console (Smoke by default). Skins are JSON files: design your own in the [skin editor](/tools/skin-editor) and put it in the app's Skins folder.",
             "The on-screen gamepad shows only the buttons the game uses, plus Coin and 1P, 2P…; the gamepad icon turns it off.",
             "Bluetooth and USB controllers work too: each one is a player, and the on-screen gamepad steps aside while one is connected.",
             "Chat and players (seats, queue, swapping controllers, silencing someone's voice) open from the buttons under the picture.",

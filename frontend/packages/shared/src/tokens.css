@@ -29,6 +29,7 @@
   --color-accent-text-hover: #ffc06b;
   --color-on-accent: #1a1206;
   --color-voice: #4fc3d9;
+  --color-ok: #7ee2a8;
 
   --color-danger-bg: #2a1519;
   --color-danger-border: #5a2a33;
@@ -106,6 +107,7 @@
   --color-accent-text-hover: #6f3f00;
   --color-on-accent: #1a1206;
   --color-voice: #0f6b7f;
+  --color-ok: #1f8a4c;
   /* Darker player colors, so names and badges read on light surfaces
      (the video keeps the bright ones). */
   --color-p1: #8f5200;

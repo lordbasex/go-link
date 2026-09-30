@@ -18,6 +18,7 @@ import { TouchPad } from "../components/TouchPad";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
 import { useInputConfig } from "../signal/useInputConfig";
 import { useRefreshRate } from "../picture/refreshRate";
+import { PadTester } from "../tools/PadTester";
 
 /** Samples kept for the average input-to-screen time. */
 const LATENCY_SAMPLES = 20;
@@ -152,7 +153,7 @@ export function TestControllerPage() {
   const fmt = (ms: number | null) => (ms === null ? "—" : `${ms.toFixed(1)} ms`);
 
   return (
-    <div className="page test-controller-page">
+    <div className="page page-frame test-controller-page">
       <PageHero
         tile={
           <HeroTile>
@@ -163,6 +164,9 @@ export function TestControllerPage() {
         title={t.testController.title}
         subtitle={t.testController.intro}
       />
+      <div className="page-body pad-tester-body">
+        <PadTester onPress={(ts) => measure.current(ts)} />
+      </div>
       <div className="page-body test-controller-body">
         <div className="test-controller-stage">
           <TestPad pad={pad} players={pads.slice(0, 4).map(() => true)} />
@@ -191,8 +195,9 @@ export function TestControllerPage() {
             </p>
             <p className="small muted">{t.testController.latencyHint}</p>
             <p className="small muted test-controller-screen">
-              {t.picture.screen}: <span className="mono">{hz === null ? "–" : t.picture.hz(hz)}</span>
+              {t.picture.screen}: <span className="mono">{hz === null ? "–" : `${t.picture.hz(hz)} · ${t.testController.frame((1000 / hz).toFixed(1))}`}</span>
             </p>
+            <p className="small muted">{t.testController.screenHint}</p>
           </section>
           <section className="card stack-sm" aria-labelledby="tc-pads">
             <h2 className="card-title" id="tc-pads">

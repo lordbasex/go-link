@@ -61,7 +61,7 @@ export function PictureDemoPage() {
   const rendererText =
     renderer === "webgl2" ? "WebGL 2" : renderer === "webgl" ? "WebGL 1" : renderer === null ? t.picture.rendererOff : "–";
   return (
-    <div className="page picture-demo-page">
+    <div className="page page-frame picture-demo-page">
       <PageHero
         tile={
           <HeroTile>

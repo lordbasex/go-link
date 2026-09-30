@@ -211,7 +211,7 @@ export const docsPt: Docs = {
           t: "list",
           items: [
             "Num celular ou tablet a sala vira um console portátil que ocupa a tela toda: em pé é como um Game Boy (a imagem em cima, o controle embaixo), deitado como um Switch (a imagem no meio e meio controle de cada lado).",
-            "Setas à esquerda e os botões do jogo à direita (só os que o jogo usa); Ficha e 1P, 2P… ficam junto deles, como Select e Start.",
+            "Setas à esquerda e os botões do jogo à direita (só os que o jogo usa); Coin e 1P, 2P… ficam junto deles, como Select e Start.",
             "O primeiro toque esconde as barras do navegador onde o celular permite (Android). No iPhone, adicione o go-link à tela de início para ter tela cheia de verdade.",
             "A aba da borda direita abre um painel com três abas: Chat (toda a altura para a conversa), Jogadores (lugares, trocas, a fila e quem assiste) e Você (seu nome, Volume e voz, Tela cheia, Como jogar e Sair; o anfitrião também tem Convidar e Fechar o jogo). Ela conta as mensagens novas.",
             "Os botões sobre o vídeo são transparentes e somem após 3 segundos; toque na imagem para que voltem. O ícone de controle desliga (e religa) o controle na tela.",
@@ -229,7 +229,7 @@ export const docsPt: Docs = {
         { t: "h2", id: "pause", text: "Pausar" },
         { t: "list", items: ["O jogo é do anfitrião: só o anfitrião pausa e retoma, pela sala ou por Meu dispositivo.", "Os jogadores sentados usam **Pedir uma pausa** (o botão de pausa, ou P). O anfitrião vê “NOME quer pausar” com **Pausar** e **Continuar jogando**; o pedido some depois de 30 segundos.", "O botão fica desligado enquanto o anfitrião não está conectado, ou quando a sala não pode ser pausada (o padrão de teste)."] },
         { t: "h2", id: "test", text: "Teste seu controle" },
-        { t: "p", text: "Abra [Teste seu controle](/test-controller) para conferir o teclado, um controle Bluetooth ou USB ou o controle na tela antes de jogar, sem dispositivo: cada aperto acende o controle do padrão de teste, com o nome do controle e o tempo da entrada até a tela." },
+        { t: "p", text: "Abra [Teste seu controle](/test-controller) para conferir o teclado, um controle Bluetooth ou USB ou o controle na tela antes de jogar, sem dispositivo: cada aperto acende o controle do padrão de teste, com o nome do controle e o tempo da entrada até a tela. Cada controle ganha também o seu cartão: reconhecido pelos ids USB e desenhado como é (desenhos próprios, sem logos), com os analógicos (deriva, zona morta, circularidade), gatilhos (curso e retorno), botões crus com toques duplos, as atualizações por segundo e um teste de vibração; **Verificar o controle** guia você e resume o resultado. **Registro de eventos** mostra cada mudança de botões, analógicos e gatilhos na hora, e **Copiar relatório para IA** (ou **Baixar relatório**) entrega um diagnóstico completo para colar numa IA como o Claude; nada é enviado. Depois experimente os [minijogos para o controle](/tools/games): seis jogos curtos (Conexão, Cobrinha, Memória, Raquete, Corrida e Golpes especiais) que mostram como respondem os botões, os analógicos e os gatilhos enquanto você joga." },
         { t: "h2", id: "picture", text: "Estilo de imagem" },
         { t: "p", text: "Os jogos chegam no próprio tamanho, pequeno (por exemplo 384 × 224), e a sua tela os amplia. O botão **Imagem** do painel da sala (no celular: a aba **Você** do painel lateral) escolhe como, só para você: ninguém mais vê a mudança, e ela vale na hora, sem recarregar." },
         {
@@ -284,7 +284,8 @@ export const docsPt: Docs = {
           t: "list",
           items: [
             "Com o celular em pé a sala é como um Game Boy (a imagem em cima, o controle embaixo); deitado, como um Switch (metade do controle de cada lado).",
-            "O controle na tela mostra só os botões que o jogo usa, mais Ficha e 1P, 2P…; o ícone do controle o desliga.",
+            "**Configurações do jogo › Skin** veste o controle como um console (Fumê por padrão). As skins são arquivos JSON: desenhe a sua no [editor de skins](/tools/skin-editor) e coloque-a na pasta Skins do app.",
+            "O controle na tela mostra só os botões que o jogo usa, mais Coin e 1P, 2P…; o ícone do controle o desliga.",
             "Controles Bluetooth e USB também funcionam: cada um é um jogador, e o controle na tela sai do caminho enquanto houver um conectado.",
             "O chat e os jogadores (lugares, fila, trocar de controle, silenciar a voz de alguém) abrem pelos botões embaixo da imagem.",
             "**Jogadores › Som** escolhe o microfone e a saída: **Automático** (os fones quando conectados e, se não, o alto-falante, nunca o fone de chamadas), os do telefone ou fones Bluetooth, com fio ou USB conectados. **Testar som** toca um tom curto. A escolha fica salva; se esse dispositivo desconectar, o app volta para Automático e avisa você.",

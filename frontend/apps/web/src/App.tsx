@@ -40,6 +40,13 @@ const PictureDemoPage = lazy(() =>
 const PictureLabPage = import.meta.env.DEV
   ? lazy(() => import("./pages/PictureLabPage").then((m) => ({ default: m.PictureLabPage })))
   : null;
+const ToolsPage = lazy(() =>
+  import("./pages/ToolsPage").then((m) => ({ default: m.ToolsPage })),
+);
+const GamesPage = lazy(() =>
+  import("./pages/GamesPage").then((m) => ({ default: m.GamesPage })),
+);
+const SkinEditorPage = lazy(() => import("./pages/SkinEditorPage").then((m) => ({ default: m.SkinEditorPage })));
 const TestControllerPage = lazy(() =>
   import("./pages/TestControllerPage").then((m) => ({ default: m.TestControllerPage })),
 );
@@ -153,6 +160,9 @@ export function App() {
               element={<DevicePage tab="history" />}
             />
             <Route path="/test-controller" element={<TestControllerPage />} />
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/tools/skin-editor" element={<SkinEditorPage />} />
+            <Route path="/tools/games" element={<GamesPage />} />
             <Route path="/picture-demo" element={<PictureDemoPage />} />
             {PictureLabPage && <Route path="/picture-lab" element={<PictureLabPage />} />}
             <Route path="/docs" element={<DocsPage />} />

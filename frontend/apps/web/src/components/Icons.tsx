@@ -183,6 +183,14 @@ export const ControllerIcon = ({ size = 18 }: P) => (
     <circle cx="18" cy="13.5" r="1" />
   </svg>
 );
+/** A pair of eighth notes: the music. */
+export const MusicIcon = ({ size = 18 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="17" cy="16" r="3" />
+  </svg>
+);
 export const SoundOnIcon = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
     <path d="M11 5L6 9H2v6h4l5 4V5z" />
@@ -265,6 +273,12 @@ export const MoreIcon = ({ size = 18 }: P) => (
 export const BookIcon = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
     <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7" />
+  </svg>
+);
+/** A wrench: the Tools section. */
+export const ToolsIcon = ({ size = 18 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <path d="M4 20l8-8M15.5 3.5a5 5 0 0 0-3.4 8.4 5 5 0 0 0 8.4-3.4l-3 1.5-3-3z" />
   </svg>
 );
 export const DownloadIcon = ({ size = 18 }: P) => (

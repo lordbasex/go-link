@@ -13,6 +13,7 @@ import {
   MoreIcon,
   ServerIcon,
   SunIcon,
+  ToolsIcon,
 } from "./Icons";
 import { setTheme, useTheme } from "../theme";
 import { CoinIcon, CoinOffIcon, GithubIcon } from "./Icons";
@@ -149,6 +150,10 @@ export function MainHeader() {
           <NavLink to="/docs" className={navClass}>
             <BookIcon />
             <span>{t.nav.docs}</span>
+          </NavLink>
+          <NavLink to="/tools" className={navClass}>
+            <ToolsIcon />
+            <span>{t.tools.nav}</span>
           </NavLink>
         </nav>
       </div>

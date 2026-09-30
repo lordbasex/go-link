@@ -4,6 +4,25 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (Player apps)
+
+- **Gamepad skins** on iOS and Android (Game settings › Skin): a console shell around the picture, with the D-pad, the action buttons in an arc, Coin and the start capsules drawn after Kenney's Mobile Controls (CC0), and the room's menu as a capsule. Six built-in skins (Violet, Red, Green, Blue, Smoke, Orange); Smoke is the default, and the plain pad without a shell is gone from the choices. Every skin is only data: a JSON file (format 1, [docs/skins](docs/skins/README.md), [schema](docs/skins/skin.schema.json)) that places each part in portrait and in landscape as boxes on a canvas, sets the plastic, decor, controls and menu colors, and may bring its own background pictures; more skins go in the app's Skins folder (the Files app on iOS, `Android/data/org.golink.player/files/Skins` on Android). The built-in skins live once in `docs/skins/builtin`, shared by both apps, and both run the same parser and placement math with the same tests. In the built-in skins the menu sits under the picture in portrait and folds into a handle over the picture in landscape; it shrinks to fit narrow phones, and Coin and the start capsules move apart instead of meeting. The game is as large as the phone allows and always whole (edge to edge in portrait, the full height in landscape, square corners); on small screens the picture gives way to the controls rather than the other way round. A held button or capsule sinks (smaller, darker, a shorter shadow) and the D-pad rocks toward the held direction; a skin may add a tint with `style.controls.lit`.
+- **Cinema mode** in landscape without the on-screen pad (a controller in hand): the picture as large as the screen allows with its sides style around it, and the leave button and the room's buttons in a floating capsule that folds away after 3 s, instead of the old side columns.
+- **Controller button:** the "*name* · display only" chip is now a round see-through button at the top right of the picture, like the stats one; a tap shows the controller's name.
+- **Skin editor** on the website ([/tools/skin-editor](https://go-link.org/tools/skin-editor)), in English, Spanish and Portuguese: it draws a skin exactly as the apps do (their placement math and checks in TypeScript, with tests) and lets a designer drag and resize every part with rulers, guides and snapping, add plates and speaker grills, set every color and a background picture, design the buttons and the D-pad, preview 1 to 6 buttons and 1 to 4 players on five screens, see and edit the JSON side by side, run the apps' checks live, and export the skin JSON. The built-in skins are read from `docs/skins/builtin`, next to the guide and the schema; phones get a note that it needs a bigger screen. **My skins** keeps several skins in the browser (localStorage only), one record each, saved as they change: New and Open start a record, editing a built-in skin saves a copy, and the list opens, duplicates and deletes them (the delete asks first).
+- **Coin** is called Coin in every language (the apps and the website's guide), like on an arcade panel.
+
+### Added (website)
+
+- **Tools** (`/tools`), last in the menu: a card for each browser tool (no device, nothing stored). The skin editor lives there too.
+- **Controller check** on Test your controller: each connected controller gets a card that recognizes its brand and model by the USB ids (Switch Pro, Joy-Con, DualSense, DualShock 4, Xbox 360, Xbox One/Series, 8BitDo), draws it as it is (our own drawings, no logos) and lights what is pressed, and measures stick drift, dead zone and circularity, trigger range, return and what stays pressed, raw buttons with double presses (worn contacts), the updates per second, and vibration. **Run the check** guides through it and sums up each result. **Event log**: a terminal next to the controller cards with every button, stick, trigger and connection change as it happens (bounces as warnings), filters, pause and clear; **Copy report for AI** and **Download report** make a Markdown diagnosis of every controller (checks, sticks, triggers, each button's presses and bounces, the log and the raw data) ready to paste into an AI assistant. The update rate shows the highest rate seen instead of 0 while a controller rests.
+
+- **Controller mini-games** (`/tools/games`): Link (a cable puzzle), Snake, Memory, Paddle, Racer and Special moves, each one measuring something: buttons and shoulders, directions, double presses and answer time, stick drift, triggers, and combo timing. Controllers or the keyboard, pixel art in the site's colors, a How to play panel beside each game (goal, controls, points and what the result says about the controller), retro chiptune music for each game and a sound for every action (made in the browser, no sound files; music and sound switches), nothing stored.
+
+### Fixed (website)
+
+- Fonts are never inlined as `data:` URLs in the build, which the CSP (`font-src 'self'`) blocked.
+
 ## [0.1.6] - 2026-09-29
 
 ### Fixed (Android app)

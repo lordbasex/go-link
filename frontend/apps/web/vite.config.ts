@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, searchForWorkspaceRoot, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Strict Content Security Policy for the production build. connect-src
@@ -36,7 +36,17 @@ function contentSecurityPolicy(): Plugin {
 
 export default defineConfig({
   plugins: [react(), contentSecurityPolicy()],
-  server: { port: 5180, strictPort: true },
+  server: {
+    port: 5180,
+    strictPort: true,
+    // The skin editor reads the apps' built-in skins from docs/skins/builtin.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../../../docs/skins/builtin"] },
+  },
   // Source maps stay off the published files (the deploy also deletes them).
-  build: { sourcemap: "hidden" },
+  build: {
+    sourcemap: "hidden",
+    // Small fonts would be inlined as data: URLs, which the CSP's
+    // font-src 'self' blocks: they stay files.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
+  },
 });

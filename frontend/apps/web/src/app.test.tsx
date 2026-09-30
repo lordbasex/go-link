@@ -56,8 +56,8 @@ describe("lobby", () => {
     renderApp("/");
     const menu = screen.getByRole("navigation", { name: "Main" });
     const links = within(menu).getAllByRole("link");
-    expect(links.map((a) => a.textContent)).toEqual(["How it works", "Rooms", "My device", "Docs"]);
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/rooms", "/device", "/docs"]);
+    expect(links.map((a) => a.textContent)).toEqual(["How it works", "Rooms", "My device", "Docs", "Tools"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/rooms", "/device", "/docs", "/tools"]);
     // The landing is a lazy chunk: a busy machine needs more than a second.
     expect(await screen.findByRole("heading", { level: 1, name: /Your arcade, online/ }, { timeout: 10_000 })).toBeInTheDocument();
     expect(screen.getByText(/MAME 2003-Plus sets/)).toBeInTheDocument();
@@ -383,7 +383,7 @@ describe("local web panel", () => {
     );
     renderApp("/how-it-works", { panelUrl: PANEL });
     const menu = await screen.findByRole("navigation", { name: "Main" });
-    await waitFor(() => expect(within(menu).getAllByRole("link").map((a) => a.textContent)).toEqual(["Rooms", "My device", "Docs"]));
+    await waitFor(() => expect(within(menu).getAllByRole("link").map((a) => a.textContent)).toEqual(["Rooms", "My device", "Docs", "Tools"]));
     // A linked panel opens on its rooms.
     expect(await screen.findByRole("heading", { level: 1, name: "Rooms" })).toBeInTheDocument();
     localStorage.removeItem("go-link.panel-token");

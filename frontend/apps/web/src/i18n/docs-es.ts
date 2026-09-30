@@ -211,7 +211,7 @@ export const docsEs: Docs = {
           t: "list",
           items: [
             "En un celular o tablet la sala se vuelve una consola portátil que ocupa toda la pantalla: en vertical es como una Game Boy (la imagen arriba, el mando abajo) y en horizontal como una Switch (la imagen al centro y medio mando a cada lado).",
-            "Flechas a la izquierda y los botones del juego a la derecha (solo los que usa el juego); Moneda y 1P, 2P… van junto a ellos, como Select y Start.",
+            "Flechas a la izquierda y los botones del juego a la derecha (solo los que usa el juego); Coin y 1P, 2P… van junto a ellos, como Select y Start.",
             "El primer toque esconde las barras del navegador donde el celular lo permite (Android). En iPhone, agrega go-link a la pantalla de inicio para tener pantalla completa real.",
             "La pestaña del borde derecho abre un panel con tres pestañas: Chat (toda la altura para la conversación), Jugadores (puestos, cambios, la fila y quién mira) y Tú (tu nombre, Volumen y voz, Pantalla completa, Cómo jugar y Salir; el anfitrión además tiene Invitar y Cerrar el juego). Cuenta los mensajes nuevos.",
             "Los botones sobre el video son transparentes y se ocultan a los 3 segundos; toca la imagen para que vuelvan. El ícono del mando apaga (y vuelve a encender) el mando en pantalla.",
@@ -229,7 +229,7 @@ export const docsEs: Docs = {
         { t: "h2", id: "pause", text: "Pausar" },
         { t: "list", items: ["El juego es del anfitrión: solo el anfitrión lo pausa y lo reanuda, desde la sala o desde Mi dispositivo.", "Los jugadores sentados usan **Pedir pausa** (el botón de pausa, o P). El anfitrión ve “NOMBRE quiere pausar” con **Pausar** y **Seguir jugando**; el pedido se descarta a los 30 segundos.", "El botón está apagado mientras el anfitrión no está conectado, o cuando la sala no se puede pausar (la carta de ajuste)."] },
         { t: "h2", id: "test", text: "Prueba tu mando" },
-        { t: "p", text: "Abre [Prueba tu mando](/test-controller) para revisar tu teclado, un mando Bluetooth o USB o el mando en pantalla antes de jugar, sin dispositivo: cada botón enciende el mando de la carta de ajuste, con el nombre del mando y el tiempo de la entrada a la pantalla." },
+        { t: "p", text: "Abre [Prueba tu mando](/test-controller) para revisar tu teclado, un mando Bluetooth o USB o el mando en pantalla antes de jugar, sin dispositivo: cada botón enciende el mando de la carta de ajuste, con el nombre del mando y el tiempo de la entrada a la pantalla. Cada mando tiene además su tarjeta: reconocido por sus ids USB y dibujado tal cual es (dibujos propios, sin logos), con sus sticks (deriva, zona muerta, circularidad), gatillos (recorrido y vuelta), botones crudos con pulsaciones dobles, las actualizaciones por segundo y una prueba de vibración; **Revisar el mando** te guía y resume el resultado. **Registro de eventos** muestra cada cambio de botones, sticks y gatillos en el momento, y **Copiar informe para IA** (o **Descargar informe**) te da un diagnóstico completo para pegar en una IA como Claude; no se envía nada. Después prueba los [minijuegos para el mando](/tools/games): seis juegos cortos (Enlace, Serpiente, Memoria, Paleta, Carrera y Golpes especiales) que muestran cómo responden los botones, los sticks y los gatillos mientras juegas." },
         { t: "h2", id: "picture", text: "Estilo de imagen" },
         { t: "p", text: "Los juegos llegan a su propio tamaño, pequeño (por ejemplo 384 × 224), y tu pantalla los agranda. El botón **Imagen** del panel de la sala (en un teléfono: la pestaña **Tú** del panel lateral) elige cómo, solo para ti: nadie más ve el cambio, y se aplica al momento, sin recargar." },
         {
@@ -284,7 +284,8 @@ export const docsEs: Docs = {
           t: "list",
           items: [
             "Con el teléfono vertical la sala es como un Game Boy (la imagen arriba, el mando abajo); horizontal, como una Switch (la mitad del mando a cada lado).",
-            "El mando en pantalla muestra solo los botones que usa el juego, más Moneda y 1P, 2P…; el ícono del mando lo apaga.",
+            "**Ajustes del juego › Piel** viste el mando como una consola (Humo por defecto). Las pieles son archivos JSON: diseña la tuya en el [editor de pieles](/tools/skin-editor) y ponla en la carpeta Skins de la app.",
+            "El mando en pantalla muestra solo los botones que usa el juego, más Coin y 1P, 2P…; el ícono del mando lo apaga.",
             "También funcionan los controles Bluetooth y USB: cada uno es un jugador, y el mando en pantalla se aparta mientras hay uno conectado.",
             "El chat y los jugadores (puestos, fila, cambiar de mando, silenciar la voz de alguien) se abren con los botones debajo de la imagen.",
             "**Jugadores › Sonido** elige el micrófono y la salida: **Automático** (los auriculares cuando están conectados y, si no, el parlante, nunca el auricular de llamadas), los del teléfono o unos auriculares Bluetooth, con cable o USB conectados. **Probar sonido** reproduce un tono corto. La elección se recuerda; si ese dispositivo se desconecta, la app vuelve a Automático y te avisa.",
