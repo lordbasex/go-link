@@ -40,6 +40,9 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
+    // The built-in gamepad skins, shared with the iOS app (docs/skins/README.md).
+    sourceSets.getByName("main").assets.srcDir("../../../docs/skins/builtin")
+
     signingConfigs {
         if (canSignRelease) {
             create("release") {

@@ -97,18 +97,42 @@ struct StatsBox: View {
 /** "DualSense Wireless Controller · display only": the see-through pad follows a real controller. */
 struct ControllerChip: View {
     let name: String
+    @State private var open = false
+    @State private var closeTask: Task<Void, Never>?
 
+    /**
+     * A round, see-through button like the stats one, so it never gets in
+     * the way of the game; a tap shows the controller's name for a few
+     * seconds.
+     */
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "gamecontroller").foregroundStyle(Tokens.accent)
-            Text(name).lineLimit(1)
-            Text("· " + L("pad_display_only_tail")).lineLimit(1).fixedSize()
+        SwiftUI.Button {
+            withAnimation(.easeOut(duration: 0.2)) { open.toggle() }
+            closeTask?.cancel()
+            if open {
+                closeTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.2)) { open = false }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if open {
+                    Text(name).font(.system(size: 13, weight: .medium)).foregroundStyle(Tokens.text).lineLimit(1)
+                        .padding(.leading, 12)
+                        .transition(.opacity)
+                }
+                Image(systemName: "gamecontroller")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Tokens.accent)
+                    .frame(width: 36, height: 36)
+            }
+            .background(Capsule().fill(Tokens.video.opacity(0.55)))
+            .overlay(Capsule().stroke(Tokens.accent.opacity(0.6), lineWidth: 2))
+            .frame(minWidth: Tokens.control, minHeight: Tokens.control, alignment: .trailing)
+            .contentShape(Rectangle())
         }
-        .font(.system(size: 13)).foregroundStyle(Tokens.text)
-        .padding(.horizontal, 12).padding(.vertical, 6)
-        .background(Capsule().fill(Tokens.video.opacity(0.7)))
-        .overlay(Capsule().stroke(Tokens.borderStrong, lineWidth: 1))
-        .accessibilityElement(children: .ignore)
+        .buttonStyle(.plain)
         .accessibilityLabel(L("pad_display_only", name))
         .accessibilityIdentifier("pad-controller-chip")
     }

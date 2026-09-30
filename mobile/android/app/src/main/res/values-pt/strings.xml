@@ -88,7 +88,7 @@
     <string name="room_unsilence">Ouvir</string>
     <string name="room_paused_by">Pausado por %1$s</string>
     <string name="room_rec">REC</string>
-    <string name="room_coin">Ficha</string>
+    <string name="room_coin">Coin</string>
     <string name="room_start_player">%1$dP</string>
     <string name="room_touchpad">Controle na tela</string>
     <string name="sound_title">Som</string>
@@ -175,7 +175,7 @@
     <string name="video_quality_normal">Normal</string>
     <string name="video_quality_saver">Economia</string>
     <string name="video_quality_cpu">%1$s (CPU)</string>
-    <string name="room_pad_display_only">só mostra</string>
+    <string name="room_pad_display_only_named">%1$s, controle</string>
     <string name="home_test_controller">Testar controle</string>
     <string name="tester_title">Testar controle</string>
     <string name="tester_subtitle">Toque os botões da tela ou do seu controle. Não precisa de sala nem de internet.</string>
@@ -240,4 +240,9 @@
     <string name="game_settings_saved">Salvo</string>
     <string name="picture_room_default">Padrão da sala: %1$s · %2$s</string>
     <string name="picture_use_room_default">Usar o da sala</string>
+    <!-- Gamepad skins (Game settings › Skin) -->
+    <string name="skin_title">Skin</string>
+    <string name="skin_note">Uma carcaça de console ao redor da imagem. Só neste telefone.</string>
+    <string name="skin_folder_hint">Mais skins: copie os arquivos de skin para a pasta Android/data/org.golink.player/files/Skins do telefone (de um computador por USB).</string>
+    <string name="room_show_menu">Mostrar o menu</string>
 </resources>

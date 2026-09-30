@@ -240,7 +240,6 @@
 "test_pressed" = "pressed";
 "app_version" = "go-link Player v%1$@ (build %2$@)";
 "app_version_copy" = "Copy the version";
-"pad_display_only_tail" = "display only";
 
 /* Game settings (the dock's gear) and the picture styles */
 "room_settings" = "Settings";
@@ -274,3 +273,9 @@
 "picture_unavailable" = "This device cannot draw picture styles, so it shows the plain picture.";
 "picture_room_default" = "Room default: %1$@ · %2$@";
 "picture_use_room_default" = "Use the room's default";
+
+/* Gamepad skins (Game settings › Skin) */
+"skin_title" = "Skin";
+"skin_note" = "A console shell around the picture. Only on this phone.";
+"skin_folder_hint" = "More skins: put skin files in the Files app, On My iPhone › go-link Player › Skins.";
+"room_show_menu" = "Show the menu";

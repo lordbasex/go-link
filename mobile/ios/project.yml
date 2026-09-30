@@ -23,6 +23,9 @@ targets:
     platform: iOS
     sources:
       - path: GoLinkPlayer
+      # The built-in gamepad skins, shared with the Android app (docs/skins/README.md).
+      - path: ../../docs/skins/builtin
+        buildPhase: resources
     dependencies:
       - package: GoLinkCore
       - package: WebRTC
@@ -55,6 +58,9 @@ targets:
         GCSupportedGameControllers:
           - ProfileName: ExtendedGamepad
         ITSAppUsesNonExemptEncryption: false
+        # The Files app shows the app's Skins folder, where extra gamepad skins go.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.golink.player

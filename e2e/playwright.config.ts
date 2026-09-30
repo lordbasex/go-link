@@ -42,9 +42,11 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "web", testIgnore: /(android|android-camera|shots)\.spec\.ts$/ },
+    { name: "web", testIgnore: /(android|android-camera|android-skins|shots)\.spec\.ts$/ },
     // One long story on a real Android device: minutes, not seconds.
     { name: "android", testMatch: /\/android\.spec\.ts$/, timeout: 240_000 },
+    // The gamepad skins in the app's debug lab (no room): npm run test:android:skins.
+    { name: "android-skins", testMatch: /android-skins\.spec\.ts$/, timeout: 1_200_000 },
     { name: "android-camera", testMatch: /android-camera\.spec\.ts$/, timeout: 300_000 },
     // The landing page's screenshots (npm run shots), never part of npm test.
     { name: "shots", testMatch: /shots\.spec\.ts$/, timeout: 1_800_000 },

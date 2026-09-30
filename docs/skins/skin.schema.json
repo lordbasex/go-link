@@ -1,0 +1,954 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://go-link.org/schemas/skin-1.json",
+  "$comment": "Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>. go-link gamepad skin, format 1. See docs/skins/README.md.",
+  "title": "go-link gamepad skin",
+  "type": "object",
+  "required": [
+    "format",
+    "id",
+    "name",
+    "shell"
+  ],
+  "properties": {
+    "format": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,40}$",
+      "not": {
+        "const": "classic"
+      }
+    },
+    "name": {
+      "type": "object",
+      "required": [
+        "en"
+      ],
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "es": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "pt": {
+          "type": "string",
+          "maxLength": 40
+        }
+      }
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "shell": {
+      "type": "object",
+      "required": [
+        "center",
+        "edge",
+        "rim"
+      ],
+      "properties": {
+        "center": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$"
+        },
+        "edge": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$"
+        },
+        "rim": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$"
+        },
+        "gloss": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "grain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "controls": {
+      "enum": [
+        "dark",
+        "light"
+      ]
+    },
+    "screen": {
+      "type": "object",
+      "properties": {
+        "bezel": {
+          "type": "string",
+          "pattern": "^#?[0-9a-fA-F]{6}$"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "properties": {
+        "menu": {
+          "type": "object",
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "fillOpacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "border": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "borderOpacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "button": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "icon": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "active": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "activeButton": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "handle": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            }
+          }
+        },
+        "controls": {
+          "type": "object",
+          "properties": {
+            "ringTop": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "ringBottom": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "face": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "mark": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "label": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "lit": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "litLabel": {
+              "type": "string",
+              "pattern": "^#?[0-9a-fA-F]{6}$"
+            },
+            "shape": {
+              "enum": [
+                "circle",
+                "rounded",
+                "hexagon",
+                "diamond"
+              ]
+            },
+            "ring": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.25
+            },
+            "labels": {
+              "enum": [
+                "numbers",
+                "letters",
+                "none"
+              ]
+            },
+            "dome": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "well": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "depth": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#?[0-9a-fA-F]{6}$"
+                }
+              }
+            },
+            "dpad": {
+              "type": "object",
+              "properties": {
+                "arm": {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 0.6
+                },
+                "radius": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 0.5
+                },
+                "marks": {
+                  "enum": [
+                    "arrows",
+                    "lines",
+                    "dots",
+                    "none"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "background": {
+      "type": "object",
+      "properties": {
+        "portrait": {
+          "type": "string",
+          "pattern": "^[^/\\\\.][^/\\\\]{0,79}\\.(png|jpg|jpeg|PNG|JPG|JPEG)$"
+        },
+        "landscape": {
+          "type": "string",
+          "pattern": "^[^/\\\\.][^/\\\\]{0,79}\\.(png|jpg|jpeg|PNG|JPG|JPEG)$"
+        }
+      }
+    },
+    "rings": {
+      "type": "boolean"
+    },
+    "screws": {
+      "type": "boolean"
+    },
+    "decor": {
+      "type": "object",
+      "properties": {
+        "portrait": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "required": [
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h"
+            ],
+            "properties": {
+              "shape": {
+                "enum": [
+                  "rect",
+                  "grill"
+                ]
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "w": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "h": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "radius": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "fill": {
+                "type": "string",
+                "pattern": "^#?[0-9a-fA-F]{6}$"
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "stroke": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "landscape": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "required": [
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h"
+            ],
+            "properties": {
+              "shape": {
+                "enum": [
+                  "rect",
+                  "grill"
+                ]
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "w": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "h": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "radius": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "fill": {
+                "type": "string",
+                "pattern": "^#?[0-9a-fA-F]{6}$"
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "stroke": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "portrait": {
+          "type": "object",
+          "required": [
+            "canvas",
+            "screen",
+            "dpad",
+            "buttons",
+            "coin",
+            "starts",
+            "header",
+            "menu"
+          ],
+          "properties": {
+            "canvas": {
+              "type": "object",
+              "required": [
+                "w",
+                "h"
+              ],
+              "properties": {
+                "w": {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 4000
+                },
+                "h": {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 4000
+                }
+              }
+            },
+            "screen": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "dpad": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "buttons": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "coin": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "starts": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "header": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "label": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "menu": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "x",
+                    "y",
+                    "w",
+                    "h"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "direction": {
+                      "enum": [
+                        "row",
+                        "column"
+                      ]
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 28,
+                      "maximum": 60
+                    }
+                  }
+                }
+              ]
+            },
+            "pill": {
+              "type": "object",
+              "required": [
+                "w",
+                "h"
+              ],
+              "properties": {
+                "w": {
+                  "type": "number",
+                  "minimum": 44,
+                  "maximum": 160
+                },
+                "h": {
+                  "type": "number",
+                  "minimum": 28,
+                  "maximum": 80
+                }
+              }
+            }
+          }
+        },
+        "landscape": {
+          "type": "object",
+          "required": [
+            "canvas",
+            "screen",
+            "dpad",
+            "buttons",
+            "coin",
+            "starts",
+            "header",
+            "menu"
+          ],
+          "properties": {
+            "canvas": {
+              "type": "object",
+              "required": [
+                "w",
+                "h"
+              ],
+              "properties": {
+                "w": {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 4000
+                },
+                "h": {
+                  "type": "number",
+                  "minimum": 100,
+                  "maximum": 4000
+                }
+              }
+            },
+            "screen": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "dpad": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "buttons": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "coin": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "starts": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "header": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "label": {
+              "type": "object",
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "h": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            "menu": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "x",
+                    "y",
+                    "w",
+                    "h"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "direction": {
+                      "enum": [
+                        "row",
+                        "column"
+                      ]
+                    },
+                    "hide": {
+                      "type": "boolean"
+                    },
+                    "size": {
+                      "type": "number",
+                      "minimum": 28,
+                      "maximum": 60
+                    }
+                  }
+                }
+              ]
+            },
+            "pill": {
+              "type": "object",
+              "required": [
+                "w",
+                "h"
+              ],
+              "properties": {
+                "w": {
+                  "type": "number",
+                  "minimum": 44,
+                  "maximum": 160
+                },
+                "h": {
+                  "type": "number",
+                  "minimum": 28,
+                  "maximum": 80
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

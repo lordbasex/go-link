@@ -10,6 +10,7 @@
 | [Video quality lab](quality.md) | `framelab`: reference frames from the core, the device's encoder path, decoding like a browser, picture metrics |
 | [The website](web.md) | Development, routes, languages, pages, mobile, design system |
 | [The Player apps](mobile.md) | go-link Player for Android and iOS: joining by QR code or code + PIN, App Links and Universal Links, the room, controllers, voice, permissions, building and signing |
+| [Gamepad skins](skins/README.md) | How skins work and how to design one: the JSON format ([schema](skins/skin.schema.json)), the built-in skins and the visual editor |
 | [Networking](networking.md) | STUN/TURN from signaling, your own signaling server, direct connections through one UDP port |
 | [Security](security.md) | Signaling, device and website security, HTTP headers |
 | [Building](building.md) | Requirements, Makefile, macOS app, releases, tests, CI |

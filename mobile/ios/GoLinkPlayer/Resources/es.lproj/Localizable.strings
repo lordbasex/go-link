@@ -88,7 +88,7 @@
 "room_resume" = "Reanudar";
 "room_paused_by" = "Pausado por %1$@";
 "room_rec" = "REC";
-"room_coin" = "Moneda";
+"room_coin" = "Coin";
 "room_start_player" = "%1$dP";
 "room_touchpad" = "Mando en pantalla";
 "sound_title" = "Sonido";
@@ -242,7 +242,6 @@
 "test_pressed" = "presionado";
 "app_version" = "go-link Player v%1$@ (compilación %2$@)";
 "app_version_copy" = "Copiar la versión";
-"pad_display_only_tail" = "solo muestra";
 
 /* Game settings (the dock's gear) and the picture styles */
 "room_settings" = "Ajustes";
@@ -276,3 +275,9 @@
 "picture_unavailable" = "Este dispositivo no puede dibujar estilos de imagen, así que muestra la imagen normal.";
 "picture_room_default" = "Predeterminado de la sala: %1$@ · %2$@";
 "picture_use_room_default" = "Usar el de la sala";
+
+/* Gamepad skins (Game settings › Skin) */
+"skin_title" = "Piel";
+"skin_note" = "Una carcasa de consola alrededor de la imagen. Solo en este teléfono.";
+"skin_folder_hint" = "Más pieles: pon los archivos de piel en la app Archivos, En mi iPhone › go-link Player › Skins.";
+"room_show_menu" = "Mostrar el menú";

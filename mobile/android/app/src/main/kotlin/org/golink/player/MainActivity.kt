@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(Tokens.bg).semantics { testTagsAsResourceId = true }) {
                     // Hidden from UiAutomator and TalkBack under the intro.
                     Box(if (intro) Modifier.fillMaxSize().clearAndSetSemantics {} else Modifier.fillMaxSize()) {
-                        // Debug builds can open a lab with no room: --es lab alias|overlay|picture|check2x.
+                        // Debug builds can open a lab with no room: --es lab alias|overlay|picture|check2x|skin|cinema.
                         when (lab) {
                             "picture" -> org.golink.player.ui.PictureLab(
                                 vm.prefs,
@@ -110,6 +110,14 @@ class MainActivity : ComponentActivity() {
                             "check2x" -> org.golink.player.ui.Picture2xCheckScreen()
                             "alias" -> org.golink.player.ui.AliasScreen(saved = vm.prefs.playerName, onEnter = { vm.prefs.playerName = it }, onBack = {})
                             "overlay" -> org.golink.player.ui.OverlayLab()
+                            "cinema" -> org.golink.player.ui.CinemaLab()
+                            "skin" -> org.golink.player.ui.SkinLab(
+                                vm.prefs,
+                                skinId = intent?.getStringExtra("skin"),
+                                buttons = intent?.getIntExtra("buttons", 6) ?: 6,
+                                starts = intent?.getIntExtra("starts", 2) ?: 2,
+                                lit = intent?.getIntExtra("lit", 0) ?: 0,
+                            )
                             else -> App(vm)
                         }
                     }

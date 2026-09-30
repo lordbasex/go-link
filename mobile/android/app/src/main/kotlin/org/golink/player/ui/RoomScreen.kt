@@ -31,6 +31,14 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -163,6 +171,8 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     val resolver = LocalContext.current.contentResolver
     val reducedMotion = remember { android.provider.Settings.Global.getFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
     val snackbar = remember { SnackbarHostState() }
+    // The gamepad's skin (Game settings › Skin); null is the classic pad.
+    val skins = rememberSkinStore(prefs)
     val scope = rememberCoroutineScope()
     val resources = LocalContext.current.resources
     LaunchedEffect(session) {
@@ -207,7 +217,7 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     // 0) whenever the layout changes or the pad goes away.
     DisposableEffect(landscape, showPad, displayOnly) { onDispose { pad.releaseAll() } }
 
-    val dock: @Composable () -> Unit = {
+    val dockIn: @Composable (Boolean, Boolean) -> Unit = { vertical, capsule ->
         Dock(
             ui = ui,
             session = session,
@@ -228,17 +238,20 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
             },
             onMicAsk = { micAsk = true },
             headset = output != org.golink.player.audio.AudioRouter.Output.SPEAKER,
-            vertical = landscape,
+            vertical = vertical,
             onExplain = { text ->
                 scope.launch {
                     snackbar.currentSnackbarData?.dismiss()
                     snackbar.showSnackbar(text ?: resources.getString(R.string.room_pause_asked))
                 }
             },
+            capsule = capsule,
         )
     }
+    val dock: @Composable () -> Unit = { dockIn(landscape, false) }
     val screen: @Composable (Modifier) -> Unit = { m ->
-        Box(m.background(Tokens.video), contentAlignment = Alignment.Center) {
+        // "picture": the video's own view is a platform view that UiAutomator cannot name.
+        Box(m.background(Tokens.video).testTag("picture"), contentAlignment = Alignment.Center) {
             // The renderer covers the whole area: it letterboxes the game at its
             // display aspect (never cropped) and draws the sides.
             VideoView(
@@ -266,9 +279,11 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
                 Column(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (room.recording) RecBadge(Modifier)
                 }
-                // Bottom right, so it never meets the stats box at the top left.
-                if (showPad && displayOnly) {
-                    Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)) { ControllerChip(controllerName) }
+                // Top right, round and see-through like the stats button (under the REC badge while recording).
+                if (hasController) {
+                    // In cinema mode the floating capsule owns the right edge: stay clear of it.
+                    val end = LocalScreenTrailingInset.current
+                    Box(Modifier.align(Alignment.TopEnd).padding(top = if (room.recording) 40.dp else 8.dp, end = 8.dp + end)) { ControllerChip(controllerName) }
                 }
                 if (room.paused) {
                     Surface(color = Color(0xCC05060A), shape = RoundedCornerShape(12.dp)) {
@@ -294,7 +309,51 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     val admitted = ui.phase == RoomPhase.CONNECTING || ui.phase == RoomPhase.STREAMING
     val showAlias = !aliasDone && admitted
     Box(Modifier.fillMaxSize().background(Tokens.bg).then(if (showAlias) Modifier.clearAndSetSemantics {} else Modifier)) {
-        if (landscape) {
+        val skin = skins.selected
+        if (showPad && skin != null) {
+            SkinConsole(
+                skin = skin,
+                picture = skins.background(skin, landscape),
+                landscape = landscape,
+                pad = pad,
+                controls = controls,
+                starts = starts,
+                myPorts = myPorts,
+                aspect = aspect.toDouble(),
+                displayOnly = displayOnly,
+                keepDock = sheet != null || settingsOpen,
+                header = { compact -> TopBar(ui, onLeave, compact = compact) },
+                screen = screen,
+                dock = { vertical -> dockIn(vertical, true) },
+            )
+        } else if (landscape && !showPad) {
+            // Cinema: the picture as large as the screen allows (its sides style fills the rest), the
+            // room's buttons and the leave button in a floating capsule that folds away after 3 s.
+            var wake by remember { mutableIntStateOf(0) }
+            BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalScreenTrailingInset provides 64.dp) {
+                screen(
+                    Modifier.fillMaxSize().pointerInput(Unit) {
+                        // Watches taps on the picture without taking them from its overlays.
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            wake++
+                        }
+                    },
+                )
+                }
+                FloatingCapsule(
+                    keep = sheet != null || settingsOpen,
+                    wake = wake,
+                    maxHeight = maxHeight - 16.dp,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                ) {
+                    TopBar(ui, onLeave, compact = true)
+                    Box(Modifier.width(28.dp).height(1.dp).background(Color.White.copy(alpha = 0.14f)))
+                    dockIn(true, true)
+                }
+            }
+        } else if (landscape) {
             Row(Modifier.fillMaxSize().safeDrawingPadding()) {
                 if (showPad) {
                     PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f).alpha(padAlpha), enabled = !displayOnly) {
@@ -428,11 +487,15 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
             },
             sound = { SoundSection(session) },
             scrollToSound = settingsAtSound,
+            skins = skins,
         )
     }
 }
 
 enum class SheetTab { CHAT, PLAYERS }
+
+/** Room on the right of the picture kept free for the floating capsule (cinema mode). */
+val LocalScreenTrailingInset = androidx.compose.runtime.compositionLocalOf { 0.dp }
 
 @Composable
 private fun TopBar(ui: RoomUi, onLeave: () -> Unit, compact: Boolean) {
@@ -583,6 +646,8 @@ private fun Dock(
     headset: Boolean,
     vertical: Boolean,
     onExplain: (String?) -> Unit,
+    /** Inside a skin's menu capsule: only the buttons, the capsule lays them out. */
+    capsule: Boolean = false,
 ) {
     val sound by session.sound.collectAsState()
     val context = LocalContext.current
@@ -663,7 +728,9 @@ private fun Dock(
         { DockButton(Icons.Filled.Gamepad, stringResource(R.string.room_touchpad), on = touchOn, tag = "dock-pad", onClick = onTouch) },
         { DockButton(Icons.Filled.Settings, stringResource(R.string.room_settings), on = settingsOpen, tag = "dock-settings", onClick = onSettings) },
     )
-    if (vertical) {
+    if (capsule) {
+        items.forEach { it() }
+    } else if (vertical) {
         Column(
             Modifier.fillMaxHeight().padding(2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
@@ -691,14 +758,16 @@ internal fun DockButton(
     dimmed: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val style = LocalDockStyle.current
+    val (skinFill, skinIcon) = style?.let { dockColors(it, on) } ?: (Color.Unspecified to Color.Unspecified)
     Box(if (tag.isEmpty()) Modifier else Modifier.testTag(tag)) {
         IconButton(
             onClick = onClick,
             enabled = enabled,
             modifier = Modifier.size(48.dp),
             colors = IconButtonDefaults.iconButtonColors(
-                containerColor = if (dimmed) Tokens.sunken else if (on) Tokens.accentTint else Tokens.surface,
-                contentColor = if (dimmed) Tokens.faint.copy(alpha = 0.6f) else if (on) Tokens.accent else Tokens.text2,
+                containerColor = if (dimmed) Tokens.sunken else if (style != null) skinFill else if (on) Tokens.accentTint else Tokens.surface,
+                contentColor = if (dimmed) Tokens.faint.copy(alpha = 0.6f) else if (style != null) skinIcon else if (on) Tokens.accent else Tokens.text2,
                 disabledContainerColor = Tokens.sunken,
                 disabledContentColor = Tokens.faint.copy(alpha = 0.6f),
             ),
@@ -943,12 +1012,32 @@ internal fun PauseAskedBanner(onCancel: () -> Unit, modifier: Modifier) {
 /** "<controller> · display only", over the picture while the pad only shows a real controller. */
 @Composable
 internal fun ControllerChip(name: String) {
-    Surface(color = Color(0xB305060A), shape = RoundedCornerShape(50), border = BorderStroke(1.dp, Tokens.borderStrong), modifier = Modifier.widthIn(max = 300.dp).testTag("pad-display-only")) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    // A round, see-through button like the stats one; a tap shows the controller's name for a few seconds.
+    var open by remember { mutableStateOf(false) }
+    LaunchedEffect(open) {
+        if (open) {
+            kotlinx.coroutines.delay(4000)
+            open = false
+        }
+    }
+    val label = stringResource(R.string.room_pad_display_only_named, name)
+    Row(
+        Modifier
+            .heightIn(min = 36.dp)
+            .widthIn(max = 300.dp)
+            .background(Color(0x8C05060A), RoundedCornerShape(50))
+            .border(2.dp, Tokens.accent.copy(alpha = 0.6f), RoundedCornerShape(50))
+            .clip(RoundedCornerShape(50))
+            .clickable { open = !open }
+            .semantics { contentDescription = label }
+            .testTag("pad-display-only"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (open) {
+            Text(name, color = Tokens.text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp).weight(1f, fill = false))
+        }
+        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Gamepad, contentDescription = null, tint = Tokens.accent, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(name, color = Tokens.text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            Text(" · " + stringResource(R.string.room_pad_display_only), color = Tokens.text, fontSize = 13.sp, maxLines = 1)
         }
     }
 }

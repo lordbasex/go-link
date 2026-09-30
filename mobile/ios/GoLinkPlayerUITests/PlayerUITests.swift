@@ -119,6 +119,75 @@ final class PlayerUITests: XCTestCase {
         }
     }
 
+    /**
+     * The gamepad skins (debug pad lab with -labSkin): every control sends
+     * its own bit in portrait and landscape, and the room's menu over the
+     * picture hides after 3 s leaving its handle. With GL_SHOTS it saves
+     * each skin in both orientations.
+     */
+    func testSkinPad() {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let skins: [(String, Int, Int)] = [("violet", 6, 2), ("blue", 4, 2), ("green", 2, 4), ("orange", 3, 1), ("red", 6, 4), ("smoke", 1, 2)]
+        for (skin, buttons, starts) in skins {
+            XCUIDevice.shared.orientation = .portrait
+            let app = launch(["-padLab", "-labSkin", skin, "-labButtons", "\(buttons)", "-labStarts", "\(starts)"])
+            let layout = app.staticTexts["pad-layout"]
+            let log = app.staticTexts["pad-log"]
+            XCTAssertTrue(layout.waitForExistence(timeout: 10), skin)
+            for (orientation, name) in [(UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape")] {
+                XCUIDevice.shared.orientation = orientation
+                let turned = NSPredicate(format: "label == %@", name)
+                XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: turned, object: layout)], timeout: 5), .completed, "never turned \(name)")
+                sleep(1)
+                shot("skin-\(skin)-\(name)")
+                func expectPress(_ id: String, _ bits: Int, at offset: CGVector? = nil) {
+                    app.buttons["pad-clear"].tap()
+                    // An empty log may leave the accessibility tree.
+                    let deadline = Date().addingTimeInterval(3)
+                    while log.exists && !log.label.isEmpty && Date() < deadline { usleep(100_000) }
+                    XCTAssertTrue(!log.exists || log.label.isEmpty, "log not cleared (\(skin) \(name)): [\(log.label)]")
+                    let el = app.otherElements[id]
+                    XCTAssertTrue(el.waitForExistence(timeout: 5), "\(id) missing (\(skin) \(name))")
+                    if let offset { el.coordinate(withNormalizedOffset: offset).press(forDuration: 0.3) } else { el.press(forDuration: 0.3) }
+                    let want = "\(bits) 0"
+                    let ok = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", want), object: log)], timeout: 3) == .completed
+                    XCTAssertTrue(ok, "\(id) in \(skin) \(name): sent [\(log.label)], want [\(want)]")
+                }
+                expectPress("pad-button-1", 1 << 4)
+                expectPress("pad-button-\(buttons)", 1 << (3 + buttons))
+                expectPress("pad-coin", 1 << 11)
+                expectPress("pad-start-\(starts)", 1 << (17 + starts))
+                expectPress("pad-dpad", 1 << 3, at: CGVector(dx: 0.85, dy: 0.5))
+                expectPress("pad-dpad", 1 << 0, at: CGVector(dx: 0.5, dy: 0.15))
+            }
+            // In landscape the menu over the picture folds away into its handle (in portrait it sits under the picture and stays).
+            XCTAssertTrue(app.buttons["dock-handle"].waitForExistence(timeout: 6), "\(skin): menu never hid")
+            if skin == "violet" { shot("skin-violet-landscape-menu-hidden") }
+            XCUIDevice.shared.orientation = .portrait
+            sleep(4)
+            XCTAssertFalse(app.buttons["dock-handle"].exists, "\(skin): the portrait menu must stay")
+            app.terminate()
+        }
+    }
+
+    /**
+     * Landscape without the on-screen pad (a controller in hand): the
+     * picture fills the height and the room's buttons float in a capsule
+     * that folds into its handle, and a tap on the handle brings it back.
+     */
+    func testCinemaLayout() {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = launch(["-padLab", "-labNoPad"])
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let layout = app.staticTexts["pad-layout"]
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == 'landscape'"), object: layout)], timeout: 5), .completed)
+        XCTAssertTrue(app.buttons["dock-handle"].waitForExistence(timeout: 8), "the capsule folds away")
+        shot("cinema-folded")
+        app.buttons["dock-handle"].tap()
+        XCTAssertTrue(app.buttons["lab-settings"].waitForExistence(timeout: 3), "the handle brings it back")
+        shot("cinema-menu")
+    }
+
     func testLiveJoin() throws {
         guard let invite = env["GL_INVITE"], let pinText = env["GL_PIN"] else { throw XCTSkip("no invitation given") }
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
@@ -432,7 +501,7 @@ final class PlayerUITests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(app.staticTexts["pad-layout"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.otherElements["room-stats-box"].exists || app.staticTexts["room-stats-box"].exists)
-        XCTAssertTrue(app.otherElements["pad-controller-chip"].exists || app.staticTexts["pad-controller-chip"].exists)
+        XCTAssertTrue(app.buttons["pad-controller-chip"].exists)
         // Display only: a finger on the pad sends nothing.
         app.otherElements["pad-button-2"].press(forDuration: 0.3)
         XCTAssertEqual(app.staticTexts["pad-log"].label, "")

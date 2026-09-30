@@ -147,7 +147,7 @@ fun rememberTouchPad(onChange: (Int) -> Unit): TouchPadState {
 
 /** Registers a pad control's bounds under its own key, and removes only that entry when it leaves. */
 @Composable
-private fun Modifier.padTarget(state: TouchPadState, bit: Int = 0, dpad: Boolean = false): Modifier {
+internal fun Modifier.padTarget(state: TouchPadState, bit: Int = 0, dpad: Boolean = false): Modifier {
     val owner = remember { Any() }
     DisposableEffect(state, owner) { onDispose { state.remove(owner) } }
     return onGloballyPositioned {

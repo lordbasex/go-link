@@ -28,6 +28,8 @@ struct RoomView: View {
     @StateObject private var screenRate = ScreenRateMonitor()
     /** How this phone draws the game (Game settings › Picture). */
     @StateObject private var picture = PictureModel()
+    /** The gamepad's skin (Game settings › Skin); nil is the classic pad. */
+    @StateObject private var skins = SkinStore()
 
     init(session: RoomSession) {
         self.session = session
@@ -59,20 +61,45 @@ struct RoomView: View {
             let landscape = g.size.width > g.size.height
             ZStack {
                 Tokens.bg.ignoresSafeArea()
-                ConsoleLayout(
-                    landscape: landscape,
-                    size: g.size,
-                    pad: pad,
-                    controls: controls,
-                    starts: starts,
-                    myPorts: myPorts,
-                    showPad: showPad,
-                    aspect: aspect,
-                    header: { AnyView(header(compact: $0)) },
-                    screen: AnyView(screen),
-                    dock: { AnyView(dock(vertical: $0)) },
-                    noPad: AnyView(ChatPanel(session: session))
-                )
+                if showPad, let skin = skins.selected {
+                    SkinConsoleLayout(
+                        skin: skin,
+                        picture: skins.background(skin, landscape: landscape),
+                        landscape: landscape,
+                        size: g.size,
+                        insets: g.safeAreaInsets,
+                        pad: pad,
+                        controls: controls,
+                        starts: starts,
+                        myPorts: myPorts,
+                        aspect: aspect,
+                        keepDock: drawer != nil || settingsOpen,
+                        header: { AnyView(header(compact: $0)) },
+                        screen: AnyView(screen),
+                        dock: { vertical in
+                            AnyView(Group {
+                                if vertical { VStack(spacing: 6) { dockItems() } } else { HStack(spacing: 6) { dockItems() } }
+                            })
+                        }
+                    )
+                } else {
+                    ConsoleLayout(
+                        landscape: landscape,
+                        size: g.size,
+                        pad: pad,
+                        controls: controls,
+                        starts: starts,
+                        myPorts: myPorts,
+                        showPad: showPad,
+                        aspect: aspect,
+                        header: { AnyView(header(compact: $0)) },
+                        screen: AnyView(screen),
+                        dock: { AnyView(dock(vertical: $0)) },
+                        noPad: AnyView(ChatPanel(session: session)),
+                        floatingDock: AnyView(VStack(spacing: 6) { dockItems() }),
+                        keepDock: drawer != nil || settingsOpen
+                    )
+                }
                 if let drawer {
                     RoomDrawer(
                         session: session,
@@ -93,6 +120,7 @@ struct RoomView: View {
                     GameSettingsPanel(
                         landscape: landscape,
                         picture: picture,
+                        skins: skins,
                         sound: GameSound(
                             game: Binding(get: { session.sound.gameVolume }, set: { session.setGameVolume($0) }),
                             voices: Binding(get: { session.sound.voiceVolume }, set: { session.setVoiceVolume($0) }),
@@ -195,12 +223,13 @@ struct RoomView: View {
                     if room.recording {
                         RecBadge().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(8)
                     }
-                    if showPad && pad.displayOnly, let c = session.connectedControllers.first {
-                        // Top right like the design; on a narrow picture with the stats open, bottom right.
-                        let low = room.recording || (statsOn && g.size.width < 560)
+                    if let c = session.connectedControllers.first {
+                        // Top right, round and see-through like the stats button (under the REC badge while recording).
                         ControllerChip(name: c.name)
-                            .frame(maxWidth: min(300, g.size.width - 16))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: low ? .bottomTrailing : .topTrailing).padding(8)
+                            .frame(maxWidth: min(300, g.size.width - 16), alignment: .trailing)
+                            .padding(.top, room.recording ? 36 : 0)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(4)
+                            .modifier(TrailingInsetPadding())
                     }
                     StatsCorner(on: statsOn, stats: session.liveStats, video: ui.stats.video, screenHz: screenRate.hz) {
                         statsOn.toggle()
@@ -256,62 +285,64 @@ struct RoomView: View {
     // MARK: Dock
 
     private func dock(vertical: Bool) -> some View {
+        Group {
+            if vertical {
+                VStack(spacing: 6) { dockItems() }.frame(maxHeight: .infinity)
+            } else {
+                HStack(spacing: 6) { dockItems() }.frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+        }
+    }
+
+    /** The room's menu: microphone, sound, pause, chat, players, the pad and Game settings. */
+    @ViewBuilder private func dockItems() -> some View {
         let seated = room?.me.isPlayer ?? false
         let voiceOn = room?.voice != false
         let canTalk = seated && voiceOn
         let sound = session.sound
-        let items = Group {
-            DockButton(
-                icon: sound.micOn && canTalk ? "mic.fill" : "mic.slash",
-                label: L(!voiceOn ? "room_voice_off" : !seated ? "room_voice_players_only" : AudioRouter.micPermission == .denied ? "room_mic_blocked" : sound.micOn ? "room_mic_on" : "room_mic_off"),
-                on: sound.micOn && canTalk,
-                enabled: canTalk,
-                tag: "dock-mic"
-            ) {
-                if sound.micOn {
-                    session.setMic(false)
-                } else if AudioRouter.micPermission == .granted {
-                    session.setMic(true)
-                } else {
-                    micAsk = true
-                }
-            }
-            DockButton(
-                icon: session.gameMuted ? "speaker.slash.fill" : (session.router.output == .speaker ? "speaker.wave.2.fill" : "headphones"),
-                label: L(session.gameMuted ? "room_sound_off" : "room_sound_on"),
-                on: !session.gameMuted,
-                tag: "dock-sound"
-            ) { session.setGameMuted(!session.gameMuted) }
-            if let room, seated { pauseButton(room) }
-            DockButton(icon: "bubble.left.and.bubble.right", label: L("room_chat"), on: drawer == .chat, badge: unread, tag: "dock-chat") {
-                drawer = drawer == .chat ? nil : .chat
-            }
-            DockButton(icon: "person.2", label: L("room_players"), on: drawer == .players, tag: "dock-players") {
-                drawer = drawer == .players ? nil : .players
-            }
-            if hasController {
-                // The pad only shows what the controller presses.
-                DockButton(icon: "gamecontroller", label: L(ghostPad ? "pad_display_hide" : "pad_display_show"), on: ghostPad, tag: "dock-pad") {
-                    ghostPad.toggle()
-                }
+        DockButton(
+            icon: sound.micOn && canTalk ? "mic.fill" : "mic.slash",
+            label: L(!voiceOn ? "room_voice_off" : !seated ? "room_voice_players_only" : AudioRouter.micPermission == .denied ? "room_mic_blocked" : sound.micOn ? "room_mic_on" : "room_mic_off"),
+            on: sound.micOn && canTalk,
+            enabled: canTalk,
+            tag: "dock-mic"
+        ) {
+            if sound.micOn {
+                session.setMic(false)
+            } else if AudioRouter.micPermission == .granted {
+                session.setMic(true)
             } else {
-                DockButton(icon: "gamecontroller", label: L("room_touchpad"), on: touchOn, tag: "dock-pad") {
-                    touchOn.toggle()
-                    model.prefs.touchPad = touchOn
-                    if !touchOn { pad.releaseAll() }
-                }
-            }
-            DockButton(icon: "gearshape", label: L("room_settings"), on: settingsOpen, tag: "dock-settings") {
-                drawer = nil
-                settingsOpen.toggle()
+                micAsk = true
             }
         }
-        return Group {
-            if vertical {
-                VStack(spacing: 6) { items }.frame(maxHeight: .infinity)
-            } else {
-                HStack(spacing: 6) { items }.frame(maxWidth: .infinity).padding(.vertical, 6)
+        DockButton(
+            icon: session.gameMuted ? "speaker.slash.fill" : (session.router.output == .speaker ? "speaker.wave.2.fill" : "headphones"),
+            label: L(session.gameMuted ? "room_sound_off" : "room_sound_on"),
+            on: !session.gameMuted,
+            tag: "dock-sound"
+        ) { session.setGameMuted(!session.gameMuted) }
+        if let room, seated { pauseButton(room) }
+        DockButton(icon: "bubble.left.and.bubble.right", label: L("room_chat"), on: drawer == .chat, badge: unread, tag: "dock-chat") {
+            drawer = drawer == .chat ? nil : .chat
+        }
+        DockButton(icon: "person.2", label: L("room_players"), on: drawer == .players, tag: "dock-players") {
+            drawer = drawer == .players ? nil : .players
+        }
+        if hasController {
+            // The pad only shows what the controller presses.
+            DockButton(icon: "gamecontroller", label: L(ghostPad ? "pad_display_hide" : "pad_display_show"), on: ghostPad, tag: "dock-pad") {
+                ghostPad.toggle()
             }
+        } else {
+            DockButton(icon: "gamecontroller", label: L("room_touchpad"), on: touchOn, tag: "dock-pad") {
+                touchOn.toggle()
+                model.prefs.touchPad = touchOn
+                if !touchOn { pad.releaseAll() }
+            }
+        }
+        DockButton(icon: "gearshape", label: L("room_settings"), on: settingsOpen, tag: "dock-settings") {
+            drawer = nil
+            settingsOpen.toggle()
         }
     }
 }
@@ -351,7 +382,20 @@ extension Me {
     }
 }
 
+/** A skin's menu colors for the dock buttons inside it; nil keeps the app's own. */
+private struct DockStyleKey: EnvironmentKey {
+    static let defaultValue: PadSkin.MenuStyle? = nil
+}
+
+extension EnvironmentValues {
+    var dockStyle: PadSkin.MenuStyle? {
+        get { self[DockStyleKey.self] }
+        set { self[DockStyleKey.self] = newValue }
+    }
+}
+
 struct DockButton: View {
+    @Environment(\.dockStyle) private var style
     let icon: String
     let label: String
     let on: Bool
@@ -364,12 +408,16 @@ struct DockButton: View {
 
     var body: some View {
         SwiftUI.Button(action: action) {
+            let accent = style.map { Color(hex: $0.active) } ?? Tokens.accent
+            let icon2 = style.map { Color(hex: $0.icon) } ?? Tokens.text2
+            let fill = style.map { Color(hex: $0.button) } ?? Tokens.surface
+            let activeFill = style.map { Color(hex: $0.activeButton) } ?? Tokens.accentTint
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(!enabled || dimmed ? Tokens.dim : (on ? Tokens.accent : Tokens.text2))
+                .foregroundStyle(!enabled || dimmed ? Tokens.dim : (on ? accent : icon2))
                 .frame(width: Tokens.control, height: Tokens.control)
-                .background(Circle().fill(!enabled || dimmed ? Tokens.sunken : (on ? Tokens.accentTint : Tokens.surface)))
-                .overlay(Circle().stroke(on ? Tokens.accentTintBorder : Tokens.border, lineWidth: 1))
+                .background(Circle().fill(!enabled || dimmed ? (style == nil ? Tokens.sunken : fill.opacity(0.5)) : (on ? activeFill : fill)))
+                .overlay(Circle().stroke(on ? (style == nil ? Tokens.accentTintBorder : accent.opacity(0.5)) : (style == nil ? Tokens.border : icon2.opacity(0.18)), lineWidth: 1))
                 .overlay(alignment: .topTrailing) {
                     if badge > 0 {
                         Text("\(min(badge, 99))")

@@ -24,6 +24,8 @@ struct GameSound {
 struct GameSettingsPanel: View {
     let landscape: Bool
     @ObservedObject var picture: PictureModel
+    /** The gamepad's skins; nil where there is no pad (the picture lab). */
+    var skins: SkinStore?
     let sound: GameSound
     let initialName: String
     let onSaveName: (String) -> Void
@@ -57,6 +59,7 @@ struct GameSettingsPanel: View {
         .onAppear {
             name = initialName
             sound.router?.refresh()
+            skins?.reload()
         }
     }
 
@@ -81,6 +84,7 @@ struct GameSettingsPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     pictureSection
+                    if let skins { SkinSection(skins: skins) }
                     section(L("game_settings_sound"))
                     slider(L("sound_game"), value: sound.game, tag: "sound-game")
                     slider(L("sound_voices"), value: sound.voices, tag: "sound-voices")
@@ -207,6 +211,59 @@ struct GameSettingsPanel: View {
     private func saveName() {
         onSaveName(name)
         saved = true
+    }
+}
+
+/**
+ * Skin: the console shell around the picture and its controls. Every skin
+ * is a file; the list shows the built-in ones and those added to the
+ * app's Skins folder in the Files app.
+ */
+private struct SkinSection: View {
+    @ObservedObject var skins: SkinStore
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(L("skin_title").uppercased()).font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(Tokens.faint)
+                .fixedSize()
+            Rectangle().fill(Tokens.border).frame(height: 1)
+        }
+        .padding(.top, 8)
+        .accessibilityAddTraits(.isHeader)
+        Text(L("skin_note")).font(.caption).foregroundStyle(Tokens.faint)
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+            ForEach(skins.catalog.skins) { s in
+                tile(id: s.id, name: s.displayName, author: s.author, swatch: AnyView(
+                    Circle()
+                        .fill(RadialGradient(colors: [Color(hex: s.center), Color(hex: s.edge)], center: .center, startRadius: 0, endRadius: 20))
+                        .overlay(Circle().stroke(Color(hex: s.rim), lineWidth: 2))
+                        .overlay(Circle().fill(s.controls == .light ? Color(hex: 0xE5EEF0) : Color(hex: 0x222229)).frame(width: 12, height: 12))
+                ))
+            }
+        }
+        Text(L("skin_folder_hint")).font(.caption).foregroundStyle(Tokens.faint)
+    }
+
+    private func tile(id: String, name: String, author: String, swatch: AnyView) -> some View {
+        let selected = skins.selectedId == id
+        return SwiftUI.Button { skins.choose(id) } label: {
+            VStack(spacing: 6) {
+                swatch.frame(width: 36, height: 36)
+                Text(name).font(.footnote.weight(.semibold)).foregroundStyle(Tokens.text).lineLimit(1)
+                if !author.isEmpty && author != "go-link" {
+                    Text(author).font(.caption2).foregroundStyle(Tokens.muted).lineLimit(1)
+                }
+            }
+            .padding(.vertical, 10).padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, minHeight: 84)
+            .background(RoundedRectangle(cornerRadius: 14).fill(selected ? Tokens.accentTint : Tokens.surface2))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? Tokens.accentTintBorder : .clear, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityIdentifier("skin-\(id)")
     }
 }
 

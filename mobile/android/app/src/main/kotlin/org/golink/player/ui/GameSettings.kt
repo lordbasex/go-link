@@ -4,6 +4,7 @@ package org.golink.player.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -50,6 +52,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -71,6 +74,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.golink.player.R
+import org.golink.player.core.PadSkin
 import org.golink.player.core.Picture
 import org.golink.player.core.PictureBands
 import org.golink.player.core.PictureLayout
@@ -112,9 +116,12 @@ fun GameSettingsSheet(
     sound: (@Composable () -> Unit)?,
     /** Opened from the players' Sound button: start at the sound part. */
     scrollToSound: Boolean = false,
+    /** The gamepad's skins; null where there is no pad (the picture lab). */
+    skins: SkinStore? = null,
 ) {
+    LaunchedEffect(skins) { skins?.reload() }
     val body: @Composable (Modifier) -> Unit = { m ->
-        GameSettingsBody(m, onClose, picture, statsOn, onStats, name, sound, scrollToSound)
+        GameSettingsBody(m, onClose, picture, statsOn, onStats, name, sound, scrollToSound, skins)
     }
     if (landscape) SideSheet(onClose, body) else BottomSheet(onClose, body)
 }
@@ -168,6 +175,7 @@ private fun GameSettingsBody(
     name: (@Composable () -> Unit)?,
     sound: (@Composable () -> Unit)?,
     scrollToSound: Boolean,
+    skins: SkinStore?,
 ) {
     val scroll = rememberScrollState()
     var soundTop by remember { mutableIntStateOf(-1) }
@@ -200,6 +208,7 @@ private fun GameSettingsBody(
                 sound()
             }
             PictureSection(picture)
+            if (skins != null) SkinSection(skins)
             SectionLabel(stringResource(R.string.stats_title_short))
             SwitchRow(
                 stringResource(R.string.game_settings_stats),
@@ -410,5 +419,57 @@ private fun CompareLabel(text: String, modifier: Modifier, align: Alignment) {
             maxLines = 1,
             modifier = Modifier.background(Color(0xB305060A), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp),
         )
+    }
+}
+
+/**
+ * Skin: the console shell around the picture and its controls. Every skin
+ * is a file; the list shows the built-in ones and those added to the
+ * app's Skins folder.
+ */
+@Composable
+private fun SkinSection(skins: SkinStore) {
+    SectionLabel(stringResource(R.string.skin_title))
+    Text(stringResource(R.string.skin_note), color = Tokens.faint, fontSize = 13.sp, lineHeight = 18.sp)
+    val lang = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
+    val tiles = skins.catalog.skins.map { Triple(it.id, it.name(lang), it) }
+    Column(Modifier.selectableGroup().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        tiles.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (id, name, skin) ->
+                    val selected = skins.selectedId == id
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 84.dp)
+                            .background(if (selected) Tokens.accentTint else Tokens.surface2, RoundedCornerShape(14.dp))
+                            .border(1.dp, if (selected) Tokens.accentTintBorder else Color.Transparent, RoundedCornerShape(14.dp))
+                            .selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton) { skins.choose(id) }
+                            .padding(vertical = 10.dp, horizontal = 6.dp)
+                            .testTag("skin-$id"),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        SkinSwatch(skin)
+                        Text(name, color = Tokens.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        if (skin.author.isNotEmpty() && skin.author != "go-link") {
+                            Text(skin.author, color = Tokens.muted, fontSize = 11.sp, maxLines = 1)
+                        }
+                    }
+                }
+                repeat(3 - row.size) { Box(Modifier.weight(1f)) }
+            }
+        }
+    }
+    Text(stringResource(R.string.skin_folder_hint), color = Tokens.faint, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 6.dp))
+}
+
+@Composable
+private fun SkinSwatch(skin: PadSkin) {
+    androidx.compose.foundation.Canvas(Modifier.size(36.dp)) {
+        val r = size.width / 2
+        drawCircle(Brush.radialGradient(listOf(Color(0xFF000000.toInt() or skin.center), Color(0xFF000000.toInt() or skin.edge)), radius = r), r)
+        drawCircle(Color(0xFF000000.toInt() or skin.rim), r - 1.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+        drawCircle(Color(0xFF000000.toInt() or skin.colors.face), 6.dp.toPx())
     }
 }

@@ -365,11 +365,11 @@ function seatedCount(): number {
  * fills it. The video itself (a TextureView) is not in the UiAutomator tree.
  */
 async function videoRect(): Promise<[number, number, number, number]> {
-  const mic = await A.waitFor({ id: "dock-mic" });
-  const density = Number(A.shell("wm density").match(/(\d+)\s*$/)?.[1] ?? 420) / 160;
-  const { width } = A.rawScreen();
-  const bottom = mic.bounds[1] - Math.round(4 * density);
-  return [0, bottom - Math.round((width * 3) / 4), width, bottom];
+  // The picture's own view: the whole 4:3 test card, with or without a skin around it.
+  const [l, t, r, b] = (await A.waitFor({ id: "picture" })).bounds;
+  const h = Math.round(((r - l) * 3) / 4);
+  const top = Math.round((t + b) / 2 - h / 2);
+  return [l, top, r, top + h];
 }
 
 /**

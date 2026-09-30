@@ -175,7 +175,7 @@
     <string name="video_quality_normal">Normal</string>
     <string name="video_quality_saver">Saver</string>
     <string name="video_quality_cpu">%1$s (CPU)</string>
-    <string name="room_pad_display_only">display only</string>
+    <string name="room_pad_display_only_named">%1$s, controller</string>
     <string name="home_test_controller">Test controller</string>
     <string name="tester_title">Test controller</string>
     <string name="tester_subtitle">Press the buttons on the screen or on your controller. No room or internet needed.</string>
@@ -238,4 +238,9 @@
     <string name="game_settings_saved">Saved</string>
     <string name="picture_room_default">Room default: %1$s · %2$s</string>
     <string name="picture_use_room_default">Use the room\'s default</string>
+    <!-- Gamepad skins (Game settings › Skin) -->
+    <string name="skin_title">Skin</string>
+    <string name="skin_note">A console shell around the picture. Only on this phone.</string>
+    <string name="skin_folder_hint">More skins: copy skin files to the phone\'s Android/data/org.golink.player/files/Skins folder (from a computer over USB).</string>
+    <string name="room_show_menu">Show the menu</string>
 </resources>
