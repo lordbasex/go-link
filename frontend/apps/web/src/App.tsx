@@ -13,6 +13,7 @@ import { GuestJoinPage } from "./pages/GuestJoinPage";
 import { prefetchThumbnails } from "./components/device/useThumbnail";
 import { LegalPage } from "./pages/LegalPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { DestroyLink } from "./destroyLauncher";
 // The lobby comes with the first load; the other pages download when
 // opened, so a guest joining a room does not get the device dashboard.
 const CreateRoomPage = lazy(() =>
@@ -144,6 +145,8 @@ export function App() {
             {/* The device's local panel has no landing: it opens on the
                 device until it is linked, then on its rooms. */}
             <Route path="/" element={panel ? <Navigate to={savedLink || hostLink ? "/rooms" : "/device"} replace /> : <HowItWorksPage />} />
+            {/* The Destroy game's direct link (routes match any letter case). */}
+            <Route path="/WillyGorklingo" element={<DestroyLink />} />
             <Route path="/rooms" element={<LobbyPage />} />
             <Route path="/how-it-works" element={<Navigate to="/" replace />} />
             <Route path="/create" element={<CreateRoomPage />} />

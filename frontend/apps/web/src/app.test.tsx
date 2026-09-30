@@ -80,6 +80,11 @@ describe("lobby", () => {
 });
 
 describe("destroy easter egg", () => {
+  it("has a direct link that lands on the home page", async () => {
+    renderApp("/WillyGorklingo");
+    expect(await screen.findByRole("button", { name: "Destroy this page!" })).toBeInTheDocument();
+  });
+
   it("shows the devil only on the landing", async () => {
     const { unmount } = renderApp("/");
     expect(await screen.findByRole("button", { name: "Destroy this page!" })).toBeInTheDocument();

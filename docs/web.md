@@ -48,6 +48,7 @@ STUN and TURN are **not** configured: they arrive in signalhub's `hello` and liv
 | Route | Page |
 |---|---|
 | `/` | How it works: the landing page |
+| `/WillyGorklingo` | The Destroy game's direct link (any letter case): opens the landing with the mission briefing ([below](#destroy-this-page)) |
 | `/rooms` | Rooms: the host's own games, or the "Join a game" form in guest mode |
 | `/create` | New game (`/create?rom=<set>` preselects a game) |
 | `/g/:invite` | A room by invitation (a link or QR token, or a 9-digit code). On Android it also offers the [go-link Player app](mobile.md) (`components/AndroidAppCard.tsx`) |

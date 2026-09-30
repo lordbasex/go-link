@@ -4,6 +4,8 @@
 // The game is a separate chunk loaded only on the first click, and it plays
 // on the whole app (#root); this file only knows its public entry.
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { t } from "./i18n";
 
 type Session = { exit(): void; finish?: () => void };
@@ -47,4 +49,16 @@ export async function launchDestroy(pathname: string, navigate: (to: string) => 
   } finally {
     starting = false;
   }
+}
+
+/**
+ * The game's direct link (go-link.org/WillyGorklingo): goes to the landing,
+ * replacing the link in the history, and opens the mission briefing there.
+ */
+export function DestroyLink(): null {
+  const navigate = useNavigate();
+  useEffect(() => {
+    void launchDestroy("/WillyGorklingo", (to) => navigate(to, { replace: true }));
+  }, [navigate]);
+  return null;
 }
