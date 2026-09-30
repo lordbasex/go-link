@@ -278,7 +278,7 @@ struct SkinButtonShape: Shape {
             let c = CGPoint(x: r.midX, y: r.midY)
             let rad = min(r.width, r.height) / 2
             for i in 0..<6 {
-                let a = (-90 + 60 * Double(i)) * .pi / 180
+                let a = CGFloat(-90 + 60 * Double(i)) * .pi / 180
                 let pt = CGPoint(x: c.x + rad * cos(a), y: c.y + rad * sin(a))
                 if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
             }
