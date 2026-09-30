@@ -40,6 +40,10 @@ data class SoundState(
     val silenced: Set<Int> = emptySet(),
     /** Ports whose voice track arrived. */
     val voices: Set<Int> = emptySet(),
+    /** The game's volume, 0 to 1 (1 = as sent). */
+    val gameVolume: Double = 1.0,
+    /** The other players' voices, 0 to 1. */
+    val voiceVolume: Double = 1.0,
 )
 
 /**
@@ -60,7 +64,7 @@ class RoomSession(
     private val router = AudioRouter(context, prefs) { engine.setPreferredInput(it) }
     val audioOutput = router.output
 
-    /** The Sound sheet's rows and choices. */
+    /** The sound settings' rows and choices. */
     val audioChoices = router.choices
 
     /** A chosen sound device disconnected (the choice went back to Automatic). */
@@ -77,7 +81,7 @@ class RoomSession(
     private val _video = MutableStateFlow<VideoTrack?>(null)
     val video: StateFlow<VideoTrack?> = _video.asStateFlow()
 
-    private val _sound = MutableStateFlow(SoundState())
+    private val _sound = MutableStateFlow(SoundState(gameVolume = prefs.gameVolume, voiceVolume = prefs.voiceVolume))
     val sound: StateFlow<SoundState> = _sound.asStateFlow()
 
     private val _controllers = MutableStateFlow<List<GamepadInput.Controller>>(emptyList())
@@ -242,6 +246,18 @@ class RoomSession(
         applyVolumes()
     }
 
+    fun setGameVolume(v: Double) {
+        prefs.gameVolume = v
+        _sound.update { it.copy(gameVolume = prefs.gameVolume) }
+        applyVolumes()
+    }
+
+    fun setVoiceVolume(v: Double) {
+        prefs.voiceVolume = v
+        _sound.update { it.copy(voiceVolume = prefs.voiceVolume) }
+        applyVolumes()
+    }
+
     /** Silences (or not) one player's voice, only for this phone. */
     fun toggleSilence(port: Int) {
         _sound.update { s -> s.copy(silenced = if (port in s.silenced) s.silenced - port else s.silenced + port) }
@@ -261,7 +277,8 @@ class RoomSession(
 
     private fun applyVolumes() {
         val s = _sound.value
-        gameAudio?.setVolume(if (s.gameMuted) 0.0 else 1.0)
-        for ((port, track) in voiceTracks) track.setVolume(if (port in s.silenced) 0.0 else 1.0)
+        // libwebrtc's remote volume: 0 to 10, 1 = as received.
+        gameAudio?.setVolume(if (s.gameMuted) 0.0 else s.gameVolume)
+        for ((port, track) in voiceTracks) track.setVolume(if (port in s.silenced) 0.0 else s.voiceVolume)
     }
 }

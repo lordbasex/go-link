@@ -28,6 +28,8 @@ type DeviceStatusMessage struct {
 	SavesBytes int64 `json:"saves_bytes"`
 	// Update is a newer go-link release, when there is one.
 	Update *models.UpdateInfo `json:"update,omitempty"`
+	// VideoQuality is the host's video quality for game rooms.
+	VideoQuality string `json:"video_quality"`
 }
 
 // NewDeviceStatusMessage builds the message from a status snapshot.
@@ -46,6 +48,8 @@ func NewDeviceStatusMessage(st models.Status) DeviceStatusMessage {
 		Rooms:      st.Rooms,
 		SavesBytes: st.SavesBytes,
 		Update:     st.Update,
+
+		VideoQuality: st.VideoQuality,
 	}
 }
 

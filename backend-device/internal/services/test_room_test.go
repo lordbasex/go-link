@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
 )
 
@@ -142,5 +143,23 @@ func TestTheRoomIsFoundByItsIDInvitationOrCode(t *testing.T) {
 		if got := room.Matches(c.id, c.invite, c.code); got != c.want {
 			t.Errorf("Matches(%q, %q, %q) = %q, want %q", c.id, c.invite, c.code, got, c.want)
 		}
+	}
+}
+
+func TestTestRoomShowsItsDefaultPictureToTheOwner(t *testing.T) {
+	st := NewStatusService(deviceID, "test", "ws://x", "")
+	room := NewTestRoomService(st, &fakeViewers{}, "mac", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	sender := newFakeSender()
+	room.SetSender(sender)
+	room.OnConnect(signalclient.Envelope{})
+	<-sender.ch
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypeRoomOpened, RoomID: "R1"})
+	room.SetPicture(&models.RoomPicture{Style: "crt", Bands: "frame"})
+	if p := st.Snapshot().Room.Picture; p == nil || *p != (models.RoomPicture{Style: "crt", Bands: "frame"}) {
+		t.Fatalf("status picture %+v", p)
+	}
+	room.SetPicture(&models.RoomPicture{Style: "crt", Bands: "tartan"})
+	if p := st.Snapshot().Room.Picture; p != nil {
+		t.Fatalf("unknown sides kept: %+v", p)
 	}
 }

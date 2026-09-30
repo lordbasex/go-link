@@ -5,7 +5,9 @@ import { FACTORY_RESET, formatBytes, parseFactoryReset } from "@go-link/shared";
 import { Chip, HeroTile, PageHero } from "../ui/PageHero";
 import { t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
-import { MonitorIcon, TestCardIcon, UserPlusIcon } from "../Icons";
+import { VideoQualityCard } from "./VideoQualityCard";
+import { MonitorIcon, PictureIcon, TestCardIcon, UserPlusIcon } from "../Icons";
+import { RoomPictureDialog } from "../RoomPictureDialog";
 import { InviteDialog } from "../InviteDialog";
 import { ConfirmDialog } from "../RemapDialog";
 import { AreaChart, Ring, Sparkline } from "./charts";
@@ -71,6 +73,7 @@ export function DeviceDashboard({
 
   const room = status?.room;
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [pictureOpen, setPictureOpen] = useState(false);
   const [resetAsk, setResetAsk] = useState(false);
   const [resetError, setResetError] = useState("");
   // On success the device unlinks every browser by itself.
@@ -172,6 +175,15 @@ export function DeviceDashboard({
                   onClick={() => setInviteOpen(true)}
                 >
                   <UserPlusIcon />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button tip-below"
+                  aria-label={t.picture.defaultButton}
+                  data-tip={t.picture.defaultButton}
+                  onClick={() => setPictureOpen(true)}
+                >
+                  <PictureIcon />
                 </button>
                 <Link
                   to={`/r/${room.room_id}`}
@@ -520,6 +532,7 @@ export function DeviceDashboard({
             {spaceCard()}
             {libraryCard()}
             {storageCard()}
+            <VideoQualityCard />
             <div className="card dash-card stack-md">
               <h2 className="card-title">{t.dash.connection}</h2>
               <div
@@ -595,6 +608,15 @@ export function DeviceDashboard({
         <p className="notice small" role="alert">
           {resetError}
         </p>
+      )}
+      {pictureOpen && room?.room_id && (
+        <RoomPictureDialog
+          id="test"
+          name={t.dash.testPattern}
+          current={room.picture ?? null}
+          send={sendToDevice}
+          onClose={() => setPictureOpen(false)}
+        />
       )}
       {inviteOpen && room?.room_id && (
         <InviteDialog

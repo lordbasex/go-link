@@ -1,0 +1,65 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+// How a device sends a game's picture. Game rooms may send it enlarged 2x
+// (every game pixel as a 2x2 block, so each keeps its own color); the
+// device says so in stream_stats "video", and the picture renderer
+// averages each block back to one game pixel before drawing it.
+
+/** The host's video quality for game rooms (device Settings). */
+export type VideoQuality = "high" | "normal" | "saver";
+
+export const VIDEO_QUALITIES: readonly VideoQuality[] = ["high", "normal", "saver"];
+
+/** Why a room sends less than the host's choice: "cpu", the computer could not keep up with 2x. */
+export type VideoFallback = "cpu";
+
+export function parseVideoQuality(v: unknown): VideoQuality | undefined {
+  return VIDEO_QUALITIES.find((q) => q === v);
+}
+
+/** stream_stats "video": the picture being sent. */
+export interface StreamVideo {
+  /** 2 when the frames are the game's picture enlarged 2x, else 1. */
+  scale: 1 | 2;
+  /** The game's own size in pixels (the frames are scale times larger). */
+  width: number;
+  height: number;
+  /** Game rooms: the quality in use. */
+  quality?: VideoQuality;
+  /** Set when the quality in use is lower than the host's choice. */
+  fallback?: VideoFallback;
+}
+
+/** Reads the "video" of a stream_stats message; null when absent or broken. */
+export function parseStreamVideo(msg: unknown): StreamVideo | null {
+  if (typeof msg !== "object" || msg === null) return null;
+  const m = msg as Record<string, unknown>;
+  if (m.type !== "stream_stats" || typeof m.video !== "object" || m.video === null) return null;
+  const v = m.video as Record<string, unknown>;
+  const size = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x > 0 && x <= 4096 ? x : 0);
+  const width = size(v.width);
+  const height = size(v.height);
+  if ((v.scale !== 1 && v.scale !== 2) || !width || !height) return null;
+  return {
+    scale: v.scale,
+    width,
+    height,
+    quality: parseVideoQuality(v.quality),
+    fallback: v.fallback === "cpu" ? "cpu" : undefined,
+  };
+}
+
+/** The room's video as the owner sees it in device_status rooms[].video. */
+export interface RoomVideo {
+  quality: VideoQuality;
+  fallback?: VideoFallback;
+  scale: 1 | 2;
+}
+
+export function parseRoomVideo(v: unknown): RoomVideo | undefined {
+  if (typeof v !== "object" || v === null) return undefined;
+  const o = v as Record<string, unknown>;
+  const quality = parseVideoQuality(o.quality);
+  if (!quality) return undefined;
+  return { quality, fallback: o.fallback === "cpu" ? "cpu" : undefined, scale: o.scale === 2 ? 2 : 1 };
+}

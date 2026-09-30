@@ -41,7 +41,7 @@ type RTCSignal struct {
 type StreamConfig struct {
 	Width, Height int // default 640x480 (4:3, like the test card)
 	FPS           int // default 60, like arcade hardware
-	BitrateKbps   int // default 2500
+	BitrateKbps   int // default 2500 (SaverKbps); SetBitrate changes it
 	// IncludeLoopback also gathers 127.0.0.1 candidates (tests on
 	// machines without a network).
 	IncludeLoopback bool
@@ -123,13 +123,23 @@ type StreamService struct {
 	// the video source's goroutine draws with it).
 	mark atomic.Pointer[recMark]
 
+	// kbps is the VP8 target bitrate (SetBitrate); scale is how many times
+	// the source enlarges the game's picture (SetVideoScale).
+	kbps  atomic.Int64
+	scale atomic.Int32
+	// probeArmed asks the encoder to measure itself on the next 2x frames
+	// (ArmEncodeProbe).
+	probeArmed atomic.Bool
+
 	// Owned by the source goroutine (Run): encoders and pacing.
 	vp8        *encoder.VP8
 	vp8W, vp8H int
+	vp8Kbps    int
 	opus       *encoder.Opus
 	pcm        []int16
 	sent       int
 	window     time.Time
+	probe      *encodeProbe
 
 	mu           sync.Mutex
 	sender       Sender
@@ -153,6 +163,11 @@ type StreamService struct {
 	onLinkFile   func(peerID string, isString bool, data []byte)
 	onLinkClosed func(peerID string)
 	onLinks      func() // a linked browser's control channel opened or closed
+	// videoQuality and videoFallback describe the picture for viewers
+	// (stream_stats); onSlow hears the encoder check's verdict.
+	videoQuality  string
+	videoFallback string
+	onSlow        func(p95, frame time.Duration)
 }
 
 // OnLinksChanged registers who is told that a linked browser's control
@@ -403,7 +418,7 @@ func NewStreamService(cfg StreamConfig, ice *ICEStore) (*StreamService, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StreamService{
+	s := &StreamService{
 		cfg:     cfg,
 		log:     cfg.Logger,
 		ice:     ice,
@@ -414,7 +429,84 @@ func NewStreamService(cfg StreamConfig, ice *ICEStore) (*StreamService, error) {
 		pads:    make(map[string][input.MaxLocalPlayers]input.Pad),
 		pings:   make(map[uint64]time.Time),
 		addrs:   make(map[string]PeerAddr),
-	}, nil
+	}
+	s.kbps.Store(int64(cfg.BitrateKbps))
+	s.scale.Store(1)
+	return s, nil
+}
+
+// SetBitrate changes the VP8 target bitrate; the encoder starts again
+// with it on the next frame (with a keyframe).
+func (s *StreamService) SetBitrate(kbps int) {
+	if kbps > 0 {
+		s.kbps.Store(int64(kbps))
+	}
+}
+
+// Bitrate is the VP8 target bitrate in kbps.
+func (s *StreamService) Bitrate() int { return int(s.kbps.Load()) }
+
+// SetVideoScale tells how many times the source enlarges the game's
+// picture (1, or 2) in the frames that follow. Viewers are told as soon
+// as the encoder takes the new size, so the website averages a 2x picture
+// back to the game's pixels before drawing it.
+func (s *StreamService) SetVideoScale(scale int) {
+	if scale != 2 {
+		scale = 1
+	}
+	s.scale.Store(int32(scale))
+}
+
+// VideoScale is the scale of the frames being sent.
+func (s *StreamService) VideoScale() int { return int(s.scale.Load()) }
+
+// SetVideoInfo sets the video quality in use and, when lower than the
+// host's choice, why (models.VideoFallbackCPU); viewers see both in
+// stream_stats.
+func (s *StreamService) SetVideoInfo(quality, fallback string) {
+	s.mu.Lock()
+	changed := s.videoQuality != quality || s.videoFallback != fallback
+	s.videoQuality, s.videoFallback = quality, fallback
+	s.mu.Unlock()
+	if changed {
+		go s.sendStreamStats()
+	}
+}
+
+// ArmEncodeProbe measures the encoder over its next 2x frames (see
+// encodeProbe) and calls onSlow, from its own goroutine, when 2x does not
+// fit. A probe runs once per call; frames at the game's size are not
+// measured.
+func (s *StreamService) ArmEncodeProbe(onSlow func(p95, frame time.Duration)) {
+	s.mu.Lock()
+	s.onSlow = onSlow
+	s.mu.Unlock()
+	s.probeArmed.Store(onSlow != nil)
+}
+
+// measure feeds the encoder check with one frame's encode time.
+func (s *StreamService) measure(took, dur time.Duration, w, h int) {
+	if !s.probeArmed.Load() || s.VideoScale() != 2 {
+		s.probe = nil
+		return
+	}
+	if s.probe == nil {
+		s.probe = newEncodeProbe(dur)
+	}
+	done, p95, slow := s.probe.add(took, time.Now())
+	if !done {
+		return
+	}
+	s.probe = nil
+	s.probeArmed.Store(false)
+	s.log.Info("video encoder check", "size", fmt.Sprintf("%dx%d", w, h), "p95_ms", float64(p95.Microseconds())/1000,
+		"frame_ms", float64(dur.Microseconds())/1000, "fits", !slow)
+	s.mu.Lock()
+	fn := s.onSlow
+	s.mu.Unlock()
+	if slow && fn != nil {
+		go fn(p95, dur)
+	}
 }
 
 // SetSender wires the signaling client.
@@ -512,6 +604,7 @@ func (s *StreamService) Run(ctx context.Context) error {
 		s.stopSource = stop
 		s.mu.Unlock()
 
+		s.SetVideoScale(1) // until a source says its frames are enlarged
 		err := src.Run(srcCtx, s)
 		replaced := srcCtx.Err() != nil // stopped on purpose (new source or shutdown)
 		stop()
@@ -551,30 +644,41 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.mu.Unlock()
 		s.sent, s.sentBytes, s.window = 0, 0, time.Now()
 	}
-	if s.vp8 == nil || s.vp8W != w || s.vp8H != h {
+	kbps := s.Bitrate()
+	if s.vp8 == nil || s.vp8W != w || s.vp8H != h || s.vp8Kbps != kbps {
 		if s.vp8 != nil {
 			s.vp8.Close()
 		}
 		fps := max(int(time.Second/dur), 1)
-		enc, err := encoder.NewVP8(encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: s.cfg.BitrateKbps})
+		enc, err := encoder.NewVP8(encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps})
 		if err != nil {
 			s.log.Error("video encoder", "err", err)
 			s.vp8 = nil
 			return
 		}
-		s.vp8, s.vp8W, s.vp8H = enc, w, h
+		s.mu.Lock()
+		resized := s.vp8W != w || s.vp8H != h
+		s.vp8, s.vp8W, s.vp8H, s.vp8Kbps = enc, w, h, kbps
+		s.mu.Unlock()
 		s.keyframe.Store(true)
+		s.probe = nil
+		if resized {
+			// A new size (or scale): viewers learn it with the keyframe.
+			go s.sendStreamStats()
+		}
 	}
 	if m := s.mark.Load(); rec != nil && m != nil {
 		// While recording, the icon is part of the picture: everyone sees
 		// it live and the recording carries it, with no extra encoding.
 		i420 = m.stamp.Draw(i420, w, h, time.Since(m.start))
 	}
+	start := time.Now()
 	data, _, err := s.vp8.Encode(i420, s.keyframe.Swap(false))
 	if err != nil {
 		s.log.Error("encode failed", "err", err)
 		return
 	}
+	s.measure(time.Since(start), dur, w, h)
 	if len(data) == 0 {
 		return
 	}
@@ -715,7 +819,7 @@ func (s *StreamService) Stats() models.StreamStatus {
 	if viewers == 0 {
 		return models.StreamStatus{}
 	}
-	return models.StreamStatus{FPS: s.sentFPS, Width: s.vp8W, Height: s.vp8H, VideoKbps: s.videoKbps, VideoViewers: viewers}
+	return models.StreamStatus{FPS: s.sentFPS, Width: s.vp8W, Height: s.vp8H, VideoKbps: s.videoKbps, VideoViewers: viewers, Scale: s.VideoScale()}
 }
 
 // SentFPS returns the frames per second sent over the last second.
@@ -769,7 +873,7 @@ func abs(n int) int {
 // can compare sent and received frames.
 func (s *StreamService) sendStreamStats() {
 	s.mu.Lock()
-	msg, _ := json.Marshal(map[string]any{"type": "stream_stats", "fps": s.sentFPS, "width": s.vp8W, "height": s.vp8H, "aspect": s.aspect})
+	msg, _ := json.Marshal(s.streamStatsLocked())
 	var targets []*webrtc.DataChannel
 	for _, v := range s.viewers {
 		if v.kind == KindViewer && v.control != nil && v.control.ReadyState() == webrtc.DataChannelStateOpen {
@@ -780,6 +884,35 @@ func (s *StreamService) sendStreamStats() {
 	for _, dc := range targets {
 		_ = dc.SendText(string(msg))
 	}
+}
+
+// StreamVideo is the picture a room sends (stream_stats "video"): Scale is
+// 2 when every game pixel is sent as a 2x2 block, and Width x Height is
+// the game's own size (the frames are Scale times larger).
+type StreamVideo struct {
+	Scale    int    `json:"scale"`
+	Width    int    `json:"width"`
+	Height   int    `json:"height"`
+	Quality  string `json:"quality,omitempty"`  // high, normal or saver (game rooms)
+	Fallback string `json:"fallback,omitempty"` // "cpu": lower than the host's choice
+}
+
+// streamStats is the stream_stats message.
+type streamStats struct {
+	Type   string       `json:"type"`
+	FPS    float64      `json:"fps"`
+	Width  int          `json:"width"`  // the frames sent
+	Height int          `json:"height"` // (Video has the game's size)
+	Aspect float64      `json:"aspect"`
+	Video  *StreamVideo `json:"video,omitempty"` // nil before the first frame
+}
+
+func (s *StreamService) streamStatsLocked() streamStats {
+	st := streamStats{Type: "stream_stats", FPS: s.sentFPS, Width: s.vp8W, Height: s.vp8H, Aspect: s.aspect}
+	if scale := s.VideoScale(); s.vp8W > 0 && s.vp8H > 0 && s.vp8W%scale == 0 && s.vp8H%scale == 0 {
+		st.Video = &StreamVideo{Scale: scale, Width: s.vp8W / scale, Height: s.vp8H / scale, Quality: s.videoQuality, Fallback: s.videoFallback}
+	}
+	return st
 }
 
 func (s *StreamService) sendSignal(to string, sig RTCSignal) {
@@ -839,6 +972,10 @@ func (s *StreamService) AddPeer(peerID string, kind PeerKind) error {
 	control.OnOpen(func() {
 		if kind == KindViewer {
 			_ = control.SendText(`{"type":"welcome","source":"test-pattern"}`)
+			s.mu.Lock()
+			stats, _ := json.Marshal(s.streamStatsLocked())
+			s.mu.Unlock()
+			_ = control.SendText(string(stats))
 			if h := s.hooks(); h.Opened != nil {
 				h.Opened(peerID)
 			}

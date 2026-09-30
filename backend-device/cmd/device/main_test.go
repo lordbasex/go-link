@@ -45,3 +45,17 @@ func TestIsLoopback(t *testing.T) {
 		}
 	}
 }
+
+func TestRoomPictureAction(t *testing.T) {
+	if p, ok := roomPicture("", ""); !ok || p != nil {
+		t.Fatal("both empty clear the room's default")
+	}
+	if p, ok := roomPicture("crt", "ambient"); !ok || p == nil || p.Style != "crt" || p.Bands != "ambient" {
+		t.Fatalf("crt/ambient: %+v %v", p, ok)
+	}
+	for _, c := range [][2]string{{"crt", ""}, {"", "black"}, {"blur", "black"}, {"sharp", "neon"}} {
+		if _, ok := roomPicture(c[0], c[1]); ok {
+			t.Errorf("%v accepted", c)
+		}
+	}
+}

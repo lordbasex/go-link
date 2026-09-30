@@ -39,6 +39,8 @@ Usage:
   device thumbnails dir [PATH|default]   show or change the thumbnails folder
   device thumbnails kind [boxart|title|snap]
                                          show or change which thumbnail is shown
+  device video quality [high|normal|saver]
+                                         show or change the video quality of game rooms
   device panel token [--new]             show (or replace) the web panel token
   device rec list [--json]               list the recordings of game rooms (~/go-link/rec)
   device rec rm ID...|--all              delete recordings
@@ -77,6 +79,7 @@ func runCommand(args []string) (handled bool, err error) {
 		"thumbnails dir":   cmdThumbnailsDir,
 		"thumbnails kind":  cmdThumbnailsKind,
 		"panel token":      cmdPanelToken,
+		"video quality":    cmdVideoQuality,
 		"rec list":         cmdRecList,
 		"rec rm":           cmdRecRm,
 	}
@@ -487,6 +490,35 @@ func thumbnailsKind(w io.Writer, settings *services.SettingsService, args []stri
 		return err
 	}
 	fmt.Fprintf(w, "Thumbnails shown: %s. A running device picks it up on its next start.\n", t.Kind)
+	return nil
+}
+
+func cmdVideoQuality(args []string) error {
+	fs, config := newFlags("video quality")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	env, err := openEnv(*config)
+	if err != nil {
+		return err
+	}
+	return videoQuality(os.Stdout, env.settings, fs.Args())
+}
+
+// videoQuality shows or sets the video quality of game rooms.
+func videoQuality(w io.Writer, settings *services.SettingsService, args []string) error {
+	if len(args) == 0 {
+		fmt.Fprintln(w, settings.VideoQuality())
+		return nil
+	}
+	q := strings.ToLower(args[0])
+	if err := settings.SetVideoQuality(q); err != nil {
+		if errors.Is(err, services.ErrBadSetting) {
+			return fmt.Errorf("unknown quality %q (use high, normal or saver)", args[0])
+		}
+		return err
+	}
+	fmt.Fprintf(w, "Video quality set to %s. A running device picks it up on its next start.\n", q)
 	return nil
 }
 

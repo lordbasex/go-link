@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lordbasex/go-link/backend-device/pkg/cores"
+	"github.com/lordbasex/go-link/backend-device/pkg/emuproc"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 )
@@ -22,9 +23,17 @@ type GameCoreConfig struct {
 	RomPath   string // e.g. ~/go-link/roms/robby.zip
 	SystemDir string // BIOS, samples, hiscores, NVRAM
 	Logger    *slog.Logger
-	// Video receives every frame as packed I420; a repeated frame comes
-	// with the previous picture. The slice is reused by the next frame.
+	// Video receives every frame as packed I420 of w x h (the enlarged
+	// size with VideoDouble, see VideoScale); a repeated frame comes with
+	// the previous picture. The slice is reused by the next frame.
 	Video func(i420 []byte, w, h int, dur time.Duration)
+	// VideoMode is how frames are converted to I420 (the zero value is the
+	// game's size with top-left chroma); SetVideoMode changes it later.
+	VideoMode emuproc.VideoMode
+	// RawVideo, when set, also receives the core's own frame before the
+	// I420 conversion (nil Data repeats the previous one). Only the video
+	// quality lab uses it; Data is only valid during the call.
+	RawVideo func(f libretro.Frame)
 	// Audio receives interleaved stereo samples at 48 kHz. The slice is
 	// reused by the next call.
 	Audio func(pcm []int16)
@@ -42,6 +51,8 @@ type GameCore struct {
 	pads     [4]input.Pad
 	frame    []byte
 	fw, fh   int
+	mode     emuproc.VideoMode // for the next frames
+	scale    int               // of frame: 1, or 2 when enlarged
 	frameDur time.Duration
 	resample *libretro.Resampler
 	capture  []string // core log lines, while SavesComplete listens
@@ -90,7 +101,7 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 	if err := os.MkdirAll(cfg.SystemDir, 0o755); err != nil {
 		return nil, err
 	}
-	g := &GameCore{frameDur: time.Second / 60}
+	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1}
 	log := cfg.Logger
 	// Never run a core someone changed after it was downloaded.
 	if err := cores.Verify(cfg.CorePath); err != nil {
@@ -102,12 +113,11 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 		Options:   mame2003PlusOptions,
 		Handlers: libretro.Handlers{
 			Video: func(f libretro.Frame) {
+				if cfg.RawVideo != nil {
+					cfg.RawVideo(f)
+				}
 				if f.Data != nil {
-					if size := libretro.FrameSizeI420(f.Width, f.Height); len(g.frame) != size {
-						g.frame = make([]byte, size)
-					}
-					libretro.ToI420(g.frame, f)
-					g.fw, g.fh = f.Width, f.Height
+					g.convert(f)
 				}
 				if g.frame != nil && cfg.Video != nil { // a nil frame repeats the previous one
 					cfg.Video(g.frame, g.fw, g.fh, g.frameDur)
@@ -151,6 +161,30 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 	g.resample = libretro.NewResampler(av.SampleRate, 48000)
 	return g, nil
 }
+
+// convert turns a core frame into the I420 picture of the current mode.
+func (g *GameCore) convert(f libretro.Frame) {
+	scale := g.mode.Scale()
+	w, h := f.Width*scale, f.Height*scale
+	if size := libretro.FrameSizeI420(w, h); len(g.frame) != size {
+		g.frame = make([]byte, size)
+	}
+	switch g.mode {
+	case emuproc.VideoDouble:
+		libretro.ToI420Double(g.frame, f)
+	case emuproc.VideoBox:
+		libretro.ToI420Box(g.frame, f)
+	default:
+		libretro.ToI420(g.frame, f)
+	}
+	g.fw, g.fh, g.scale = w, h, scale
+}
+
+// SetVideoMode changes how the next frames are converted.
+func (g *GameCore) SetVideoMode(m emuproc.VideoMode) { g.mode = m }
+
+// VideoScale is how many times the last picture is enlarged (1 or 2).
+func (g *GameCore) VideoScale() int { return g.scale }
 
 // Info returns the core's name and version.
 func (g *GameCore) Info() libretro.SystemInfo { return g.info }

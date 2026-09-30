@@ -69,6 +69,8 @@ data class RoomStateView(
      * answer a pause request. Older devices do not send it: true.
      */
     val hostOnline: Boolean = true,
+    /** The host's default picture for this room (room_state.picture); null = the app's default. */
+    val picture: Picture? = null,
 ) {
     /** Where you stand: seated, waiting in the queue, or watching. */
     val me: Me
@@ -127,8 +129,13 @@ sealed interface ChatLine {
 /** Someone else typing a chat message. */
 data class TypingView(val name: String, val port: Int?)
 
-/** Frames per second the device sends and the picture's display aspect. */
-data class StreamStatsView(val fps: Double?, val aspect: Double?)
+/** Frames per second the device sends, the picture's display aspect and how it is sent (2x or not). */
+data class StreamStatsView(
+    val fps: Double?,
+    val aspect: Double?,
+    /** stream_stats "video" (null: older devices, or before the first frame, so scale 1). */
+    val video: StreamVideo? = null,
+)
 
 object RoomMessages {
     private val BASE64 = Regex("^[A-Za-z0-9+/]+={0,2}$")
@@ -203,6 +210,7 @@ object RoomMessages {
             controls = parseControls(m["controls"]),
             recording = m["recording"].isTrue(),
             hostOnline = !m["host_online"].isFalse(),
+            picture = m["picture"]?.let { p -> val o = p.obj(); PictureSettings.parseRoom(o["style"].strOrNull(), o["bands"].strOrNull()) },
         )
     }
 
@@ -241,7 +249,7 @@ object RoomMessages {
         if (m["type"].str(40) != "stream_stats") return null
         val fps = if (m["fps"].isNumber()) m["fps"].num() else null
         val aspect = if (m["aspect"].isNumber()) m["aspect"].num().takeIf { it > 0.2 && it < 5 } else null
-        return StreamStatsView(fps, aspect)
+        return StreamStatsView(fps, aspect, StreamVideo.parse(m))
     }
 
     /**

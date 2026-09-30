@@ -380,7 +380,8 @@ class RoomClient(
         RoomMessages.parseChat(m)?.let { line -> _ui.update { it.copy(chat = (it.chat + line).takeLast(MAX_CHAT_LINES)) }; return }
         RoomMessages.parseTyping(m)?.let { who -> _ui.update { it.copy(typing = who) }; return }
         RoomMessages.parseStreamStats(m)?.let { st ->
-            _ui.update { it.copy(stats = StreamStatsView(st.fps ?: it.stats.fps, st.aspect ?: it.stats.aspect)) }
+            // The last valid "video" stays (like the website) until a new one arrives.
+            _ui.update { it.copy(stats = StreamStatsView(st.fps ?: it.stats.fps, st.aspect ?: it.stats.aspect, st.video ?: it.stats.video)) }
         }
     }
 

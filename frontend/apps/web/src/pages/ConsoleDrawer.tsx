@@ -13,6 +13,7 @@ import {
   LogOutIcon,
   PowerIcon,
   SlidersIcon,
+  PictureIcon,
   SoundOffIcon,
   SoundOnIcon,
   SwapIcon,
@@ -61,6 +62,8 @@ export interface ConsoleDrawerProps {
   onFullscreen: () => void;
   /** Opens the volume and voice settings. */
   onVoice: () => void;
+  /** Opens the picture settings (style and sides). */
+  onPicture?: () => void;
   onHelp: () => void;
   /** The host only: invite someone (the invitation dialog). */
   onInvite?: () => void;
@@ -359,6 +362,7 @@ function YouTab({
   fullscreen,
   onFullscreen,
   onVoice,
+  onPicture,
   onHelp,
   onInvite,
   onCloseGame,
@@ -374,6 +378,12 @@ function YouTab({
           <SlidersIcon />
           <span>{t.room.voiceSettings}</span>
         </button>
+        {onPicture && (
+          <button type="button" className="drawer-action" onClick={onPicture}>
+            <PictureIcon />
+            <span>{t.picture.button}</span>
+          </button>
+        )}
         <button
           type="button"
           className="drawer-action"

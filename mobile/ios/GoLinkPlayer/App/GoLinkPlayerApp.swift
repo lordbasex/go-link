@@ -31,6 +31,10 @@ struct RootView: View {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-padLab") {
                 PadLabView()
+            } else if ProcessInfo.processInfo.arguments.contains("-pictureLab") {
+                PictureLabView()
+            } else if ProcessInfo.processInfo.arguments.contains("-picture2xCheck") {
+                Picture2xCheckView()
             } else if ProcessInfo.processInfo.arguments.contains("-aliasLab") {
                 AliasLabView()
             } else {
@@ -52,7 +56,7 @@ struct RootView: View {
     private static var introDisabled: Bool {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
-        return args.contains("-noIntro") || args.contains("-padLab") || args.contains("-aliasLab")
+        return args.contains("-noIntro") || args.contains("-padLab") || args.contains("-aliasLab") || args.contains("-pictureLab") || args.contains("-picture2xCheck")
         #else
         return false
         #endif

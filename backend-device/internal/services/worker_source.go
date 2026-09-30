@@ -54,6 +54,8 @@ type WorkerSource struct {
 	log     *slog.Logger
 	paused  atomic.Bool
 	running atomic.Bool
+	// video is the emuproc.VideoMode the worker converts frames with.
+	video atomic.Uint32
 	// savesIncomplete: the emulator does not save this game whole.
 	savesIncomplete atomic.Bool
 
@@ -68,6 +70,7 @@ type WorkerSource struct {
 	sinkMu   sync.Mutex // serializes sink calls and guards the last frame
 	last     []byte
 	lw, lh   int
+	lscale   int // the scale of last, as told to the sink
 	frameDur atomic.Int64
 }
 
@@ -103,6 +106,21 @@ func (s *WorkerSource) SetPaused(paused bool) {
 		s.log.Debug("pause", "err", err)
 	}
 }
+
+// SetVideoMode picks how the worker converts frames: before Run it is
+// the worker's --video flag, after it a VideoMode message (the next frame
+// uses it).
+func (s *WorkerSource) SetVideoMode(m emuproc.VideoMode) {
+	if emuproc.VideoMode(s.video.Swap(uint32(m))) == m {
+		return
+	}
+	if err := s.send(func(w *emuproc.Writer) error { return w.WriteVideoMode(m) }); err != nil && !errors.Is(err, errWorkerStopped) {
+		s.log.Debug("video mode", "err", err)
+	}
+}
+
+// VideoMode is the mode the worker converts frames with.
+func (s *WorkerSource) VideoMode() emuproc.VideoMode { return emuproc.VideoMode(s.video.Load()) }
 
 // SaveState asks the worker to write a save state to path and waits for
 // the answer.
@@ -170,6 +188,9 @@ func (s *WorkerSource) send(write func(*emuproc.Writer) error) error {
 
 func (s *WorkerSource) args() []string {
 	args := []string{"emulate", "--core", s.cfg.CorePath, "--rom", s.cfg.RomPath, "--system", s.cfg.SystemDir}
+	if m := s.VideoMode(); m != emuproc.VideoNative {
+		args = append(args, "--video", m.String())
+	}
 	if s.cfg.StatePath != "" {
 		args = append(args, "--state", s.cfg.StatePath)
 	}
@@ -234,6 +255,9 @@ func (s *WorkerSource) Run(ctx context.Context, sink MediaSink) error {
 		close(done)
 	}()
 
+	s.sinkMu.Lock()
+	s.lscale = 0 // the first frame tells the sink its scale
+	s.sinkMu.Unlock()
 	pads := portPads(sink)
 	if err := s.send(func(w *emuproc.Writer) error {
 		if err := w.WritePause(s.paused.Load()); err != nil {
@@ -317,6 +341,12 @@ func (s *WorkerSource) readLoop(stdout io.Reader, sink MediaSink, ready chan<- s
 			if len(v.I420) > 0 {
 				s.last = append(s.last[:0], v.I420...)
 				s.lw, s.lh = v.Width, v.Height
+				if v.Scale != s.lscale {
+					s.lscale = v.Scale
+					if vs, ok := sink.(videoScaler); ok {
+						vs.SetVideoScale(v.Scale)
+					}
+				}
 			}
 			if s.last != nil {
 				sink.VideoFrame(s.last, s.lw, s.lh, v.Duration)
@@ -432,4 +462,21 @@ func (t *lineTail) String() string {
 	return strings.Join(lines, "\n")
 }
 
-var _ MediaSource = (*WorkerSource)(nil)
+// videoScaler is a sink that wants to know when frames are the game's
+// picture enlarged (StreamService).
+type videoScaler interface {
+	SetVideoScale(scale int)
+}
+
+// videoModeSetter is a source that can send the picture enlarged 2x or
+// with averaged color (WorkerSource).
+type videoModeSetter interface {
+	SetVideoMode(m emuproc.VideoMode)
+	VideoMode() emuproc.VideoMode
+}
+
+var (
+	_ MediaSource     = (*WorkerSource)(nil)
+	_ videoModeSetter = (*WorkerSource)(nil)
+	_ videoScaler     = (*StreamService)(nil)
+)

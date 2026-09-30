@@ -333,3 +333,10 @@ export const UserIcon = ({ size = 20 }: P) => (
     <path d="M4 21a8 8 0 0 1 16 0" />
   </svg>
 );
+export const PictureIcon = ({ size = 18 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <rect x="3" y="4" width="18" height="13" rx="3" />
+    <path d="M8 21h8M12 17v4" />
+    <path d="M7 8.5h1M7 11h1" />
+  </svg>
+);

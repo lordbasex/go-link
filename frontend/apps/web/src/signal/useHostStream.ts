@@ -26,6 +26,8 @@ import {
   type PinEvent,
   type StreamState,
   type StreamStats,
+  type StreamVideo,
+  parseStreamVideo,
 } from "@go-link/shared";
 import { useSignal } from "./SignalProvider";
 
@@ -49,6 +51,8 @@ export interface HostStreamView {
   sentFps: number | null;
   /** Display aspect ratio of the picture (e.g. 4/3), from the device. */
   aspect: number | null;
+  /** The picture the device sends: its scale (2: the game enlarged 2x), the game's size and quality. */
+  video: StreamVideo | null;
   /** Physical controllers in use, with their local player number. */
   controllers: ControllerInfo[];
   /** Keyboard keys (KeyboardEvent.code) held right now. */
@@ -141,6 +145,7 @@ export function useHostStream(
   });
   const [sentFps, setSentFps] = useState<number | null>(null);
   const [aspect, setAspect] = useState<number | null>(null);
+  const [video, setVideo] = useState<StreamVideo | null>(null);
   const [controllers, setControllers] = useState<ControllerInfo[]>([]);
   const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(new Set());
   const [room, setRoom] = useState<RoomStateView | null>(null);
@@ -177,8 +182,12 @@ export function useHostStream(
         setVoiceStreams((cur) => ({ ...cur, [port]: voice })),
       onControl: (msg) => {
         const m = msg as { type?: unknown; fps?: unknown; aspect?: unknown };
-        if (m.type === "stream_stats" && typeof m.fps === "number")
+        if (m.type === "stream_stats" && typeof m.fps === "number" && m.fps > 0)
           setSentFps(m.fps);
+        if (m.type === "stream_stats") {
+          const v = parseStreamVideo(msg);
+          if (v) setVideo((cur) => (cur && sameVideo(cur, v) ? cur : v));
+        }
         if (
           m.type === "stream_stats" &&
           typeof m.aspect === "number" &&
@@ -212,6 +221,7 @@ export function useHostStream(
       setMedia(null);
       setState("idle");
       setSentFps(null);
+      setVideo(null);
       setRoom(null);
       setChat([]);
       setTyping([]);
@@ -380,6 +390,7 @@ export function useHostStream(
     stats,
     sentFps,
     aspect,
+    video,
     controllers,
     heldKeys,
     room,
@@ -413,4 +424,8 @@ export function useHostStream(
       flushRef.current?.(); // send now, not on the next frame
     },
   };
+}
+
+function sameVideo(a: StreamVideo, b: StreamVideo): boolean {
+  return a.scale === b.scale && a.width === b.width && a.height === b.height && a.quality === b.quality && a.fallback === b.fallback;
 }

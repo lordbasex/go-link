@@ -41,6 +41,12 @@ var settingsCategories = []struct{ title, icon string }{
 // Labels of the thumbnail choices, in the order of thumbnails.Kinds.
 var kindLabels = []string{"Boxart", "Title", "Snap"}
 
+// Labels of the video qualities, in the order of models.VideoQualities.
+var qualityLabels = []string{"High", "Normal", "Saver"}
+
+// qualityHelp explains the video qualities.
+const qualityHelp = "High and Normal send the picture at twice the game's size, so every pixel keeps its own color (High uses more bandwidth). Saver sends the game's own size, for slow computers or slow uplinks. A room whose computer cannot keep up with twice the size switches to Saver by itself. Changes apply to running rooms at once."
+
 // thumbHelp explains the thumbnails folder. It never names a website.
 const thumbHelp = "One folder per type: Named_Boxarts, Named_Titles, Named_Snaps. Images are matched to games by set name or title. Thumbnail packs for MAME can be found on the internet."
 
@@ -60,6 +66,7 @@ type settingsPage struct {
 	thumbErr *widget.Label
 	choose   *widget.Button
 	reset    *widget.Button
+	quality  *segmented
 	maxRooms *widget.Label
 	saves    *widget.Label
 	signal   *widget.Label
@@ -181,13 +188,37 @@ func (p *settingsPage) generalCards() fyne.CanvasObject {
 }
 
 func (p *settingsPage) roomsCards(mono func() *widget.Label) fyne.CanvasObject {
+	p.quality = newSegmented(translated(qualityLabels), emerald, func(label string) {
+		q := models.VideoQualities[labelIndex(translated(qualityLabels), label)]
+		s := p.u.opts.Settings
+		if s == nil {
+			return
+		}
+		p.background(func() {
+			err := s.SetVideoQuality(q)
+			fyne.Do(func() {
+				if err != nil {
+					p.u.showError(err)
+				}
+				p.refresh()
+			})
+		})
+	})
+	qhelp := wrapped(L(qualityHelp))
+	qhelp.Importance = widget.LowImportance
+	qhelp.SizeName = theme.SizeNameCaptionText
+	video := glass(container.NewVBox(
+		settingTitle(L("Video quality"), L("How game rooms send the picture to the players.")),
+		container.NewHBox(p.quality.content),
+		qhelp,
+	))
 	p.maxRooms = widget.NewLabel(Lf("%d by default", models.DefaultMaxRooms))
 	p.saves = mono()
 	p.saves.SetText(savesDir())
 	note := wrapped(L("To change the limit, set max_rooms in device.json and restart the device."))
 	note.Importance = widget.LowImportance
 	note.SizeName = theme.SizeNameCaptionText
-	return vstack(glass(container.NewVBox(
+	return vstack(video, glass(container.NewVBox(
 		widget.NewForm(
 			widget.NewFormItem(L("Rooms at once"), p.maxRooms),
 			widget.NewFormItem(L("Saved games"), p.saves),
@@ -242,11 +273,13 @@ func (p *settingsPage) refresh() {
 	s := p.u.opts.Settings
 	if s == nil {
 		p.kind.SetDisabled(true)
+		p.quality.SetDisabled(true)
 		p.choose.Disable()
 		p.reset.Disable()
 		p.dir.SetText(p.u.opts.Library.ThumbnailsDir())
 		return
 	}
+	p.quality.SetSelected(translated(qualityLabels)[labelIndex(models.VideoQualities, s.VideoQuality())])
 	t := s.Thumbnails()
 	p.kind.SetSelected(translated(kindLabels)[labelIndex(kindValues(), t.Kind)])
 	p.dir.SetText(s.ThumbnailsDir())

@@ -31,6 +31,21 @@ func TestToI420Colors(t *testing.T) {
 	}
 }
 
+func TestToRGBMatchesToI420Input(t *testing.T) {
+	// RGB565: pure red, then pure green, with the same expansion ToI420 uses.
+	f := Frame{Width: 2, Height: 1, Pitch: 4, Format: FormatRGB565, Data: []byte{0x00, 0xF8, 0xE0, 0x07}}
+	dst := make([]byte, 6)
+	ToRGB(dst, f)
+	if want := []byte{248, 0, 0, 0, 252, 0}; string(dst) != string(want) {
+		t.Fatalf("rgb565 = %v, want %v", dst, want)
+	}
+	x := Frame{Width: 1, Height: 1, Pitch: 4, Format: FormatXRGB8888, Data: []byte{3, 2, 1, 0}}
+	ToRGB(dst[:3], x)
+	if dst[0] != 1 || dst[1] != 2 || dst[2] != 3 {
+		t.Fatalf("xrgb8888 = %v", dst[:3])
+	}
+}
+
 func TestResamplerRateAndContinuity(t *testing.T) {
 	r := NewResampler(22050, 48000)
 	total := 0
@@ -71,4 +86,125 @@ func TestDefaultOption(t *testing.T) {
 	if _, ok := DefaultOption("no values"); ok {
 		t.Error("a declaration without values has no default")
 	}
+}
+
+// randomFrame fills a frame of the given format with pseudo-random pixels
+// and some padding at the end of each row, like a core's pitch.
+func randomFrame(format PixelFormat, w, h int, seed uint32) Frame {
+	bpp := 2
+	if format == FormatXRGB8888 {
+		bpp = 4
+	}
+	pitch := w*bpp + 6
+	data := make([]byte, pitch*h)
+	for i := range data {
+		seed = seed*1664525 + 1013904223
+		data[i] = byte(seed >> 24)
+	}
+	return Frame{Data: data, Width: w, Height: h, Pitch: pitch, Format: format}
+}
+
+// upscale2 repeats every pixel of f over a 2x2 block, in f's own format:
+// the separate upscale the fused converter replaces.
+func upscale2(f Frame) Frame {
+	bpp := 2
+	if f.Format == FormatXRGB8888 {
+		bpp = 4
+	}
+	pitch := 2 * f.Width * bpp
+	out := Frame{Data: make([]byte, pitch*2*f.Height), Width: 2 * f.Width, Height: 2 * f.Height, Pitch: pitch, Format: f.Format}
+	for y := 0; y < out.Height; y++ {
+		for x := 0; x < out.Width; x++ {
+			src := f.Data[(y/2)*f.Pitch+(x/2)*bpp:]
+			copy(out.Data[y*pitch+x*bpp:], src[:bpp])
+		}
+	}
+	return out
+}
+
+var formats = []PixelFormat{FormatXRGB8888, FormatRGB565, Format0RGB1555}
+
+func TestToI420DoubleEqualsUpscaleThenConvert(t *testing.T) {
+	sizes := [][2]int{{1, 1}, {2, 2}, {3, 5}, {7, 4}, {17, 9}, {384, 224}, {1030, 3}}
+	for _, format := range formats {
+		for i, sz := range sizes {
+			f := randomFrame(format, sz[0], sz[1], uint32(i+1)*7919)
+			want := make([]byte, FrameSizeI420(2*sz[0], 2*sz[1]))
+			ToI420(want, upscale2(f))
+			got := make([]byte, len(want))
+			ToI420Double(got, f)
+			if string(got) != string(want) {
+				t.Fatalf("format %d %dx%d: the fused 2x conversion differs from upscale then ToI420", format, sz[0], sz[1])
+			}
+		}
+	}
+}
+
+// boxReference is the plain definition of ToI420Box: ToI420's luma, and
+// each chroma sample the rounded mean of its block's per-pixel chroma.
+func boxReference(f Frame) []byte {
+	w, h := f.Width, f.Height
+	dst := make([]byte, FrameSizeI420(w, h))
+	ToI420(dst, f)
+	cw, ch := (w+1)/2, (h+1)/2
+	for cy := 0; cy < ch; cy++ {
+		for cx := 0; cx < cw; cx++ {
+			var su, sv, n int
+			for y := 2 * cy; y < min(2*cy+2, h); y++ {
+				for x := 2 * cx; x < min(2*cx+2, w); x++ {
+					r, g, b := rgbOf(f, x, y)
+					su += (-38*r-74*g+112*b+128)>>8 + 128
+					sv += (112*r-94*g-18*b+128)>>8 + 128
+					n++
+				}
+			}
+			dst[w*h+cy*cw+cx] = byte((su + n/2) / n)
+			dst[w*h+cw*ch+cy*cw+cx] = byte((sv + n/2) / n)
+		}
+	}
+	return dst
+}
+
+func TestToI420BoxAveragesEachBlock(t *testing.T) {
+	sizes := [][2]int{{1, 1}, {2, 2}, {3, 5}, {7, 4}, {17, 9}, {288, 224}, {1031, 3}}
+	for _, format := range formats {
+		for i, sz := range sizes {
+			f := randomFrame(format, sz[0], sz[1], uint32(i+3)*104729)
+			want := boxReference(f)
+			got := make([]byte, len(want))
+			ToI420Box(got, f)
+			if string(got) != string(want) {
+				t.Fatalf("format %d %dx%d: box chroma differs from the reference", format, sz[0], sz[1])
+			}
+		}
+	}
+	// A red pixel next to three white ones: the block's color is their mean.
+	f := Frame{Width: 2, Height: 2, Pitch: 8, Format: FormatXRGB8888, Data: []byte{
+		0, 0, 255, 0, 255, 255, 255, 0,
+		255, 255, 255, 0, 255, 255, 255, 0,
+	}}
+	dst := make([]byte, FrameSizeI420(2, 2))
+	ToI420Box(dst, f)
+	if v := dst[5]; v < 150 || v > 160 { // (240 + 3*128) / 4 = 156
+		t.Fatalf("mean Cr = %d", v)
+	}
+}
+
+func benchFrame(b *testing.B, convert func([]byte, Frame), scale int) {
+	f := randomFrame(FormatRGB565, 384, 224, 42)
+	dst := make([]byte, FrameSizeI420(384*scale, 224*scale))
+	b.SetBytes(int64(len(dst)))
+	b.ResetTimer()
+	for range b.N {
+		convert(dst, f)
+	}
+}
+
+func BenchmarkToI420(b *testing.B)       { benchFrame(b, ToI420, 1) }
+func BenchmarkToI420Box(b *testing.B)    { benchFrame(b, ToI420Box, 1) }
+func BenchmarkToI420Double(b *testing.B) { benchFrame(b, ToI420Double, 2) }
+
+// BenchmarkUpscaleThenToI420 is the separate path the fused one replaces.
+func BenchmarkUpscaleThenToI420(b *testing.B) {
+	benchFrame(b, func(dst []byte, f Frame) { ToI420(dst, upscale2(f)) }, 2)
 }

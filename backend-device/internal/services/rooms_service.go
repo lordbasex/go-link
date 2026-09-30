@@ -34,6 +34,8 @@ var (
 	ErrTooManySaves = fmt.Errorf("a room keeps up to %d saved games: delete one first", MaxSaveSlots)
 	// ErrNoSaves: the emulator does not save this game whole (SavedRoom.NoSaves).
 	ErrNoSaves = errors.New("this game cannot be saved in this emulator: it always starts from the beginning")
+	// ErrBadPicture: a picture style or sides the website does not know.
+	ErrBadPicture = errors.New("unknown picture style or sides")
 )
 
 // MaxSaveSlots caps the saved games of one room, so saves cannot fill the
@@ -50,6 +52,9 @@ type GameRequest struct {
 	// Pin for a private room (6 digits); empty picks a random one.
 	// Chat false turns the room's chat off; absent (older clients) is on.
 	Chat *bool `json:"chat,omitempty"`
+	// Picture is the room's default picture style for its guests; absent
+	// or with unknown values, the website's own default.
+	Picture *models.RoomPicture `json:"picture,omitempty"`
 }
 
 // TooManyRoomsError says the device already runs its limit of games.
@@ -146,8 +151,11 @@ type RoomsConfig struct {
 	// OnPauseAsk tells the host's linked browsers that a player asks for a
 	// pause (pause_asked) or that the request is gone (pause_ask_gone).
 	OnPauseAsk func(RoomPauseAskEvent)
-	Logger     *slog.Logger
-	Now        func() time.Time
+	// VideoQuality is the host's video quality for game rooms (high,
+	// normal or saver; empty is the default). SetVideoQuality changes it.
+	VideoQuality string
+	Logger       *slog.Logger
+	Now          func() time.Time
 }
 
 // RoomsService turns the device into a game server: each room is one game,
@@ -175,6 +183,8 @@ type RoomsService struct {
 	// hostLinked: a linked browser of the host is connected, so the host
 	// can answer requests for a pause.
 	hostLinked bool
+	// quality is the host's video quality for game rooms.
+	quality string
 }
 
 // RoomPauseAskEvent is a PauseAskEvent of one room, for linked browsers:
@@ -211,6 +221,8 @@ type gameRoom struct {
 	person         map[string]*HistoryPerson // by peer
 	// pauseAsks are the pending requests for a pause, for device_status.
 	pauseAsks []models.PauseAsk
+	// video is what the running game sends (device_status).
+	video models.RoomVideo
 }
 
 // RecordingEvent is sent to the host's linked browsers when a recording
@@ -238,12 +250,13 @@ func NewRoomsService(cfg RoomsConfig) *RoomsService {
 	if cfg.MaxRooms <= 0 {
 		cfg.MaxRooms = models.DefaultMaxRooms
 	}
-	r := &RoomsService{cfg: cfg, log: cfg.Logger}
+	r := &RoomsService{cfg: cfg, log: cfg.Logger, quality: models.CleanVideoQuality(cfg.VideoQuality)}
 	r.games, r.endGames = context.WithCancel(context.Background())
 	for _, s := range cfg.Rooms {
 		if s.ID == "" || s.Rom == "" {
 			continue
 		}
+		s.Picture = models.CleanPicture(s.Picture) // a hand-edited device.json
 		gr := &gameRoom{saved: s, game: r.title(s.Rom)}
 		r.rooms = append(r.rooms, gr)
 		if s.Running() {
@@ -416,6 +429,7 @@ func (r *RoomsService) Create(req GameRequest, reply func(GameReply)) error {
 		saved: models.SavedRoom{
 			ID: newRoomID(), Name: name, Rom: req.Rom, Public: false, Voice: req.Voice, Art: artKind(req.Art),
 			ChatOff: req.Chat != nil && !*req.Chat,
+			Picture: models.CleanPicture(req.Picture),
 			State:   models.RoomLive, CreatedAt: now, Since: now,
 		},
 		game:  game,
@@ -604,6 +618,25 @@ func (r *RoomsService) Action(ctx context.Context, id, action, name string) (int
 	return 0, nil
 }
 
+// SetPicture sets a room's default picture style for its guests (nil
+// clears it: the website's own default). Unknown values are refused and
+// change nothing.
+func (r *RoomsService) SetPicture(id string, p *models.RoomPicture) error {
+	gr := r.find(id)
+	if gr == nil {
+		return ErrUnknownRoom
+	}
+	if p != nil && !p.Valid() {
+		return ErrBadPicture
+	}
+	p = models.CleanPicture(p)
+	r.update(gr, func(s *models.SavedRoom) { s.Picture = p })
+	if m := r.managerOf(gr); m != nil {
+		m.SetPicture(p)
+	}
+	return nil
+}
+
 // Current returns the ROM of the newest running room, or "" (the window
 // shows it as the game being played).
 func (r *RoomsService) Current() string {
@@ -741,6 +774,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 		once.Do(func() {
 			manager.SetVoice(saved.Voice)
 			manager.SetChat(!saved.ChatOff)
+			manager.SetPicture(saved.Picture)
 			manager.SetPausable(true)
 			manager.SetControls(r.controlsOf(saved.Rom))
 			r.mu.Lock()
@@ -777,6 +811,10 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 		signal.SetMetaExtra(r.lobbyExtra(gr))
 	})
 	stream.OnSourceError(func(err error) { go r.failed(gr, err) })
+	r.mu.Lock()
+	quality := r.quality
+	r.mu.Unlock()
+	r.applyVideo(gr, stream, source, PlanFor(quality))
 	stream.SetSource(source)
 	stream.SetSender(sender)
 	signal.SetSender(sender)
@@ -817,6 +855,87 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	}
 	r.publish()
 	return nil
+}
+
+// applyVideo sets up a room's picture for a video plan: the worker's
+// conversion, the bitrate and, for a 2x picture, the encoder check that
+// falls back to saver when 2x does not fit this computer.
+func (r *RoomsService) applyVideo(gr *gameRoom, stream *StreamService, source RoomSource, plan VideoPlan) {
+	scale := 1
+	if vs, ok := source.(videoModeSetter); ok {
+		vs.SetVideoMode(plan.Mode)
+		scale = plan.Mode.Scale()
+	} else {
+		plan = PlanFor(models.VideoSaver) // a source that only sends the game's size
+		plan.Kbps = stream.cfg.BitrateKbps
+	}
+	stream.SetBitrate(plan.Kbps)
+	stream.SetVideoInfo(plan.Quality, "")
+	if scale == 2 {
+		stream.ArmEncodeProbe(func(p95, frame time.Duration) { r.encoderTooSlow(gr, stream, p95, frame) })
+	} else {
+		stream.ArmEncodeProbe(nil)
+	}
+	r.mu.Lock()
+	gr.video = models.RoomVideo{Quality: plan.Quality, Scale: scale}
+	r.mu.Unlock()
+}
+
+// encoderTooSlow moves a room whose 2x picture does not fit this computer
+// to saver (the game's size, averaged color) for the rest of its run.
+func (r *RoomsService) encoderTooSlow(gr *gameRoom, stream *StreamService, p95, frame time.Duration) {
+	r.mu.Lock()
+	source, name := gr.source, gr.saved.Name
+	current := gr.stream == stream && source != nil
+	r.mu.Unlock()
+	if !current {
+		return // the room stopped or started again meanwhile
+	}
+	r.log.Warn("the 2x picture does not fit this computer: the room goes to saver",
+		"room", name, "encode_p95_ms", float64(p95.Microseconds())/1000,
+		"frame_ms", float64(frame.Microseconds())/1000, "limit_share", slowShare)
+	plan := PlanFor(models.VideoSaver)
+	if vs, ok := source.(videoModeSetter); ok {
+		vs.SetVideoMode(plan.Mode)
+	}
+	stream.SetBitrate(plan.Kbps)
+	stream.SetVideoInfo(plan.Quality, models.VideoFallbackCPU)
+	r.mu.Lock()
+	gr.video = models.RoomVideo{Quality: plan.Quality, Fallback: models.VideoFallbackCPU, Scale: 1}
+	r.mu.Unlock()
+	r.publish()
+}
+
+// SetVideoQuality changes the video quality of game rooms. Running rooms
+// switch at once (the encoder starts again with a keyframe), and a room
+// that fell back to saver checks the encoder again.
+func (r *RoomsService) SetVideoQuality(q string) {
+	q = models.CleanVideoQuality(q)
+	r.mu.Lock()
+	r.quality = q
+	type live struct {
+		gr     *gameRoom
+		stream *StreamService
+		source RoomSource
+	}
+	var rooms []live
+	for _, gr := range r.runningLocked() {
+		if gr.stream != nil && gr.source != nil {
+			rooms = append(rooms, live{gr, gr.stream, gr.source})
+		}
+	}
+	r.mu.Unlock()
+	for _, l := range rooms {
+		r.applyVideo(l.gr, l.stream, l.source, PlanFor(q))
+	}
+	r.publish()
+}
+
+// VideoQuality is the host's video quality for game rooms.
+func (r *RoomsService) VideoQuality() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.quality
 }
 
 // failed handles a game that could not run (or crashed): the room is
@@ -1173,6 +1292,10 @@ func (r *RoomsService) List() []models.ManagedRoom {
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
 			PauseAsks: slices.Clone(gr.pauseAsks),
 		})
+		if gr.signal != nil && gr.video.Quality != "" {
+			v := gr.video
+			out[len(out)-1].Video = &v
+		}
 		if gr.rec != nil {
 			since := gr.rec.StartedAt()
 			out[len(out)-1].Recording, out[len(out)-1].RecordingSince = true, &since

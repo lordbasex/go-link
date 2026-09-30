@@ -89,8 +89,10 @@ final class GamepadInput: ObservableObject {
     private func refreshConnected() {
         connected = GCController.controllers().filter { $0.extendedGamepad != nil }.map { c in
             let name = String((c.vendorName ?? c.productCategory).prefix(40))
-            // iOS does not say which radio a controller uses: one attached
-            // to the device (a clip-on or a cable) counts as wired.
+            // iOS does not say which radio a controller uses. A cable often
+            // only charges it (a Switch Pro on USB-C keeps talking over
+            // Bluetooth), so only a controller the system reports as
+            // attached to the device (a clip-on or a wired one) is wired.
             return Connected(id: ObjectIdentifier(c), name: name.isEmpty ? "Gamepad" : name, link: c.isAttachedToDevice ? .wired : .bluetooth)
         }
     }

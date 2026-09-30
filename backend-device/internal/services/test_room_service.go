@@ -57,12 +57,28 @@ type TestRoomService struct {
 	onInvite   func(invite, code string)
 	invite     string
 	inviteCode string
+	picture    *models.RoomPicture // the host's default picture style
 }
 
 // SetPrivate makes guests need an invitation's PIN. Guests already in
 // stay in.
 func (t *TestRoomService) SetPrivate() {
 	t.pin.SetPrivate(true)
+	t.setStatus()
+}
+
+// SetPicture sets the room's default picture style for its guests (nil:
+// the website's own default): the Room Manager sends it in room_state and
+// the device status shows it to the owner.
+func (t *TestRoomService) SetPicture(p *models.RoomPicture) {
+	p = models.CleanPicture(p)
+	t.mu.Lock()
+	t.picture = p
+	m := t.manager
+	t.mu.Unlock()
+	if m != nil {
+		m.SetPicture(p)
+	}
 	t.setStatus()
 }
 
@@ -511,7 +527,7 @@ func (t *TestRoomService) setStatusWith(id string, n int, sum RoomSummary) {
 	}
 	t.mu.Lock()
 	title, game, public := t.title, t.game, t.public
-	invite, code := t.invite, t.inviteCode
+	invite, code, picture := t.invite, t.inviteCode, t.picture
 	t.mu.Unlock()
 	key := ""
 	if t.pin.Required() {
@@ -520,6 +536,6 @@ func (t *TestRoomService) setStatusWith(id string, n int, sum RoomSummary) {
 	t.status.SetRoomDetails(models.RoomStatus{
 		RoomID: id, Viewers: n, Title: title, Game: game, Public: public,
 		Players: sum.Players, MaxPlayers: 4, Queue: sum.Queue, Spectators: sum.Spectators,
-		Invite: invite, InviteCode: code, OwnerKey: key,
+		Invite: invite, InviteCode: code, OwnerKey: key, Picture: picture,
 	})
 }

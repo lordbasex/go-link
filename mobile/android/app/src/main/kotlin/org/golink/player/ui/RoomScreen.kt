@@ -1,6 +1,12 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 package org.golink.player.ui
 
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,6 +51,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,6 +90,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
@@ -109,13 +117,17 @@ import org.golink.player.core.RoomPhase
 import org.golink.player.core.RoomStateView
 import org.golink.player.core.RoomUi
 import org.golink.player.core.startButtonCount
+import org.golink.player.core.PictureSettings
+import org.golink.player.picture.PictureParams
 
 /**
  * The room: the game's picture with the on-screen gamepad around it, like
  * the website's console mode. Portrait is a Game Boy (picture on top, pad
  * below); landscape is a Switch (pad halves on both sides). Chat, seats
- * and the queue live in a sheet opened from the dock; the Sound sheet
- * (microphone and output devices) opens from the players tab.
+ * and the queue live in a sheet opened from the dock; the gear under the
+ * gamepad button opens Game settings (name, sound, picture, stats) without
+ * leaving the room. The picture is drawn by the picture renderer
+ * (PictureDrawer) over the whole screen area, sides included.
  */
 @Composable
 fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias: (String) -> Unit) {
@@ -133,9 +145,23 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     // With a real controller, the gamepad button shows the pad as a see-through display of it.
     var padWithController by rememberSaveable { mutableStateOf(false) }
     var statsOn by rememberSaveable { mutableStateOf(prefs.statsOverlay) }
+    // The highest refresh rate while in the room (90/120/144 Hz), and the measured one for the stats.
+    val screenHz by rememberHighRefreshRate()
     LaunchedEffect(statsOn) { session.showStats(statsOn) }
     var micAsk by remember { mutableStateOf(false) }
-    var soundOpen by rememberSaveable { mutableStateOf(false) }
+    // Game settings: open, and whether it opened at the sound part (the players' Sound button).
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var settingsAtSound by rememberSaveable { mutableStateOf(false) }
+    // How this phone draws the game: the viewer's own choice (remembered)
+    // wins, then the room's default from its host, then the app's.
+    var savedPicture by remember { mutableStateOf(prefs.savedPicture) }
+    var pictureOk by remember { mutableStateOf(true) }
+    var compare by rememberSaveable { mutableStateOf(false) }
+    var split by rememberSaveable { mutableStateOf(0.5) }
+    val density = LocalDensity.current.density.toDouble()
+    // "Remove animations": the ambient light changes more slowly, like the website's prefers-reduced-motion.
+    val resolver = LocalContext.current.contentResolver
+    val reducedMotion = remember { android.provider.Settings.Global.getFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val resources = LocalContext.current.resources
@@ -155,6 +181,7 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     }
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val room = ui.room
+    val picture = PictureSettings.resolve(savedPicture, room?.picture)
     val controls = room?.controls ?: GameControls.DEFAULT
     val pad = rememberTouchPad { session.setTouchButtons(it) }
     pad.fourWay = controls.control == "joy4way"
@@ -194,6 +221,11 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
                 }
             },
             onSheet = { sheet = it },
+            settingsOpen = settingsOpen,
+            onSettings = {
+                settingsAtSound = false
+                settingsOpen = true
+            },
             onMicAsk = { micAsk = true },
             headset = output != org.golink.player.audio.AudioRouter.Output.SPEAKER,
             vertical = landscape,
@@ -207,16 +239,25 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
     }
     val screen: @Composable (Modifier) -> Unit = { m ->
         Box(m.background(Tokens.video), contentAlignment = Alignment.Center) {
-            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                val boxAspect = maxWidth.value / maxHeight.value
-                val fit = if (boxAspect > aspect) Modifier.fillMaxHeight().aspectRatio(aspect) else Modifier.fillMaxWidth().aspectRatio(aspect)
-                VideoView(video, session.eglContext, fit.testTag("video"))
+            // The renderer covers the whole area: it letterboxes the game at its
+            // display aspect (never cropped) and draws the sides.
+            VideoView(
+                video,
+                session.eglContext,
+                PictureParams(picture, if (compare && pictureOk) split else null, aspect.toDouble(), density, reducedMotion, ui.stats.video?.native),
+                Modifier.fillMaxSize().testTag("video"),
+                onUnavailable = { pictureOk = false },
+            )
+            if (streaming && compare && pictureOk) {
+                CompareDivider(split, { split = it }, styleName(picture.style))
             }
             Overlay(ui, onLeave, onRetry = { session.client.reconnect() }, onPin = { session.client.submitPin(it) })
             if (streaming) {
                 StatsCorner(
                     on = statsOn,
                     stats = liveStats,
+                    video = ui.stats.video,
+                    screenHz = screenHz,
                     onToggle = { statsOn = !statsOn; prefs.statsOverlay = statsOn },
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
                 )
@@ -242,7 +283,7 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
                 if (room.you.pauseAsked != null && !room.paused) {
                     PauseAskedBanner(
                         onCancel = { session.client.cancelPauseRequest() },
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = if (statsOn) 96.dp else 52.dp, start = 8.dp, end = 8.dp),
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = if (statsOn) (if (ui.stats.video == null) 114.dp else if (ui.stats.video?.quality == null) 132.dp else 150.dp) else 52.dp, start = 8.dp, end = 8.dp),
                     )
                 }
             }
@@ -348,13 +389,46 @@ fun RoomScreen(session: RoomSession, prefs: Prefs, onLeave: () -> Unit, onAlias:
             onTab = { sheet = it },
             onSound = {
                 sheet = null
-                soundOpen = true
+                settingsAtSound = true
+                settingsOpen = true
             },
             onClose = { sheet = null },
         )
     }
-    if (soundOpen) {
-        SoundSheet(session, onClose = { soundOpen = false })
+    if (settingsOpen) {
+        GameSettingsSheet(
+            landscape = landscape,
+            onClose = { settingsOpen = false },
+            picture = PictureChoice(
+                picture = picture,
+                onPicture = {
+                    prefs.choosePicture(it)
+                    savedPicture = prefs.savedPicture
+                },
+                available = pictureOk,
+                compare = compare,
+                onCompare = { compare = it },
+                roomDefault = room?.picture,
+                chosen = savedPicture.chosen,
+                onUseRoomDefault = {
+                    prefs.clearPicture()
+                    savedPicture = prefs.savedPicture
+                },
+            ),
+            statsOn = statsOn,
+            onStats = {
+                statsOn = it
+                prefs.statsOverlay = it
+            },
+            name = {
+                NameSection(prefs.playerName) {
+                    prefs.playerName = it
+                    session.setName(prefs.playerName)
+                }
+            },
+            sound = { SoundSection(session) },
+            scrollToSound = settingsAtSound,
+        )
     }
 }
 
@@ -495,7 +569,7 @@ private fun SwapOffers(room: RoomStateView, session: RoomSession, modifier: Modi
     }
 }
 
-/** The room's buttons: voice, sound, pause, chat, players, on-screen pad. */
+/** The room's buttons: voice, sound, pause, chat, players, on-screen pad and Game settings. */
 @Composable
 private fun Dock(
     ui: RoomUi,
@@ -503,6 +577,8 @@ private fun Dock(
     touchOn: Boolean,
     onTouch: () -> Unit,
     onSheet: (SheetTab) -> Unit,
+    settingsOpen: Boolean,
+    onSettings: () -> Unit,
     onMicAsk: () -> Unit,
     headset: Boolean,
     vertical: Boolean,
@@ -585,24 +661,26 @@ private fun Dock(
         },
         { DockButton(Icons.Filled.People, stringResource(R.string.room_players), on = false, tag = "dock-players") { onSheet(SheetTab.PLAYERS) } },
         { DockButton(Icons.Filled.Gamepad, stringResource(R.string.room_touchpad), on = touchOn, tag = "dock-pad", onClick = onTouch) },
+        { DockButton(Icons.Filled.Settings, stringResource(R.string.room_settings), on = settingsOpen, tag = "dock-settings", onClick = onSettings) },
     )
     if (vertical) {
         Column(
-            Modifier.fillMaxHeight().padding(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+            Modifier.fillMaxHeight().padding(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) { items.forEach { it() } }
     } else {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+            // Up to seven 48 dp buttons: 352 dp, so it fits a 360 dp phone.
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) { items.forEach { it() } }
     }
 }
 
 @Composable
-private fun DockButton(
+internal fun DockButton(
     icon: ImageVector,
     label: String,
     on: Boolean,
@@ -692,8 +770,22 @@ private fun RoomSheet(ui: RoomUi, session: RoomSession, tab: SheetTab, onTab: (S
 fun ChatPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
     val res = LocalContext.current.resources
     val room = ui.room
-    var text by rememberSaveable { mutableStateOf("") }
+    // TextFieldState keeps every typed character even while the room screen
+    // recomposes many times a second (a String value dropped fast input).
+    val input = rememberTextFieldState()
     var typingSent by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(input) {
+        snapshotFlow { input.text.toString() }.collect { text ->
+            val now = System.currentTimeMillis()
+            if (text.isNotBlank() && now - typingSent > 2_500) {
+                typingSent = now
+                session.client.sendTyping(true)
+            } else if (text.isBlank() && typingSent != 0L) {
+                typingSent = 0L
+                session.client.sendTyping(false)
+            }
+        }
+    }
     val list = rememberLazyListState()
     LaunchedEffect(ui.chat.size) { if (ui.chat.isNotEmpty()) list.animateScrollToItem(ui.chat.size - 1) }
     val myName = room?.you?.name
@@ -733,35 +825,26 @@ fun ChatPanel(ui: RoomUi, session: RoomSession, modifier: Modifier) {
             )
         }
         val send = {
+            val text = input.text.toString()
             if (text.isNotBlank()) {
                 session.client.sendChat(text)
-                text = ""
+                input.clearText()
                 typingSent = 0L // the device clears "typing" with the message
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                value = text,
-                onValueChange = { v ->
-                    text = v.take(300)
-                    val now = System.currentTimeMillis()
-                    if (text.isNotBlank() && now - typingSent > 2_500) {
-                        typingSent = now
-                        session.client.sendTyping(true)
-                    } else if (text.isBlank() && typingSent != 0L) {
-                        typingSent = 0L
-                        session.client.sendTyping(false)
-                    }
-                },
+                state = input,
                 placeholder = { Text(stringResource(R.string.room_chat_hint)) },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                inputTransformation = InputTransformation.maxLength(300),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { send() }),
+                onKeyboardAction = { send() },
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Tokens.accent, cursorColor = Tokens.accent),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.weight(1f).testTag("chat-input"),
             )
-            IconButton(onClick = send, enabled = text.isNotBlank(), modifier = Modifier.size(48.dp).testTag("chat-send")) {
+            IconButton(onClick = send, enabled = input.text.isNotBlank(), modifier = Modifier.size(48.dp).testTag("chat-send")) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send), tint = Tokens.accent)
             }
         }
@@ -814,7 +897,7 @@ private fun PlayersPanel(ui: RoomUi, session: RoomSession, onSound: () -> Unit, 
                     is Me.Spectator -> PrimaryButton(stringResource(R.string.room_join_queue), { session.client.joinQueue() })
                     else -> SecondaryButton(stringResource(R.string.room_spectate), { session.client.spectate() })
                 }
-                // Microphone and output devices, and a test chime.
+                // Volumes, microphone and output devices, and a test chime (Game settings).
                 SecondaryButton(stringResource(R.string.sound_title), onSound, Modifier.testTag("players-sound"), icon = Icons.Filled.Tune)
             }
         }
@@ -874,10 +957,20 @@ internal fun ControllerChip(name: String) {
  * The stats button (top left over the picture) and, while on, a compact
  * see-through box next to it: frames per second decoded, the picture's
  * size and codec, the round trip to the device and the path (direct or
- * through the relay), packet loss, and the game sound's codec.
+ * through the relay), packet loss, the game sound's codec, and the
+ * screen's measured refresh rate (fps stays the game video's frame rate),
+ * and what the device sends (stream_stats video: "768×448 (2× of
+ * 384×224)" and the quality, like the website's stream figures).
  */
 @Composable
-internal fun StatsCorner(on: Boolean, stats: org.golink.player.core.LiveStatsView?, onToggle: () -> Unit, modifier: Modifier) {
+internal fun StatsCorner(
+    on: Boolean,
+    stats: org.golink.player.core.LiveStatsView?,
+    screenHz: Int?,
+    onToggle: () -> Unit,
+    modifier: Modifier,
+    video: org.golink.player.core.StreamVideo? = null,
+) {
     val cyan = Tokens.voice
     Row(modifier, verticalAlignment = Alignment.Top) {
         Box(
@@ -915,8 +1008,31 @@ internal fun StatsCorner(on: Boolean, stats: org.golink.player.core.LiveStatsVie
                     Text(stringResource(R.string.stats_line_video, s.fps?.toString() ?: dash, size, s.codec ?: dash), style = mono)
                     Text(stringResource(R.string.stats_line_net, s.rttMs?.toString() ?: dash, path), style = mono)
                     Text(stringResource(R.string.stats_line_loss, loss, audio), style = mono)
+                    Text(stringResource(R.string.stats_line_screen, org.golink.player.core.ScreenRate.label(screenHz)), style = mono, modifier = Modifier.testTag("room-stats-screen"))
+                    if (video != null) {
+                        Text(stringResource(R.string.stats_line_size, videoSizeText(video)), style = mono, modifier = Modifier.testTag("room-stats-video"))
+                        video.quality?.let { q -> Text(stringResource(R.string.stats_line_quality, videoQualityText(q, video.fallback)), style = mono) }
+                    }
                 }
             }
         }
     }
+}
+
+/** "768×448 (2× of 384×224)", or "384×224" at the game's own size (the website's videoRows). */
+@Composable
+internal fun videoSizeText(v: org.golink.player.core.StreamVideo): String =
+    if (v.scale == 2) stringResource(R.string.stats_size_scaled, v.width * 2, v.height * 2, v.width, v.height) else "${v.width}×${v.height}"
+
+/** "High", or "Saver (CPU)" when the room could not keep up with 2x. */
+@Composable
+internal fun videoQualityText(q: org.golink.player.core.VideoQuality, fallback: String?): String {
+    val name = stringResource(
+        when (q) {
+            org.golink.player.core.VideoQuality.HIGH -> R.string.video_quality_high
+            org.golink.player.core.VideoQuality.NORMAL -> R.string.video_quality_normal
+            org.golink.player.core.VideoQuality.SAVER -> R.string.video_quality_saver
+        },
+    )
+    return if (fallback == "cpu") stringResource(R.string.video_quality_cpu, name) else name
 }

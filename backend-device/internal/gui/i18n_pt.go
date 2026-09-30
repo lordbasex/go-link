@@ -159,4 +159,10 @@ var catalogPT = map[string]string{
 	"People playing":                       "Pessoas jogando",
 	"Linked browsers":                      "Navegadores vinculados",
 	"go-link %s is available: download it": "O go-link %s está disponível: baixe",
+	"High":                                 "Alta",
+	"Normal":                               "Normal",
+	"Saver":                                "Economia",
+	"Video quality":                        "Qualidade de vídeo",
+	"How game rooms send the picture to the players.": "Como as salas de jogo enviam a imagem aos jogadores.",
+	"High and Normal send the picture at twice the game's size, so every pixel keeps its own color (High uses more bandwidth). Saver sends the game's own size, for slow computers or slow uplinks. A room whose computer cannot keep up with twice the size switches to Saver by itself. Changes apply to running rooms at once.": "Alta e Normal enviam a imagem com o dobro do tamanho do jogo, assim cada pixel mantém a sua própria cor (Alta usa mais banda). Economia envia o tamanho original do jogo, para computadores lentos ou conexões de envio lentas. Uma sala cujo computador não dá conta do dobro do tamanho passa sozinha para Economia. As mudanças valem na hora para as salas em andamento.",
 }

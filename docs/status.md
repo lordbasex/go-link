@@ -6,7 +6,7 @@
 |---|---|
 | Signaling | signalhub in production, in its own repository: pairing, rooms, invitations, TURN credentials, rate limits, device secrets |
 | Linking | 9-digit code, remembered browsers, device proves itself first, unlink |
-| WebRTC | VP8 video, Opus game audio, `control`, `input` and `files` channels, trickle ICE, fixed UDP port with announced addresses |
+| WebRTC | VP8 video (game rooms at 2x for per-pixel color, with High/Normal/Saver qualities and an automatic CPU fallback), Opus game audio, `control`, `input` and `files` channels, trickle ICE, fixed UDP port with announced addresses |
 | Emulator | mame2003-plus through libretro, one process per game room, core download per platform |
 | ROMs | Validation without running (MAME 0.78 loader rules), drag and drop, CLI |
 | Game server | Several rooms at once, live/paused/archived/trash, favorites, save slots, automatic save, resume after restart, history |

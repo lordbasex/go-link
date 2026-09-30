@@ -72,3 +72,24 @@ func TestThumbnailsDirAndKind(t *testing.T) {
 		t.Fatalf("bad kind: %v", err)
 	}
 }
+
+func TestVideoQualityCommand(t *testing.T) {
+	settings := services.NewSettingsService(nil, models.ThumbnailSettings{}, t.TempDir(), nil)
+	saved := ""
+	settings.UseVideoQuality("", func(q string) error { saved = q; return nil })
+	var told []string
+	settings.OnVideoQuality(func(q string) { told = append(told, q) })
+	var out bytes.Buffer
+	if err := videoQuality(&out, settings, nil); err != nil || out.String() != "high\n" {
+		t.Fatalf("default = %q, %v", out.String(), err)
+	}
+	if err := videoQuality(&out, settings, []string{"Saver"}); err != nil || saved != "saver" || settings.VideoQuality() != "saver" {
+		t.Fatalf("set: %v, saved %q", err, saved)
+	}
+	if err := videoQuality(&out, settings, []string{"ultra"}); err == nil || !strings.Contains(err.Error(), "use high, normal or saver") {
+		t.Fatalf("bad quality: %v", err)
+	}
+	if len(told) != 1 || told[0] != "saver" {
+		t.Fatalf("listeners told %v", told)
+	}
+}

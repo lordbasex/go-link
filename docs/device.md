@@ -62,6 +62,7 @@ device roms saves [--json]               # test which games can resume from a sa
 device thumbnails check [--json]         # count the thumbnails of the ROM sets
 device thumbnails dir [PATH|default]     # show or change the thumbnails folder
 device thumbnails kind [boxart|title|snap]   # which thumbnail is shown
+device video quality [high|normal|saver]     # video quality of game rooms
 device panel token [--new]               # show (or replace) the web panel token
 device rec list [--json]                 # list the recordings of game rooms
 device rec rm ID...|--all                # delete recordings
@@ -90,14 +91,32 @@ Created on the first run with mode `0600`:
 | `thumbnails` | `dir`, `kind` (`boxart`, `title`, `snap`) and `size` (list size in the window) |
 | `udp_port`, `announce_ips` | Fixed WebRTC UDP port and the addresses to announce for it |
 | `max_rooms` | Game rooms running at once (default 4, counting paused ones) |
-| `rooms` | The saved game rooms and their state |
+| `rooms` | The saved game rooms and their state (with each room's `picture`, the host's default picture style for guests, see [protocol.md](protocol.md#room-picture-default)) |
+| `test_room_picture` | The test pattern room's default picture style (`style`, `bands`; absent = the site's default) |
 | `links` | Linked browsers: `id`, `token_hash` (SHA-256 of the token, never the token), `created_at`, `last_seen`, and the terms of use version accepted (`terms`, `terms_at`) |
 | `panel_token` | UUID token of the local web panel (headless only) |
 | `language` | Language of the window: `en`, `es` or `pt` (empty follows the computer) |
+| `video_quality` | Video quality of game rooms: `high` (default: 2x at 3,500 kbps), `normal` (2x at 2,500 kbps) or `saver` (the game's own size with averaged color, 2,500 kbps). See [Video quality](#video-quality) |
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.
 - STUN and TURN are **not** stored here.
 - Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600) and `logs/device.log`.
+
+### Video quality
+
+Game rooms send the game's picture **enlarged 2x** with nearest neighbour, so every game pixel keeps its own color through VP8's 4:2:0 color (one color sample per 2x2 block); the website averages each block back before drawing. The host picks how, in the window (Settings › Rooms), on the website (My device › Overview › Video quality), with `device video quality` or in `device.json`:
+
+| Quality | Picture | VP8 target | Average measured |
+|---|---|---|---|
+| **High** (default) | 2x | 3,500 kbps | about 2.6 Mbps per room |
+| **Normal** | 2x | 2,500 kbps | about 2.0 Mbps |
+| **Saver** | the game's size, each 2x2 block's color averaged | 2,500 kbps | about 1.6 Mbps |
+
+- A change from the window or the website reaches running rooms at once (the encoder restarts with a keyframe). The CLI only saves it: a running device uses it after its next start.
+- The 2x picture is made in the worker in **one pass** with the RGB to I420 conversion (`libretro.ToI420Double`: each game pixel writes a 2x2 block of luma and its own chroma sample), bit for bit the same as upscaling first; Saver uses `libretro.ToI420Box`. On an Intel i9-10900 a 384x224 frame takes 0.55 ms at 2x, 0.60 ms for Saver and 0.49 ms for the old conversion (a separate upscale then conversion took 3.3 ms).
+- **Automatic fallback:** when a 2x room starts streaming, the device measures its encoder for two seconds; if the 95th percentile of the encode time is more than 60 % of a frame's time, the room goes to Saver for the rest of its run, logs `the 2x picture does not fit this computer: the room goes to saver` and shows **Saver (CPU)** on the website. Choosing a quality again makes running rooms try 2x again.
+- The test pattern room keeps its own 640x480 test card (it is drawn at that size).
+- The contract for clients is in [protocol.md](protocol.md#video-scale).
 
 ### Factory reset
 
@@ -106,7 +125,7 @@ From My device on the website (`factory_reset`) or, with the device stopped, `de
 - every room (running ones stop without saving) and every saved game (`saves/`),
 - the history of games and every recording (`history.json`, `rec/`),
 - the linked browsers (they must link again with a new pairing code),
-- the settings: ROM folder (back to `~/go-link/roms`), thumbnails, `max_rooms`, `web_url` and `language`.
+- the settings: ROM folder (back to `~/go-link/roms`), thumbnails, `max_rooms`, `web_url`, `language`, `test_room_picture` and `video_quality`.
 
 It keeps what makes the device itself and reachable, so it can be linked again right away: `device_id`, `device_secret`, `signal_url`, `udp_port`, `announce_ips` and `panel_token`. It never deletes the host's own files: ROMs, thumbnails, the emulator core and the logs stay.
 
@@ -126,7 +145,7 @@ The device locks `device.lock` next to `device.json` (`flock` on macOS and Linux
 | **Overview** | The app's logo and what the device is doing: rooms (live, paused), people playing, linked browsers, CPU, memory, network, streaming, players, latency; a notice with a download button when a newer go-link is released; **Open go-link** (the rooms on the website), **Link another browser**, **Unlink all**; and **This computer**: system, processor, memory, device ID, version and website |
 | **Emulators › MAME › ROMs** | Folder management only: emulator status and download, the ROM folder (choose, open), a drop zone (and a file picker) that copies `.zip` sets into it, and counters: sets, runs, will not run, added from the window, folder size and free space. Every game, its check and Play are on the website |
 | **Emulators › MAME › Thumbnails** | How many sets have Boxart, Title and Snap, the list per game, how to name images. Dropping images saves them; dropping a folder with `Named_Boxarts`, `Named_Titles` and `Named_Snaps` saves each in its kind |
-| **Settings** | **General**: the window's language (Automatic, English, Español, Português; kept in `device.json` as `language`). **Thumbnails**: which picture is shown and the folder. **Rooms** and **Network**: `max_rooms`, where saves go, the signaling server and the STUN/TURN received |
+| **Settings** | **General**: the window's language (Automatic, English, Español, Português; kept in `device.json` as `language`). **Thumbnails**: which picture is shown and the folder. **Rooms**: the video quality of game rooms (High, Normal, Saver), `max_rooms` and where saves go. **Network**: the signaling server and the STUN/TURN received |
 
 - **Menu bar panel:** a click on the tray icon opens a small panel with status, CPU, memory, network, streaming, players and browsers (and the code while nothing is linked). Right click opens the menu. On macOS the panel appears under the icon and closes when clicking outside (`panel_darwin.m`).
 - Closing the window hides it; the device keeps running in the tray. **Quit** in the tray stops it.

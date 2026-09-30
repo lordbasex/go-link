@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -32,13 +33,21 @@ import org.golink.player.core.NetPath
 fun OverlayLab() {
     val pad = rememberTouchPad { }
     pad.extra = Button.RIGHT or Button.B1 or Button.B5
-    val stats = LiveStatsView(fps = 60, width = 640, height = 480, codec = "VP8", rttMs = 28, path = NetPath.DIRECT, lossPercent = 0.0, audioCodec = "Opus", audioKhz = 48)
+    val screenHz by rememberHighRefreshRate()
+    val stats = LiveStatsView(fps = 60, width = 768, height = 448, codec = "VP8", rttMs = 28, path = NetPath.DIRECT, lossPercent = 0.0, audioCodec = "Opus", audioKhz = 48)
     Column(Modifier.fillMaxSize().background(Tokens.bg).safeDrawingPadding()) {
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
             TestCard(Modifier.fillMaxSize())
-            StatsCorner(on = true, stats = stats, onToggle = {}, modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
+            StatsCorner(
+                on = true,
+                stats = stats,
+                screenHz = screenHz,
+                onToggle = {},
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                video = org.golink.player.core.StreamVideo(2, 384, 224, org.golink.player.core.VideoQuality.HIGH),
+            )
             Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)) { ControllerChip("DualSense Wireless Controller") }
-            PauseAskedBanner(onCancel = {}, modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp, start = 8.dp, end = 8.dp))
+            PauseAskedBanner(onCancel = {}, modifier = Modifier.align(Alignment.TopCenter).padding(top = 156.dp, start = 8.dp, end = 8.dp))
         }
         PadSurface(pad, Modifier.fillMaxWidth().weight(1f).alpha(0.55f), enabled = false) {
             Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceEvenly) {

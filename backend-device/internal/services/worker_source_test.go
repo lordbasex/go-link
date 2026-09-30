@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,15 +31,29 @@ type fakeWorkerSink struct {
 	samples int
 	aspect  float64
 	buttons atomic.Uint32 // pad of port 1
+	scale   int           // told by SetVideoScale
+	scales  []int         // every change
+	sizes   [][2]int      // of the frames, when it changes
 }
 
 func (f *fakeWorkerSink) VideoFrame(i420 []byte, w, h int, _ time.Duration) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if w != 4 || h != 2 || len(i420) != emuproc.FrameSizeI420(4, 2) {
-		panic(fmt.Sprintf("bad frame %dx%d with %d bytes", w, h, len(i420)))
+	scale := max(f.scale, 1)
+	if w != 4*scale || h != 2*scale || len(i420) != emuproc.FrameSizeI420(w, h) {
+		panic(fmt.Sprintf("bad frame %dx%d with %d bytes at scale %d", w, h, len(i420), scale))
+	}
+	if n := len(f.sizes); n == 0 || f.sizes[n-1] != [2]int{w, h} {
+		f.sizes = append(f.sizes, [2]int{w, h})
 	}
 	f.frames = append(f.frames, [2]byte{i420[0], i420[1]})
+}
+
+func (f *fakeWorkerSink) SetVideoScale(scale int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.scale = scale
+	f.scales = append(f.scales, scale)
 }
 
 func (f *fakeWorkerSink) AudioSamples(pcm []int16) {
@@ -255,6 +270,13 @@ func fakeWorkerMain(mode string, args []string) int {
 
 	var buttons atomic.Uint32
 	var paused atomic.Bool
+	var video atomic.Uint32
+	for i, a := range args {
+		if a == "--video" && i+1 < len(args) {
+			m, _ := emuproc.ParseVideoMode(args[i+1])
+			video.Store(uint32(m))
+		}
+	}
 	replies := make(chan func(), 4)
 	quit := make(chan struct{})
 	go func() {
@@ -272,6 +294,9 @@ func fakeWorkerMain(mode string, args []string) int {
 			case emuproc.TypePause:
 				v, _ := emuproc.DecodePause(p)
 				paused.Store(v)
+			case emuproc.TypeVideoMode:
+				m, _ := emuproc.DecodeVideoMode(p)
+				video.Store(uint32(m))
 			case emuproc.TypeSaveState:
 				path := string(p)
 				err := os.WriteFile(path, []byte("fake state"), 0o644)
@@ -285,7 +310,6 @@ func fakeWorkerMain(mode string, args []string) int {
 			}
 		}
 	}()
-	frame := make([]byte, emuproc.FrameSizeI420(4, 2))
 	var count byte
 	ticker := time.NewTicker(10 * time.Millisecond)
 	for {
@@ -299,8 +323,10 @@ func fakeWorkerMain(mode string, args []string) int {
 				continue
 			}
 			count++
+			scale := emuproc.VideoMode(video.Load()).Scale()
+			frame := make([]byte, emuproc.FrameSizeI420(4*scale, 2*scale))
 			frame[0], frame[1] = byte(buttons.Load()), count
-			_ = w.WriteVideo(4, 2, 10*time.Millisecond, frame)
+			_ = w.WriteVideo(4*scale, 2*scale, scale, 10*time.Millisecond, frame)
 			_ = w.WriteAudio(make([]int16, 960))
 		}
 		if err := w.Flush(); err != nil {
@@ -314,4 +340,43 @@ func stateResult(path string, err error) emuproc.StateResult {
 		return emuproc.StateResult{Path: path, Error: err.Error()}
 	}
 	return emuproc.StateResult{OK: true, Path: path}
+}
+
+func TestWorkerSourceVideoModes(t *testing.T) {
+	var args []string
+	src := NewWorkerSource(WorkerConfig{
+		CorePath: "/c", RomPath: "/r.zip", SystemDir: "/s",
+		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Command: fakeWorker("ok", &args),
+	})
+	src.SetVideoMode(emuproc.VideoDouble) // before Run: the worker's flag
+	sink := &fakeWorkerSink{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- src.Run(ctx, sink) }()
+	scaleIs := func(want int) func() bool {
+		return func() bool {
+			sink.mu.Lock()
+			defer sink.mu.Unlock()
+			return sink.scale == want && len(sink.sizes) > 0 && sink.sizes[len(sink.sizes)-1] == [2]int{4 * want, 2 * want}
+		}
+	}
+	waitFor(t, "2x frames", scaleIs(2))
+	if !strings.Contains(strings.Join(args, " "), "--video double") {
+		t.Fatalf("args %q", args)
+	}
+	// While running: a message, and the frames that follow change size.
+	src.SetVideoMode(emuproc.VideoBox)
+	waitFor(t, "frames at the game's size", scaleIs(1))
+	src.SetVideoMode(emuproc.VideoDouble)
+	waitFor(t, "2x frames again", scaleIs(2))
+	sink.mu.Lock()
+	scales := slices.Clone(sink.scales)
+	sink.mu.Unlock()
+	if !slices.Equal(scales, []int{2, 1, 2}) {
+		t.Fatalf("scales told %v", scales)
+	}
+	cancel()
+	<-done
 }

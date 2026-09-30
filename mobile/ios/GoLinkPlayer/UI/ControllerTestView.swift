@@ -10,8 +10,9 @@ import SwiftUI
  * on-screen pad and a real controller before a game. A test card in the
  * style of PM5544 (grey grid, color bars, a circle) with a controller
  * diagram whose buttons light up for both, the connected controller's
- * name and link, and the input latency: from the moment the app gets an
- * input event to the next frame drawn after it.
+ * name and link, the input latency (from the moment the app gets an
+ * input event to the next frame drawn after it) and the screen's measured
+ * refresh rate, kept at 120 Hz on ProMotion screens while it is open.
  */
 struct ControllerTestView: View {
     @EnvironmentObject private var app: AppModel
@@ -42,11 +43,14 @@ struct ControllerTestView: View {
         .onDisappear { model.stop() }
     }
 
-    /** The test card, with the title, the close button and the readouts over it. */
+    /**
+     * The test card with the title and the close button over its top
+     * corners, and the readouts under it, so nothing covers the circle.
+     */
     private var cardArea: some View {
-        ZStack {
-            TestCardDrawing().ignoresSafeArea(edges: .top)
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                TestCardDrawing().ignoresSafeArea(edges: .top)
                 HStack {
                     Text(L("test_title")).font(.headline).foregroundStyle(Tokens.text)
                         .padding(.horizontal, 12).padding(.vertical, 6)
@@ -64,12 +68,11 @@ struct ControllerTestView: View {
                     .accessibilityLabel(L("test_close"))
                     .accessibilityIdentifier("test-close")
                 }
-                Spacer(minLength: 0)
-                readouts
+                .padding(12)
             }
-            .padding(12)
+            .clipped()
+            readouts.padding(.horizontal, 8).padding(.vertical, 6)
         }
-        .clipped()
     }
 
     private var readouts: some View {
@@ -90,6 +93,9 @@ struct ControllerTestView: View {
             Text(L("test_latency", ms(lat.last), ms(lat.min), ms(lat.average)))
                 .font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(Tokens.voice)
                 .accessibilityIdentifier("test-latency")
+            Text(L("test_screen", ScreenRate.label(model.screen.hz), ScreenRate.frameMs(model.screen.hz)))
+                .font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(Tokens.voice)
+                .accessibilityIdentifier("test-screen-rate")
             Text(L("test_latency_note")).font(.caption2).foregroundStyle(Tokens.muted).fixedSize(horizontal: false, vertical: true)
         }
         .font(.footnote)
@@ -155,7 +161,8 @@ final class ControllerTestModel: ObservableObject {
     private(set) var pad: TouchPadState!
     private(set) var gamepads: GamepadInput!
     @Published private(set) var latency = LatencyMeter(window: 60)
-    private var link: CADisplayLink?
+    /** Keeps the screen at 120 Hz where it can, measures it and times each input. */
+    let screen = ScreenRateMonitor()
     private var pendingEvent: CFTimeInterval?
     private var bag = Set<AnyCancellable>()
 
@@ -164,21 +171,19 @@ final class ControllerTestModel: ObservableObject {
         var changed: () -> Void = {}
         gamepads = GamepadInput { changed() }
         changed = { [weak self] in self?.controllerChanged() }
-        // Republish the controllers' list for the readouts.
+        // Republish the controllers' list and the screen rate for the readouts.
         gamepads.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        screen.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        screen.onFrame = { [weak self] link in self?.frame(link) }
     }
 
     func start() {
         gamepads.start()
-        let target = LinkTarget(model: self)
-        let l = CADisplayLink(target: target, selector: #selector(LinkTarget.tick(_:)))
-        l.add(to: .main, forMode: .common)
-        link = l
+        screen.start()
     }
 
     func stop() {
-        link?.invalidate()
-        link = nil
+        screen.stop()
         gamepads.stop()
         pad.releaseAll()
     }
@@ -196,22 +201,11 @@ final class ControllerTestModel: ObservableObject {
         if pendingEvent == nil { pendingEvent = CACurrentMediaTime() }
     }
 
-    fileprivate func frame(_ link: CADisplayLink) {
+    private func frame(_ link: CADisplayLink) {
         guard let t = pendingEvent else { return }
         pendingEvent = nil
         // targetTimestamp: when the frame being prepared reaches the screen.
         latency.add((link.targetTimestamp - t) * 1000)
-    }
-
-    /** CADisplayLink keeps its target strongly: a small object in between. */
-    private final class LinkTarget: NSObject {
-        weak var model: ControllerTestModel?
-
-        init(model: ControllerTestModel) { self.model = model }
-
-        @objc func tick(_ link: CADisplayLink) {
-            MainActor.assumeIsolated { model?.frame(link) }
-        }
     }
 }
 

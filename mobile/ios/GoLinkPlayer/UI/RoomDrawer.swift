@@ -8,7 +8,7 @@ enum DrawerTab: Hashable { case chat, players, you }
 /**
  * The room's side panel with three tabs, as in the approved design:
  * Chat (typing indicator, unread badge), Players (seats, swap, move,
- * silence, watch or queue) and You (name, Volume and voice, How to play,
+ * silence, watch or queue) and You (seat, Game settings, How to play,
  * Leave). It slides in from the right in landscape and from the bottom in
  * portrait.
  */
@@ -17,7 +17,7 @@ struct RoomDrawer: View {
     @Binding var tab: DrawerTab
     let landscape: Bool
     let unread: Int
-    let onSound: () -> Void
+    let onSettings: () -> Void
     let onHelp: () -> Void
     let onLeave: () -> Void
     let onClose: () -> Void
@@ -66,7 +66,7 @@ struct RoomDrawer: View {
             switch tab {
             case .chat: ChatPanel(session: session).padding(.horizontal, 12)
             case .players: PlayersPanel(session: session)
-            case .you: YouPanel(session: session, onSound: onSound, onHelp: onHelp, onLeave: onLeave)
+            case .you: YouPanel(session: session, onSettings: onSettings, onHelp: onHelp, onLeave: onLeave)
             }
         }
     }
@@ -294,15 +294,12 @@ struct PlayersPanel: View {
     }
 }
 
-/** Your seat, your name, sound, help and the way out. */
+/** Your seat, Game settings (name, sound, picture), help and the way out. */
 struct YouPanel: View {
     @ObservedObject var session: RoomSession
-    @EnvironmentObject private var model: AppModel
-    let onSound: () -> Void
+    let onSettings: () -> Void
     let onHelp: () -> Void
     let onLeave: () -> Void
-    @State private var name = ""
-    @State private var saved = false
 
     var body: some View {
         ScrollView {
@@ -322,14 +319,11 @@ struct YouPanel: View {
                     }
                     .accessibilityIdentifier("you-seat")
                 }
-                NameField(text: $name, identifier: "you-name", allowEmpty: true) {
-                    if NameField.canSave(name, allowEmpty: true) { save() }
+                if let name = session.ui.room?.you.name, !name.isEmpty {
+                    Text(localName(name)).font(.subheadline).foregroundStyle(Tokens.text2)
                 }
-                .onChange(of: name) { _, _ in saved = false }
-                SecondaryButton(title: L("settings_save"), icon: saved ? "checkmark" : nil, enabled: NameField.canSave(name, allowEmpty: true), action: save)
-                    .accessibilityIdentifier("you-name-save")
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    SecondaryButton(title: L("you_volume_voice"), action: onSound).accessibilityIdentifier("you-sound")
+                    SecondaryButton(title: L("game_settings_title"), icon: "gearshape", action: onSettings).accessibilityIdentifier("you-sound")
                     SecondaryButton(title: L("you_how_to_play"), action: onHelp).accessibilityIdentifier("you-help")
                 }
                 if !session.controllers.isEmpty {
@@ -343,12 +337,5 @@ struct YouPanel: View {
             }
             .padding(14)
         }
-        .onAppear { name = model.prefs.playerName }
-    }
-
-    private func save() {
-        model.setName(name)
-        name = model.prefs.playerName
-        saved = true
     }
 }

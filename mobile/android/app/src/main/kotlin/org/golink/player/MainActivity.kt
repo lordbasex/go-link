@@ -75,7 +75,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleLink(intent)
         // The intro plays once per process: a cold start, never when the app
         // comes back from the background or the screen rotates.
-        if (!introPlayed) {
+        // Debug labs (--es lab ...) start without it.
+        if (!introPlayed && !(BuildConfig.DEBUG && intent?.getStringExtra("lab") != null)) {
             introPlayed = true
             vm.intro.value = true
         }
@@ -93,8 +94,20 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(Tokens.bg).semantics { testTagsAsResourceId = true }) {
                     // Hidden from UiAutomator and TalkBack under the intro.
                     Box(if (intro) Modifier.fillMaxSize().clearAndSetSemantics {} else Modifier.fillMaxSize()) {
-                        // Debug builds can open a lab with no room: --es lab alias|overlay.
+                        // Debug builds can open a lab with no room: --es lab alias|overlay|picture|check2x.
                         when (lab) {
+                            "picture" -> org.golink.player.ui.PictureLab(
+                                vm.prefs,
+                                style = intent?.getStringExtra("style"),
+                                bands = intent?.getStringExtra("bands"),
+                                startCompare = intent?.getBooleanExtra("compare", false) == true,
+                                startSheet = intent?.getBooleanExtra("sheet", false) == true,
+                                plain = intent?.getBooleanExtra("plain", false) == true,
+                                room = intent?.getStringExtra("room"),
+                                up2 = intent?.getBooleanExtra("up2", false) == true,
+                                raw = intent?.getBooleanExtra("raw", false) == true,
+                            )
+                            "check2x" -> org.golink.player.ui.Picture2xCheckScreen()
                             "alias" -> org.golink.player.ui.AliasScreen(saved = vm.prefs.playerName, onEnter = { vm.prefs.playerName = it }, onBack = {})
                             "overlay" -> org.golink.player.ui.OverlayLab()
                             else -> App(vm)

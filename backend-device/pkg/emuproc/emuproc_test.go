@@ -29,8 +29,9 @@ func TestRoundTrip(t *testing.T) {
 	ready := Ready{Core: "MAME 2003-Plus", BaseWidth: 256, BaseHeight: 224, AspectRatio: 4.0 / 3, FPS: 59.94, SampleRate: 48000}
 	steps := []func() error{
 		func() error { return w.WriteJSON(TypeReady, ready) },
-		func() error { return w.WriteVideo(3, 3, 16683350*time.Nanosecond, frame) },
-		func() error { return w.WriteVideo(3, 3, time.Second/60, nil) },
+		func() error { return w.WriteVideo(3, 3, 1, 16683350*time.Nanosecond, frame) },
+		func() error { return w.WriteVideo(3, 3, 2, time.Second/60, nil) },
+		func() error { return w.WriteVideoMode(VideoBox) },
 		func() error { return w.WriteAudio(pcm) },
 		func() error { return w.WritePads(pads) },
 		func() error { return w.WritePause(true) },
@@ -66,11 +67,14 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("ready %+v %v", got, err)
 	}
 	v, err := DecodeVideo(next(TypeVideo))
-	if err != nil || v.Width != 3 || v.Height != 3 || v.Duration != 16683350*time.Nanosecond || !bytes.Equal(v.I420, frame) {
+	if err != nil || v.Width != 3 || v.Height != 3 || v.Scale != 1 || v.Duration != 16683350*time.Nanosecond || !bytes.Equal(v.I420, frame) {
 		t.Fatalf("video %+v %v", v, err)
 	}
-	if v, err := DecodeVideo(next(TypeVideo)); err != nil || len(v.I420) != 0 || v.Duration != time.Second/60 {
+	if v, err := DecodeVideo(next(TypeVideo)); err != nil || len(v.I420) != 0 || v.Scale != 2 || v.Duration != time.Second/60 {
 		t.Fatalf("repeat %+v %v", v, err)
+	}
+	if m, err := DecodeVideoMode(next(TypeVideoMode)); err != nil || m != VideoBox {
+		t.Fatalf("video mode %v %v", m, err)
 	}
 	if got, err := DecodeAudio(nil, next(TypeAudio)); err != nil || len(got) != len(pcm) || got[2] != 32767 || got[3] != -32768 || got[1] != -1 {
 		t.Fatalf("audio %v %v", got, err)
@@ -114,8 +118,14 @@ func TestBrokenStreams(t *testing.T) {
 		t.Fatalf("huge: %v", err)
 	}
 	// Payloads with the wrong size.
-	if _, err := DecodeVideo([]byte{0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 9}); err == nil {
+	if _, err := DecodeVideo([]byte{0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 9}); err == nil {
 		t.Fatal("a frame with the wrong size was accepted")
+	}
+	if _, err := DecodeVideo([]byte{0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 3}); err == nil {
+		t.Fatal("scale 3 accepted")
+	}
+	if _, err := DecodeVideoMode([]byte{7}); err == nil {
+		t.Fatal("unknown video mode accepted")
 	}
 	if _, err := DecodePads(make([]byte, 31)); err == nil {
 		t.Fatal("short pads accepted")
@@ -125,5 +135,20 @@ func TestBrokenStreams(t *testing.T) {
 	}
 	if _, err := DecodePause(nil); err == nil {
 		t.Fatal("empty pause accepted")
+	}
+}
+
+func TestVideoModes(t *testing.T) {
+	for _, m := range []VideoMode{VideoNative, VideoBox, VideoDouble} {
+		got, err := ParseVideoMode(m.String())
+		if err != nil || got != m {
+			t.Fatalf("%v: %v %v", m, got, err)
+		}
+	}
+	if VideoDouble.Scale() != 2 || VideoBox.Scale() != 1 || VideoNative.Scale() != 1 {
+		t.Fatal("scales")
+	}
+	if _, err := ParseVideoMode("triple"); err == nil {
+		t.Fatal("unknown mode parsed")
 	}
 }

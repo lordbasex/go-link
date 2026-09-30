@@ -34,3 +34,27 @@ describe("pause requests for the host", () => {
     expect(parsePauseAskEvent({ type: "room_result", id: "r1", from: "x" })).toBeNull();
   });
 });
+
+describe("video quality", () => {
+  it("reads the host's choice and each running room's video", () => {
+    const st = parseDeviceStatus({
+      type: "device_status",
+      device_id: "d",
+      video_quality: "normal",
+      rooms: [
+        { id: "r1", state: "live", name: "A", video: { quality: "saver", fallback: "cpu", scale: 1 } },
+        { id: "r2", state: "live", name: "B", video: { quality: "high", scale: 2 } },
+        { id: "r3", state: "archived", name: "C" },
+        { id: "r4", state: "live", name: "D", video: { quality: "ultra", scale: 9 } },
+      ],
+    });
+    expect(st?.videoQuality).toBe("normal");
+    expect(st?.rooms.map((r) => r.video)).toEqual([
+      { quality: "saver", fallback: "cpu", scale: 1 },
+      { quality: "high", fallback: undefined, scale: 2 },
+      undefined,
+      undefined,
+    ]);
+    expect(parseDeviceStatus({ type: "device_status", device_id: "d", video_quality: "4k" })?.videoQuality).toBeUndefined();
+  });
+});

@@ -24,6 +24,21 @@ func rgbOf(f Frame, x, y int) (r, g, b int) {
 	}
 }
 
+// ToRGB converts a frame to packed 8-bit RGB (3 bytes per pixel, rows
+// without padding) with the same channel expansion ToI420 uses, so it is
+// exactly the picture the encoder is given. dst must have Width*Height*3
+// bytes. The video quality lab uses it as the reference picture.
+func ToRGB(dst []byte, f Frame) {
+	i := 0
+	for y := 0; y < f.Height; y++ {
+		for x := 0; x < f.Width; x++ {
+			r, g, b := rgbOf(f, x, y)
+			dst[i], dst[i+1], dst[i+2] = byte(r), byte(g), byte(b)
+			i += 3
+		}
+	}
+}
+
 // ToI420 converts a frame to packed I420 (BT.601 limited range), the
 // input of the VP8 encoder. dst must have FrameSizeI420 bytes. Chroma is
 // taken from the top-left pixel of each 2x2 block, which is enough for
@@ -44,6 +59,132 @@ func ToI420(dst []byte, f Frame) {
 				uPlane[i] = byte((-38*r-74*g+112*b+128)>>8 + 128)
 				vPlane[i] = byte((112*r-94*g-18*b+128)>>8 + 128)
 			}
+		}
+	}
+}
+
+// decodeRow expands row y of a frame to packed 8-bit RGB (3 bytes per
+// pixel) with the channel expansion rgbOf uses. The pixel format is
+// checked once per row, so the loops stay tight.
+func decodeRow(row []byte, f Frame, y int) {
+	src := f.Data[y*f.Pitch:]
+	w := f.Width
+	switch f.Format {
+	case FormatXRGB8888:
+		for x := 0; x < w; x++ {
+			o, i := x*4, x*3
+			row[i], row[i+1], row[i+2] = src[o+2], src[o+1], src[o]
+		}
+	case FormatRGB565:
+		for x := 0; x < w; x++ {
+			v := int(src[x*2]) | int(src[x*2+1])<<8
+			i := x * 3
+			row[i], row[i+1], row[i+2] = byte((v>>11&31)<<3), byte((v>>5&63)<<2), byte((v&31)<<3)
+		}
+	default: // 0RGB1555
+		for x := 0; x < w; x++ {
+			v := int(src[x*2]) | int(src[x*2+1])<<8
+			i := x * 3
+			row[i], row[i+1], row[i+2] = byte((v>>10&31)<<3), byte((v>>5&31)<<3), byte((v&31)<<3)
+		}
+	}
+}
+
+// rowStack is the widest row the converters keep on the stack; wider
+// frames get a buffer from the heap.
+const rowStack = 1024
+
+// BT.601 limited range, the integer formulas of ToI420.
+func lumaOf(r, g, b int) byte { return byte((66*r+129*g+25*b+128)>>8 + 16) }
+func cbOf(r, g, b int) int    { return (-38*r-74*g+112*b+128)>>8 + 128 }
+func crOf(r, g, b int) int    { return (112*r-94*g-18*b+128)>>8 + 128 }
+
+// ToI420Double scales a frame 2x with nearest neighbour and converts it to
+// packed I420 in one pass: dst must have FrameSizeI420(2*Width, 2*Height)
+// bytes. The result is exactly ToI420 of the frame upscaled first, bit for
+// bit, without ever building the upscaled picture: each source pixel is
+// one 2x2 block of luma and, since chroma is taken from the top-left pixel
+// of each block, its own chroma sample. So pixel art keeps one color per
+// pixel instead of one per 2x2 block.
+func ToI420Double(dst []byte, f Frame) {
+	w, h := f.Width, f.Height
+	ww := 2 * w
+	luma := ww * 2 * h
+	uPlane := dst[luma : luma+w*h]
+	vPlane := dst[luma+w*h : luma+2*w*h]
+	var stack [rowStack * 3]byte
+	row := stack[:]
+	if w > rowStack {
+		row = make([]byte, w*3)
+	}
+	row = row[:w*3]
+	for y := 0; y < h; y++ {
+		decodeRow(row, f, y)
+		y0 := dst[2*y*ww : 2*y*ww+ww]
+		u := uPlane[y*w : y*w+w]
+		v := vPlane[y*w : y*w+w]
+		for x := range u {
+			p := row[x*3 : x*3+3 : x*3+3]
+			r, g, b := int(p[0]), int(p[1]), int(p[2])
+			l := lumaOf(r, g, b)
+			o := y0[2*x : 2*x+2 : 2*x+2]
+			o[0], o[1] = l, l
+			u[x] = byte(cbOf(r, g, b))
+			v[x] = byte(crOf(r, g, b))
+		}
+		copy(dst[(2*y+1)*ww:(2*y+2)*ww], y0)
+	}
+}
+
+// ToI420Box converts a frame to packed I420 like ToI420, but each chroma
+// sample is the rounded average of the chroma of its 2x2 block (the
+// pixels inside the picture), instead of the top-left pixel's. It keeps
+// small color details from bleeding: the native path of the "saver"
+// video quality.
+func ToI420Box(dst []byte, f Frame) {
+	w, h := f.Width, f.Height
+	cw := (w + 1) / 2
+	ch := (h + 1) / 2
+	uPlane := dst[w*h : w*h+cw*ch]
+	vPlane := dst[w*h+cw*ch:]
+	var stack [rowStack * 3]byte
+	var sums [2 * rowStack]int32
+	row := stack[:]
+	acc := sums[:]
+	if w > rowStack {
+		row = make([]byte, w*3)
+		acc = make([]int32, 2*cw)
+	}
+	row = row[:w*3]
+	su, sv := acc[:cw], acc[cw:2*cw]
+	for cy := 0; cy < ch; cy++ {
+		clear(su)
+		clear(sv)
+		n := int32(2)
+		if 2*cy+1 >= h {
+			n = 1
+		}
+		for k := int32(0); k < n; k++ {
+			y := 2*cy + int(k)
+			decodeRow(row, f, y)
+			out := dst[y*w : y*w+w]
+			for x := range out {
+				r, g, b := int(row[x*3]), int(row[x*3+1]), int(row[x*3+2])
+				out[x] = lumaOf(r, g, b)
+				su[x>>1] += int32(cbOf(r, g, b))
+				sv[x>>1] += int32(crOf(r, g, b))
+			}
+		}
+		u := uPlane[cy*cw : cy*cw+cw]
+		v := vPlane[cy*cw : cy*cw+cw]
+		full := 2 * n
+		for cx := range u {
+			cnt := full
+			if 2*cx+1 >= w {
+				cnt = n
+			}
+			u[cx] = byte((su[cx] + cnt/2) / cnt)
+			v[cx] = byte((sv[cx] + cnt/2) / cnt)
 		}
 	}
 }

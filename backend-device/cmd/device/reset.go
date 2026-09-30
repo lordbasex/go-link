@@ -45,6 +45,9 @@ func factoryReset(ctx context.Context, p resetParts) error {
 	if err := p.settings.SetThumbnails(models.ThumbnailSettings{}); err != nil {
 		errs = append(errs, err)
 	}
+	if err := p.settings.SetVideoQuality(models.DefaultVideoQuality); err != nil {
+		errs = append(errs, err)
+	}
 	if err := os.MkdirAll(p.romsDir, 0o755); err != nil {
 		errs = append(errs, err)
 	} else if err := p.library.SetDir(p.romsDir); err != nil {

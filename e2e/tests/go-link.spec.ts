@@ -69,6 +69,22 @@ test("comes back after a reload: the device proves itself, then the browser show
   await expect(page.getByText("Linked · live")).toBeVisible();
 });
 
+test("the host picks the video quality of game rooms, and the device keeps it", async () => {
+  const card = page.locator(".card", { has: page.getByRole("heading", { name: "Video quality" }) });
+  const quality = card.getByRole("combobox", { name: "Quality" });
+  await expect(quality).toHaveText(/High/);
+  await quality.click();
+  await page.getByRole("option", { name: /^Saver/ }).click();
+  // The select shows what the device reports back in device_status.
+  await expect(quality).toHaveText(/Saver/);
+  await page.reload();
+  await expect(page.getByText("Linked · live")).toBeVisible();
+  await expect(quality).toHaveText(/Saver/);
+  await quality.click();
+  await page.getByRole("option", { name: /^High/ }).click();
+  await expect(quality).toHaveText(/High/);
+});
+
 test("the test pattern room streams video", async () => {
   await page.getByRole("link", { name: "Test pattern" }).click();
   await expect(page).toHaveURL(/\/r\/[0-9a-f-]{36}$/);
@@ -81,7 +97,46 @@ test("the test pattern room streams video", async () => {
   await expectOutputList(page, "light");
   await page.getByRole("button", { name: "Dark mode" }).first().click();
   await expectOutputList(page, "dark");
+  await expectPictureStyles(page);
+  // The stream figures: the test card is sent at its own size (no 2x).
+  await page.mouse.move(400, 300);
+  await page.getByRole("button", { name: "Connection details" }).click();
+  const figures = page.getByRole("dialog", { name: "Connection details" });
+  await expect(figures).toContainText("640×480");
+  await expect(figures).not.toContainText("2×");
+  await page.keyboard.press("Escape");
 });
+
+/** The dock's Picture settings switch the GPU renderer on and off live, without a reload. */
+async function expectPictureStyles(p: Page) {
+  const stage = p.locator(".video-stage");
+  // The site's default: smooth, with the game's colors on the sides (drawn by the GPU).
+  await expect(stage).toHaveAttribute("data-picture-style", "smooth");
+  await expect(stage).toHaveAttribute("data-picture-bands", "ambient");
+  await expect(stage).toHaveAttribute("data-picture", /^webgl2?$/);
+  await p.mouse.move(400, 300);
+  await p.getByRole("button", { name: "Picture" }).click();
+  const settings = p.getByRole("dialog", { name: "Picture" });
+  await settings.getByRole("combobox", { name: "Style" }).click();
+  await p.getByRole("option", { name: /^Sharp/ }).click();
+  await expect(stage).toHaveAttribute("data-picture", /^webgl2?$/);
+  await expect(stage.locator("canvas.picture-canvas")).toBeVisible();
+  await settings.getByRole("combobox", { name: "Sides" }).click();
+  await p.getByRole("option", { name: /^Ambient/ }).click();
+  await settings.getByRole("button", { name: "Compare" }).click();
+  await expect(p.getByRole("slider", { name: "Comparison divider" })).toBeVisible();
+  await expectAccessible(p, "room picture settings");
+  // The game keeps playing under the canvas (sound, screenshots, recordings).
+  await expectVideoPlaying(p);
+  await settings.getByRole("button", { name: "Compare" }).click();
+  await settings.getByRole("combobox", { name: "Style" }).click();
+  await p.getByRole("option", { name: /^Smooth(?! edges)/ }).click();
+  await settings.getByRole("combobox", { name: "Sides" }).click();
+  await p.getByRole("option", { name: /^Black/ }).click();
+  await expect(stage).toHaveAttribute("data-picture", "off");
+  await p.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
+}
 
 /** The room's Output list (the site's Select) opens inside the voice settings, passes the checker and closes alone. */
 async function expectOutputList(p: Page, theme: string) {
@@ -123,6 +178,82 @@ test("an invitation lets one person in; the same PIN refuses the next one", asyn
   await expect(late.page.getByText("Someone already came in with this invitation.", { exact: false })).toBeVisible();
   await guest.context.close();
   await late.context.close();
+});
+
+test("the host's picture default reaches guests who never chose one; a guest's own choice wins", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const stage = page.locator(".video-stage");
+  // The owner picks CRT arcade and makes it the room's default.
+  await wake(page);
+  await page.getByRole("button", { name: "Picture" }).click();
+  const settings = page.getByRole("dialog", { name: "Picture" });
+  await settings.getByRole("combobox", { name: "Style" }).click();
+  await page.getByRole("option", { name: /^CRT arcade/ }).click();
+  await expect(stage).toHaveAttribute("data-picture-style", "crt");
+  await settings.getByRole("button", { name: "Set as the room's default" }).click();
+  // The device sends it back to everyone in room_state.
+  await expect(settings.getByText("Room default: CRT arcade · Black")).toBeVisible();
+  await expect(settings.getByText("This is the room's default.")).toBeVisible();
+  await expectAccessible(page, "owner's picture settings");
+  await page.keyboard.press("Escape");
+
+  // A guest who never chose a picture gets the room's default.
+  let inv = await newInvitation();
+  const fresh = await joinAsGuest(browser, inv.code, inv.pin);
+  await enterName(fresh.page, "Ana");
+  await expectVideoPlaying(fresh.page);
+  const freshStage = fresh.page.locator(".video-stage");
+  await expect(freshStage).toHaveAttribute("data-picture-style", "crt");
+  await expect(freshStage).toHaveAttribute("data-picture-bands", "black");
+  await expect(freshStage).toHaveAttribute("data-picture", /^webgl2?$/);
+  await wake(fresh.page);
+  await fresh.page.getByRole("button", { name: "Picture" }).click();
+  const guestSettings = fresh.page.getByRole("dialog", { name: "Picture" });
+  await expect(guestSettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
+  // Guests never change the room.
+  await expect(guestSettings.getByRole("button", { name: "Set as the room's default" })).toHaveCount(0);
+  await fresh.context.close();
+
+  // A guest who chose Sharp before keeps Sharp, and may go back to the room's default.
+  inv = await newInvitation();
+  const picky = await joinAsGuest(browser, inv.code, inv.pin, (context) =>
+    context.addInitScript(() => {
+      if (!localStorage.getItem("go-link.picture-style")) localStorage.setItem("go-link.picture-style", "sharp");
+    }),
+  );
+  await enterName(picky.page, "Bea");
+  await expectVideoPlaying(picky.page);
+  const pickyStage = picky.page.locator(".video-stage");
+  await expect(pickyStage).toHaveAttribute("data-picture-style", "sharp");
+  await wake(picky.page);
+  await picky.page.getByRole("button", { name: "Picture" }).click();
+  const pickySettings = picky.page.getByRole("dialog", { name: "Picture" });
+  await expect(pickySettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
+  await expect(pickySettings.getByRole("button", { name: "Use the room's default" })).toBeVisible();
+  await picky.context.close();
+
+  // My device shows the test pattern room's default, and puts back the site's.
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My device" }).click();
+  await page.getByRole("button", { name: "Picture default" }).click();
+  const dialog = page.getByRole("dialog", { name: "Picture default for \u201cTest pattern\u201d" });
+  await expect(dialog.getByText("Now: CRT arcade · Black")).toBeVisible();
+  await expectAccessible(page, "picture default dialog");
+  await dialog.getByRole("button", { name: "Use the default" }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Picture default" }).click();
+  await expect(dialog.getByText("Now: the site's default (Smooth · Ambient)")).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+
+  // Back to the room, with the owner's own picture back to Smooth.
+  await page.getByRole("link", { name: "Test pattern" }).click();
+  await expectVideoPlaying(page);
+  await wake(page);
+  await page.getByRole("button", { name: "Picture" }).click();
+  await expect(settings.getByText("Room default:")).toHaveCount(0);
+  await settings.getByRole("combobox", { name: "Style" }).click();
+  await page.getByRole("option", { name: /^Smooth(?! edges)/ }).click();
+  await expect(stage).toHaveAttribute("data-picture", "off");
+  await page.keyboard.press("Escape");
 });
 
 /** Answers "What's your name?": a symbol is refused as typed, then the name goes in. */
@@ -264,8 +395,9 @@ test("the controller test page lights the keyboard's buttons", async ({ browser 
 });
 
 /** A browser with no device of its own joins with the code and the PIN. */
-async function joinAsGuest(browser: Browser, code: string, pin: string) {
+async function joinAsGuest(browser: Browser, code: string, pin: string, prepare?: (context: BrowserContext) => Promise<void>) {
   const context = await browser.newContext();
+  await prepare?.(context);
   const p = await context.newPage();
   await p.goto("/");
   await p.getByRole("button", { name: "Join a game" }).first().click();

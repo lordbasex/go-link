@@ -159,4 +159,10 @@ var catalogES = map[string]string{
 	"People playing":                       "Personas jugando",
 	"Linked browsers":                      "Navegadores vinculados",
 	"go-link %s is available: download it": "go-link %s está disponible: descárgalo",
+	"High":                                 "Alta",
+	"Normal":                               "Normal",
+	"Saver":                                "Ahorro",
+	"Video quality":                        "Calidad de video",
+	"How game rooms send the picture to the players.": "Cómo envían la imagen las salas de juego a los jugadores.",
+	"High and Normal send the picture at twice the game's size, so every pixel keeps its own color (High uses more bandwidth). Saver sends the game's own size, for slow computers or slow uplinks. A room whose computer cannot keep up with twice the size switches to Saver by itself. Changes apply to running rooms at once.": "Alta y Normal envían la imagen al doble del tamaño del juego, así cada píxel conserva su propio color (Alta usa más ancho de banda). Ahorro envía el tamaño propio del juego, para computadoras lentas o conexiones de subida lentas. Una sala cuya computadora no alcanza con el doble de tamaño pasa sola a Ahorro. Los cambios se aplican al instante en las salas en marcha.",
 }

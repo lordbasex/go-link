@@ -4,6 +4,8 @@
 // DataChannel. It comes from the host, but names and chat are typed by
 // other guests, so everything is validated and rendered as text.
 
+import { parseRoomPicture, type PictureSettings } from "./picture";
+
 export interface SeatView {
   port: number;
   name: string;
@@ -49,6 +51,8 @@ export interface RoomStateView {
   controls: GameControls;
   /** The host is recording the game, with the players' voices: show REC. */
   recording?: boolean;
+  /** The host's default picture style for the room; null: the site's default. */
+  picture?: PictureSettings | null;
 }
 
 /** What the device tells guests about the room. */
@@ -227,6 +231,7 @@ export function parseRoomState(msg: unknown): RoomStateView | null {
     pausedBy: str(m.paused_by, 40),
     controls: parseControls(m.controls),
     recording: m.recording === true,
+    picture: parseRoomPicture(m.picture),
   };
 }
 

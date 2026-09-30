@@ -7,12 +7,16 @@ import SwiftUI
  * The stats button (top left over the picture) and its compact box: the
  * decoded frame rate, the picture's size and codec, the round trip to the
  * device, whether the path is direct or through the relay, the packet
- * loss and the game sound's codec. Semi-transparent, never over the
+ * loss, the game sound's codec, the screen's measured refresh rate
+ * (fps stays the game video's frame rate) and what the device sends
+ * (stream_stats video: "768×448 (2× of 384×224)" and the quality). Semi-transparent, never over the
  * middle of the picture.
  */
 struct StatsCorner: View {
     let on: Bool
     let stats: LiveStatsView?
+    var video: StreamVideo? = nil
+    let screenHz: Int?
     let toggle: () -> Void
 
     var body: some View {
@@ -29,13 +33,15 @@ struct StatsCorner: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L(on ? "stats_hide" : "stats_show"))
             .accessibilityIdentifier("room-stats")
-            if on { StatsBox(stats: stats).padding(.top, 4) }
+            if on { StatsBox(stats: stats, video: video, screenHz: screenHz).padding(.top, 4) }
         }
     }
 }
 
 struct StatsBox: View {
     let stats: LiveStatsView?
+    var video: StreamVideo? = nil
+    let screenHz: Int?
 
     var body: some View {
         let s = stats ?? LiveStatsView()
@@ -53,6 +59,14 @@ struct StatsBox: View {
             line(value: s.fps.map(String.init) ?? dash, rest: L("stats_fps_rest", size, s.codec ?? ""))
             line(prefix: L("stats_ping"), value: s.rttMs.map { "\($0) ms" } ?? dash, rest: " · " + path)
             Text(L("stats_loss_audio", s.lossPercent.map(LiveStatsMeter.formatLoss) ?? dash, audio))
+            line(prefix: L("stats_screen"), value: ScreenRate.label(screenHz), rest: "")
+            if let video {
+                line(prefix: L("stats_video"), value: Self.videoSize(video), rest: "")
+                    .accessibilityIdentifier("room-stats-video")
+                if let q = video.quality {
+                    line(prefix: L("stats_quality"), value: Self.qualityText(q, fallback: video.fallback), rest: "")
+                }
+            }
         }
         .font(.system(size: 12, weight: .medium, design: .monospaced))
         .foregroundStyle(Tokens.text)
@@ -62,6 +76,17 @@ struct StatsBox: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Tokens.voice.opacity(0.35), lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("room-stats-box")
+    }
+
+    /** "768×448 (2× of 384×224)", or "384×224" at the game's own size (the website's videoRows). */
+    static func videoSize(_ v: StreamVideo) -> String {
+        v.scale == 2 ? L("stats_video_scaled", v.width * 2, v.height * 2, v.width, v.height) : "\(v.width)×\(v.height)"
+    }
+
+    /** "High", or "Saver (CPU)" when the room could not keep up with 2x. */
+    static func qualityText(_ q: VideoQuality, fallback: String?) -> String {
+        let name = L("video_quality_" + q.rawValue)
+        return fallback == "cpu" ? L("video_quality_cpu", name) : name
     }
 
     private func line(prefix: String = "", value: String, rest: String) -> some View {

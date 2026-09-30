@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 )
 
@@ -137,6 +138,7 @@ type RoomManager struct {
 	nextOrder int
 	voiceOff  bool
 	chatOff   bool // the host turned the room's chat off
+	picture   *models.RoomPicture
 	info      RoomInfo
 	pausable  bool // a game is running (the test card never pauses)
 	controls  GameControls
@@ -290,6 +292,19 @@ func (m *RoomManager) SetChat(on bool) {
 			}
 			m.broadcastState()
 		}
+	})
+}
+
+// SetPicture sets the host's default picture style for the room, sent to
+// guests in room_state.picture (nil or invalid: the website's default).
+func (m *RoomManager) SetPicture(p *models.RoomPicture) {
+	p = models.CleanPicture(p)
+	m.do(func() {
+		if (m.picture == nil) == (p == nil) && (p == nil || *m.picture == *p) {
+			return
+		}
+		m.picture = p
+		m.broadcastState()
 	})
 }
 
@@ -919,21 +934,22 @@ type swapOut struct {
 }
 
 type stateOut struct {
-	Type       string       `json:"type"`
-	MaxPlayers int          `json:"max_players"`
-	Voice      bool         `json:"voice"`
-	Chat       bool         `json:"chat"`
-	Info       RoomInfo     `json:"info"`
-	Seats      []*seatOut   `json:"seats"`
-	Queue      []queueOut   `json:"queue"`
-	Spectators []personOut  `json:"spectators"`
-	You        youOut       `json:"you"`
-	Pausable   bool         `json:"pausable"`
-	Paused     bool         `json:"paused"`
-	PausedBy   string       `json:"paused_by,omitempty"`
-	Controls   GameControls `json:"controls"`
-	Recording  bool         `json:"recording"`
-	HostOnline bool         `json:"host_online"`
+	Type       string              `json:"type"`
+	MaxPlayers int                 `json:"max_players"`
+	Voice      bool                `json:"voice"`
+	Chat       bool                `json:"chat"`
+	Picture    *models.RoomPicture `json:"picture,omitempty"`
+	Info       RoomInfo            `json:"info"`
+	Seats      []*seatOut          `json:"seats"`
+	Queue      []queueOut          `json:"queue"`
+	Spectators []personOut         `json:"spectators"`
+	You        youOut              `json:"you"`
+	Pausable   bool                `json:"pausable"`
+	Paused     bool                `json:"paused"`
+	PausedBy   string              `json:"paused_by,omitempty"`
+	Controls   GameControls        `json:"controls"`
+	Recording  bool                `json:"recording"`
+	HostOnline bool                `json:"host_online"`
 }
 
 // broadcastState sends each member its own view of the room.
@@ -944,7 +960,7 @@ func (m *RoomManager) broadcastState() {
 		asks = append(asks, pauseAskOut{From: a.peer, Name: a.name, Port: a.port, ExpiresAt: a.expires})
 	}
 	for peer, mem := range m.members {
-		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
+		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, Picture: m.picture, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
 			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls, Recording: m.recording, HostOnline: online}
 		st.You = youOut{Name: mem.name, Ports: []int{}, QueuePositions: []int{}, Spectator: mem.spectator, SwapOffers: []swapOut{}, SwapAsked: []swapOut{}, Owner: m.owners[peer]}
 		if st.You.Owner {

@@ -65,6 +65,11 @@
   --tc-line: #787878;
   --tc-text: #ebebeb;
   --tc-text-on: #000000;
+  /* The picture's Frame sides (an arcade cabinet), the same in both themes. */
+  --picture-cabinet: #0b0d13;
+  --picture-cabinet-2: #1a1f2c;
+  --picture-bezel: #07080c;
+  --picture-bezel-hi: #3b4254;
   --font-title: "Chakra Petch", system-ui, sans-serif;
   --font-text: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;

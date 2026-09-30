@@ -66,7 +66,7 @@ final class Prefs: KeyValueStore {
         set { set(Self.audioInputKey, newValue) }
     }
 
-    /** Game and voice volumes, 0 to 3 (1 = as sent), like the web's 0-300 %. */
+    /** Game and voice volumes, 0 to 1 (0-100 %, 1 = as sent); older builds kept up to 3. */
     var gameVolume: Double {
         get { defaults.object(forKey: Self.gameVolumeKey) as? Double ?? 1 }
         set { defaults.set(newValue, forKey: Self.gameVolumeKey) }

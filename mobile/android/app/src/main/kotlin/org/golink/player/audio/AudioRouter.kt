@@ -29,7 +29,7 @@ import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.sin
 
-/** What the Sound sheet shows: its rows and the marked ones. */
+/** What the sound settings show: its rows and the marked ones. */
 data class AudioChoicesView(
     val outputs: List<AudioOption> = emptyList(),
     val inputs: List<AudioOption> = emptyList(),
@@ -41,7 +41,7 @@ data class AudioChoicesView(
  * Sends the game sound and the voice chat to a headset when one is
  * connected (Bluetooth, wired or USB), with its microphone, and to the
  * loudspeaker otherwise, never to the earpiece. That is "Automatic"; the
- * Sound sheet can also pick the output and the microphone by hand
+ * sound settings can also pick the output and the microphone by hand
  * (the choices and their rules live in :core, AudioDevices.kt).
  *
  * libwebrtc plays and records in the voice-communication path, which is
@@ -294,7 +294,7 @@ class AudioRouter(context: Context, private val prefs: Prefs, private val onInpu
         )
 
         /**
-         * The Sound sheet's kind of a platform device type, or null for the
+         * The sound settings' kind of a platform device type, or null for the
          * ones it never offers: the earpiece, Bluetooth A2DP (music only,
          * no microphone; the headset shows up as SCO too), telephony, HDMI…
          */

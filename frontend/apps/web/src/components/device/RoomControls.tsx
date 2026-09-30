@@ -9,11 +9,13 @@ import {
 import { t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
+import { RoomPictureDialog } from "../RoomPictureDialog";
 import {
   ArchiveIcon,
   EnterIcon,
   MoreIcon,
   PauseIcon,
+  PictureIcon,
   PlayIcon,
   PowerIcon,
   RestoreIcon,
@@ -71,6 +73,7 @@ export function useRoomControls(rooms: ManagedRoom[]) {
   const [starting, setStarting] = useState<ManagedRoom | null>(null);
   const [purging, setPurging] = useState<ManagedRoom | null>(null);
   const [archiving, setArchiving] = useState<ManagedRoom | null>(null);
+  const [picturing, setPicturing] = useState<ManagedRoom | null>(null);
   const names = useRef(new Map<string, string>());
   names.current = new Map(rooms.map((r) => [r.id, r.name]));
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -107,7 +110,8 @@ export function useRoomControls(rooms: ManagedRoom[]) {
             m.action === "resume" ||
             m.action === "archive" ||
             m.action === "delete" ||
-            m.action === "purge"
+            m.action === "purge" ||
+            m.action === "picture"
           )
             say(t.gameRooms.done[m.action](name));
         }
@@ -117,6 +121,8 @@ export function useRoomControls(rooms: ManagedRoom[]) {
   const send = (msg: unknown) => hostLink?.stream.sendControl(msg);
   const act = (r: ManagedRoom, action: string) => {
     if (action === "purge") setPurging(r);
+    // The room's default picture for its guests: a dialog with the choices.
+    else if (action === "picture") setPicturing(r);
     // A game that cannot be saved loses its place when archived: ask.
     else if (action === "archive" && r.noSaves) setArchiving(r);
     else send({ type: "room_action", id: r.id, action });
@@ -169,6 +175,15 @@ export function useRoomControls(rooms: ManagedRoom[]) {
             send({ type: "room_action", id: archiving.id, action: "archive" });
             setArchiving(null);
           }}
+        />
+      )}
+      {picturing && (
+        <RoomPictureDialog
+          id={picturing.id}
+          name={picturing.name}
+          current={picturing.picture ?? null}
+          send={send}
+          onClose={() => setPicturing(null)}
         />
       )}
       {purging && (
@@ -354,6 +369,14 @@ export function RoomActions({
     icon: <StarIcon filled={room.favorite} />,
     run: act(room.favorite ? "unfavorite" : "favorite"),
   };
+  // Menu only: what guests see until they pick their own picture.
+  const picture: ActionItem = {
+    id: "picture",
+    label: t.picture.defaultButton,
+    icon: <PictureIcon />,
+    run: act("picture"),
+  };
+  const menu = room.state === "trash" ? [...items, favorite] : [...items, favorite, picture];
   const [primary, ...rest] = items;
 
   const iconButton = (it: ActionItem, isPrimary = false) => {
@@ -400,7 +423,7 @@ export function RoomActions({
         </button>
         {open && (
           <div className="groom-menu" role="menu">
-            {[...items, favorite].map((it) =>
+            {menu.map((it) =>
               it.to ? (
                 <Link
                   key={it.id}

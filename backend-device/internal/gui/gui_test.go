@@ -426,3 +426,18 @@ func guiKeys(t *testing.T) []string {
 	}
 	return keys
 }
+
+func TestSettingsChangeTheVideoQuality(t *testing.T) {
+	u, _, _ := newTestUI(t)
+	if u.settings.quality.Selected != "High" {
+		t.Fatalf("selected %q", u.settings.quality.Selected)
+	}
+	test.Tap(u.settings.quality.segments[2]) // Saver
+	if q := u.opts.Settings.VideoQuality(); q != "saver" {
+		t.Fatalf("quality %q", q)
+	}
+	test.Tap(u.settings.quality.segments[1]) // Normal
+	if q := u.opts.Settings.VideoQuality(); q != "normal" || u.settings.quality.Selected != "Normal" {
+		t.Fatalf("quality %q, selected %q", q, u.settings.quality.Selected)
+	}
+}

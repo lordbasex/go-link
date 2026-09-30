@@ -435,7 +435,8 @@ public final class RoomClient {
             return
         }
         if let st = RoomMessages.parseStreamStats(m) {
-            ui.stats = StreamStatsView(fps: st.fps ?? ui.stats.fps, aspect: st.aspect ?? ui.stats.aspect)
+            // The last valid "video" stays (like the website) until a new one arrives.
+            ui.stats = StreamStatsView(fps: st.fps ?? ui.stats.fps, aspect: st.aspect ?? ui.stats.aspect, video: st.video ?? ui.stats.video)
         }
     }
 

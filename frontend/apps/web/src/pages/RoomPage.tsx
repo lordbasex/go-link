@@ -8,9 +8,7 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   DEFAULT_CONTROLS,
@@ -20,6 +18,7 @@ import {
   parseInvite,
   recordStart,
   recordStop,
+  roomPictureAction,
   savePlayerName,
   savedPlayerName,
   startButtonCount,
@@ -93,6 +92,12 @@ import { applySink, useAudioDevices, type AudioDevices } from "../signal/useAudi
 import { AudioDevicesBlock } from "../components/AudioDevices";
 import { SidePanel, useUnreadChat, type SideActions } from "./RoomSide";
 import { ConsoleDrawer, DRAWER_TABS, type DrawerTab } from "./ConsoleDrawer";
+import { inSheet, useSheetLayout } from "../components/sheet";
+import { PictureControl } from "../components/PictureControl";
+import { PictureCanvas } from "../picture/PictureCanvas";
+import { SplitDivider } from "../picture/SplitDivider";
+import { needsRenderer, usePictureSettings } from "../picture/settings";
+import type { RendererKind } from "../picture/renderer";
 
 const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";
@@ -484,42 +489,6 @@ function VoiceControl({
   );
 }
 
-const SHEET_QUERY = "(max-width: 700px), (pointer: coarse) and (max-height: 560px)";
-
-/** Whether the screen is a phone's, where popovers become bottom sheets. */
-function useSheetLayout(): boolean {
-  const query = typeof window !== "undefined" ? window.matchMedia?.(SHEET_QUERY) : undefined;
-  const [match, setMatch] = useState(() => query?.matches === true);
-  useEffect(() => {
-    if (!query) return;
-    const change = () => setMatch(query.matches);
-    query.addEventListener?.("change", change);
-    return () => query.removeEventListener?.("change", change);
-  }, [query]);
-  return match;
-}
-
-/**
- * A bottom sheet lives outside the dock (the dock's transform and blur
- * would trap a fixed element), over a scrim that closes it. In full
- * screen it goes into the full screen element so it stays visible.
- */
-function inSheet(sheet: boolean, setOpen: (open: boolean) => void, content: ReactNode): ReactNode {
-  if (!sheet || typeof document === "undefined") return content;
-  return createPortal(
-    <>
-      <button
-        type="button"
-        className="sheet-scrim"
-        aria-label={t.audio.close}
-        onClick={() => setOpen(false)}
-      />
-      {content}
-    </>,
-    document.fullscreenElement ?? document.body,
-  );
-}
-
 /** Plays one remote voice; the volume is independent from the game. */
 function VoiceAudio({
   stream,
@@ -627,6 +596,17 @@ export function RoomPage() {
   );
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  // How this browser draws the game (Picture in the dock): the GPU
+  // renderer only runs for a style other than the browser's own look.
+  // The viewer's own choice wins, then the host's default for the room
+  // (room_state.picture), then the site's default.
+  const roomPicture = live.room?.picture ?? null;
+  const [picture, setPicture, pictureChoice] = usePictureSettings(roomPicture);
+  const [pictureOpen, setPictureOpen] = useState(false);
+  const [compare, setCompare] = useState(false);
+  const [split, setSplit] = useState(0.5);
+  // undefined: not tried yet; null: this browser cannot (plain <video>).
+  const [renderer, setRenderer] = useState<RendererKind | null | undefined>(undefined);
   const fullscreen = useFullscreen(stageRef);
   const [helpOpen, setHelpOpen] = useState(false);
   // Phones and tablets get the on-screen gamepad instead of the keyboard map.
@@ -997,6 +977,13 @@ export function RoomPage() {
     }
     setVoiceOpen(true);
   };
+  const openPictureFromDrawer = () => {
+    if (!sheetLayout) {
+      setDrawer(false);
+      wake();
+    }
+    setPictureOpen(true);
+  };
 
   if (!demo) {
     switch (status.kind) {
@@ -1024,6 +1011,7 @@ export function RoomPage() {
   }
 
   const streaming = live.media !== null;
+  const pictureOn = streaming && renderer !== null && (needsRenderer(picture) || compare);
   const touchOn = streaming && touch && touchPad;
   const controlsOn = touch ? touchPad : showControls;
   // Demo variants mirror the prototype: ?perspective=spectator&spectatorsHearVoice=true
@@ -1232,6 +1220,9 @@ export function RoomPage() {
             }
             onPointerDown={onStagePointer}
             onPointerMove={onStagePointer}
+            data-picture={pictureOn ? (renderer ?? "pending") : "off"}
+            data-picture-style={picture.style}
+            data-picture-bands={picture.bands}
           >
             <video
               ref={videoRef}
@@ -1244,6 +1235,22 @@ export function RoomPage() {
               muted
               hidden={!streaming}
             />
+            {pictureOn && (
+              <div className="picture-layer">
+                <PictureCanvas
+                  source={videoRef}
+                  aspect={live.aspect ?? 4 / 3}
+                  style={picture.style}
+                  bands={picture.bands}
+                  split={compare ? split : null}
+                  native={live.video?.scale === 2 ? { w: live.video.width, h: live.video.height } : null}
+                  onRenderer={setRenderer}
+                />
+                {compare && (
+                  <SplitDivider value={split} onChange={setSplit} after={t.picture.styles[picture.style]} />
+                )}
+              </div>
+            )}
             {shotNote && (
               <p className="video-chip shot-note" role="status">
                 <CameraIcon size={14} />
@@ -1309,6 +1316,12 @@ export function RoomPage() {
                   sentFps={demo ? 60 : live.sentFps}
                   receivedFps={demo ? 60 : live.stats.fps}
                   path={demo ? "direct" : live.stats.path}
+                  video={demo ? null : live.video}
+                  picture={
+                    pictureOn && renderer
+                      ? `${t.picture.styles[picture.style]} · ${renderer === "webgl2" ? "WebGL 2" : "WebGL 1"}`
+                      : t.picture.rendererOff
+                  }
                 />
               </>
             )}
@@ -1593,6 +1606,25 @@ export function RoomPage() {
                 </button>
               )}
               {streaming && (
+                <PictureControl
+                  open={pictureOpen}
+                  setOpen={setPictureOpen}
+                  settings={picture}
+                  onChange={setPicture}
+                  compare={compare}
+                  onCompare={setCompare}
+                  available={renderer !== null}
+                  roomDefault={roomPicture}
+                  saved={pictureChoice.saved}
+                  onReset={pictureChoice.reset}
+                  onSetRoomDefault={
+                    inviteRoom
+                      ? () => sendToDevice(roomPictureAction(inviteRoom.id, picture))
+                      : undefined
+                  }
+                />
+              )}
+              {streaming && (
                 <button
                   type="button"
                   className="icon-button video-shot"
@@ -1781,6 +1813,7 @@ export function RoomPage() {
               fullscreen={fullscreen.active}
               onFullscreen={toggleFullscreen}
               onVoice={openVoiceFromDrawer}
+              onPicture={openPictureFromDrawer}
               onHelp={() => setHelpOpen(true)}
               onInvite={
                 inviteRoom

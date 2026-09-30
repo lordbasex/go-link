@@ -16,3 +16,5 @@ export * from "./legacy-storage";
 export * from "./input-config";
 export * from "./hmac";
 export * from "./recordings";
+export * from "./picture";
+export * from "./video";

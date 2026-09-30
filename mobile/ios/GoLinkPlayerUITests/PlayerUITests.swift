@@ -141,7 +141,8 @@ final class PlayerUITests: XCTestCase {
             aliasField.typeText("iPhone")
         }
         shot("live-1b-alias")
-        aliasEnter.tap()
+        // The keyboard may cover the button: Return enters too.
+        if aliasEnter.isHittable { aliasEnter.tap() } else { aliasField.typeText("\n") }
 
         // Streaming: the seat line appears and the progress goes away.
         let seat = app.staticTexts["room-seat"]
@@ -155,7 +156,36 @@ final class PlayerUITests: XCTestCase {
         sleep(3)
         shot("live-2-room-portrait")
 
+        // The picture styles on the live game (Game settings from the dock's gear).
+        app.buttons["dock-settings"].tap()
+        XCTAssertTrue(app.buttons["picture-style-crt"].waitForExistence(timeout: 5))
+        app.buttons["picture-style-crt"].tap()
+        reveal(app.buttons["picture-bands-frame"], in: app)
+        app.buttons["picture-bands-frame"].tap()
+        shot("live-2b-settings")
+        app.buttons["game-settings-close"].tap()
+        sleep(2)
+        shot("live-2c-crt-frame")
+        app.buttons["dock-settings"].tap()
+        let compare = app.switches["picture-compare"]
+        XCTAssertTrue(compare.waitForExistence(timeout: 5))
+        reveal(compare, in: app)
+        compare.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        app.buttons["game-settings-close"].tap()
+        sleep(2)
+        shot("live-2d-compare")
+        app.buttons["dock-settings"].tap()
+        XCTAssertTrue(compare.waitForExistence(timeout: 5))
+        reveal(compare, in: app)
+        compare.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        reveal(app.buttons["picture-style-sharp"], in: app)
+        app.buttons["picture-style-sharp"].tap()
+        reveal(app.buttons["picture-bands-ambient"], in: app)
+        app.buttons["picture-bands-ambient"].tap()
+        app.buttons["game-settings-close"].tap()
+
         // The on-screen pad: coin, start, a button, the D-pad.
+        if !app.otherElements["pad-coin"].waitForExistence(timeout: 2) { app.buttons["dock-pad"].tap() }
         app.otherElements["pad-coin"].press(forDuration: 0.3)
         app.otherElements["pad-start-1"].press(forDuration: 0.3)
         app.otherElements["pad-button-1"].press(forDuration: 0.5)
@@ -179,9 +209,14 @@ final class PlayerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["you-sound"].waitForExistence(timeout: 5))
         shot("live-5-you")
         app.buttons["you-sound"].tap()
+        XCTAssertTrue(app.buttons["picture-style-crt"].waitForExistence(timeout: 5))
+        shot("live-6-settings")
+        app.buttons["picture-style-crt"].tap()
+        sleep(2)
+        shot("live-6b-crt")
+        app.swipeUp()
         XCTAssertTrue(app.buttons["sound-test"].waitForExistence(timeout: 5))
-        shot("live-6-sound")
-        app.swipeDown(velocity: .fast)
+        app.buttons["game-settings-close"].tap()
         sleep(1)
         if app.buttons["drawer-close"].exists { app.buttons["drawer-close"].tap() }
 
@@ -255,6 +290,9 @@ final class PlayerUITests: XCTestCase {
         // A press was measured: the last reading is a number, not a dash.
         let measured = NSPredicate(format: "NOT (label BEGINSWITH %@)", app.staticTexts["test-latency"].label.components(separatedBy: " ").prefix(2).joined(separator: " ") + " –")
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: measured, object: app.staticTexts["test-latency"])], timeout: 3), .completed, app.staticTexts["test-latency"].label)
+        // The screen's refresh rate is measured within a couple of seconds ("… 60 Hz …").
+        let rate = app.staticTexts["test-screen-rate"]
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS ' Hz'"), object: rate)], timeout: 5), .completed, rate.label)
         shot("test-controller-portrait")
         XCUIDevice.shared.orientation = .landscapeLeft
         sleep(2)
@@ -268,6 +306,126 @@ final class PlayerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["app-version"].exists)
     }
 
+    /**
+     * Game settings from the dock's gear (debug -pictureLab: the test card
+     * streamed at 60 fps into the real renderer): switch the picture style
+     * and sides, turn Compare on (the divider appears), in portrait and
+     * landscape. With GL_SHOTS it saves every style and side.
+     */
+    func testGameSettingsAndPictureStyles() {
+        let app = launch(["-pictureLab"])
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let gear = app.buttons["dock-settings"]
+        XCTAssertTrue(gear.waitForExistence(timeout: 10))
+        // The test card really is drawn (about 60 new frames a second).
+        let fps = app.staticTexts["picture-lab-fps"]
+        let drawing = NSPredicate(format: "NOT (label BEGINSWITH '0 fps')")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: drawing, object: fps)], timeout: 5), .completed, fps.label)
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            sleep(1)
+            let side = orientation == .portrait ? "portrait" : "landscape"
+            gear.tap()
+            XCTAssertTrue(app.buttons["picture-style-sharp"].waitForExistence(timeout: 5), "Game settings did not open")
+            shot("picture-settings-\(side)")
+            for style in ["smooth", "sharp", "crt", "edges"] {
+                let b = app.buttons["picture-style-\(style)"]
+                pick(b, in: app)
+                XCTAssertTrue(b.isSelected, "\(style) not selected")
+            }
+            pick(app.buttons["picture-style-sharp"], in: app)
+            let ambient = app.buttons["picture-bands-ambient"]
+            reveal(ambient, in: app)
+            ambient.tap()
+            XCTAssertTrue(ambient.isSelected)
+            app.buttons["game-settings-close"].tap()
+            XCTAssertFalse(app.buttons["picture-style-sharp"].waitForExistence(timeout: 1))
+            if env["GL_SHOTS"] != nil {
+                for style in ["smooth", "sharp", "crt", "edges"] {
+                    for bands in ["black", "ambient", "frame"] {
+                        gear.tap()
+                        _ = app.buttons["picture-style-\(style)"].waitForExistence(timeout: 3)
+                        pick(app.buttons["picture-style-\(style)"], in: app)
+                        let bb = app.buttons["picture-bands-\(bands)"]
+                        reveal(bb, in: app)
+                        bb.tap()
+                        app.buttons["game-settings-close"].tap()
+                        sleep(1)
+                        shot("picture-\(side)-\(style)-\(bands)")
+                    }
+                }
+            }
+            // Compare: the divider over the picture.
+            gear.tap()
+            _ = app.buttons["picture-style-crt"].waitForExistence(timeout: 3)
+            pick(app.buttons["picture-style-crt"], in: app)
+            let compare = app.switches["picture-compare"]
+            sleep(1) // the panel slides in
+            reveal(compare, in: app)
+            if (compare.value as? String) != "1" { compare.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap() }
+            let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == '1'"), object: compare)
+            XCTAssertEqual(XCTWaiter().wait(for: [on], timeout: 3), .completed, "\(compare.value ?? "nil") shots=\(env["GL_SHOTS"] ?? "none") \(compare.frame) \(app.frame)")
+            app.buttons["game-settings-close"].tap()
+            let divider = app.otherElements["picture-divider"]
+            XCTAssertTrue(divider.waitForExistence(timeout: 3) || app.descendants(matching: .any)["picture-divider"].exists, "no divider")
+            sleep(1)
+            shot("picture-\(side)-compare")
+            gear.tap()
+            _ = compare.waitForExistence(timeout: 3)
+            sleep(1) // the panel slides in
+            reveal(compare, in: app)
+            if (compare.value as? String) == "1" { compare.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap() }
+            if app.buttons["game-settings-close"].exists { app.buttons["game-settings-close"].tap() }
+        }
+    }
+
+    /** A room default from the host applies until the viewer picks their own, and "Use the room's default" brings it back. */
+    func testPictureRoomDefault() {
+        let app = launch(["-pictureLab", "-labRoom", "crt,frame", "-labSettings"])
+        let crt = app.buttons["picture-style-crt"]
+        XCTAssertTrue(crt.waitForExistence(timeout: 10))
+        XCTAssertTrue(crt.isSelected, "the room's default style is not in use")
+        XCTAssertTrue(app.buttons["picture-bands-frame"].isSelected)
+        XCTAssertTrue(app.staticTexts["picture-room-default"].exists)
+        XCTAssertFalse(app.buttons["picture-use-room-default"].exists)
+        app.buttons["picture-style-sharp"].tap()
+        XCTAssertTrue(app.buttons["picture-style-sharp"].isSelected)
+        let back = app.buttons["picture-use-room-default"]
+        XCTAssertTrue(back.waitForExistence(timeout: 3))
+        shot("picture-room-default")
+        back.tap()
+        XCTAssertTrue(crt.isSelected)
+        XCTAssertFalse(back.waitForExistence(timeout: 1))
+    }
+
+    /**
+     * The 2x stream path (docs/protocol.md, Video scale): offscreen, the test
+     * card sent 2x with nearest neighbour and averaged back must be byte for
+     * byte the native one in every style and side (-picture2xCheck). Then
+     * the live lab streams 2x frames (-labUp2) through the real view.
+     */
+    func testPicture2xMatchesNative() {
+        let app = launch(["-picture2xCheck"])
+        let label = app.staticTexts["picture-2x-check"]
+        XCTAssertTrue(label.waitForExistence(timeout: 10))
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "NOT (label BEGINSWITH 'running')"), object: label)
+        XCTAssertEqual(XCTWaiter().wait(for: [done], timeout: 180), .completed, label.label)
+        shot("picture-2x-check")
+        XCTAssertTrue(label.label.hasPrefix("ok "), label.label)
+        app.terminate()
+        for style in ["crt", "edges"] {
+            let lab = launch(["-pictureLab", "-labUp2", "-labStyle", style, "-labBands", "ambient"])
+            let fps = lab.staticTexts["picture-lab-fps"]
+            XCTAssertTrue(fps.waitForExistence(timeout: 10))
+            let drawing = NSPredicate(format: "NOT (label BEGINSWITH '0 fps')")
+            XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: drawing, object: fps)], timeout: 5), .completed, fps.label)
+            XCTAssertTrue(fps.label.hasSuffix("2×"), fps.label)
+            sleep(1)
+            shot("picture-2x-lab-\(style)")
+            lab.terminate()
+        }
+    }
+
     /** Screenshots of the pad lab with the stats overlay and the see-through pad of a controller. */
     func testStatsAndGhostPadLab() {
         let app = launch(["-padLab", "-labStats", "-labGhost"])
@@ -278,11 +436,31 @@ final class PlayerUITests: XCTestCase {
         // Display only: a finger on the pad sends nothing.
         app.otherElements["pad-button-2"].press(forDuration: 0.3)
         XCTAssertEqual(app.staticTexts["pad-log"].label, "")
+        sleep(2) // the stats' screen line gets its first measured rate
         shot("lab-stats-ghost-portrait")
         XCUIDevice.shared.orientation = .landscapeLeft
         sleep(2)
         shot("lab-stats-ghost-landscape")
     }
+}
+
+/** Scrolls Game settings until the element is fully on screen (isHittable is not enough in a scroll view). */
+private func reveal(_ el: XCUIElement, in app: XCUIApplication) {
+    let panel = app.otherElements["game-settings"].scrollViews.firstMatch
+    for _ in 0..<6 {
+        let f = el.frame
+        let screen = app.frame
+        if f.minY >= screen.minY + 60 && f.maxY <= screen.maxY - 20 { return }
+        let target = panel.exists ? panel : app
+        if f.maxY > screen.maxY - 20 { target.swipeUp(velocity: .slow) } else { target.swipeDown(velocity: .slow) }
+    }
+}
+
+/** Reveals and taps an option of Game settings (a tap outside the panel would close it). */
+private func pick(_ el: XCUIElement, in app: XCUIApplication) {
+    _ = el.waitForExistence(timeout: 3)
+    reveal(el, in: app)
+    el.tap()
 }
 
 extension XCUIElement {

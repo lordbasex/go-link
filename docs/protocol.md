@@ -15,7 +15,7 @@ Hardware and usage data go **only** to linked browsers, never to room guests.
 
 | Channel | Kind | Settings | Content |
 |---|---|---|---|
-| Video | Track | VP8 | Emulator frames at the game's native resolution |
+| Video | Track | VP8 | Emulator frames: the game's picture enlarged 2x (video quality high or normal) or at its own size (saver, the test pattern room). See [Video scale](#video-scale) |
 | Audio | Track | Opus 48 kHz stereo | Game sound |
 | Voice | Track (one per seat) | Opus 48 kHz mono | Seated players' microphones, forwarded by the device |
 | `control` | DataChannel | `ordered: true`, reliable | JSON: chat, room state, queue, device status |
@@ -109,8 +109,8 @@ The **local player** lets two or more people play from the same browser (for exa
 |---|---|---|
 | `welcome` | device → guest | Greeting when the channel opens |
 | `hello` | guest → device | `name` (the player's name, see [Player names](#player-names)) and `local_players` (list of local players, 0 to 3). Sent again when they change |
-| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (`name`: the name the device actually uses for you, after cleaning it; your `ports`, `queue_positions`, `spectator`, `swap_offers` and `swap_asked`; `owner`, `pause_asks` and `pause_asked`, see [Pausing](#pausing-is-the-hosts)), `pausable`, `paused`, `paused_by`, `host_online`, `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad) and `recording` (the host is recording the game with the players' voices: everyone sees a REC badge). Personal to each guest, sent on every change |
-| `stream_stats` | device → guest | Frames per second sent, video size, display `aspect`. Every 2 s |
+| `room_state` | device → guest | Seats P1-P4, queue, spectators, `chat` (on/off), `info` (title, game, host, artwork), `you` (`name`: the name the device actually uses for you, after cleaning it; your `ports`, `queue_positions`, `spectator`, `swap_offers` and `swap_asked`; `owner`, `pause_asks` and `pause_asked`, see [Pausing](#pausing-is-the-hosts)), `pausable`, `paused`, `paused_by`, `host_online`, `controls` (`{players, buttons, control}` from the game's control panel, to draw the touch gamepad), `recording` (the host is recording the game with the players' voices: everyone sees a REC badge) and `picture` (`{style, bands}`, the host's default picture style for the room; absent = the site's default, see [Room picture default](#room-picture-default)). Personal to each guest, sent on every change |
+| `stream_stats` | device → guest | `fps` sent, `width` and `height` of the frames sent, display `aspect` and `video` (`{scale, width, height, quality, fallback}`, see [Video scale](#video-scale)). Every 2 s, when the channel opens and at once when the frame size changes |
 | `chat` | guest → device | `text` (up to 300 characters, 5 messages every 5 s) |
 | `chat` | device → guest | `name`, `port`, `role`, `text`, `ts`, or `system` for notices. Every notice carries an `event` and its values in `args` (`name`, `port`, `name2`, `port2`), and the website shows it in the reader's language (the English `system` text is the fallback): `recording_started`, `recording_stopped`, `game_paused`, `game_resumed` (name), `now_watching` (name), `moved` (name, port), `swap_asked` (name, port, name2, port2), `kept_seat` (name, port), `swapped` (name, port, name2, port2), `left_seat` (name, port), `seat_free` (port), `took_seat` (name, port), `pause_declined` (name, port: only to the player whose request the host declined). `game_paused` carries `name2` too when the pause answers a request: `name` asked and `name2` (the host) paused. Generated guest names ("Guest 9F3A") are also shown translated. The last 50 on joining |
 | `typing` | guest → device | `on` (`true` while typing, repeated every ~2.5 s; `false` when cleared). Sending a `chat` also clears it; the device clears it after 6 s without a repeat |
@@ -136,10 +136,10 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `auth_ok` | device → linked | `device_id`, `link_id` and, only after a code, the `token` to keep |
 | `auth_failed` | device → linked | Readable `error`. The link no longer exists: the website forgets it and the device hangs up |
 | `unlink` / `unlinked` | both | Remove this browser's link / the link was removed (from the website or the device window) |
-| `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` the core state (`installed`, `catalog`), the device's `version` and, when a newer go-link was released, `update` (`latest`, `url` of its GitHub release page; the website only accepts go-link's own releases). Never includes the pairing code |
-| `create_room` | linked → device | `rom`, `title`, `voice`, `chat` (absent = on) and optional `art` (`boxart`, `title` or `snap`). Opens a **new** room |
+| `device_status` | device → linked | Every 2 s: `rooms` (below), hardware (with `hostname`), CPU, RAM, machine-wide network traffic (`net_sent_bps`, `net_recv_bps`), STUN/TURN in use, the ROM library (each set with its `check` and `thumbs`, `library.thumb_kind`, `library.disk`, `library.thumbnails_bytes`), `saves_bytes` the core state (`installed`, `catalog`), the device's `version` and, when a newer go-link was released, `update` (`latest`, `url` of its GitHub release page; the website only accepts go-link's own releases), `room`, the test pattern room (`room_id`, its invitation, `owner_key` and `picture`), and `video_quality` (`high`, `normal` or `saver`: the host's choice for game rooms). Never includes the pairing code |
+| `create_room` | linked → device | `rom`, `title`, `voice`, `chat` (absent = on), optional `art` (`boxart`, `title` or `snap`) and optional `picture` (`{style, bands}`, the room's default picture; unknown values are ignored). Opens a **new** room |
 | `room_created` / `room_error` | device → linked | `id` (device room), `room_id` (signalhub) or a readable `error`. Some errors carry a `code` the website translates: `too_many_rooms` with `limit`, `no_saves` |
-| `room_action` | linked → device | `id` and `action`: `pause`, `resume` (the host's own pause; it also answers every pending request for one), `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off`, `record_start` / `record_stop` (see [Recordings](#recordings)) |
+| `room_action` | linked → device | `id` and `action`: `pause`, `resume` (the host's own pause; it also answers every pending request for one), `save` (optional `name`), `archive`, `delete` (to the trash), `purge` (forever, from the trash), `favorite`, `unfavorite`, `new_link` (new invitation), `chat_on` / `chat_off`, `record_start` / `record_stop` (see [Recordings](#recordings)), `picture` (with `style` and `bands`: the room's default picture; both empty clear it; `id: "test"` for the test pattern room; see [Room picture default](#room-picture-default)) |
 | `pause_asked` | device → linked | A seated player asks the host for a pause: `id` (device room id, `test` for the test pattern room), `from` (the player's peer id), `name`, `port`, `expires_at`. Sent again (with a new `expires_at`) when the same player asks again |
 | `pause_ask_gone` | device → linked | `id`, `from`: that request was answered, withdrawn, expired, or the player left the seat |
 | `pause_answer` | linked → device | `id`, `from`, `accept`: the host's answer from the website. The device replies `room_result` with `action: "pause_answer"` and `ok` (`false` when there is no such request any more) |
@@ -151,6 +151,7 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `get_thumb` / `thumb` | both | `set`, `kind` (empty = the host's choice) and `size` (`card` 360x480, `mini` 96x128) / the same plus `data` (JPEG, base64) or `missing: true` |
 | `download_core` | linked → device | Download the core and its game list (whatever is missing) |
 | `set_thumbnails` / `thumbnails_result` | both | `kind` (`boxart`, `title` or `snap`) and/or `dir` (a folder on the device, or `default`): which picture everyone sees and where the device reads them, like the window's Settings / `ok`, `error` |
+| `set_video_quality` / `video_quality_result` | both | `quality` (`high`, `normal` or `saver`): the video quality of game rooms, like the window's Settings; running rooms switch at once / `quality`, `ok`, `error` (an unknown value changes nothing). See [Video scale](#video-scale) |
 | `set_roms_dir` / `roms_dir_result` | both | `dir`: absolute path of an existing folder on the device / `dir`, `ok`, `error` |
 | `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error` |
 | `get_history` / `clear_history` / `delete_history` | linked → device | Ask for the game history, clear it (**with every recording**), or delete one game (`id`, with its recordings). The device answers `history` (with `error` for an unknown `id`) |
@@ -170,10 +171,51 @@ Each room in `device_status.rooms`:
   "players": 3, "max_players": 4, "spectators": 5, "queue": 0,
   "since": "2026-09-27T01:10:00Z", "deleted_at": null, "no_saves": false,
   "saves": [{ "slot": 1, "name": "Stage 3", "at": "2026-09-26T22:17:00Z" }], "autosave": true,
+  "picture": { "style": "crt", "bands": "ambient" },
+  "video": { "quality": "saver", "fallback": "cpu", "scale": 1 },
   "pause_asks": [{ "from": "<peer id>", "name": "Ana", "port": 2, "expires_at": "2026-09-27T01:12:30Z" }] }
 ```
 
-`pause_asks` (only while someone asks) lists the pending requests for a pause, so a browser that opens later sees them too.
+`pause_asks` (only while someone asks) lists the pending requests for a pause, so a browser that opens later sees them too. `video` (only while the game runs) is what the room really sends: `quality` in use, `scale` (2 or 1) and `fallback: "cpu"` when it is lower than the host's choice because this computer could not keep up with 2x (see [Video scale](#video-scale)).
+
+## Video scale
+
+Arcade pixel art has one color per pixel, but VP8 (4:2:0) keeps one color sample per 2x2 block, so at the game's own size small colored details bleed. Game rooms therefore send the picture **enlarged 2x with nearest neighbour** (each game pixel becomes a 2x2 block, so it gets its own color sample), and the website averages it back before drawing. The [video quality lab](quality.md) measured about +7 dB RGB PSNR over the old stream.
+
+**The host's choice** (`device.json` `video_quality`, the window's Settings, `device video quality`, `set_video_quality`):
+
+| `quality` | Frames | VP8 target | Measured average |
+|---|---|---|---|
+| `high` (default) | 2x, nearest neighbour | 3,500 kbps | about 2.6 Mbps per room |
+| `normal` | 2x, nearest neighbour | 2,500 kbps | about 2.0 Mbps |
+| `saver` | the game's size, each 2x2 block's color averaged | 2,500 kbps | about 1.6 Mbps |
+
+A change reaches running rooms at once (the encoder starts again with a keyframe). The test pattern room always streams its test card at its own size (640x480, `scale: 1`, no `quality`).
+
+**Automatic fallback.** When a 2x room starts streaming, the device measures its encoder over the first two seconds (after 10 warm-up frames). If the 95th percentile of the encode time is more than 60 % of a frame's time (10 ms at 60 fps), 2x does not fit this computer next to what else it runs, and that room goes to `saver` for the rest of its run: the device logs it, `device_status.rooms[].video` says `{"quality": "saver", "fallback": "cpu"}` and guests see it in `stream_stats`. Choosing a quality again makes running rooms try 2x again.
+
+**`stream_stats.video`**, the contract for every client that draws the picture:
+
+```json
+{ "type": "stream_stats", "fps": 59.6, "width": 768, "height": 448, "aspect": 1.3333,
+  "video": { "scale": 2, "width": 384, "height": 224, "quality": "high" } }
+```
+
+- `scale` is `2` when every game pixel arrives as a 2x2 block, else `1`. `video.width` x `video.height` is the **game's own size**; the frames are `scale` times larger (the top-level `width` and `height`).
+- `quality` (`high`, `normal`, `saver`) is present in game rooms; `fallback` (`"cpu"`) only when the room fell back. Absent `video` (older devices, before the first frame) means `scale: 1`.
+- The device sends `stream_stats` when the control channel opens, every 2 s, and at once when the frame size changes (a quality change or a fallback), just after the keyframe of the new size.
+- A client that draws the frames itself (a GPU renderer) must, when `scale` is 2 **and** the decoded frame is exactly 2 x `video.width` by 2 x `video.height`, first average each 2x2 block back to one pixel (a texture of the game's size: four samples at texel centers, or one bilinear sample at the block's center), then apply every style (smooth, sharp, CRT, edges, ambient light) to that texture. Otherwise it draws the frames as they are (during a size change the decoder may still show frames of the old size). Styles fed the raw 2x picture look wrong: CRT draws twice as many scanlines as the game has and edge smoothing sees 2-pixel steps.
+- A client that shows the plain `<video>` (or the platform's video view) changes nothing: the 2x picture scales like any other.
+- Stream statistics should show the frames and the game's size, e.g. "768×448 (2× of 384×224)", and the quality, "Saver (CPU)" after a fallback.
+
+## Room picture default
+
+How a browser draws the game (the website's [picture styles](web.md#picture-styles)) is each viewer's own choice, kept in their browser. The host may give a room a **default**, for guests who never chose:
+
+1. A linked browser sends `room_action` `{"id": "<room id>", "action": "picture", "style": "crt", "bands": "ambient"}` (or `create_room` with `picture`). `id` is `test` for the test pattern room. `style` is `smooth`, `sharp`, `crt` or `edges`; `bands` is `black`, `ambient` or `frame`. Both empty clear the default. Any other value is refused (`room_result` with `ok: false`) and changes nothing.
+2. The device keeps it in `device.json`: `rooms[].picture` for game rooms, `test_room_picture` for the test pattern room (a factory reset forgets both). A hand-edited unknown value is ignored when the device loads it.
+3. Every guest gets it in `room_state.picture` (`{"style", "bands"}`; absent = none), and linked browsers see it in `device_status` (`rooms[].picture`, `room.picture`).
+4. The website picks, per value: the viewer's own choice, else the room's default, else the site's default (**Smooth** with **Ambient** sides). The device never draws, checks or enforces the picture: it is a suggestion.
 
 ## Player names
 

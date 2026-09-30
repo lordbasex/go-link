@@ -21,7 +21,7 @@ typedef struct {
 	int keyframe;
 } enc_t;
 
-static int enc_open(enc_t *e, int w, int h, int fps, int kbps) {
+static int enc_open(enc_t *e, int w, int h, int fps, int kbps, int minq, int maxq, int cpu) {
 	vpx_codec_enc_cfg_t cfg;
 	memset(e, 0, sizeof(*e));
 	if (vpx_codec_enc_config_default(vpx_codec_vp8_cx(), &cfg, 0) != VPX_CODEC_OK) return -1;
@@ -31,15 +31,15 @@ static int enc_open(enc_t *e, int w, int h, int fps, int kbps) {
 	cfg.g_timebase.den = fps;
 	cfg.rc_target_bitrate = kbps;
 	cfg.rc_end_usage = VPX_CBR;
-	cfg.rc_min_quantizer = 4;
-	cfg.rc_max_quantizer = 56;
+	cfg.rc_min_quantizer = minq;
+	cfg.rc_max_quantizer = maxq;
 	cfg.g_lag_in_frames = 0;
 	cfg.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
 	cfg.g_threads = 2;
 	cfg.kf_mode = VPX_KF_AUTO;
 	cfg.kf_max_dist = fps * 3;
 	if (vpx_codec_enc_init(&e->ctx, vpx_codec_vp8_cx(), &cfg, 0) != VPX_CODEC_OK) return -2;
-	vpx_codec_control(&e->ctx, VP8E_SET_CPUUSED, 8);
+	vpx_codec_control(&e->ctx, VP8E_SET_CPUUSED, cpu);
 	vpx_codec_control(&e->ctx, VP8E_SET_STATIC_THRESHOLD, 1);
 	if (!vpx_img_alloc(&e->img, VPX_IMG_FMT_I420, w, h, 1)) {
 		vpx_codec_destroy(&e->ctx);
@@ -101,7 +101,20 @@ type Config struct {
 	Width, Height int
 	FPS           int
 	BitrateKbps   int
+	// MinQuantizer and MaxQuantizer bound the quantizer (0-63, lower is
+	// better quality); CPUUsed is the libvpx speed preset (-16..16, higher
+	// is faster). Zero keeps the streaming defaults (4, 56 and 8); the
+	// video quality lab sets them to compare other tunings.
+	MinQuantizer, MaxQuantizer int
+	CPUUsed                    int
 }
+
+// Encoder defaults, used when Config leaves the tuning fields at zero.
+const (
+	DefaultMinQuantizer = 4
+	DefaultMaxQuantizer = 56
+	DefaultCPUUsed      = 8
+)
 
 // VP8 is a libvpx VP8 encoder. It is not safe for concurrent use.
 type VP8 struct {
@@ -122,8 +135,21 @@ func NewVP8(cfg Config) (*VP8, error) {
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.FPS <= 0 || cfg.BitrateKbps <= 0 {
 		return nil, fmt.Errorf("encoder: invalid config %+v", cfg)
 	}
+	minq, maxq, cpu := cfg.MinQuantizer, cfg.MaxQuantizer, cfg.CPUUsed
+	if minq == 0 {
+		minq = DefaultMinQuantizer
+	}
+	if maxq == 0 {
+		maxq = DefaultMaxQuantizer
+	}
+	if cpu == 0 {
+		cpu = DefaultCPUUsed
+	}
+	if minq < 0 || maxq > 63 || minq > maxq || cpu < -16 || cpu > 16 {
+		return nil, fmt.Errorf("encoder: invalid tuning %+v", cfg)
+	}
 	e := (*C.enc_t)(C.malloc(C.size_t(unsafe.Sizeof(C.enc_t{}))))
-	if rc := C.enc_open(e, C.int(cfg.Width), C.int(cfg.Height), C.int(cfg.FPS), C.int(cfg.BitrateKbps)); rc != 0 {
+	if rc := C.enc_open(e, C.int(cfg.Width), C.int(cfg.Height), C.int(cfg.FPS), C.int(cfg.BitrateKbps), C.int(minq), C.int(maxq), C.int(cpu)); rc != 0 {
 		C.free(unsafe.Pointer(e))
 		return nil, fmt.Errorf("encoder: libvpx init failed (%d)", int(rc))
 	}

@@ -24,6 +24,9 @@ import (
 type emulateConfig struct {
 	CorePath, RomPath, SystemDir string
 	StatePath                    string // optional save state loaded at start
+	// Video is how frames are converted (--video: native, box or double);
+	// the parent can change it later with a VideoMode message.
+	Video emuproc.VideoMode
 }
 
 // runEmulate is the hidden "emulate" subcommand: an emulator worker that
@@ -31,7 +34,7 @@ type emulateConfig struct {
 // media on stdout, with its log on stderr. The device starts one per game
 // (services.WorkerSource), so several games can run at once.
 //
-//	device emulate --core PATH --rom PATH --system DIR [--state PATH]
+//	device emulate --core PATH --rom PATH --system DIR [--state PATH] [--video native|box|double]
 func runEmulate(args []string) error {
 	fs := flag.NewFlagSet("emulate", flag.ContinueOnError)
 	var cfg emulateConfig
@@ -39,6 +42,7 @@ func runEmulate(args []string) error {
 	fs.StringVar(&cfg.RomPath, "rom", "", "ROM set to run")
 	fs.StringVar(&cfg.SystemDir, "system", "", "system folder: BIOS, samples, NVRAM")
 	fs.StringVar(&cfg.StatePath, "state", "", "save state to load after the game starts")
+	video := fs.String("video", "native", "how frames are converted: native, box (2x2 averaged color) or double (2x nearest neighbour)")
 	probe := fs.String("probe", "", `test the game's saves instead of streaming it: "save" or "load" (see runProbe)`)
 	probeFile := fs.String("probe-file", "", "the save state the probe writes (save) or reads (load)")
 	if err := fs.Parse(args); err != nil {
@@ -47,6 +51,11 @@ func runEmulate(args []string) error {
 	if cfg.CorePath == "" || cfg.RomPath == "" || cfg.SystemDir == "" {
 		return errors.New("emulate: --core, --rom and --system are required")
 	}
+	mode, err := emuproc.ParseVideoMode(*video)
+	if err != nil {
+		return err
+	}
+	cfg.Video = mode
 	if *probe != "" {
 		return runProbe(cfg, *probe, *probeFile, os.Stdout)
 	}
@@ -76,14 +85,16 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 		_ = w.Flush()
 		return err
 	}
+	var game *services.GameCore // set before the first frame runs
 	game, err := services.OpenGameCore(services.GameCoreConfig{
 		CorePath:  cfg.CorePath,
 		RomPath:   cfg.RomPath,
 		SystemDir: cfg.SystemDir,
 		Logger:    log,
+		VideoMode: cfg.Video,
 		Video: func(i420 []byte, width, height int, dur time.Duration) {
 			if writeErr == nil && !hidden {
-				writeErr = w.WriteVideo(width, height, dur, i420)
+				writeErr = w.WriteVideo(width, height, game.VideoScale(), dur, i420)
 			}
 		},
 		Audio: func(pcm []int16) {
@@ -130,9 +141,10 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 	if err := w.Flush(); err != nil {
 		return err
 	}
-	log.Info("game running", "core", info.Name, "size", [2]int{av.BaseWidth, av.BaseHeight}, "fps", av.FPS, "state", cfg.StatePath != "")
+	log.Info("game running", "core", info.Name, "size", [2]int{av.BaseWidth, av.BaseHeight}, "fps", av.FPS, "state", cfg.StatePath != "", "video", cfg.Video)
 
 	cmds := newWorkerCommands()
+	cmds.video.Store(uint32(cfg.Video))
 	go cmds.read(in, log)
 
 	ticker := time.NewTicker(game.FrameDuration())
@@ -153,6 +165,7 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 			continue // the parent repeats the last picture
 		}
 		game.SetPads(cmds.pads())
+		game.SetVideoMode(emuproc.VideoMode(cmds.video.Load()))
 		game.Run()
 		if writeErr == nil {
 			writeErr = w.Flush()
@@ -174,6 +187,7 @@ type workerCommands struct {
 	mu      sync.Mutex
 	current [emuproc.Ports]input.Pad
 	paused  atomic.Bool
+	video   atomic.Uint32 // the emuproc.VideoMode for the next frames
 	state   chan stateCommand
 	quit    chan struct{}
 }
@@ -217,6 +231,15 @@ func (c *workerCommands) read(in io.Reader, log *slog.Logger) {
 			}
 		case emuproc.TypeSaveState, emuproc.TypeLoadState:
 			c.state <- stateCommand{typ: t, path: string(p)}
+		case emuproc.TypeVideoMode:
+			m, err := emuproc.DecodeVideoMode(p)
+			if err != nil {
+				log.Warn("bad video mode", "err", err)
+				continue
+			}
+			if old := emuproc.VideoMode(c.video.Swap(uint32(m))); old != m {
+				log.Info("video mode", "from", old, "to", m)
+			}
 		case emuproc.TypeQuit:
 			return
 		default:

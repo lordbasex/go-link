@@ -33,6 +33,13 @@ const DocsPage = lazy(() =>
 const DevicePage = lazy(() =>
   import("./pages/DevicePage").then((m) => ({ default: m.DevicePage })),
 );
+const PictureDemoPage = lazy(() =>
+  import("./pages/PictureDemoPage").then((m) => ({ default: m.PictureDemoPage })),
+);
+// The picture quality lab exists only in development builds (npm run dev).
+const PictureLabPage = import.meta.env.DEV
+  ? lazy(() => import("./pages/PictureLabPage").then((m) => ({ default: m.PictureLabPage })))
+  : null;
 const TestControllerPage = lazy(() =>
   import("./pages/TestControllerPage").then((m) => ({ default: m.TestControllerPage })),
 );
@@ -146,6 +153,8 @@ export function App() {
               element={<DevicePage tab="history" />}
             />
             <Route path="/test-controller" element={<TestControllerPage />} />
+            <Route path="/picture-demo" element={<PictureDemoPage />} />
+            {PictureLabPage && <Route path="/picture-lab" element={<PictureLabPage />} />}
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/docs/:slug" element={<DocsPage />} />
             <Route path="/terms" element={<LegalPage doc="terms" />} />

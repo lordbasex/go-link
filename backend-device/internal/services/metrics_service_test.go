@@ -26,3 +26,23 @@ func TestDeviceStatusCarriesStorageSizes(t *testing.T) {
 		}
 	}
 }
+
+func TestDeviceStatusCarriesVideoQuality(t *testing.T) {
+	st := models.Status{
+		DeviceID:     "d1",
+		VideoQuality: models.VideoNormal,
+		Rooms: []models.ManagedRoom{{
+			SavedRoom: models.SavedRoom{ID: "r1", State: models.RoomLive},
+			Video:     &models.RoomVideo{Quality: models.VideoSaver, Fallback: models.VideoFallbackCPU, Scale: 1},
+		}},
+	}
+	out, err := json.Marshal(NewDeviceStatusMessage(st))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"video_quality":"normal"`, `"video":{"quality":"saver","fallback":"cpu","scale":1}`} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("device_status lacks %s: %s", want, out)
+		}
+	}
+}

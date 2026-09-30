@@ -236,6 +236,9 @@ test("chat goes both ways", async () => {
   await A.tapOn({ id: "dock-chat" });
   await A.waitFor({ text: fromOwner });
   await A.fill({ id: "chat-input" }, fromApp);
+  // The keyboard commits typed text a little later on a slow emulator: send
+  // only once the whole line is in the field (a cut line never matches).
+  await A.waitFor({ id: "chat-input", text: fromApp });
   // A slow CI emulator can miss the tap: send again until the device echoes
   // the line back (an empty input sends nothing, so nothing doubles).
   for (let i = 0; ; i++) {

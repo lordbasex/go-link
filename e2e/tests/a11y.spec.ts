@@ -16,6 +16,7 @@ const pages = [
   { path: "/terms", name: "terms of use" },
   { path: "/privacy", name: "privacy policy" },
   { path: "/test-controller", name: "test controller" },
+  { path: "/picture-demo", name: "picture demo" },
   { path: "/nowhere", name: "not found" },
 ];
 

@@ -5,6 +5,8 @@
 
 import { parseRecordingList, type RecordingInfo } from "./recordings";
 import { parsePauseAsks, type PauseAskView } from "./room-state";
+import { parseRoomPicture, type PictureSettings } from "./picture";
+import { parseRoomVideo, parseVideoQuality, type RoomVideo, type VideoQuality } from "./video";
 
 export interface DeviceHardware {
   /** The computer's name (older devices: absent). */
@@ -119,6 +121,10 @@ export interface ManagedRoom {
   recordingSince?: string;
   /** Players asking the host for a pause (answer with pause_answer). */
   pauseAsks?: PauseAskView[];
+  /** The host's default picture style for the room's guests; null: the site's default. */
+  picture?: PictureSettings | null;
+  /** While it runs: the video quality in use, and why it is lower than the host's choice. */
+  video?: RoomVideo;
 }
 
 /** Days a deleted room stays in the trash. */
@@ -166,6 +172,8 @@ function parseRooms(v: unknown): ManagedRoom[] {
         recording: o.recording === true,
         recordingSince: str(o.recording_since, 40),
         pauseAsks: parsePauseAsks(o.pause_asks),
+        picture: parseRoomPicture(o.picture),
+        video: parseRoomVideo(o.video),
       },
     ];
   });
@@ -186,6 +194,8 @@ export interface DeviceRoom {
   invite?: string;
   invite_code?: string;
   owner_key?: string;
+  /** The test pattern room's default picture style (absent: the site's default). */
+  picture?: PictureSettings | null;
 }
 
 export interface DeviceStatus {
@@ -204,6 +214,8 @@ export interface DeviceStatus {
   savesBytes: number;
   /** A newer go-link release than the device runs, when there is one. */
   update?: DeviceUpdate;
+  /** The host's video quality for game rooms (older devices: absent). */
+  videoQuality?: VideoQuality;
 }
 
 export interface DeviceUpdate {
@@ -235,13 +247,20 @@ export function parseDeviceStatus(msg: unknown): DeviceStatus | null {
     ice_urls: Array.isArray(m.ice_urls) ? m.ice_urls.filter((u): u is string => typeof u === "string") : [],
     roms_dir: typeof m.roms_dir === "string" ? m.roms_dir : "",
     system: typeof m.system === "object" && m.system !== null ? (m.system as DeviceStatus["system"]) : undefined,
-    room: typeof m.room === "object" && m.room !== null ? (m.room as DeviceStatus["room"]) : undefined,
+    room: parseDeviceRoom(m.room),
     library: parseLibrary(m.library),
     linked_browsers: typeof m.linked_browsers === "number" ? m.linked_browsers : 0,
     rooms: parseRooms(m.rooms),
     savesBytes: bytesOf(m.saves_bytes),
     update: parseUpdate(m.update),
+    videoQuality: parseVideoQuality(m.video_quality),
   };
+}
+
+function parseDeviceRoom(v: unknown): DeviceRoom | undefined {
+  if (typeof v !== "object" || v === null) return undefined;
+  const r = v as DeviceRoom & { picture?: unknown };
+  return { ...r, picture: parseRoomPicture(r.picture) };
 }
 
 /** A byte count from the device: a finite number, never negative. */

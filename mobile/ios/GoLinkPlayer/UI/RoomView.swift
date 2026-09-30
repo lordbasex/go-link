@@ -17,13 +17,17 @@ struct RoomView: View {
     @State private var touchOn: Bool
     @State private var drawer: DrawerTab?
     @State private var chatSeen = 0
-    @State private var soundOpen = false
+    @State private var settingsOpen = false
     @State private var helpOpen = false
     @State private var micAsk = false
     @State private var lostText: String?
     @State private var statsOn: Bool
     /** With a real controller connected: the on-screen pad shown see-through (display only). */
     @State private var ghostPad = false
+    /** 120 Hz on ProMotion screens while the room is open, and the measured rate for the stats. */
+    @StateObject private var screenRate = ScreenRateMonitor()
+    /** How this phone draws the game (Game settings › Picture). */
+    @StateObject private var picture = PictureModel()
 
     init(session: RoomSession) {
         self.session = session
@@ -75,12 +79,36 @@ struct RoomView: View {
                         tab: Binding(get: { drawer }, set: { self.drawer = $0 }),
                         landscape: landscape,
                         unread: unread,
-                        onSound: { soundOpen = true },
+                        onSettings: {
+                            self.drawer = nil
+                            settingsOpen = true
+                        },
                         onHelp: { helpOpen = true },
                         onLeave: { model.leaveRoom() },
                         onClose: { self.drawer = nil }
                     )
                     .transition(.move(edge: landscape ? .trailing : .bottom))
+                }
+                if settingsOpen {
+                    GameSettingsPanel(
+                        landscape: landscape,
+                        picture: picture,
+                        sound: GameSound(
+                            game: Binding(get: { session.sound.gameVolume }, set: { session.setGameVolume($0) }),
+                            voices: Binding(get: { session.sound.voiceVolume }, set: { session.setVoiceVolume($0) }),
+                            router: session.router,
+                            test: { session.testSound() }
+                        ),
+                        initialName: model.prefs.playerName,
+                        onSaveName: { model.setName($0) },
+                        statsOn: Binding(get: { statsOn }, set: {
+                            statsOn = $0
+                            model.prefs.stats = $0
+                        }),
+                        onClose: { settingsOpen = false }
+                    )
+                    .transition(.move(edge: landscape ? .trailing : .bottom))
+                    .zIndex(1)
                 }
                 if session.askName && admitted {
                     AliasView(initial: model.prefs.playerName, onEnter: { session.confirmName($0) }, onBack: { model.leaveRoom() })
@@ -98,6 +126,7 @@ struct RoomView: View {
                 }
             }
             .animation(.easeOut(duration: 0.2), value: drawer)
+            .animation(.easeOut(duration: 0.2), value: settingsOpen)
             // A rotation swaps the whole layout: let go of every held
             // button (the device gets 0) before the new pad takes fingers.
             .onChange(of: landscape) { _, _ in pad.releaseAll() }
@@ -108,6 +137,7 @@ struct RoomView: View {
         .onChange(of: hasController, initial: true) { _, has in pad.displayOnly = has }
         .onChange(of: session.controllerBits) { _, bits in pad.shown = controllerDisplayBits(bits, myPort: myPorts.first) }
         .onChange(of: statsOn, initial: true) { _, on in session.setStatsOn(on) }
+        .onChange(of: room?.picture, initial: true) { _, p in picture.setRoomDefault(p) }
         .onChange(of: ui.chat.last) { _, line in
             // A declined pause request comes as a notice only to this player.
             if case .system(_, _, .pauseDeclined?, _)? = line { toast(L("ev_pause_declined")) }
@@ -119,8 +149,11 @@ struct RoomView: View {
             toast(L("sound_input_lost", deviceName(lost.kind, lost.name)))
             session.router.lost = nil
         }
-        .onDisappear { pad.releaseAll() }
-        .sheet(isPresented: $soundOpen) { SoundSheet(session: session, router: session.router) }
+        .onAppear { screenRate.start() }
+        .onDisappear {
+            pad.releaseAll()
+            screenRate.stop()
+        }
         .sheet(isPresented: $helpOpen) { HelpSheet() }
         .alert(L("perm_mic_title"), isPresented: $micAsk) {
             if AudioRouter.micPermission == .denied {
@@ -144,18 +177,19 @@ struct RoomView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { if lostText == text { lostText = nil } }
     }
 
-    /** The picture with the room's overlays. */
+    /**
+     * The picture with the room's overlays. The renderer fills the whole
+     * area and keeps the game's aspect inside it, so the Ambient and Frame
+     * sides have room around the picture.
+     */
     private var screen: some View {
         GeometryReader { g in
-            let fit: CGSize = {
-                let boxAspect = g.size.width / max(g.size.height, 1)
-                return boxAspect > aspect
-                    ? CGSize(width: g.size.height * aspect, height: g.size.height)
-                    : CGSize(width: g.size.width, height: g.size.width / aspect)
-            }()
             ZStack {
                 Tokens.video
-                VideoView(track: session.video).frame(width: fit.width, height: fit.height)
+                PictureView(feed: session.video, aspect: Double(aspect), native: ui.stats.video?.native, picture: picture)
+                if streaming && picture.compare && picture.available {
+                    CompareDivider(split: $picture.split, after: picture.settings.style.title)
+                }
                 RoomOverlay(session: session, onLeave: { model.leaveRoom() })
                 if streaming, let room {
                     if room.recording {
@@ -168,7 +202,7 @@ struct RoomView: View {
                             .frame(maxWidth: min(300, g.size.width - 16))
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: low ? .bottomTrailing : .topTrailing).padding(8)
                     }
-                    StatsCorner(on: statsOn, stats: session.liveStats) {
+                    StatsCorner(on: statsOn, stats: session.liveStats, video: ui.stats.video, screenHz: screenRate.hz) {
                         statsOn.toggle()
                         model.prefs.stats = statsOn
                     }
@@ -176,7 +210,7 @@ struct RoomView: View {
                     if room.you.pauseAsked != nil && !room.paused {
                         PauseBanner { session.client.cancelPauseRequest() }
                             .padding(.horizontal, 12)
-                            .padding(.top, statsOn ? 76 : 8)
+                            .padding(.top, statsOn ? (ui.stats.video == nil ? 92 : (ui.stats.video?.quality == nil ? 108 : 124)) : 8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     }
                     if room.paused {
@@ -266,6 +300,10 @@ struct RoomView: View {
                     model.prefs.touchPad = touchOn
                     if !touchOn { pad.releaseAll() }
                 }
+            }
+            DockButton(icon: "gearshape", label: L("room_settings"), on: settingsOpen, tag: "dock-settings") {
+                drawer = nil
+                settingsOpen.toggle()
             }
         }
         return Group {

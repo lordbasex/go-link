@@ -17,6 +17,7 @@ import { TestPad } from "../components/TestPad";
 import { TouchPad } from "../components/TouchPad";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
 import { useInputConfig } from "../signal/useInputConfig";
+import { useRefreshRate } from "../picture/refreshRate";
 
 /** Samples kept for the average input-to-screen time. */
 const LATENCY_SAMPLES = 20;
@@ -67,6 +68,7 @@ export function TestControllerPage() {
   const [touchOn, setTouchOn] = useState(false);
   const [pads, setPads] = useState<PadInfo[]>([]);
   const latency = useFrameLatency();
+  const hz = useRefreshRate();
   const measure = useRef(latency.measure);
   measure.current = latency.measure;
 
@@ -188,6 +190,9 @@ export function TestControllerPage() {
               {latency.last === null ? t.testController.latencyNone : `${fmt(latency.last)} · ⌀ ${fmt(latency.avg)}`}
             </p>
             <p className="small muted">{t.testController.latencyHint}</p>
+            <p className="small muted test-controller-screen">
+              {t.picture.screen}: <span className="mono">{hz === null ? "–" : t.picture.hz(hz)}</span>
+            </p>
           </section>
           <section className="card stack-sm" aria-labelledby="tc-pads">
             <h2 className="card-title" id="tc-pads">

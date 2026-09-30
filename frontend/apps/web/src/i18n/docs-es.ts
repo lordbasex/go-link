@@ -230,6 +230,28 @@ export const docsEs: Docs = {
         { t: "list", items: ["El juego es del anfitrión: solo el anfitrión lo pausa y lo reanuda, desde la sala o desde Mi dispositivo.", "Los jugadores sentados usan **Pedir pausa** (el botón de pausa, o P). El anfitrión ve “NOMBRE quiere pausar” con **Pausar** y **Seguir jugando**; el pedido se descarta a los 30 segundos.", "El botón está apagado mientras el anfitrión no está conectado, o cuando la sala no se puede pausar (la carta de ajuste)."] },
         { t: "h2", id: "test", text: "Prueba tu mando" },
         { t: "p", text: "Abre [Prueba tu mando](/test-controller) para revisar tu teclado, un mando Bluetooth o USB o el mando en pantalla antes de jugar, sin dispositivo: cada botón enciende el mando de la carta de ajuste, con el nombre del mando y el tiempo de la entrada a la pantalla." },
+        { t: "h2", id: "picture", text: "Estilo de imagen" },
+        { t: "p", text: "Los juegos llegan a su propio tamaño, pequeño (por ejemplo 384 × 224), y tu pantalla los agranda. El botón **Imagen** del panel de la sala (en un teléfono: la pestaña **Tú** del panel lateral) elige cómo, solo para ti: nadie más ve el cambio, y se aplica al momento, sin recargar." },
+        {
+          t: "list",
+          items: [
+            "**Suave**: el aspecto habitual del navegador, suave.",
+            "**Nítida**: píxeles cuadrados y nítidos en cualquier tamaño, con una mezcla de un píxel en cada borde para que nada parpadee.",
+            "**CRT arcade**: líneas de barrido, una rejilla de apertura, un tubo levemente curvo y un brillo suave, como un monitor arcade. Se ve la imagen completa.",
+            "**Bordes suaves** (experimental): las escaleras se vuelven diagonales y el resto de los píxeles sigue nítido.",
+            "**Laterales**: qué llena el espacio junto a la imagen en una pantalla ancha: **Negro**, **Ambiente** (los colores del juego brillan alrededor) o **Marco** (un mueble arcade alrededor de la pantalla). La imagen nunca se recorta.",
+          ],
+        },
+        { t: "p", text: "**Comparar** muestra una línea sobre el video: el lado izquierdo es el aspecto habitual del navegador y el derecho, tu elección. [Estilos de imagen](/picture-demo) muestra la misma comparación con un cuadro de prueba, sin dispositivo. Los estilos usan la tarjeta gráfica (WebGL); un navegador sin ella muestra la imagen normal. Los datos de la sala (el botón (i)) muestran la frecuencia de refresco de tu pantalla." },
+        { t: "p", text: "**Calidad de video (anfitriones).** Tu computadora envía el juego al doble de su tamaño, así cada píxel conserva su propio color, y el sitio lo vuelve a los píxeles del juego antes de cualquier estilo. Elige **Alta** (la mejor, unos 2,6 Mbps por sala), **Normal** (menos ancho de banda) o **Ahorro** (el tamaño propio del juego, para computadoras lentas o conexiones de subida lentas) en [Mi dispositivo](/device), en **Ajustes › Salas** de la app o con `go-link-device video quality`. Las salas en marcha cambian al instante. Si tu computadora no alcanza con el doble de tamaño, la sala pasa sola a Ahorro y muestra **Ahorro (CPU)**. El botón (i) muestra lo que envía una sala, por ejemplo \"768×448 (2× de 384×224)\"." },
+        { t: "p", text: "**La predeterminada de la sala.** Hasta que elijas, ves la imagen que eligió el anfitrión de la sala o, si no eligió, la del sitio: **Suave** con laterales **Ambiente**. Tu propia elección siempre gana, en este navegador, en todas las salas." },
+        {
+          t: "list",
+          items: [
+            "El panel Imagen muestra **Predeterminada de la sala** cuando el anfitrión eligió una. **Usar la de la sala** olvida tu elección, así vuelves a seguir la del anfitrión.",
+            "Anfitriones: en tu propia sala, elige un estilo y pulsa **Usar como predeterminada de la sala**. También puedes cambiarla en [Salas](/rooms) (el menú ⋯ de una sala, **Imagen predeterminada**) y, para la carta de ajuste, con el botón de imagen en [Mi dispositivo](/device). Los invitados pueden cambiarla igual en su propia pantalla.",
+          ],
+        },
       ],
     },
     {
@@ -412,7 +434,7 @@ export const docsEs: Docs = {
             ["Resumen", "Las salas, quién juega, CPU, memoria, red, transmisión, jugadores y latencia; un aviso para descargar cuando hay una versión nueva; Abrir go-link, Vincular otro navegador y Desvincular todos; y Esta computadora: hardware, ID del dispositivo y versión."],
             ["Emuladores › MAME › ROMs", "El estado del emulador, tu carpeta de ROMs, una zona para soltar sets .zip y copiarlos ahí, y cuántos sets hay, cuántos funcionan y cuánto ocupan. Cada juego y Jugar están en el sitio."],
             ["Emuladores › MAME › Imágenes", "Qué juegos tienen imágenes y dónde ponerlas."],
-            ["Ajustes", "General (el idioma de la ventana: inglés, español o portugués), qué imagen mostrar, la carpeta de imágenes, e información de salas y red."],
+            ["Ajustes", "General (el idioma de la ventana: inglés, español o portugués), qué imagen mostrar, la carpeta de imágenes, la calidad de video de las salas de juego (Alta, Normal, Ahorro), e información de salas y red."],
           ],
         },
         { t: "p", text: "Haz clic en el ícono de la barra de menú para ver un pequeño panel con el estado; clic derecho para el menú. **Quit** detiene go-link." },
@@ -468,7 +490,7 @@ export const docsEs: Docs = {
       blocks: [
         {
           t: "code",
-          code: "go-link-device                          corre go-link\ngo-link-device core download            descarga el emulador y su lista de juegos\ngo-link-device roms dir [RUTA]          muestra o cambia la carpeta de ROMs\ngo-link-device roms check [--json]      revisa qué juegos funcionan\ngo-link-device roms saves [--json]      prueba qué juegos se pueden guardar\ngo-link-device thumbnails check         cuenta las imágenes de los juegos\ngo-link-device thumbnails dir [RUTA]    muestra o cambia la carpeta de imágenes\ngo-link-device thumbnails kind [TIPO]   boxart, title o snap\ngo-link-device panel token [--new]      muestra o reemplaza la clave del panel\ngo-link-device --help                   todas las opciones y la versión",
+          code: "go-link-device                          corre go-link\ngo-link-device core download            descarga el emulador y su lista de juegos\ngo-link-device roms dir [RUTA]          muestra o cambia la carpeta de ROMs\ngo-link-device roms check [--json]      revisa qué juegos funcionan\ngo-link-device roms saves [--json]      prueba qué juegos se pueden guardar\ngo-link-device thumbnails check         cuenta las imágenes de los juegos\ngo-link-device thumbnails dir [RUTA]    muestra o cambia la carpeta de imágenes\ngo-link-device thumbnails kind [TIPO]   boxart, title o snap\ngo-link-device video quality [C]        high, normal o saver\ngo-link-device panel token [--new]      muestra o reemplaza la clave del panel\ngo-link-device --help                   todas las opciones y la versión",
         },
         {
           t: "table",

@@ -13,7 +13,7 @@ struct SoundState: Equatable {
     var silenced = Set<Int>()
     /** Ports whose voice track arrived. */
     var voices = Set<Int>()
-    /** 0 to 3 (1 = as sent). */
+    /** 0 to 1 (0-100 %; 1 = as sent). */
     var gameVolume = 1.0
     var voiceVolume = 1.0
 }
@@ -71,8 +71,8 @@ final class RoomSession: ObservableObject {
         gamepads = GamepadInput { pushPads() }
         pushPads = { [weak self] in self?.pushPads() }
         peers.session = self
-        sound.gameVolume = prefs.gameVolume
-        sound.voiceVolume = prefs.voiceVolume
+        sound.gameVolume = prefs.gameVolume.clamped(0, 1)
+        sound.voiceVolume = prefs.voiceVolume.clamped(0, 1)
     }
 
     /** Creates the WebRTC peer when the device offers (RoomClient asks for it). */
@@ -180,13 +180,13 @@ final class RoomSession: ObservableObject {
     // MARK: Sound
 
     func setGameVolume(_ v: Double) {
-        sound.gameVolume = v.clamped(0, 3)
+        sound.gameVolume = v.clamped(0, 1)
         prefs.gameVolume = sound.gameVolume
         applyVolumes()
     }
 
     func setVoiceVolume(_ v: Double) {
-        sound.voiceVolume = v.clamped(0, 3)
+        sound.voiceVolume = v.clamped(0, 1)
         prefs.voiceVolume = sound.voiceVolume
         applyVolumes()
     }

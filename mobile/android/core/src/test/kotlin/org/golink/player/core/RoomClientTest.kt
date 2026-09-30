@@ -138,6 +138,13 @@ class RoomClientTest {
         assertEquals(1, room.ui.value.chat.size)
         assertEquals(RoomPhase.STREAMING, room.ui.value.phase)
 
+        // A 2x picture: the game's size stays until a new "video" arrives.
+        peer.events.onControlMessage("""{"type":"stream_stats","fps":60,"aspect":1.25,"video":{"scale":2,"width":384,"height":224,"quality":"high"}}""")
+        peer.events.onControlMessage("""{"type":"stream_stats","fps":59}""")
+        runCurrent()
+        assertEquals(StreamStatsView(59.0, 1.25, StreamVideo(2, 384, 224, VideoQuality.HIGH)), room.ui.value.stats)
+        assertEquals(PixelSize(384, 224), room.ui.value.stats.video?.native)
+
         // A name with symbols is cleaned like the device does; guests ask the host for a pause.
         room.setIdentity("  Ana ✨ #1 ", listOf(0, 1))
         runCurrent()

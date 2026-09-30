@@ -105,6 +105,10 @@ func openLibrary(store *repositories.ConfigFile, cfg *models.Config, target, cor
 	settings := services.NewSettingsService(library, cfg.Thumbnails, filepath.Join(base, "thumbnails", "MAME"), func(t models.ThumbnailSettings) error {
 		return updateConfig(store, cfg, func(c *models.Config) { c.Thumbnails = t })
 	})
+	settings.UseVideoQuality(cfg.VideoQuality, func(q string) error {
+		return updateConfig(store, cfg, func(c *models.Config) { c.VideoQuality = q })
+	})
+	status.SetVideoQuality(settings.VideoQuality())
 	library.OnDirChange(func(dir string) {
 		if err := updateConfig(store, cfg, func(c *models.Config) { c.RomsDir = dir }); err != nil {
 			logger.Warn("cannot save the ROM folder", "err", err)

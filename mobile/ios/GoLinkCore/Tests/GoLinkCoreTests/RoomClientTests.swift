@@ -161,6 +161,11 @@ final class RoomClientTests: XCTestCase {
         peer.events.onControlMessage(#"{"type":"stream_stats","fps":59}"#)
         XCTAssertEqual(.player([1]), room.ui.room?.me)
         XCTAssertEqual(StreamStatsView(fps: 59, aspect: 1.25), room.ui.stats)
+        // The 2x picture's game size is kept until a new "video" arrives.
+        peer.events.onControlMessage(#"{"type":"stream_stats","fps":60,"width":768,"height":448,"video":{"scale":2,"width":384,"height":224,"quality":"high"}}"#)
+        peer.events.onControlMessage(#"{"type":"stream_stats","fps":60}"#)
+        XCTAssertEqual(StreamVideo(scale: 2, width: 384, height: 224, quality: .high), room.ui.stats.video)
+        XCTAssertEqual(PictureLayout.Size(w: 384, h: 224), room.ui.stats.video?.native)
         room.close()
     }
 }

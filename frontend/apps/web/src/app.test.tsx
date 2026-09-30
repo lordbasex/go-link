@@ -58,7 +58,8 @@ describe("lobby", () => {
     const links = within(menu).getAllByRole("link");
     expect(links.map((a) => a.textContent)).toEqual(["How it works", "Rooms", "My device", "Docs"]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/rooms", "/device", "/docs"]);
-    expect(await screen.findByRole("heading", { level: 1, name: /Your arcade, online/ })).toBeInTheDocument();
+    // The landing is a lazy chunk: a busy machine needs more than a second.
+    expect(await screen.findByRole("heading", { level: 1, name: /Your arcade, online/ }, { timeout: 10_000 })).toBeInTheDocument();
     expect(screen.getByText(/MAME 2003-Plus sets/)).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "Join a game" })[0]!);
     const dialog = screen.getByRole("dialog", { name: "Join a game" });
@@ -67,8 +68,8 @@ describe("lobby", () => {
     await userEvent.click(within(dialog).getByRole("checkbox", { name: /I have read and accept/ }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Join" }));
     // Off to the room (the page loads on demand, so the dialog goes when it arrives).
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Join a game" })).not.toBeInTheDocument());
-  });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Join a game" })).not.toBeInTheDocument(), { timeout: 10_000 });
+  }, 20_000);
 
   it("renders the design sample data in demo mode", () => {
     FakeSocket.reset();

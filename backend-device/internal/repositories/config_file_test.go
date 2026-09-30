@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,6 +40,7 @@ func TestSaveRoundTrip(t *testing.T) {
 	cfg.RomsDir = "/roms"
 	cfg.SignalURL = "wss://signal.example/ws"
 	cfg.WebURL = "https://web.example"
+	cfg.VideoQuality = models.VideoSaver
 	now := time.Now().UTC().Truncate(time.Second)
 	cfg.Links = []models.Link{{ID: "3f9c0a1b2c3d4e5f", TokenHash: "ab", CreatedAt: now, LastSeen: now}}
 	if err := f.Save(cfg); err != nil {
@@ -50,6 +52,10 @@ func TestSaveRoundTrip(t *testing.T) {
 	}
 	if got.EffectiveSignalURL() != cfg.SignalURL {
 		t.Fatalf("effective values: %+v", got)
+	}
+	raw, err := os.ReadFile(f.Path())
+	if err != nil || !strings.Contains(string(raw), `"video_quality": "saver"`) {
+		t.Fatalf("device.json lacks the video quality: %s %v", raw, err)
 	}
 }
 

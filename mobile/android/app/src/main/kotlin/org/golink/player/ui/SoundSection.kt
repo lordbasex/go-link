@@ -11,21 +11,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.semantics.contentDescription
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,7 +35,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,71 +48,71 @@ import org.golink.player.core.AudioOption
 import org.golink.player.core.LostAudioDevice
 
 /**
- * The Sound sheet: the microphone and the output for the voice chat and
- * the game sound (Automatic, the phone's own, or a connected headset), and
- * a test chime.
+ * The sound part of the room's Game settings: the game and voices volumes
+ * (0-100 %, remembered), the microphone and the output for the voice chat
+ * and the game sound (Automatic, the phone's own, or a connected headset),
+ * and a test chime. Its test tag stays "sound-sheet" for the end-to-end test.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SoundSheet(session: RoomSession, onClose: () -> Unit) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+fun SoundSection(session: RoomSession, modifier: Modifier = Modifier) {
     val view by session.audioChoices.collectAsState()
+    val sound by session.sound.collectAsState()
     val res = LocalContext.current.resources
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = state,
-        containerColor = Tokens.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Tokens.borderStrong) },
-    ) {
-        // The sheet is its own window: its test tags need their own flag.
-        @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp)
-                .padding(bottom = 16.dp)
-                .navigationBarsPadding()
-                .semantics { testTagsAsResourceId = true }
-                .testTag("sound-sheet"),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(stringResource(R.string.sound_title), color = Tokens.text, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-            SectionLabel(stringResource(R.string.sound_microphone))
-            Column(Modifier.selectableGroup()) {
-                view.inputs.forEach { option ->
-                    ChoiceRow(optionLabel(res, option), option.choice == view.input, tag = "sound-in-${tagOf(option)}") {
-                        session.chooseAudioInput(option.choice)
-                    }
+    Column(modifier.testTag("sound-sheet"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        VolumeRow(stringResource(R.string.sound_game_volume), sound.gameVolume, { session.setGameVolume(it) }, "sound-game")
+        VolumeRow(stringResource(R.string.sound_voices_volume), sound.voiceVolume, { session.setVoiceVolume(it) }, "sound-voices")
+        Text(stringResource(R.string.sound_voices_hint), color = Tokens.faint, fontSize = 13.sp, lineHeight = 18.sp)
+        SectionLabel(stringResource(R.string.sound_microphone))
+        Column(Modifier.selectableGroup()) {
+            view.inputs.forEach { option ->
+                ChoiceRow(optionLabel(res, option), option.choice == view.input, tag = "sound-in-${tagOf(option)}") {
+                    session.chooseAudioInput(option.choice)
                 }
             }
-            SectionLabel(stringResource(R.string.sound_output))
-            Column(Modifier.selectableGroup()) {
-                view.outputs.forEach { option ->
-                    ChoiceRow(optionLabel(res, option), option.choice == view.output, tag = "sound-out-${tagOf(option)}") {
-                        session.chooseAudioOutput(option.choice)
-                    }
-                }
-            }
-            Text(
-                stringResource(R.string.sound_note),
-                color = Tokens.faint,
-                fontSize = 13.sp,
-                lineHeight = 19.sp,
-                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-            )
-            PrimaryButton(
-                stringResource(R.string.sound_test),
-                { session.testSound() },
-                Modifier.fillMaxWidth().testTag("sound-test"),
-                icon = Icons.AutoMirrored.Filled.VolumeUp,
-            )
         }
+        SectionLabel(stringResource(R.string.sound_output))
+        Column(Modifier.selectableGroup()) {
+            view.outputs.forEach { option ->
+                ChoiceRow(optionLabel(res, option), option.choice == view.output, tag = "sound-out-${tagOf(option)}") {
+                    session.chooseAudioOutput(option.choice)
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.sound_note),
+            color = Tokens.faint,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+        )
+        PrimaryButton(
+            stringResource(R.string.sound_test),
+            { session.testSound() },
+            Modifier.fillMaxWidth().testTag("sound-test"),
+            icon = Icons.AutoMirrored.Filled.VolumeUp,
+        )
+    }
+}
+
+/** A volume slider, 0 to 100 %, with its label and value. */
+@Composable
+internal fun VolumeRow(label: String, value: Double, onValue: (Double) -> Unit, tag: String) {
+    val percent = (value * 100).roundToInt()
+    Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Tokens.text2, fontSize = 15.sp, modifier = Modifier.width(72.dp))
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValue(((it * 20).roundToInt() / 20.0)) },
+            valueRange = 0f..1f,
+            colors = SliderDefaults.colors(thumbColor = Tokens.accent, activeTrackColor = Tokens.accent, inactiveTrackColor = Tokens.borderStrong),
+            modifier = Modifier.weight(1f).testTag(tag).semantics { contentDescription = label },
+        )
+        Text("$percent %", color = Tokens.muted, fontFamily = FontFamily.Monospace, fontSize = 13.sp, modifier = Modifier.width(56.dp).padding(start = 8.dp))
     }
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(
         text.uppercase(LocalContext.current.resources.configuration.locales[0]),
         color = Tokens.faint,
@@ -126,13 +124,13 @@ private fun SectionLabel(text: String) {
     )
 }
 
-/** A 48 dp radio row, as in the design: the ring, then the name. */
+/** A 48 dp radio row, as in the design: the ring, then the name (and a detail line under it). */
 @Composable
-private fun ChoiceRow(label: String, selected: Boolean, tag: String, onClick: () -> Unit) {
+internal fun ChoiceRow(label: String, selected: Boolean, tag: String, detail: String? = null, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .heightIn(min = 48.dp)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
@@ -141,14 +139,10 @@ private fun ChoiceRow(label: String, selected: Boolean, tag: String, onClick: ()
         Box(Modifier.size(20.dp).border(BorderStroke(2.dp, ring), CircleShape), contentAlignment = Alignment.Center) {
             if (selected) Box(Modifier.size(10.dp).background(Tokens.accent, CircleShape))
         }
-        Text(
-            label,
-            color = Tokens.text,
-            fontSize = 16.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 14.dp),
-        )
+        Column(Modifier.padding(start = 14.dp, top = 4.dp, bottom = 4.dp)) {
+            Text(label, color = Tokens.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (detail != null) Text(detail, color = Tokens.muted, fontSize = 13.sp, lineHeight = 17.sp)
+        }
     }
 }
 

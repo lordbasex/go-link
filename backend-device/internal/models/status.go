@@ -39,6 +39,9 @@ type Status struct {
 	Library    *Library      `json:"library,omitempty"`
 	// Update is a newer go-link release, when there is one.
 	Update *UpdateInfo `json:"update,omitempty"`
+	// VideoQuality is the host's choice for game rooms (high, normal or
+	// saver); each room's Video says what it really sends.
+	VideoQuality string `json:"video_quality"`
 }
 
 // UpdateInfo is a newer release of go-link than this build.
@@ -110,6 +113,9 @@ type RoomStatus struct {
 	Invite     string `json:"invite,omitempty"`
 	InviteCode string `json:"invite_code,omitempty"`
 	OwnerKey   string `json:"owner_key,omitempty"`
+	// Picture is the test pattern room's default picture style (nil: the
+	// website's own default).
+	Picture *RoomPicture `json:"picture,omitempty"`
 }
 
 // StreamStatus is what the device is sending right now.
@@ -119,6 +125,7 @@ type StreamStatus struct {
 	Height       int     `json:"height"`
 	VideoKbps    float64 `json:"video_kbps"` // encoded video, before each viewer's copy
 	VideoViewers int     `json:"video_viewers"`
+	Scale        int     `json:"scale"` // 2 when the picture is sent enlarged 2x
 }
 
 // SignalStatus describes the link with signalhub.

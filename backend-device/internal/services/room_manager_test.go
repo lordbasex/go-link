@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/lordbasex/go-link/backend-device/internal/models"
 )
 
 type outbox struct {
@@ -789,5 +791,38 @@ func TestDefaultNamesUseThePeersOwnID(t *testing.T) {
 		if got := defaultName(peer); got != want {
 			t.Errorf("defaultName(%q) = %q, want %q", peer, got, want)
 		}
+	}
+}
+
+func TestRoomStateCarriesTheHostsDefaultPicture(t *testing.T) {
+	m, out, _ := newManager(t)
+	m.Join("a")
+	m.Sync()
+	if _, ok := out.lastState(t, "a")["picture"]; ok {
+		t.Fatal("no default picture: room_state leaves it out (the site's default)")
+	}
+	m.SetPicture(&models.RoomPicture{Style: "crt", Bands: "ambient"})
+	m.Sync()
+	pic, _ := out.lastState(t, "a")["picture"].(map[string]any)
+	if pic["style"] != "crt" || pic["bands"] != "ambient" {
+		t.Fatalf("picture %v", out.lastState(t, "a")["picture"])
+	}
+	// A guest who comes later gets it too.
+	m.Join("b")
+	m.Sync()
+	if pic, _ := out.lastState(t, "b")["picture"].(map[string]any); pic["style"] != "crt" {
+		t.Fatalf("late guest picture %v", pic)
+	}
+	// Unknown values are ignored: back to the site's default.
+	m.SetPicture(&models.RoomPicture{Style: "vaporwave", Bands: "ambient"})
+	m.Sync()
+	if _, ok := out.lastState(t, "a")["picture"]; ok {
+		t.Fatal("an unknown style reached the guests")
+	}
+	m.SetPicture(&models.RoomPicture{Style: "sharp", Bands: "frame"})
+	m.SetPicture(nil)
+	m.Sync()
+	if _, ok := out.lastState(t, "a")["picture"]; ok {
+		t.Fatal("cleared, the picture must be left out")
 	}
 }

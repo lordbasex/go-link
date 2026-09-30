@@ -465,6 +465,8 @@ export function SidePanel({
         role="tabpanel"
         id="room-tabpanel"
         aria-labelledby={`tab-${tab}`}
+        // Focusable, so a long chat or list scrolls from the keyboard too.
+        tabIndex={0}
         ref={listRef}
       >
         {tab === "chat" && <ChatLog model={model} actions={actions} />}

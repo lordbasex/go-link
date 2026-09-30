@@ -51,6 +51,12 @@ type Config struct {
 	// Language of the device window: en, es or pt; empty follows the
 	// computer's language.
 	Language string `json:"language,omitempty"`
+	// TestRoomPicture is the host's default picture style for the test
+	// pattern room (nil: the website's own default).
+	TestRoomPicture *RoomPicture `json:"test_room_picture,omitempty"`
+	// VideoQuality of game rooms: high, normal or saver (see VideoHigh);
+	// empty means DefaultVideoQuality.
+	VideoQuality string `json:"video_quality,omitempty"`
 }
 
 // Link is one browser linked to this device.
@@ -71,7 +77,8 @@ type Link struct {
 // linked again right away: its identity (device_id, device_secret), its
 // signaling server, its network settings (udp_port, announce_ips) and the
 // local panel's token. Links, rooms, the ROM and thumbnail folders, the
-// room limit, the website and the language go back to their defaults.
+// room limit, the website, the language and the video quality go back to
+// their defaults.
 func (c Config) FactoryDefaults() Config {
 	return Config{
 		DeviceID: c.DeviceID, DeviceSecret: c.DeviceSecret, SignalURL: c.SignalURL,

@@ -37,6 +37,13 @@ adb shell am start -n org.golink.player/.MainActivity --es introSlow 5
 # pause banner) with sample values and no room, for screenshots
 adb shell am start -n org.golink.player/.MainActivity --es lab alias
 adb shell am start -n org.golink.player/.MainActivity --es lab overlay
+# debug builds only: the picture renderer on a synthetic 384 x 224 test card at 60 fps, with the
+# dock's gear and Game settings (optional: --es style sharp|crt|edges --es bands black|frame
+# --ez compare true --ez sheet true --es room crt:frame --ez plain true)
+adb shell am start -n org.golink.player/.MainActivity --es lab picture --es style crt --es bands frame
+# the card sent as a 2x stream (--ez raw true draws it raw), and the offscreen 2x check
+adb shell am start -n org.golink.player/.MainActivity --es lab picture --ez up2 true
+adb shell am start -n org.golink.player/.MainActivity --es lab check2x
 ```
 
 A cold start shows the "INSERT COIN" intro (about 2 s, a tap skips it) with the coin sound from `res/raw/coin.wav`, an original sound written by `scripts/coin-sound.mjs`; Settings › Startup sound turns the sound off, and it never plays with the phone on silent or vibrate.
@@ -47,15 +54,24 @@ An emulator: `emulator -avd <name> -no-window -gpu swiftshader_indirect` (add `-
 
 - After the PIN the app asks **What's your name?** (2 to 20 letters, digits and spaces, no symbols or emoji; `core/.../PlayerName.kt`, the device's rules) and remembers it.
 - Only the host pauses: the dock's pause button **asks for a pause** (`pause_request`) and can cancel it; it explains when the host is away or the game cannot pause.
-- The round **stats** button at the top left of the picture shows fps, resolution and codec, ping, direct or relay, loss and audio, read from `getStats` once a second (`AndroidRtcPeer.sample()`, `core/.../LiveStats.kt`).
-- With a real controller connected, the gamepad button shows the on-screen pad **see-through and display only**, lighting what you press on the controller. **Test controller** on the home screen checks a controller offline, with the input latency.
+- The round **stats** button at the top left of the picture shows fps, resolution and codec, ping, direct or relay, loss and audio, read from `getStats` once a second (`AndroidRtcPeer.sample()`, `core/.../LiveStats.kt`), plus the measured screen refresh rate (`screen 120 Hz`) and what the device sends (`video 768×448 (2× of 384×224)`, `quality High`, from `stream_stats.video`).
+- **High refresh rate:** the room and Test controller ask for the display mode with the same resolution and the highest refresh rate (90, 120 or 144 Hz) through the window's `preferredDisplayModeId`, and restore it on leaving (`ui/HighRefreshRate.kt`, `core/.../ScreenRate.kt`); the menus stay at the system's rate.
+- With a real controller connected, the gamepad button shows the on-screen pad **see-through and display only**, lighting what you press on the controller. **Test controller** on the home screen checks a controller offline, with the input latency and the screen's refresh rate (the latency is about one screen frame). The connection is named only when Android can confirm it (USB by vendor and product id, Bluetooth by a paired name); otherwise just the controller's name.
 - Home and Settings show **go-link Player v*X.Y.Z* (build *N*)** from `BuildConfig` (" · debug" in debug builds).
 
 Details: [docs/mobile.md](../../docs/mobile.md#your-name).
 
+## Game settings and the picture
+
+The gear under the gamepad button in the room's dock (`dock-settings`) opens **Game settings** without leaving the room: a bottom sheet upright (it stops at about 60 % of the screen so the picture above shows each change), a side sheet from the right held sideways (`ui/GameSettings.kt`). It has your name (the same rules as the name step; Save sends the new name to the room), the sound (below), the picture and **Show stats** (the same setting as the stats button). Players › Sound opens the same sheet at the sound part. The dock fits seven 48 dp buttons on a 360 dp phone.
+
+**Picture:** the website's picture styles on the phone's GPU. *Style*: Smooth, Sharp, CRT arcade, Smooth edges; *Sides*: Black, Ambient, Frame; **Compare** puts a draggable line over the live game (left: the picture as it arrives, smooth on black; right: the choice; a slider for TalkBack). The choice is remembered in the same keys as the website (`go-link.picture-style`, `go-link.picture-bands`) and applies at once. The viewer's own choice wins, then the room's default from its host (`room_state.picture`, shown as "Room default: …" with **Use the room's default**, which forgets the viewer's choice), then the app's default, Smooth with Ambient sides (`core/.../Picture.kt`, JVM tests).
+
+How it draws (`app/.../picture/`): `PictureDrawer` is a libwebrtc `GlDrawer` given to the `EglRenderer` that draws into a `SurfaceView` covering the whole screen area. Every frame (a hardware decoder's OES texture, an RGB texture or the I420 planes) is first converted to an RGBA texture at the frame's own size (BT.601 limited range, row 0 at the top, like a WebGL upload); a 2x stream (`stream_stats.video.scale` 2 and a frame exactly twice the game's size) is averaged back to the game's own size (`DOWN_SHADER`, `core/.../StreamVideo.kt` `workingSize`); then the website's shaders run unchanged (`Shaders.kt` is a verbatim copy of `frontend/apps/web/src/picture/shaders.ts`, GLSL ES 1.00): the 32 × 24 ambient texture, the smooth edges enlargement and the picture pass, which letterboxes the game at its display aspect (never cropped; `PictureLayout.fitRect`) and draws the sides. Smooth on Black without Compare uses libwebrtc's plain drawer, letterboxed. A setting change redraws the last software frame at once (a hardware decoder's frame is never held; the next one comes within a frame). If a shader does not compile, the app falls back to the plain drawer and the Picture part says so. The room keeps the screen at its highest refresh rate (`HighRefreshRate.kt`).
+
 ## Sound
 
-In the room, **Players › Sound** picks the microphone (Automatic, the phone's, or a headset's) and the output (Automatic, the loudspeaker, or a headset), with a **Test sound** chime. Automatic is the usual route: headphones when connected, otherwise the loudspeaker, never the earpiece. The choice is remembered; when the chosen device disconnects the app goes back to Automatic and says so. The rules are in `core/.../AudioDevices.kt` (JVM tests), the Android side in `app/.../audio/AudioRouter.kt`; API-level limits in [docs/mobile.md](../../docs/mobile.md#sound-devices).
+In the room, **Game settings › Sound** has the **Game** and **Voices** volumes (0-100 %, remembered; voices are the other players' microphones) and picks the microphone (Automatic, the phone's, or a headset's) and the output (Automatic, the loudspeaker, or a headset), with a **Test sound** chime. Automatic is the usual route: headphones when connected, otherwise the loudspeaker, never the earpiece. The choice is remembered; when the chosen device disconnects the app goes back to Automatic and says so. The rules are in `core/.../AudioDevices.kt` (JVM tests), the Android side in `app/.../audio/AudioRouter.kt`; API-level limits in [docs/mobile.md](../../docs/mobile.md#sound-devices).
 
 ## End-to-end test
 

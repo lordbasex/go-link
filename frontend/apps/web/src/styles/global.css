@@ -592,6 +592,8 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .dash-facts dt { color: var(--color-text-muted); }
 .dash-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-size: 12px; }
 .dash-facts dd.is-ok { color: var(--color-voice); }
+.dash-facts dd.is-warn { color: var(--color-accent-text); }
+.dash-fact-row { display: contents; }
 .dash-facts-top, .dash-divided { padding-top: 12px; border-top: 1px solid var(--color-divider); }
 .dash-mini-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
 .dash-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-width: 0; }
@@ -2309,3 +2311,62 @@ body .video-stage.has-touchpad.is-console .pause-note { top: calc(var(--sy) + 48
 @media (pointer: coarse) {
   .select-option { min-height: var(--touch-min); font-size: 15px; }
 }
+
+/* ---------- picture renderer (styles and sides drawn by the GPU) ---------- */
+/* The canvas covers the stage (in console mode, the screen's box) over the
+   <video>, which keeps playing the sound underneath. Taps go through. */
+.picture-layer { position: absolute; inset: 0; pointer-events: none; }
+.picture-canvas { display: block; width: 100%; height: 100%; }
+body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh); }
+.picture-split { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--color-text); box-shadow: 0 0 0 1px var(--shadow-strong); }
+.picture-split-handle {
+  position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg); border: 2px solid var(--color-text); color: var(--color-text);
+  pointer-events: auto; cursor: ew-resize; touch-action: none;
+}
+.picture-split-handle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@media (pointer: coarse) { .picture-split-handle::before { content: ""; position: absolute; inset: -4px; } }
+.picture-split-label {
+  position: absolute; bottom: 12px; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  font-size: 12px; font-weight: 600; background: var(--color-bg); border: 1px solid var(--color-border-input); color: var(--color-text-2);
+}
+.picture-split-label.is-before { right: 10px; }
+.picture-split-label.is-after { left: 10px; }
+.picture-control { position: relative; }
+.picture-compare { height: 36px; min-height: 36px; border-radius: 999px; align-self: flex-start; }
+.picture-compare.is-on { border-color: var(--color-accent); color: var(--color-accent-text); }
+.picture-pop { width: 300px; }
+.picture-reset,
+.picture-set-default { height: 36px; min-height: 36px; border-radius: 999px; align-self: flex-start; }
+.picture-room-default { overflow-wrap: anywhere; }
+/* With the room's default and the owner's action the popover grows: beside the
+   desktop dock it centers on the whole dock (not on its button) and scrolls
+   instead of leaving the stage. */
+.video-stage:not(.has-touchpad) .video-toolbar .picture-control { position: static; }
+.voice-pop.picture-pop:not(.is-sheet) { max-height: min(420px, calc(100dvh - 190px)); overflow-y: auto; overscroll-behavior: contain; }
+.voice-pop.picture-pop.is-sheet { width: auto; }
+.test-controller-screen { margin: 0; }
+
+/* The /picture-demo page. */
+.picture-demo { display: flex; flex-direction: column; gap: 16px; }
+.picture-demo-stage {
+  position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100dvh - 180px);
+  border-radius: var(--radius-card); overflow: hidden; background: var(--color-video); border: 1px solid var(--color-surface-selected);
+}
+.picture-demo-stage.is-fullscreen, .picture-demo-stage:fullscreen { max-height: none; border-radius: 0; border: none; }
+.picture-demo-stage.is-pseudo-fullscreen { position: fixed; inset: 0; z-index: 50; width: 100vw; height: 100dvh; aspect-ratio: auto; }
+.picture-demo-stage .picture-layer { inset: 0; }
+.picture-demo-stage .picture-fallback { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3; image-rendering: auto; }
+.picture-demo-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.picture-demo-bar .audio-field { min-width: 220px; flex: 1 1 220px; max-width: 320px; }
+.picture-demo-facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.picture-demo-fs { position: absolute; right: 12px; top: 12px; z-index: 2; }
+@media (max-width: 700px) {
+  .picture-demo-stage { aspect-ratio: 4 / 3; }
+  .picture-demo-bar .audio-field { max-width: none; }
+}
+/* The quality lab (development only). */
+.picture-lab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.picture-lab-grid figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.picture-lab-grid img { width: 100%; height: auto; border: 1px solid var(--color-border); }

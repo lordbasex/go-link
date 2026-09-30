@@ -4,13 +4,13 @@ package org.golink.player.core
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-// The room's Sound sheet: which microphone and which output the voice chat
+// The room's sound settings: which microphone and which output the voice chat
 // and the game sound use. The platform lists its live devices (Android's
 // AudioDeviceInfo, mapped to AudioDevice); this file builds the options,
 // maps a saved choice back to a live device, plans the route and decides
 // when a chosen device is gone (then the choice goes back to Automatic).
 
-/** The kinds of audio device the Sound sheet offers. The earpiece is never one of them. */
+/** The kinds of audio device the sound settings offer. The earpiece is never one of them. */
 enum class AudioKind {
     SPEAKER,
     BUILTIN_MIC,

@@ -27,6 +27,8 @@ func NewStatusService(deviceID, version, signalURL, romsDir string) *StatusServi
 		RomsDir:  romsDir,
 		Signal:   models.SignalStatus{URL: signalURL, State: models.SignalConnecting},
 		Peers:    []models.LinkedPeer{},
+
+		VideoQuality: models.DefaultVideoQuality,
 	}}
 }
 
@@ -54,6 +56,11 @@ func (s *StatusService) update(mutate func(st *models.Status)) {
 	for _, fn := range listeners {
 		fn(snap)
 	}
+}
+
+// SetVideoQuality records the host's video quality for game rooms.
+func (s *StatusService) SetVideoQuality(q string) {
+	s.update(func(st *models.Status) { st.VideoQuality = q })
 }
 
 // SetConnected records a live signalhub link and the ICE URLs it offered.

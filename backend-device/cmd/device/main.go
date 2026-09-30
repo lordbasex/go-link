@@ -177,6 +177,7 @@ func run() error {
 		room.SetPrivate()
 		manager := services.NewRoomManager(services.RoomManagerConfig{Logger: logger, OnSummary: room.OnSummary}, stream)
 		room.SetManager(manager)
+		room.SetPicture(cfg.TestRoomPicture)
 		testManager = manager
 		manager.SetInfo(services.RoomInfo{Title: "Test pattern", Game: "Test pattern", Host: hostName()})
 		stream.SetRoomHooks(services.RoomHooks{
@@ -222,9 +223,10 @@ func run() error {
 		OnPauseAsk: func(ev services.RoomPauseAskEvent) {
 			stream.SendToLinks(ev)
 		},
-		MaxRooms: cfg.MaxRooms,
-		Trusted:  links.Trusted,
-		Rooms:    cfg.Rooms,
+		MaxRooms:     cfg.MaxRooms,
+		VideoQuality: settings.VideoQuality(),
+		Trusted:      links.Trusted,
+		Rooms:        cfg.Rooms,
 		Save: func(list []models.SavedRoom) error {
 			return updateConfig(store, &cfg, func(c *models.Config) { c.Rooms = list })
 		},
@@ -238,6 +240,11 @@ func run() error {
 		Logger: logger,
 	})
 	handlers = append(handlers, games)
+	// A new video quality (window, website) reaches the running rooms at once.
+	settings.OnVideoQuality(func(q string) {
+		games.SetVideoQuality(q)
+		status.SetVideoQuality(q)
+	})
 
 	// Guests see whether the host can answer a request for a pause: a
 	// linked browser of the host is connected (or the host is in the room).
@@ -296,6 +303,9 @@ func run() error {
 			Slot    int    `json:"slot"`
 			Confirm string `json:"confirm"`
 			Accept  bool   `json:"accept"`
+			Style   string `json:"style"` // room_action picture
+			Bands   string `json:"bands"`
+			Quality string `json:"quality"` // set_video_quality
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -363,6 +373,16 @@ func run() error {
 				stream.SendControl(peerID, b)
 			}
 			return
+		case "set_video_quality":
+			// The video quality of game rooms (Settings in the window).
+			res := map[string]any{"type": "video_quality_result", "quality": msg.Quality, "ok": true}
+			if err := settings.SetVideoQuality(msg.Quality); err != nil {
+				res["ok"], res["error"] = false, err.Error()
+			}
+			if b, err := json.Marshal(res); err == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
 		case "get_history", "clear_history", "delete_history":
 			// The history of games, only to the owner's linked browsers.
 			// Clearing it (or deleting a game) deletes its recordings too.
@@ -418,6 +438,9 @@ func run() error {
 				}
 				if b, jerr := json.Marshal(res); jerr == nil {
 					stream.SendControl(peerID, b)
+				}
+				if err == nil && room != nil {
+					room.SetPicture(nil) // device.json's test_room_picture is gone too
 				}
 				if err == nil {
 					// Last: every browser forgets the device (this one too).
@@ -484,8 +507,31 @@ func run() error {
 					if ok {
 						testManager.Pause(action == "pause", "The host")
 					}
+				case "picture":
+					var p *models.RoomPicture
+					if p, ok = roomPicture(msg.Style, msg.Bands); ok {
+						if err := updateConfig(store, &cfg, func(c *models.Config) { c.TestRoomPicture = p }); err != nil {
+							logger.Warn("cannot save the test room's picture", "err", err)
+						}
+						room.SetPicture(p)
+					}
 				}
 				if b, err := json.Marshal(map[string]any{"type": "room_result", "id": msg.ID, "action": action, "ok": ok}); err == nil {
+					stream.SendControl(peerID, b)
+				}
+				return
+			}
+			if action == "picture" {
+				res := map[string]any{"type": "room_result", "id": msg.ID, "action": action, "ok": true}
+				p, ok := roomPicture(msg.Style, msg.Bands)
+				err := services.ErrBadPicture
+				if ok {
+					err = games.SetPicture(msg.ID, p)
+				}
+				if err != nil {
+					res["ok"], res["error"] = false, err.Error()
+				}
+				if b, jerr := json.Marshal(res); jerr == nil {
 					stream.SendControl(peerID, b)
 				}
 				return
@@ -680,4 +726,14 @@ func hostName() string {
 		name = name[:i]
 	}
 	return name
+}
+
+// roomPicture reads room_action picture's values: both empty clear the
+// room's default picture (nil); otherwise both must be known ones.
+func roomPicture(style, bands string) (*models.RoomPicture, bool) {
+	if style == "" && bands == "" {
+		return nil, true
+	}
+	p := &models.RoomPicture{Style: style, Bands: bands}
+	return p, p.Valid()
 }

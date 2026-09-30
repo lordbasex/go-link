@@ -230,6 +230,28 @@ export const docsEn: Docs = {
         { t: "list", items: ["The game belongs to the host: only the host pauses and resumes it, from the room or from My device.", "Seated players use **Ask for a pause** (the pause button, or P). The host sees “NAME wants to pause” with **Pause** and **Keep playing**; the request is dropped after 30 seconds.", "The button is off while the host is not connected, or when the room cannot pause (the test pattern)."] },
         { t: "h2", id: "test", text: "Test your controller" },
         { t: "p", text: "Open [Test your controller](/test-controller) to check your keyboard, a Bluetooth or USB gamepad or the on-screen gamepad before playing, with no device: each press lights up the test pattern’s controller, with the gamepad’s name and the input-to-screen time." },
+        { t: "h2", id: "picture", text: "Picture style" },
+        { t: "p", text: "Games arrive at their own small size (for example 384 × 224) and your screen enlarges them. The **Picture** button in the room's dock (on a phone: the panel's **You** tab) chooses how, only for you: nobody else sees the change, and it applies at once, without reloading." },
+        {
+          t: "list",
+          items: [
+            "**Smooth**: the browser's usual look, soft.",
+            "**Sharp**: square, crisp pixels at any size, with a one pixel blend at each edge so nothing shimmers.",
+            "**CRT arcade**: scanlines, an aperture grille, a gently curved tube and a soft glow, like an arcade monitor. The whole picture stays visible.",
+            "**Smooth edges** (experimental): staircases become diagonals, keeping the pixels sharp elsewhere.",
+            "**Sides**: what fills the space beside the picture on a wide screen: **Black**, **Ambient** (the game's colors glow around it) or **Frame** (an arcade cabinet around the screen). The picture is never cut.",
+          ],
+        },
+        { t: "p", text: "**Compare** shows a line over the video: the left side is the browser's usual look, the right side your choice. [Picture styles](/picture-demo) shows the same comparison on a test frame, with no device. The styles use the graphics card (WebGL); a browser without it shows the plain picture. The room's figures (the (i) button) show your screen's refresh rate." },
+        { t: "p", text: "**Video quality (hosts).** Your computer sends the game at twice its size, so every pixel keeps its own color, and the website turns it back into the game's pixels before any style. Choose **High** (the best, about 2.6 Mbps per room), **Normal** (less bandwidth) or **Saver** (the game's own size, for slow computers or slow internet uploads) in [My device](/device), in the app's **Settings › Rooms** or with `go-link-device video quality`. Running rooms switch at once. If your computer cannot keep up with twice the size, the room switches to Saver by itself and shows **Saver (CPU)**. The (i) button shows what a room sends, for example \"768×448 (2× of 384×224)\"." },
+        { t: "p", text: "**The room's default.** Until you choose, you see the picture the room's host picked for it, or else the site's default: **Smooth** with **Ambient** sides. Your own choice always wins, in this browser, in every room." },
+        {
+          t: "list",
+          items: [
+            "The Picture panel shows **Room default** when the host set one. **Use the room's default** forgets your choice, so you follow the host's again.",
+            "Hosts: in your own room, choose a style and press **Set as the room's default**. You can also change it in [Rooms](/rooms) (a room's ⋯ menu, **Picture default**) and, for the test pattern, with the picture button in [My device](/device). Guests can still change it on their own screen.",
+          ],
+        },
       ],
     },
     {
@@ -412,7 +434,7 @@ export const docsEn: Docs = {
             ["Overview", "The rooms, people playing, CPU, memory, network, streaming, players and latency; a download notice when a new version is out; Open go-link, Link another browser and Unlink all; and This computer: hardware, device ID and version."],
             ["Emulators › MAME › ROMs", "The emulator status, your ROM folder, a drop zone to copy .zip sets into it, and how many sets there are, how many run and how much space they take. Every game and Play are on the website."],
             ["Emulators › MAME › Thumbnails", "Which games have pictures, and where to put them."],
-            ["Settings", "General (the window's language: English, Spanish or Portuguese), which picture to show, the thumbnails folder, rooms and network information."],
+            ["Settings", "General (the window's language: English, Spanish or Portuguese), which picture to show, the thumbnails folder, the video quality of game rooms (High, Normal, Saver), rooms and network information."],
           ],
         },
         { t: "p", text: "Click the menu bar (tray) icon for a small panel with the status; right click it for the menu. **Quit** stops go-link." },
@@ -468,7 +490,7 @@ export const docsEn: Docs = {
       blocks: [
         {
           t: "code",
-          code: "go-link-device                          run go-link\ngo-link-device core download            download the emulator and its game list\ngo-link-device roms dir [PATH]          show or change the ROM folder\ngo-link-device roms check [--json]      check which games run\ngo-link-device roms saves [--json]      test which games can be saved\ngo-link-device thumbnails check         count the game pictures\ngo-link-device thumbnails dir [PATH]    show or change the pictures folder\ngo-link-device thumbnails kind [KIND]   boxart, title or snap\ngo-link-device panel token [--new]      show or replace the panel key\ngo-link-device --help                   every option, and the version",
+          code: "go-link-device                          run go-link\ngo-link-device core download            download the emulator and its game list\ngo-link-device roms dir [PATH]          show or change the ROM folder\ngo-link-device roms check [--json]      check which games run\ngo-link-device roms saves [--json]      test which games can be saved\ngo-link-device thumbnails check         count the game pictures\ngo-link-device thumbnails dir [PATH]    show or change the pictures folder\ngo-link-device thumbnails kind [KIND]   boxart, title or snap\ngo-link-device video quality [Q]        high, normal or saver\ngo-link-device panel token [--new]      show or replace the panel key\ngo-link-device --help                   every option, and the version",
         },
         {
           t: "table",

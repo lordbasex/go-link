@@ -28,13 +28,19 @@ type SettingsService struct {
 	mu         sync.Mutex
 	thumbnails models.ThumbnailSettings
 	onChange   []func()
+
+	// The video quality of game rooms (models.VideoHigh...), saved by
+	// saveVideo; onVideo are told of every change.
+	video     string
+	saveVideo func(string) error
+	onVideo   []func(string)
 }
 
 // NewSettingsService applies the saved settings. defaultDir is the
 // thumbnails folder used when none is set; save keeps changes in
 // device.json.
 func NewSettingsService(library *LibraryService, saved models.ThumbnailSettings, defaultDir string, save func(models.ThumbnailSettings) error) *SettingsService {
-	s := &SettingsService{library: library, defaultDir: defaultDir, save: save, thumbnails: normalize(saved)}
+	s := &SettingsService{library: library, defaultDir: defaultDir, save: save, thumbnails: normalize(saved), video: models.DefaultVideoQuality}
 	s.apply()
 	return s
 }
@@ -100,6 +106,55 @@ func (s *SettingsService) SetThumbnails(t models.ThumbnailSettings) error {
 		fn()
 	}
 	return nil
+}
+
+// UseVideoQuality sets the saved video quality (an empty or unknown one
+// is the default) and how a change is saved in device.json.
+func (s *SettingsService) UseVideoQuality(saved string, save func(string) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.video, s.saveVideo = models.CleanVideoQuality(saved), save
+}
+
+// VideoQuality is the video quality of game rooms: high, normal or saver.
+func (s *SettingsService) VideoQuality() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.video
+}
+
+// SetVideoQuality changes the video quality of game rooms (ErrBadSetting
+// for an unknown one). Running rooms switch at once (see
+// RoomsService.SetVideoQuality, wired through OnVideoQuality).
+func (s *SettingsService) SetVideoQuality(q string) error {
+	if !models.ValidVideoQuality(q) {
+		return ErrBadSetting
+	}
+	s.mu.Lock()
+	s.video = q
+	save := s.saveVideo
+	video := slices.Clone(s.onVideo)
+	listeners := slices.Clone(s.onChange)
+	s.mu.Unlock()
+	if save != nil {
+		if err := save(q); err != nil {
+			return err
+		}
+	}
+	for _, fn := range video {
+		fn(q)
+	}
+	for _, fn := range listeners {
+		fn()
+	}
+	return nil
+}
+
+// OnVideoQuality is called with the new quality after every change.
+func (s *SettingsService) OnVideoQuality(fn func(string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onVideo = append(s.onVideo, fn)
 }
 
 // OnChange is called after any setting changes (the window repaints).

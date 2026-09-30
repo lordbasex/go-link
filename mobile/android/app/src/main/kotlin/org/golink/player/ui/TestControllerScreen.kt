@@ -6,7 +6,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -58,6 +57,7 @@ import org.golink.player.R
 import org.golink.player.core.Button
 import org.golink.player.core.GameControls
 import org.golink.player.core.LatencyMeter
+import org.golink.player.core.ScreenRate
 import org.golink.player.input.ControllerKind
 import org.golink.player.input.ControllerTester
 import kotlin.math.min
@@ -67,8 +67,9 @@ import kotlin.math.roundToInt
  * "Test controller": no room and no network. A test card (the PM5544
  * look of the device's test pattern room) with a controller diagram that
  * lights up for the on-screen pad and for any real controller, the
- * controller's name and connection, and the input latency: from the input
- * event to the next frame the phone draws.
+ * controller's name and connection, the input latency (from the input
+ * event to the next frame the phone draws) and the screen's measured
+ * refresh rate, kept at the phone's highest while the screen is open.
  */
 @Composable
 fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
@@ -88,6 +89,8 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
 
     // Latency: each input change is measured at the next frame.
     val meter = remember { LatencyMeter() }
+    // The highest refresh rate while testing, and the measured one for the readout.
+    val screenHz by rememberHighRefreshRate()
     var readout by remember { mutableStateOf(Triple<Double?, Double?, Double?>(null, null, null)) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -107,12 +110,12 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
         Surface(m, color = Color(0x9E05060A), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0x594FC3D9))) {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 val name = using?.let {
-                    val kind = when (it.kind) {
-                        ControllerKind.BLUETOOTH -> stringResource(R.string.tester_kind_bluetooth)
-                        ControllerKind.USB -> stringResource(R.string.tester_kind_usb)
-                        ControllerKind.UNKNOWN -> stringResource(R.string.tester_kind_unknown)
+                    // Only a link Android can confirm is named; otherwise just the controller.
+                    when (it.kind) {
+                        ControllerKind.BLUETOOTH -> "${it.name} · ${stringResource(R.string.tester_kind_bluetooth)}"
+                        ControllerKind.USB -> "${it.name} · ${stringResource(R.string.tester_kind_usb)}"
+                        ControllerKind.UNKNOWN -> it.name
                     }
-                    "${it.name} · $kind"
                 } ?: stringResource(R.string.tester_no_controller)
                 Text(name, color = Tokens.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("tester-controller"))
                 if (connected.size > 1) Text(stringResource(R.string.tester_more, connected.size - 1), color = Tokens.muted, fontSize = 12.sp)
@@ -126,15 +129,20 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.testTag("tester-latency").semantics { liveRegion = LiveRegionMode.Polite },
                 )
+                Text(
+                    stringResource(R.string.tester_screen, ScreenRate.label(screenHz), ScreenRate.frameMs(screenHz)),
+                    color = Tokens.voice,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.testTag("tester-screen-rate"),
+                )
             }
         }
     }
+    // The readouts sit next to the card, never over it: the circle stays whole.
     val card: @Composable (Modifier) -> Unit = { m ->
-        Box(m) {
-            val desc = stringResource(R.string.tester_card)
-            TestCard(Modifier.fillMaxSize().semantics { contentDescription = desc })
-            info(Modifier.align(Alignment.TopStart).padding(8.dp).widthIn(max = 320.dp))
-        }
+        val desc = stringResource(R.string.tester_card)
+        TestCard(m.semantics { contentDescription = desc })
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().testTag("test-controller-screen")) {
@@ -155,8 +163,11 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
                         PillButton(pad, Button.COIN, stringResource(R.string.room_coin), tag = "pad-coin")
                     }
                 }
-                BoxWithConstraints(Modifier.fillMaxHeight().weight(0.48f), contentAlignment = Alignment.Center) {
-                    card(Modifier.fillMaxHeight().aspectRatio(4f / 3f, matchHeightConstraintsFirst = true))
+                Column(Modifier.fillMaxHeight().weight(0.48f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                        card(Modifier.aspectRatio(4f / 3f))
+                    }
+                    info(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp))
                 }
                 PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f)) {
                     Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
@@ -167,6 +178,7 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
             }
         } else {
             card(Modifier.fillMaxWidth().aspectRatio(4f / 3f))
+            info(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp))
             PadSurface(pad, Modifier.fillMaxWidth().weight(1f)) {
                 Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(

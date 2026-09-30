@@ -35,16 +35,19 @@ type SavedRoom struct {
 	Public bool   `json:"public"`
 	Voice  bool   `json:"voice"`
 	// ChatOff: the host turned the room's chat off (on by default).
-	ChatOff   bool       `json:"chat_off,omitempty"`
-	Art       string     `json:"art,omitempty"` // lobby picture: boxart, title or snap ("" = Settings)
-	State     string     `json:"state"`
-	Favorite  bool       `json:"favorite,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
-	Since     time.Time  `json:"since"` // when it entered its current state
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
-	Saves     []SaveSlot `json:"saves,omitempty"`
-	Autosave  bool       `json:"autosave,omitempty"` // auto.state exists
-	LastError string     `json:"last_error,omitempty"`
+	ChatOff bool   `json:"chat_off,omitempty"`
+	Art     string `json:"art,omitempty"` // lobby picture: boxart, title or snap ("" = Settings)
+	// Picture is the host's default picture style for the room's guests
+	// (nil: the website's own default).
+	Picture   *RoomPicture `json:"picture,omitempty"`
+	State     string       `json:"state"`
+	Favorite  bool         `json:"favorite,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
+	Since     time.Time    `json:"since"` // when it entered its current state
+	DeletedAt *time.Time   `json:"deleted_at,omitempty"`
+	Saves     []SaveSlot   `json:"saves,omitempty"`
+	Autosave  bool         `json:"autosave,omitempty"` // auto.state exists
+	LastError string       `json:"last_error,omitempty"`
 	// NoSaves: the emulator does not save this game whole (MAME 0.78 keeps
 	// no registers for some CPUs, like Konami's), so it cannot resume
 	// from a save: it always starts from power on.
@@ -77,6 +80,9 @@ type ManagedRoom struct {
 	// PauseAsks are the players asking the host for a pause, waiting for
 	// an answer (pause_answer).
 	PauseAsks []PauseAsk `json:"pause_asks,omitempty"`
+	// Video is what the running game sends: the quality in use and why it
+	// is lower than the host's choice (nil while it does not run).
+	Video *RoomVideo `json:"video,omitempty"`
 }
 
 // PauseAsk is a seated player asking the host for a pause: from is the

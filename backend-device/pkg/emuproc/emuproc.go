@@ -13,7 +13,8 @@
 //	bytes 5-    payload
 //
 // Worker to parent: Ready, Video, Audio, StateSaved, StateLoaded, Error
-// and Log. Parent to worker: Pads, Pause, SaveState, LoadState and Quit.
+// and Log. Parent to worker: Pads, Pause, SaveState, LoadState, Quit and
+// VideoMode.
 // The payload of each type is described next to its constant.
 package emuproc
 
@@ -37,8 +38,10 @@ const (
 	// TypeReady: JSON Ready, sent once the game is loaded.
 	TypeReady Type = 0x01
 	// TypeVideo: width uint16, height uint16, duration in nanoseconds
-	// uint64 (all big endian), then the packed I420 frame. An empty
-	// frame means "show the previous frame again".
+	// uint64 (all big endian), the scale byte (1, or 2 when the frame is
+	// the game's picture enlarged 2x, see VideoMode), then the packed I420
+	// frame. Width and height are the frame's (the enlarged size). An
+	// empty frame means "show the previous frame again".
 	TypeVideo Type = 0x02
 	// TypeAudio: interleaved stereo int16 samples, little endian, 48 kHz.
 	TypeAudio Type = 0x03
@@ -65,7 +68,62 @@ const (
 	TypeLoadState Type = 0x84
 	// TypeQuit: no payload; the worker closes the game and exits.
 	TypeQuit Type = 0x85
+	// TypeVideoMode: 1 byte, a VideoMode for the next frames.
+	TypeVideoMode Type = 0x86
 )
+
+// VideoMode is how the worker turns the core's frames into I420.
+type VideoMode byte
+
+const (
+	// VideoNative is the game's size, each chroma sample from the
+	// top-left pixel of its 2x2 block.
+	VideoNative VideoMode = 0
+	// VideoBox is the game's size, each chroma sample the average of its
+	// 2x2 block (the "saver" video quality).
+	VideoBox VideoMode = 1
+	// VideoDouble enlarges the picture 2x with nearest neighbour, so every
+	// game pixel gets its own color sample (the "high" and "normal"
+	// qualities).
+	VideoDouble VideoMode = 2
+)
+
+// Scale is how many times the mode enlarges the game's picture.
+func (m VideoMode) Scale() int {
+	if m == VideoDouble {
+		return 2
+	}
+	return 1
+}
+
+// String names the mode, as the emulate worker's --video flag takes it.
+func (m VideoMode) String() string {
+	switch m {
+	case VideoBox:
+		return "box"
+	case VideoDouble:
+		return "double"
+	}
+	return "native"
+}
+
+// ParseVideoMode reads a mode named by String.
+func ParseVideoMode(s string) (VideoMode, error) {
+	for _, m := range []VideoMode{VideoNative, VideoBox, VideoDouble} {
+		if m.String() == s {
+			return m, nil
+		}
+	}
+	return VideoNative, fmt.Errorf("emuproc: unknown video mode %q", s)
+}
+
+// DecodeVideoMode parses a VideoMode payload.
+func DecodeVideoMode(p []byte) (VideoMode, error) {
+	if len(p) != 1 || p[0] > byte(VideoDouble) {
+		return VideoNative, errors.New("emuproc: video mode message must be 1 known byte")
+	}
+	return VideoMode(p[0]), nil
+}
 
 // HeaderSize is the length of the type and length prefix.
 const HeaderSize = 5
@@ -80,7 +138,7 @@ const Ports = 4
 const padSize = 8
 
 // videoHeader is the wire size of the fields before the I420 bytes.
-const videoHeader = 12
+const videoHeader = 13
 
 // ErrTooLarge is returned for a message longer than MaxPayload.
 var ErrTooLarge = errors.New("emuproc: message too large")
@@ -110,7 +168,8 @@ type StateResult struct {
 
 // Video is one decoded Video message.
 type Video struct {
-	Width, Height int
+	Width, Height int // the frame's size (already enlarged when Scale is 2)
+	Scale         int // 1, or 2 for a picture enlarged 2x
 	Duration      time.Duration
 	I420          []byte // empty: repeat the previous frame
 }
@@ -163,11 +222,13 @@ func (w *Writer) WriteJSON(t Type, v any) error {
 	return w.Write(t, b)
 }
 
-// WriteVideo sends one frame; a nil i420 repeats the previous one.
-func (w *Writer) WriteVideo(width, height int, dur time.Duration, i420 []byte) error {
+// WriteVideo sends one frame of width x height, the game's picture
+// enlarged scale times (1 or 2); a nil i420 repeats the previous one.
+func (w *Writer) WriteVideo(width, height, scale int, dur time.Duration, i420 []byte) error {
 	binary.BigEndian.PutUint16(w.hdr[0:2], uint16(width))
 	binary.BigEndian.PutUint16(w.hdr[2:4], uint16(height))
 	binary.BigEndian.PutUint64(w.hdr[4:12], uint64(dur))
+	w.hdr[12] = byte(max(scale, 1))
 	return w.Write(TypeVideo, w.hdr[:], i420)
 }
 
@@ -186,6 +247,11 @@ func (w *Writer) WriteAudio(pcm []int16) error {
 // WritePads sends the controllers of ports 1-4.
 func (w *Writer) WritePads(pads [Ports]input.Pad) error {
 	return w.Write(TypePads, EncodePads(pads))
+}
+
+// WriteVideoMode switches how the next frames are converted.
+func (w *Writer) WriteVideoMode(m VideoMode) error {
+	return w.Write(TypeVideoMode, []byte{byte(m)})
 }
 
 // WritePause holds (true) or resumes (false) the game.
@@ -250,7 +316,11 @@ func DecodeVideo(p []byte) (Video, error) {
 		Width:    int(binary.BigEndian.Uint16(p[0:2])),
 		Height:   int(binary.BigEndian.Uint16(p[2:4])),
 		Duration: time.Duration(binary.BigEndian.Uint64(p[4:12])),
+		Scale:    int(p[12]),
 		I420:     p[videoHeader:],
+	}
+	if v.Scale != 1 && v.Scale != 2 {
+		return Video{}, fmt.Errorf("emuproc: video scale %d", v.Scale)
 	}
 	if len(v.I420) > 0 && len(v.I420) != FrameSizeI420(v.Width, v.Height) {
 		return Video{}, fmt.Errorf("emuproc: %dx%d frame with %d bytes", v.Width, v.Height, len(v.I420))
@@ -364,6 +434,8 @@ func (t Type) String() string {
 		return "load_state"
 	case TypeQuit:
 		return "quit"
+	case TypeVideoMode:
+		return "video_mode"
 	}
 	return fmt.Sprintf("type(0x%02x)", byte(t))
 }

@@ -19,7 +19,8 @@ class RoomStateTest {
             "you":{"name":"Ana","ports":[1],"queue_positions":[],"spectator":false,
               "swap_offers":[{"from":2,"to":1,"name":"Bo"},{"from":1,"to":1},{"from":3,"to":1}],"swap_asked":[]},
             "pausable":true,"paused":true,"paused_by":"Ana",
-            "controls":{"players":2,"buttons":9,"control":"joy4way"},"recording":true}""",
+            "controls":{"players":2,"buttons":9,"control":"joy4way"},"recording":true,
+            "picture":{"style":"crt","bands":"frame"}}""",
         )!!
         val s = RoomMessages.parseRoomState(m)!!
         assertEquals(2, s.maxPlayers)
@@ -30,6 +31,7 @@ class RoomStateTest {
         assertEquals(GameControls(2, 6, "joy4way"), s.controls)
         assertEquals(Me.Player(listOf(1)), s.me)
         assertTrue(s.paused && s.pausable && s.recording)
+        assertEquals(Picture(PictureStyle.CRT, PictureBands.FRAME), s.picture)
         assertEquals("9F3A", RoomMessages.guestId(s.queue[0].name))
         assertNull(RoomMessages.guestId("Ana"))
     }
@@ -42,6 +44,10 @@ class RoomStateTest {
         assertTrue(s.chat)
         assertEquals(GameControls.DEFAULT, s.controls)
         assertEquals(Me.Queue(2), s.me)
+        assertNull(s.picture)
+        // An unknown value means no room default at all.
+        val odd = RoomMessages.parseRoomState(parseObject("""{"type":"room_state","picture":{"style":"vhs","bands":"black"}}""")!!)!!
+        assertNull(odd.picture)
         assertNull(RoomMessages.parseRoomState(parseObject("""{"type":"chat"}""")!!))
     }
 

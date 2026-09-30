@@ -13,6 +13,7 @@ import SwiftUI
  */
 struct PadLabView: View {
     @StateObject private var lab = PadLab()
+    @StateObject private var screenRate = ScreenRateMonitor()
 
     var body: some View {
         GeometryReader { g in
@@ -37,22 +38,24 @@ struct PadLabView: View {
             .onChange(of: landscape) { _, _ in lab.pad.releaseAll() }
         }
         .onAppear {
+            screenRate.start()
             // -labGhost: the see-through, display-only pad of a real controller (for screenshots).
             if Self.args.contains("-labGhost") {
                 lab.pad.displayOnly = true
                 lab.pad.shown = PadButton.b1 | PadButton.b5 | PadButton.right
             }
         }
+        .onDisappear { screenRate.stop() }
     }
 
     private static let args = ProcessInfo.processInfo.arguments
 
-    /** -labStats: the stats overlay with fixed numbers (for screenshots). */
+    /** -labStats: the stats overlay with fixed numbers and the measured screen rate (for screenshots). */
     private static var sampleStats: LiveStatsView {
         var s = LiveStatsView()
         s.fps = 60
-        s.width = 640
-        s.height = 480
+        s.width = 768
+        s.height = 448
         s.codec = "VP8"
         s.rttMs = 28
         s.path = .direct
@@ -74,7 +77,7 @@ struct PadLabView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.video)
         .overlay(alignment: .topLeading) {
-            if Self.args.contains("-labStats") { StatsCorner(on: true, stats: Self.sampleStats) {}.padding(4) }
+            if Self.args.contains("-labStats") { StatsCorner(on: true, stats: Self.sampleStats, video: StreamVideo(scale: 2, width: 384, height: 224, quality: .high), screenHz: screenRate.hz) {}.padding(4) }
         }
         .overlay(alignment: Self.args.contains("-labStats") ? .bottomTrailing : .topTrailing) {
             if Self.args.contains("-labGhost") { ControllerChip(name: "DualSense Wireless Controller").frame(maxWidth: 300).padding(8) }

@@ -129,6 +129,11 @@ type roomsHarness struct {
 	noSaves bool // new games cannot be saved whole
 	// probe answers ProbeSaves (nil: no probe at all).
 	probe func(rom string) bool
+	// video: games can send a 2x picture (like WorkerSource), and quality
+	// is the host's video quality.
+	video   bool
+	quality string
+	sources []RoomSource
 }
 
 func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts ...func(*roomsHarness)) *roomsHarness {
@@ -161,15 +166,16 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts 
 			h.events = append(h.events, ev)
 			h.mu.Unlock()
 		},
-		Library:  lib,
-		Status:   status,
-		ICE:      NewICEStore(),
-		Stream:   StreamConfig{IncludeLoopback: true, Logger: logger},
-		Opener:   h.opener,
-		HostName: "test-host",
-		SavesDir: h.saves,
-		MaxRooms: maxRooms,
-		Rooms:    saved,
+		Library:      lib,
+		Status:       status,
+		ICE:          NewICEStore(),
+		Stream:       StreamConfig{IncludeLoopback: true, Logger: logger},
+		Opener:       h.opener,
+		HostName:     "test-host",
+		SavesDir:     h.saves,
+		MaxRooms:     maxRooms,
+		VideoQuality: h.quality,
+		Rooms:        saved,
 		Save: func(list []models.SavedRoom) error {
 			h.mu.Lock()
 			h.saved = list
@@ -183,8 +189,13 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts 
 			g.noSaves = h.noSaves
 			g.feed = h.feed
 			h.games = append(h.games, g)
+			var src RoomSource = g
+			if h.video {
+				src = &videoGame{fakeGame: g}
+			}
+			h.sources = append(h.sources, src)
 			h.mu.Unlock()
-			return g
+			return src
 		},
 		ProbeSaves: func(_ context.Context, rom string) (bool, error) {
 			h.mu.Lock()
@@ -800,5 +811,74 @@ func TestTheHostAnswersAPauseRequestFromItsLinkedBrowser(t *testing.T) {
 	manager.Sync()
 	if st := h.room(r.ID); st.State != models.RoomPaused || len(st.PauseAsks) != 0 {
 		t.Fatalf("after accepting: %+v", st)
+	}
+}
+
+func TestRoomsKeepTheHostsDefaultPicture(t *testing.T) {
+	h := newRoomsHarness(t, 4, nil)
+	replies := make(chan GameReply, 1)
+	req := GameRequest{Rom: "robby", Title: "Crt night", Voice: true, Picture: &models.RoomPicture{Style: "crt", Bands: "ambient"}}
+	if err := h.rooms.Create(req, func(r GameReply) { replies <- r }); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "room_open", func() bool { return h.sender.count(signalclient.TypeRoomOpen) == 1 })
+	h.answerOpen("R1")
+	id := (<-replies).ID
+	if p := h.room(id).Picture; p == nil || *p != (models.RoomPicture{Style: "crt", Bands: "ambient"}) {
+		t.Fatalf("created with %+v", p)
+	}
+	savedPicture := func() *models.RoomPicture {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		for _, s := range h.saved {
+			if s.ID == id {
+				return s.Picture
+			}
+		}
+		t.Fatal("not saved")
+		return nil
+	}
+	if p := savedPicture(); p == nil || p.Style != "crt" {
+		t.Fatalf("device.json %+v", p)
+	}
+	if err := h.rooms.SetPicture(id, &models.RoomPicture{Style: "sharp", Bands: "frame"}); err != nil {
+		t.Fatal(err)
+	}
+	if p := savedPicture(); p == nil || *p != (models.RoomPicture{Style: "sharp", Bands: "frame"}) {
+		t.Fatalf("after room_action picture %+v", p)
+	}
+	if p := h.status.Snapshot().Rooms[0].Picture; p == nil || p.Style != "sharp" {
+		t.Fatalf("device_status %+v", p)
+	}
+	// Unknown values change nothing.
+	if err := h.rooms.SetPicture(id, &models.RoomPicture{Style: "sharp", Bands: "rainbow"}); !errors.Is(err, ErrBadPicture) {
+		t.Fatalf("bad bands: %v", err)
+	}
+	if p := savedPicture(); p == nil || p.Bands != "frame" {
+		t.Fatalf("a refused picture changed the room: %+v", p)
+	}
+	if err := h.rooms.SetPicture("nope", nil); !errors.Is(err, ErrUnknownRoom) {
+		t.Fatalf("unknown room: %v", err)
+	}
+	// nil goes back to the site's default.
+	if err := h.rooms.SetPicture(id, nil); err != nil || savedPicture() != nil {
+		t.Fatalf("clear: %v %+v", err, savedPicture())
+	}
+}
+
+func TestRoomsIgnoreAnUnknownPicture(t *testing.T) {
+	// From create_room and from a hand-edited device.json.
+	h := newRoomsHarness(t, 4, []models.SavedRoom{{ID: "aa11", Name: "Old", Rom: "galaga", State: models.RoomArchived, Picture: &models.RoomPicture{Style: "neon", Bands: "black"}}})
+	if p := h.room("aa11").Picture; p != nil {
+		t.Fatalf("loaded %+v", p)
+	}
+	replies := make(chan GameReply, 1)
+	if err := h.rooms.Create(GameRequest{Rom: "robby", Picture: &models.RoomPicture{Style: "crt"}}, func(r GameReply) { replies <- r }); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "room_open", func() bool { return h.sender.count(signalclient.TypeRoomOpen) == 1 })
+	h.answerOpen("R1")
+	if p := h.room((<-replies).ID).Picture; p != nil {
+		t.Fatalf("created with %+v", p)
 	}
 }

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useRef, useState } from "react";
+import type { StreamVideo } from "@go-link/shared";
 import { t } from "../i18n";
+import { useRefreshRate } from "../picture/refreshRate";
 
 /**
  * The stream's figures behind a small (i) button that never changes size:
@@ -12,13 +14,21 @@ export function StreamInfo({
   sentFps,
   receivedFps,
   path,
+  picture,
+  video = null,
 }: {
   rttMs: number | null;
   sentFps: number | null;
   receivedFps: number | null;
   path: "direct" | "relay" | null;
+  /** How the picture is drawn ("Sharp · WebGL 2", or the browser's own). */
+  picture?: string;
+  /** The picture the device sends (stream_stats video). */
+  video?: StreamVideo | null;
 }) {
   const [open, setOpen] = useState(false);
+  // The screen's refresh rate, measured only while the figures are open.
+  const hz = useRefreshRate(open);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -39,6 +49,9 @@ export function StreamInfo({
     [t.room.statsPath, path === "relay" ? t.room.statsRelay : path === "direct" ? t.room.statsDirect : "–"],
     [t.room.statsSent, sentFps === null ? "–" : `${sentFps.toFixed(1)} fps`],
     [t.room.statsReceived, receivedFps === null ? "–" : `${Math.round(receivedFps)} fps`],
+    [t.picture.screen, hz === null ? "–" : t.picture.hz(hz)],
+    ...(video ? videoRows(video) : []),
+    ...(picture ? [[t.picture.renderer, picture] as [string, string]] : []),
   ];
   return (
     <div className={`video-stats stream-info${path === "relay" ? " is-relay" : ""}`} ref={rootRef}>
@@ -70,4 +83,21 @@ export function StreamInfo({
       )}
     </div>
   );
+}
+
+/** "768×448 (2× of 384×224)" and the quality in use, "Saver (CPU)" after a fallback. */
+export function videoRows(v: StreamVideo): [string, string][] {
+  const rows: [string, string][] = [
+    [
+      t.video.size,
+      v.scale === 2 ? t.video.sizeScaled(v.width * 2, v.height * 2, v.width, v.height) : t.video.sizeNative(v.width, v.height),
+    ],
+  ];
+  if (v.quality) rows.push([t.video.quality, videoQualityText(v.quality, v.fallback)]);
+  return rows;
+}
+
+/** "High", or "Saver (CPU)" when the room could not keep up with 2x. */
+export function videoQualityText(q: keyof typeof t.video.qualities, fallback?: string): string {
+  return fallback === "cpu" ? t.video.withCpu(t.video.qualities[q]) : t.video.qualities[q];
 }

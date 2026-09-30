@@ -124,6 +124,8 @@ public struct RoomStateView: Equatable, Sendable {
      * answer a pause request. Older devices do not send it: true.
      */
     public var hostOnline: Bool = true
+    /** The host's default picture for this room (picture: {style, bands}); nil = the app's default. */
+    public var picture: PictureSettings?
 
     public var me: Me {
         if !you.ports.isEmpty { return .player(you.ports) }
@@ -196,14 +198,17 @@ public struct TypingView: Equatable, Sendable {
     }
 }
 
-/** Frames per second the device sends and the picture's display aspect. */
+/** Frames per second the device sends, the picture's display aspect and how it is sent (2x or not). */
 public struct StreamStatsView: Equatable, Sendable {
     public let fps: Double?
     public let aspect: Double?
+    /** stream_stats "video" (nil: older devices, or before the first frame, so scale 1). */
+    public let video: StreamVideo?
 
-    public init(fps: Double?, aspect: Double?) {
+    public init(fps: Double?, aspect: Double?, video: StreamVideo? = nil) {
         self.fps = fps
         self.aspect = aspect
+        self.video = video
     }
 }
 
@@ -282,8 +287,18 @@ public enum RoomMessages {
             pausedBy: m["paused_by"].str(40),
             controls: parseControls(m["controls"]),
             recording: m["recording"].isTrue,
-            hostOnline: !m["host_online"].isFalse
+            hostOnline: !m["host_online"].isFalse,
+            picture: parsePicture(m["picture"])
         )
+    }
+
+    /** room_state.picture: nil when absent or when either value is unknown (the website's parseRoomPicture). */
+    public static func parsePicture(_ v: JSON?) -> PictureSettings? {
+        guard case .object? = v else { return nil }
+        let o = v.obj
+        guard let style = o["style"].strOrNil.flatMap(PictureStyle.init(rawValue:)),
+              let bands = o["bands"].strOrNil.flatMap(PictureBands.init(rawValue:)) else { return nil }
+        return PictureSettings(style: style, bands: bands)
     }
 
     public static func parseChat(_ m: JSONObject) -> ChatLine? {
@@ -324,7 +339,7 @@ public enum RoomMessages {
             let a = m["aspect"].num
             if a > 0.2 && a < 5 { aspect = a }
         }
-        return StreamStatsView(fps: fps, aspect: aspect)
+        return StreamStatsView(fps: fps, aspect: aspect, video: StreamVideo.parse(m))
     }
 
     /**

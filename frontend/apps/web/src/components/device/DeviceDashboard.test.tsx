@@ -24,7 +24,7 @@ const status: DeviceStatus = {
   linked_browsers: 1,
   rooms: [
     { id: "a1", name: "Goalies night", rom: "glacgoal", game: "Glacier Goalies", public: true, voice: true, state: "archived", favorite: false, roomId: "", players: 0, maxPlayers: 2, spectators: 0, queue: 0, since: "2026-09-26T10:00:00Z", deletedAt: null, saves: [{ slot: 1, name: "Stage 3", at: "2026-09-26T09:00:00Z" }], autosave: true, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
-    { id: "b2", name: "Laundry co-op", rom: "glacgoal", game: "Glacier Goalies", public: true, voice: true, state: "live", favorite: true, roomId: "R2", players: 2, maxPlayers: 4, spectators: 3, queue: 0, since: "2026-09-26T11:00:00Z", deletedAt: null, saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
+    { id: "b2", name: "Laundry co-op", rom: "glacgoal", game: "Glacier Goalies", public: true, voice: true, state: "live", favorite: true, roomId: "R2", players: 2, maxPlayers: 4, spectators: 3, queue: 0, since: "2026-09-26T11:00:00Z", deletedAt: null, saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false, video: { quality: "saver", fallback: "cpu", scale: 1 } },
     { id: "c3", name: "Old one", rom: "looping", game: "Looping", public: false, voice: false, state: "trash", favorite: false, roomId: "", players: 0, maxPlayers: 2, spectators: 0, queue: 0, since: "2026-09-20T11:00:00Z", deletedAt: new Date().toISOString(), saves: [], autosave: false, lastError: "", ownerKey: "", invite: "", inviteCode: "", chatOff: false, noSaves: false },
   ],
   system: {
@@ -99,6 +99,7 @@ const status: DeviceStatus = {
     thumbnailsBytes: 30 * MB,
   },
   savesBytes: 10 * MB,
+  videoQuality: "high",
 };
 
 vi.mock("../../signal/SignalProvider", () => ({
@@ -124,6 +125,27 @@ afterEach(() => {
 });
 
 describe("device dashboard", () => {
+  it("sets the video quality and shows the one each running room uses", async () => {
+    render(
+      <MemoryRouter>
+        <DeviceDashboard />
+      </MemoryRouter>,
+    );
+    const card = screen.getByRole("heading", { name: "Video quality" }).closest(".card") as HTMLElement;
+    const select = within(card).getByRole("combobox", { name: "Quality" });
+    expect(select).toHaveTextContent("High");
+    // The room that could not keep up with 2x says so.
+    expect(within(card).getByText("Laundry co-op")).toBeInTheDocument();
+    expect(within(card).getByText("Saver (CPU)")).toBeInTheDocument();
+    expect(within(card).getByText(/could not keep up with twice the size/)).toBeInTheDocument();
+    sendControl.mockClear();
+    await userEvent.click(select);
+    await userEvent.click(screen.getByRole("option", { name: /^Normal/ }));
+    expect(sendControl).toHaveBeenCalledWith({ type: "set_video_quality", quality: "normal" });
+    act(() => listeners.forEach((fn) => fn({ type: "video_quality_result", ok: false, error: "invalid setting" })));
+    expect(within(card).getByRole("alert")).toHaveTextContent("could not change the video quality");
+  });
+
   it("shows the device, its live figures and the path", () => {
     render(
       <MemoryRouter>
@@ -252,10 +274,27 @@ describe("rooms on the home page", () => {
     );
     await userEvent.click(screen.getAllByRole("button", { name: "More options" })[0]!);
     const menu = screen.getByRole("menu");
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open", "Pause", "Save game", "Archive", "Remove from favorites"]);
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Open", "Pause", "Save game", "Archive", "Remove from favorites", "Picture default"]);
     await userEvent.click(within(menu).getByRole("menuitem", { name: "Save game" }));
     expect(sendControl).toHaveBeenCalledWith({ type: "room_action", id: "b2", action: "save" });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("sets a room's picture default for its guests from the ⋯ menu", async () => {
+    render(
+      <MemoryRouter>
+        <LobbyPage />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "More options" })[0]!);
+    await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Picture default" }));
+    const dialog = screen.getByRole("dialog", { name: /^Picture default for/ });
+    expect(within(dialog).getByText("Now: the site's default (Smooth · Ambient)")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Style" }));
+    await userEvent.click(screen.getByRole("option", { name: /^CRT arcade/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(sendControl).toHaveBeenCalledWith({ type: "room_action", id: "b2", action: "picture", style: "crt", bands: "ambient" });
+    expect(screen.queryByRole("dialog", { name: /^Picture default for/ })).not.toBeInTheDocument();
   });
 
   it("asks where to start an archived room again", async () => {
