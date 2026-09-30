@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
@@ -424,15 +425,19 @@ private fun CompareLabel(text: String, modifier: Modifier, align: Alignment) {
 
 /**
  * Skin: the console shell around the picture and its controls. Every skin
- * is a file; the list shows the built-in ones and those added to the
- * app's Skins folder.
+ * is a file; the list shows the built-in ones and the custom ones (added
+ * to the app's Skins folder or installed by pasting their JSON, "Install
+ * skin"). A long press on a custom skin deletes it, after asking.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SkinSection(skins: SkinStore) {
     SectionLabel(stringResource(R.string.skin_title))
     Text(stringResource(R.string.skin_note), color = Tokens.faint, fontSize = 13.sp, lineHeight = 18.sp)
     val lang = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
-    val tiles = skins.catalog.skins.map { Triple(it.id, it.name(lang), it) }
+    var installing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<PadSkin?>(null) }
+    val tiles = skins.catalog.skins.map { Triple(it.id, if (skins.isCustom(it.id)) stringResource(R.string.skin_custom, it.name(lang)) else it.name(lang), it) }
     Column(Modifier.selectableGroup().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tiles.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -444,14 +449,19 @@ private fun SkinSection(skins: SkinStore) {
                             .heightIn(min = 84.dp)
                             .background(if (selected) Tokens.accentTint else Tokens.surface2, RoundedCornerShape(14.dp))
                             .border(1.dp, if (selected) Tokens.accentTintBorder else Color.Transparent, RoundedCornerShape(14.dp))
-                            .selectable(selected, role = androidx.compose.ui.semantics.Role.RadioButton) { skins.choose(id) }
+                            .semantics { this.selected = selected }
+                            .combinedClickable(
+                                role = androidx.compose.ui.semantics.Role.RadioButton,
+                                onClick = { skins.choose(id) },
+                                onLongClick = if (skins.isCustom(id)) ({ deleting = skin }) else null,
+                            )
                             .padding(vertical = 10.dp, horizontal = 6.dp)
                             .testTag("skin-$id"),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         SkinSwatch(skin)
-                        Text(name, color = Tokens.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(name, color = Tokens.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         if (skin.author.isNotEmpty() && skin.author != "go-link") {
                             Text(skin.author, color = Tokens.muted, fontSize = 11.sp, maxLines = 1)
                         }
@@ -461,7 +471,15 @@ private fun SkinSection(skins: SkinStore) {
             }
         }
     }
+    SecondaryButton(stringResource(R.string.skin_install), { installing = true }, Modifier.fillMaxWidth().padding(top = 8.dp).testTag("skin-install"))
+    if (skins.catalog.skins.any { skins.isCustom(it.id) }) {
+        Text(stringResource(R.string.skin_long_press), color = Tokens.faint, fontSize = 12.sp, lineHeight = 16.sp)
+    }
     Text(stringResource(R.string.skin_folder_hint), color = Tokens.faint, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 6.dp))
+    if (installing) InstallSkinDialog(skins) { installing = false }
+    deleting?.let { skin ->
+        DeleteSkinDialog(skin, lang, onDelete = { skins.delete(skin.id); deleting = null }, onDismiss = { deleting = null })
+    }
 }
 
 @Composable

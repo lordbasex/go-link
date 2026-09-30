@@ -242,6 +242,7 @@ private fun App(vm: PlayerViewModel) {
             onName = { vm.setName(it) },
             onSignal = { vm.setSignal(it) },
             onBack = { vm.go(Screen.Home) },
+            skins = org.golink.player.ui.rememberSkinStore(vm.prefs),
         )
         Screen.TestController -> TestControllerScreen(vm.tester, onBack = { vm.go(Screen.Home) })
     }

@@ -221,6 +221,8 @@ struct GameSettingsPanel: View {
  */
 private struct SkinSection: View {
     @ObservedObject var skins: SkinStore
+    @State private var installing = false
+    @State private var deleting: PadSkin?
 
     var body: some View {
         HStack(spacing: 10) {
@@ -233,25 +235,46 @@ private struct SkinSection: View {
         Text(L("skin_note")).font(.caption).foregroundStyle(Tokens.faint)
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
             ForEach(skins.catalog.skins) { s in
-                tile(id: s.id, name: s.displayName, author: s.author, swatch: AnyView(
+                let custom = skins.isCustom(s.id)
+                tile(id: s.id, name: s.displayName, author: custom ? L("skin_custom_badge") : s.author, custom: custom, swatch: AnyView(
                     Circle()
                         .fill(RadialGradient(colors: [Color(hex: s.center), Color(hex: s.edge)], center: .center, startRadius: 0, endRadius: 20))
                         .overlay(Circle().stroke(Color(hex: s.rim), lineWidth: 2))
                         .overlay(Circle().fill(s.controls == .light ? Color(hex: 0xE5EEF0) : Color(hex: 0x222229)).frame(width: 12, height: 12))
                 ))
+                .contextMenu {
+                    // Only installed skins can go; the app's own stay.
+                    if custom {
+                        SwiftUI.Button(role: .destructive) { deleting = s } label: { Label(L("skin_delete"), systemImage: "trash") }
+                    }
+                }
             }
         }
+        SecondaryButton(title: L("skin_install"), icon: "square.and.arrow.down") { installing = true }
+            .accessibilityIdentifier("skin-install")
         Text(L("skin_folder_hint")).font(.caption).foregroundStyle(Tokens.faint)
+            .fullScreenCover(isPresented: $installing) {
+                InstallSkinView(skins: skins) { installing = false }
+            }
+            .alert(L("skin_delete_title", deleting?.displayName ?? ""), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+                SwiftUI.Button(L("skin_delete"), role: .destructive) {
+                    if let id = deleting?.id { skins.remove(id) }
+                    deleting = nil
+                }
+                SwiftUI.Button(L("skin_install_cancel"), role: .cancel) { deleting = nil }
+            } message: {
+                Text(L("skin_delete_body"))
+            }
     }
 
-    private func tile(id: String, name: String, author: String, swatch: AnyView) -> some View {
+    private func tile(id: String, name: String, author: String, custom: Bool = false, swatch: AnyView) -> some View {
         let selected = skins.selectedId == id
         return SwiftUI.Button { skins.choose(id) } label: {
             VStack(spacing: 6) {
                 swatch.frame(width: 36, height: 36)
                 Text(name).font(.footnote.weight(.semibold)).foregroundStyle(Tokens.text).lineLimit(1)
                 if !author.isEmpty && author != "go-link" {
-                    Text(author).font(.caption2).foregroundStyle(Tokens.muted).lineLimit(1)
+                    Text(author).font(.caption2).foregroundStyle(custom ? Tokens.accent : Tokens.muted).lineLimit(1)
                 }
             }
             .padding(.vertical, 10).padding(.horizontal, 6)
@@ -263,6 +286,7 @@ private struct SkinSection: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel(custom ? L("skin_custom", name) : name)
         .accessibilityIdentifier("skin-\(id)")
     }
 }

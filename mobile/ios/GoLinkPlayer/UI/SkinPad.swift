@@ -42,6 +42,36 @@ final class SkinStore: ObservableObject {
         selected = catalog.selected(store)
     }
 
+    /** The ids of the skins that come with the app (they cannot be replaced or deleted). */
+    var builtInIds: Set<String> {
+        Set((Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
+            .filter { $0.lastPathComponent.hasPrefix("skin-") }
+            .compactMap { (try? Data(contentsOf: $0)).flatMap { try? PadSkin.parse($0) }?.id })
+    }
+
+    /** The ids of the skins installed in the Skins folder (pasted or copied with the Files app). */
+    var customIds: Set<String> {
+        guard let dir = Self.installedFolder() else { return [] }
+        return SkinInstaller.installedIds(in: dir).subtracting(builtInIds)
+    }
+
+    func isCustom(_ id: String) -> Bool { customIds.contains(id) }
+
+    /** Installs a checked skin in the Skins folder (replacing one with its id); false if it could not be saved. */
+    @discardableResult
+    func install(_ ready: SkinCheck.Ready) -> Bool {
+        guard let dir = Self.installedFolder(), (try? SkinInstaller.install(ready.data, id: ready.skin.id, into: dir)) != nil else { return false }
+        reload()
+        return true
+    }
+
+    /** Deletes an installed skin; the choice falls back to the default skin if it was selected. */
+    func remove(_ id: String) {
+        guard let dir = Self.installedFolder(), isCustom(id) else { return }
+        try? SkinInstaller.remove(id: id, from: dir)
+        reload()
+    }
+
     /**
      * The app's own skins first, then the installed ones (an installed file
      * cannot replace a built-in id): a bare "<name>.json", or a folder with

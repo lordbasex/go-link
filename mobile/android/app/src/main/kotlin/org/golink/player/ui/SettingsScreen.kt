@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,7 +58,8 @@ import org.golink.player.net.OkHttpSockets
 /**
  * The player's name, the signaling server (official or the host's own,
  * like the website's "Signaling server" button: wss:// only, tested for a
- * hello before saving), the startup sound and the permissions.
+ * hello before saving), the startup sound, the custom skins (install one
+ * by pasting its JSON, delete one) and the permissions.
  */
 @Composable
 fun SettingsScreen(
@@ -68,6 +70,7 @@ fun SettingsScreen(
     onName: (String) -> Unit,
     onSignal: (String?) -> Unit,
     onBack: () -> Unit,
+    skins: SkinStore? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -181,6 +184,7 @@ fun SettingsScreen(
                     }
                     Text(stringResource(R.string.settings_startup_sound_hint), color = Tokens.muted, fontSize = 14.sp)
                 }
+                if (skins != null) SkinsCard(skins)
                 Card {
                     Text(stringResource(R.string.settings_permissions), color = Tokens.text, fontWeight = FontWeight.SemiBold)
                     PermissionRow(stringResource(R.string.settings_perm_camera), Perms.CAMERA)
@@ -218,3 +222,33 @@ private fun PermissionRow(label: String, permission: String) {
 /** A saved name must follow the rules; an empty one lets the host pick a guest name. */
 private fun nameUsable(name: String): Boolean =
     org.golink.player.core.PlayerName.normalize(name).isEmpty() || org.golink.player.core.PlayerName.isValid(name)
+
+/** The custom skins: install one by pasting its JSON, or delete one (built-in skins stay). */
+@Composable
+private fun SkinsCard(skins: SkinStore) {
+    val lang = androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language
+    var installing by rememberSaveable { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<org.golink.player.core.PadSkin?>(null) }
+    val custom = skins.catalog.skins.filter { skins.isCustom(it.id) }
+    Card {
+        Text(stringResource(R.string.settings_skins), color = Tokens.text, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.settings_skins_hint), color = Tokens.muted, fontSize = 14.sp)
+        if (custom.isEmpty()) Text(stringResource(R.string.settings_skins_none), color = Tokens.faint, fontSize = 14.sp)
+        custom.forEach { skin ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().testTag("settings-skin-${skin.id}")) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.skin_custom, skin.name(lang)), color = Tokens.text2, fontSize = 14.sp)
+                    Text(skin.id, color = Tokens.faint, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                }
+                IconButton(onClick = { deleting = skin }, modifier = Modifier.size(48.dp).testTag("skin-delete-${skin.id}")) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Delete, contentDescription = stringResource(R.string.skin_delete), tint = Tokens.dangerText)
+                }
+            }
+        }
+        SecondaryButton(stringResource(R.string.skin_install), { installing = true }, Modifier.fillMaxWidth().testTag("settings-skin-install"))
+    }
+    if (installing) InstallSkinDialog(skins) { installing = false }
+    deleting?.let { skin ->
+        DeleteSkinDialog(skin, lang, onDelete = { skins.delete(skin.id); deleting = null }, onDismiss = { deleting = null })
+    }
+}

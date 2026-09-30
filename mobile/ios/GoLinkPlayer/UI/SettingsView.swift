@@ -18,6 +18,8 @@ struct SettingsView: View {
     @State private var testing = false
     @State private var serverMessage: (String, Bool)?
     @State private var startupSound = true
+    @StateObject private var skins = SkinStore()
+    @State private var installSkin = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,6 +71,12 @@ struct SettingsView: View {
                         Text(L("settings_startup_sound_hint")).font(.caption).foregroundStyle(Tokens.faint)
                     }
                     Card {
+                        Text(L("settings_skins")).font(.headline).foregroundStyle(Tokens.text)
+                        Text(L("settings_skins_hint")).font(.subheadline).foregroundStyle(Tokens.muted)
+                        SecondaryButton(title: L("skin_install"), icon: "square.and.arrow.down") { installSkin = true }
+                            .accessibilityIdentifier("settings-install-skin")
+                    }
+                    Card {
                         Text(L("settings_permissions")).font(.headline).foregroundStyle(Tokens.text)
                         permissionRow(L("settings_perm_camera"), AVCaptureDevice.authorizationStatus(for: .video) == .authorized)
                         permissionRow(L("settings_perm_mic"), AudioRouter.micPermission == .granted)
@@ -87,6 +95,9 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
+        }
+        .fullScreenCover(isPresented: $installSkin) {
+            InstallSkinView(skins: skins) { installSkin = false }
         }
         .onAppear {
             name = model.prefs.playerName

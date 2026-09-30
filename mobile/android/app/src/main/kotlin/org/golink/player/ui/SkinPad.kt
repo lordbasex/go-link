@@ -74,6 +74,7 @@ import org.golink.player.core.KeyValueStore
 import org.golink.player.core.PadSkin
 import org.golink.player.core.SkinCatalog
 import org.golink.player.core.SkinInsets
+import org.golink.player.core.SkinInstall
 import org.golink.player.core.SkinLayout
 import org.golink.player.core.SkinRect
 import org.golink.player.core.TouchPadLogic
@@ -98,6 +99,59 @@ class SkinStore(private val context: Context, private val store: KeyValueStore) 
     private val pictures = HashMap<String, ImageBitmap?>()
 
     val selectedId: String get() = selected?.id ?: ""
+
+    /** The ids of the skins that ship with the app (they cannot be replaced or deleted). */
+    val builtInIds: Set<String> by lazy {
+        (context.assets.list("") ?: emptyArray())
+            .filter { it.startsWith("skin-") && it.endsWith(".json") }
+            .mapNotNull { name -> runCatching { PadSkin.parse(context.assets.open(name).use { it.readBytes().decodeToString() }).id }.getOrNull() }
+            .toSet()
+    }
+
+    /** A skin installed by the player (from the Skins folder), which can be deleted. */
+    fun isCustom(id: String): Boolean = id !in builtInIds && catalog.skin(id) != null
+
+    /** The installed skins by id, with the file or folder each came from. */
+    private fun installedEntries(): Map<String, File> {
+        val out = LinkedHashMap<String, File>()
+        installedFolder(context)?.listFiles()?.sortedBy { it.name }?.forEach { f ->
+            val file = if (f.isDirectory) File(f, "skin.json") else f.takeIf { it.extension.lowercase() == "json" }
+            if (file == null || !file.isFile || file.length() > SkinInstall.MAX_BYTES) return@forEach
+            val id = runCatching { PadSkin.parse(file.readText()).id }.getOrNull() ?: return@forEach
+            if (id !in out) out[id] = f
+        }
+        return out
+    }
+
+    /** The ids of the installed skins (to tell an install from a replace). */
+    fun installedIds(): Set<String> = installedEntries().keys
+
+    /** Checks pasted JSON against the app's skins (see SkinInstall). */
+    fun check(text: String): SkinInstall.Check = SkinInstall.check(text, builtInIds, installedIds())
+
+    /**
+     * Saves a checked skin as Skins/skin-<id>.json (replacing an installed
+     * skin with the same id, wherever it was) and reads the folder again.
+     */
+    fun install(text: String, skin: PadSkin): Boolean {
+        if (skin.id in builtInIds) return false
+        val folder = installedFolder(context) ?: return false
+        val target = File(folder, SkinInstall.fileName(skin.id))
+        installedEntries()[skin.id]?.takeIf { it != target }?.let { if (it.isDirectory) it.deleteRecursively() else it.delete() }
+        val ok = runCatching { target.writeText(text.trim()) }.isSuccess
+        reload()
+        return ok && catalog.skin(skin.id) != null
+    }
+
+    /** Deletes an installed skin (its file, or its folder with the pictures); built-in skins stay. */
+    fun delete(id: String): Boolean {
+        if (id in builtInIds) return false
+        val entry = installedEntries()[id] ?: return false
+        val ok = if (entry.isDirectory) entry.deleteRecursively() else entry.delete()
+        pictures.clear()
+        reload()
+        return ok
+    }
 
     fun choose(id: String) {
         store.set(PadSkin.PREF_KEY, id)

@@ -171,6 +171,86 @@ final class PlayerUITests: XCTestCase {
     }
 
     /**
+     * Settings › Install skin: a broken paste shows the error; a valid skin
+     * shows its preview in both orientations, installs as "Custom · <name>",
+     * can be chosen (the room's Game settings shows it selected) and deleted.
+     */
+    func testInstallSkinByPasting() {
+        var app = launch(["-resetState"])
+        XCTAssertTrue(app.buttons["home-settings"].waitForExistence(timeout: 10))
+        app.buttons["home-settings"].tap()
+        let open = app.buttons["settings-install-skin"]
+        for _ in 0..<6 where !open.isHittable { app.swipeUp() }
+        open.tap()
+        let text = app.textViews["skin-install-text"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.tap()
+        text.typeText("{ \"format\": 1, oops")
+        app.buttons["skin-install-check"].tap()
+        XCTAssertTrue(app.staticTexts["skin-install-error"].waitForExistence(timeout: 3), "a broken paste explains itself")
+        shot("install-skin-error")
+        // Tap below the text, so the cursor lands at its end, and delete it.
+        text.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.9)).tap()
+        text.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 30))
+        text.typeText(##"{"format":1,"id":"ui-test","name":{"en":"UI Test"},"author":"tests","shell":{"center":"#2a6f97","edge":"#0b2233","rim":"#e0f0ff"}}"##)
+        app.buttons["skin-install-check"].tap()
+        let preview = app.descendants(matching: .any)["skin-install-preview"]
+        let found = preview.waitForExistence(timeout: 5)
+        if !found { shot("install-skin-no-preview") }
+        XCTAssertTrue(found, "a valid skin shows its preview")
+        XCTAssertTrue(app.staticTexts["skin-install-name"].label.contains("UI Test"))
+        shot("install-skin-preview-portrait")
+        app.segmentedControls["skin-install-orientation"].buttons.element(boundBy: 1).tap()
+        shot("install-skin-preview-landscape")
+        let install = app.buttons["skin-install-install"]
+        for _ in 0..<4 where !install.isHittable { app.swipeUp() }
+        install.tap()
+        // A skin left by an earlier run makes the app ask before replacing it; then it offers to use it now.
+        let replace = app.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Replace", "Reemplazar", "Substituir"])).firstMatch
+        let useNow = app.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Use it now", "Usarla ahora", "Usar agora"])).firstMatch
+        let deadline = Date().addingTimeInterval(15)
+        while !useNow.exists && Date() < deadline {
+            if replace.exists { replace.tap() }
+            usleep(200_000)
+        }
+        if !useNow.exists { shot("install-skin-no-offer") }
+        XCTAssertTrue(useNow.exists, "installing offers to use it now")
+        useNow.tap()
+        let installed = app.otherElements["skin-installed-ui-test"]
+        for _ in 0..<4 where !installed.exists { app.swipeUp() }
+        XCTAssertTrue(installed.waitForExistence(timeout: 5), "the installed list shows it")
+        shot("install-skin-installed")
+        app.terminate()
+
+        // The choice holds in a room: the pad lab draws the chosen skin and Game settings marks it.
+        app = launch(["-padLab", "-labSkin", "none"])
+        XCTAssertTrue(app.buttons["lab-settings"].waitForExistence(timeout: 10))
+        shot("install-skin-in-room")
+        app.buttons["lab-settings"].tap()
+        let tile = app.buttons["skin-ui-test"]
+        for _ in 0..<6 where !tile.isHittable { app.swipeUp() }
+        XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        XCTAssertTrue(tile.isSelected, "the pasted skin is the chosen one")
+        XCTAssertTrue(tile.label.contains("UI Test"))
+        shot("install-skin-game-settings")
+        // Delete it from Install skin's list of installed skins, with a confirmation.
+        let installButton = app.buttons["skin-install"]
+        for _ in 0..<4 where !installButton.isHittable { app.swipeUp() }
+        installButton.tap()
+        let trash = app.buttons["skin-delete-ui-test"]
+        for _ in 0..<4 where !trash.isHittable { app.swipeUp() }
+        XCTAssertTrue(trash.waitForExistence(timeout: 5))
+        trash.tap()
+        let confirm = app.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Delete", "Borrar", "Apagar"])).firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertFalse(app.buttons["skin-delete-ui-test"].waitForExistence(timeout: 2), "the skin is gone")
+        app.buttons["back"].tap()
+        XCTAssertFalse(app.buttons["skin-ui-test"].waitForExistence(timeout: 2), "the skin is gone")
+        app.terminate()
+    }
+
+    /**
      * Landscape without the on-screen pad (a controller in hand): the
      * picture fills the height and the room's buttons float in a capsule
      * that folds into its handle, and a tap on the handle brings it back.
