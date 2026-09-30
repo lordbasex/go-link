@@ -1,0 +1,239 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+/* "Destroy this page": the game's interface. Tokens only; the host element
+   carries .stage-tokens so the game stays dark in both themes. */
+
+/* The page copy split into words: each word is a solid piece. */
+.dz-w { display: inline-block; }
+
+.dz-host { position: fixed; inset: 0; z-index: 2147483002; pointer-events: none; }
+.dz-ui { position: absolute; inset: 0; color: var(--color-text); font: 14px var(--font-text); }
+.dz-ui button, .dz-ui a { pointer-events: auto; }
+.dz-mono { font-family: var(--font-mono); }
+.dz-px { font-family: var(--font-title); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; }
+.dz-muted { color: var(--color-text-muted); }
+.dz-small { font-size: 12px; }
+.dz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.is-accent { color: var(--color-accent); }
+.is-ok { color: var(--color-ok); }
+.is-danger { color: var(--color-p3); }
+
+/* The alarm: a red vignette that pulses and two beacons in the corners. */
+.dz-alarm { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 50%, color-mix(in srgb, var(--color-p3) 55%, transparent) 100%); animation: dz-pulse 1s ease-in-out infinite; opacity: 0.55; }
+.dz-alarm.is-strong { background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-bg) 55%, transparent) 30%, color-mix(in srgb, var(--color-p3) 75%, transparent) 100%); opacity: 1; animation: dz-pulse 0.8s ease-in-out 3, dz-calm 3.4s ease-in-out 2.4s infinite; }
+/* After the siren (about 2.5 s) the alarm keeps a slow, quiet pulse while you read. */
+@keyframes dz-calm { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.75; } }
+.dz-alarm.is-strong .dz-beacon i { animation: dz-spin 1.2s linear 2, dz-spin 7s linear 2.4s infinite; }
+.dz-beacon { position: absolute; top: 14px; width: 30px; height: 30px; }
+.dz-beacon.is-left { left: 14px; }
+.dz-beacon.is-right { right: 14px; }
+.dz-beacon::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--color-p3); box-shadow: 0 0 26px var(--color-p3); }
+.dz-beacon i { position: absolute; left: 15px; top: 15px; width: 380px; height: 70px; margin-top: -35px; transform-origin: 0 50%; background: linear-gradient(90deg, color-mix(in srgb, var(--color-p3) 60%, transparent), transparent); clip-path: polygon(0 45%, 100% 0, 100% 100%, 0 55%); animation: dz-spin 1.6s linear infinite; }
+.dz-beacon.is-right i { animation-direction: reverse; }
+@keyframes dz-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+@keyframes dz-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes dz-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes dz-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.dz-blink { animation: dz-blink 1s steps(1) infinite; }
+
+/* Capsule buttons (the site's rule: 36 px capsules, 44 px on touch). */
+.dz-btn { position: relative; min-height: 40px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--color-border-strong); background: color-mix(in srgb, var(--color-bg) 92%, transparent); color: var(--color-text); font: 600 14px var(--font-text); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.dz-btn:hover { border-color: var(--color-text-muted); }
+.dz-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.dz-btn.is-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+.dz-btn.is-danger { background: var(--color-p3); border-color: var(--color-p3); color: var(--color-bg); }
+.dz-btn.is-danger.is-outline { background: transparent; color: var(--color-p3); }
+@media (pointer: coarse) { .dz-btn::before { content: ""; position: absolute; inset: -4px; } }
+
+/* Dialogs: briefing, pause, mission complete. */
+.dz-modal { position: absolute; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 70px 16px 16px; overflow-y: auto; pointer-events: auto; }
+.dz-card { width: min(760px, 100%); box-sizing: border-box; border-radius: 20px; padding: 26px 30px; background: color-mix(in srgb, var(--color-video) 94%, transparent); border: 2px solid var(--color-border-strong); box-shadow: 0 20px 80px color-mix(in srgb, var(--color-video) 70%, transparent); display: flex; flex-direction: column; gap: 16px; }
+.dz-card.is-alert { border-color: var(--color-p3); box-shadow: 0 0 80px color-mix(in srgb, var(--color-p3) 35%, transparent); }
+.dz-card.is-done { border-color: var(--color-ok); box-shadow: 0 0 90px color-mix(in srgb, var(--color-ok) 25%, transparent); text-align: center; align-items: center; }
+.dz-card-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.dz-card h2 { font-size: 20px; }
+.dz-card.is-done h2 { font-size: 26px; }
+.dz-lead { margin: 0; font-size: 16px; line-height: 1.55; color: var(--color-text-2); }
+.dz-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.dz-press { margin-left: auto; font-size: 11px; }
+.dz-lineup { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
+.dz-lineup-person { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
+.dz-person { display: inline-block; background-repeat: no-repeat; filter: grayscale(1); opacity: 0.45; image-rendering: pixelated; }
+.dz-person.is-big, .dz-person.is-rescued { filter: none; opacity: 1; }
+.dz-cheer { animation: dz-hop 0.7s ease-in-out infinite; }
+.dz-cheer:nth-child(2) { animation-delay: 0.15s; }
+.dz-cheer:nth-child(3) { animation-delay: 0.3s; }
+.dz-controls { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dz-controls th, .dz-controls td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--color-border); font-weight: 400; }
+.dz-controls thead th { border-top: 0; color: var(--color-text-muted); font-size: 12px; }
+.dz-controls tbody th { font-weight: 600; }
+.dz-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; margin: 0; }
+.dz-stats div { padding: 10px 12px; border-radius: 14px; background: var(--color-surface); text-align: left; }
+.dz-stats dt { font-size: 12px; color: var(--color-text-muted); }
+.dz-stats dd { margin: 0; font-size: 20px; }
+
+/* The HUD. */
+.dz-hud-top { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100vw - 110px); }
+.dz-hudbar { display: flex; align-items: center; gap: 14px; padding: 8px 18px; border-radius: 999px; background: color-mix(in srgb, var(--color-video) 92%, transparent); border: 1px solid var(--color-danger-border); white-space: nowrap; max-width: 100%; overflow: hidden; box-sizing: border-box; }
+.dz-clock { font-size: 13px; }
+.dz-clock.is-late b { color: var(--color-p3); animation: dz-blink 1s steps(1) infinite; }
+/* The mission bar: one capsule, two thin parts (destroyed, rescued) under it. */
+.dz-progress { position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: color-mix(in srgb, var(--color-video) 92%, transparent); border: 1px solid var(--color-border-strong); pointer-events: auto; }
+.dz-progress-label { font-size: 12px; font-weight: 700; line-height: 1; color: var(--color-text); white-space: nowrap; }
+.dz-progress-track { height: 10px; border-radius: 999px; background: var(--color-surface-2); overflow: hidden; }
+.dz-progress-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--color-accent), var(--color-ok)); transition: width 0.3s ease; }
+.dz-progress-meter { display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 220px; }
+.dz-progress-parts { display: flex; flex-direction: column; gap: 2px; }
+.dz-part { display: block; height: 2px; border-radius: 1px; transition: width 0.3s ease; }
+.dz-part.is-destroyed { background: var(--color-accent); }
+.dz-part.is-rescued { background: var(--color-ok); }
+.dz-progress-tip { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--color-video); border: 1px solid var(--color-border); opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+.dz-progress:hover .dz-progress-tip, .dz-progress:focus-within .dz-progress-tip { opacity: 1; }
+.dz-progress.is-near { border-color: var(--color-ok); animation: dz-glow 1.2s ease-in-out infinite; }
+@keyframes dz-glow { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 18px 2px color-mix(in srgb, var(--color-ok) 55%, transparent); } }
+.dz-rec { font-size: 11px; color: var(--color-p3); }
+.dz-people { display: flex; gap: 4px; align-items: flex-end; }
+.dz-more { font-size: 12px; align-self: center; }
+.dz-chip { font-size: 13px; }
+.dz-chip-label { color: var(--color-text-muted); }
+.dz-bottom { position: absolute; bottom: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dz-bottom.is-left { left: 16px; }
+.dz-bottom.is-right { right: 16px; }
+.dz-weapons { display: flex; gap: 8px; }
+.dz-weapon { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--color-border-strong); background: color-mix(in srgb, var(--color-video) 90%, transparent); display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.dz-weapon.is-active { border: 2px solid var(--color-accent); }
+
+/* The touch pad: move on the left, actions on the right (phones, tablets). */
+.dz-touch { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; pointer-events: none; }
+.dz-stick { position: absolute; left: 18px; bottom: 28px; width: 136px; height: 136px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: color-mix(in srgb, var(--color-surface) 70%, transparent); pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center; }
+.dz-knob { width: 54px; height: 54px; border-radius: 50%; background: var(--color-surface-2); border: 1px solid var(--color-text-muted); }
+.dz-actions { position: absolute; right: 16px; bottom: 22px; width: 160px; height: 160px; pointer-events: none; }
+.dz-act { position: absolute; width: 58px; height: 58px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: color-mix(in srgb, var(--color-surface) 80%, transparent); color: var(--color-text); font: 600 11px var(--font-text); pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+.dz-act.is-jump { left: 51px; bottom: 0; background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
+.dz-act.is-fire { left: 0; bottom: 51px; }
+.dz-act.is-knife { right: 0; bottom: 51px; }
+.dz-act.is-bazooka { left: 51px; bottom: 102px; border-color: var(--color-p3); color: var(--color-p3); }
+.dz-act:active { transform: scale(0.93); }
+@media (pointer: coarse) { .dz-bottom.is-left { display: none; } }
+
+@media (max-width: 700px) {
+  .dz-hud-top { top: 8px; max-width: calc(100vw - 16px); }
+  .dz-hudbar { gap: 8px; padding: 6px 12px; font-size: 12px; }
+  .dz-progress { min-height: 32px; padding: 0 12px; }
+  .dz-progress-meter { width: 120px; }
+  .dz-clock .dz-chip-label { display: none; }
+  .dz-rec, .dz-hudbar .dz-muted { display: none; }
+  .dz-card { padding: 20px 18px; }
+  .dz-stats { grid-template-columns: repeat(2, 1fr); }
+  .dz-bottom.is-right { top: 96px; right: 8px; bottom: auto; gap: 6px; }
+  .dz-bottom.is-right .dz-btn { min-height: 34px; padding: 0 12px; font-size: 12px; }
+  .dz-hudbar .dz-chip-label { display: none; }
+  .dz-hudbar { max-width: calc(100vw - 96px); }
+  .dz-person { transform: scale(0.85); }
+  .dz-controls { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dz-alarm, .dz-alarm.is-strong, .dz-beacon i, .dz-alarm.is-strong .dz-beacon i, .dz-blink, .dz-cheer, .dz-progress.is-near, .dz-clock.is-late b { animation: none; }
+}
+
+/* Lives and health in the HUD. */
+.dz-life { display: inline-flex; align-items: center; gap: 3px; }
+.dz-heart { fill: var(--color-surface-2); stroke: var(--color-border-strong); }
+.dz-heart.is-on { fill: var(--color-p3); stroke: var(--color-p3); }
+.dz-health { width: 56px; height: 6px; margin-left: 4px; border-radius: 999px; background: var(--color-surface-2); overflow: hidden; }
+.dz-health-fill { display: block; height: 100%; background: var(--color-ok); transition: width 0.2s ease; }
+
+/* The briefing: Willy's portrait, the story, who to rescue and who is wanted.
+   It fits a 900 px tall window (scrolling inside when it must). */
+.dz-card > * { flex-shrink: 0; }
+.dz-story { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+.dz-portrait { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; border-radius: 16px; background: var(--color-surface); border: 1px solid var(--color-border-strong); }
+.dz-portrait figcaption { font-size: 12px; letter-spacing: 0.06em; text-align: center; }
+.dz-crisp { image-rendering: pixelated; }
+.dz-story-text { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.dz-roster { display: flex; flex-direction: column; gap: 8px; }
+.dz-roster.is-center { align-items: center; }
+.dz-roster-title { font-size: 12px; }
+.dz-roster .dz-lineup { justify-content: flex-start; }
+.dz-roster.is-center .dz-lineup { justify-content: center; }
+.dz-wanted { padding: 6px 8px; border-radius: 12px; border: 1px dashed var(--color-danger-border); font-size: 12px; }
+@media (max-width: 700px) {
+  .dz-story { grid-template-columns: 1fr; }
+  .dz-portrait { flex-direction: row; justify-content: center; }
+  .dz-life .dz-health { width: 36px; }
+}
+.dz-chasing { color: var(--color-bg); background: var(--color-p3); padding: 2px 8px; border-radius: 999px; animation: dz-pulse 0.9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dz-chasing { animation: none; } }
+
+/* ---------- briefing (mission briefing + the adaptive controls help) ----------
+   One screen with no scrolling to start: a head, a two-column body (story
+   left, controls help right) that scrolls inside only if it must, and the
+   actions in a bar that is always visible. Phones stack the columns. */
+.dz-modal.is-brief { align-items: center; padding: 16px; overflow: hidden; }
+.dz-card.dz-brief { width: min(1180px, 100%); max-height: calc(100dvh - 32px); padding: 0; gap: 0; overflow: hidden; }
+.dz-brief-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 24px 10px; }
+.dz-brief-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px 28px; align-items: start; padding: 4px 24px 16px; }
+.dz-card.dz-brief > .dz-brief-body { flex-shrink: 1; }
+.dz-brief-story { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.dz-brief .dz-story { gap: 16px; }
+.dz-brief .dz-lead { font-size: 14.5px; line-height: 1.5; }
+.dz-brief-rosters { display: flex; flex-wrap: wrap; gap: 14px 22px; }
+.dz-brief .dz-lineup { gap: 12px; }
+.dz-brief-actions { flex: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 24px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
+.dz-pause { width: min(760px, 100%); max-height: calc(100dvh - 90px); overflow-y: auto; }
+
+.dz-help { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.dz-help-tabs { display: inline-flex; align-self: flex-start; padding: 3px; gap: 3px; border-radius: 999px; background: var(--color-bg); border: 1px solid var(--color-border-strong); }
+.dz-help-tab { min-height: 32px; padding: 0 16px; border-radius: 999px; border: 0; background: transparent; color: var(--color-text-muted); font: 600 13px var(--font-text); cursor: pointer; }
+.dz-help-tab.is-on { background: var(--color-surface-2); color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-border-strong); }
+.dz-help-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.dz-help .dz-controls th, .dz-help .dz-controls td { padding: 5px 8px 5px 0; }
+.dz-help-wait { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 22px 16px; border-radius: 16px; border: 1px dashed var(--color-border-strong); color: var(--color-text-2); }
+.dz-help-wait p { margin: 0; max-width: 34ch; line-height: 1.5; }
+.dz-help-pulse { color: var(--color-accent); animation: dz-help-pulse 1.4s ease-in-out infinite; }
+@keyframes dz-help-pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.12); opacity: 1; } }
+.dz-help-pad { display: flex; flex-direction: column; gap: 8px; }
+.dz-help-found { margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
+.dz-help-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 8px var(--color-ok); }
+.dz-help-art { max-width: 340px; width: 100%; align-self: center; }
+.dz-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; font-size: 12.5px; }
+.dz-legend li { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 8px; min-width: 0; }
+.dz-legend li.is-lit { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+.dz-legend-caps { display: inline-flex; gap: 3px; flex: none; }
+.dz-legend-action { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dz-cap { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; border: 1px solid var(--color-border-strong); background: var(--color-surface-2); font: 700 11px var(--font-mono); color: var(--color-text); }
+.dz-cap.is-lit { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+@media (max-height: 760px) {
+  .dz-brief-head { padding: 12px 22px 6px; }
+  .dz-brief .dz-lead { font-size: 13.5px; }
+  .dz-help-art { max-width: 260px; }
+  .dz-brief .dz-portrait { padding: 8px; }
+}
+@media (max-width: 900px) {
+  .dz-brief-body { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .dz-modal.is-brief { padding: 8px; }
+  .dz-card.dz-brief { max-height: calc(100dvh - 16px); }
+  .dz-brief-head, .dz-brief-body, .dz-brief-actions { padding-left: 14px; padding-right: 14px; }
+  .dz-brief-actions .dz-press { display: none; }
+  .dz-brief-actions { flex-wrap: nowrap; gap: 8px; }
+  .dz-brief-actions .dz-btn { padding: 0 14px; font-size: 13px; white-space: nowrap; }
+  .dz-legend { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .dz-help-pulse { animation: none; } }
+/* ---------- end briefing ---------- */
+
+/* The help lights what you press, in every tab: the pressed rows glow and their caps fill. */
+.dz-legend li { transition: background 80ms, box-shadow 80ms; }
+.dz-legend li.is-lit { background: color-mix(in srgb, var(--color-accent) 22%, transparent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+.dz-legend li.is-lit .dz-legend-action { color: var(--color-text); font-weight: 600; }
+.dz-controls tr { transition: background 80ms; }
+.dz-controls tr.is-lit { background: color-mix(in srgb, var(--color-accent) 22%, transparent); box-shadow: inset 3px 0 0 var(--color-accent); }
+.dz-controls tr.is-lit th { color: var(--color-text); }
+.dz-help-touch { display: flex; flex-direction: column; gap: 12px; }
+.dz-touch-try { display: flex; flex-wrap: wrap; gap: 8px; }
+.dz-touch-try-btn { min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--color-border-strong); background: var(--color-surface-2); color: var(--color-text); font: 600 13px var(--font-text); cursor: pointer; touch-action: none; user-select: none; }
+.dz-touch-try-btn.is-stick { border-radius: 50%; width: 56px; height: 56px; padding: 0; }
+.dz-touch-try-btn.is-lit { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) { .dz-touch-try-btn.is-lit { transform: none; } }

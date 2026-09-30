@@ -5,7 +5,7 @@
 // they answered in between (analog) or only fully on and off.
 
 import type { Frame } from "./input";
-import type { Hud } from "./types";
+import { BOARD_W, type Hud } from "./types";
 import { sfx } from "./sfx";
 
 export const RACE_MS = 60_000;
@@ -62,7 +62,7 @@ export function step(s: RacerState, f: Frame): void {
   s.x = Math.max(-1, Math.min(1, s.x));
   const wasOff = s.offRoad;
   s.offRoad = Math.abs(s.x - roadCenter(s.z)) > ROAD_HALF;
-  if (s.offRoad && !wasOff && s.speed > 0) sfx("offroad");
+  if (s.offRoad && !wasOff && s.speed > 0) sfx("offroad", { x: BOARD_W / 2 + s.x * (BOARD_W / 2), y: 168, color: "p3" });
   if (s.speed > 0 || s.t > 0) s.t += dt;
   if (s.t >= RACE_MS) {
     s.t = RACE_MS;

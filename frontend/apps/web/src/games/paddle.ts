@@ -15,6 +15,8 @@ export const BRICK_W = 32;
 export const BRICK_H = 9;
 export const BRICK_X = (BOARD_W - BRICK_COLS * (BRICK_W + 3) + 3) / 2;
 export const BRICK_Y = 22;
+/** Each brick row's color, top to bottom (views.ts draws the same). */
+export const BRICK_COLORS = ["p2", "p4", "p3", "p1"] as const;
 export const PADDLE_W = 44;
 export const PADDLE_Y = BOARD_H - 16;
 const PADDLE_SPEED = 0.32; // board px per ms at full tilt
@@ -104,12 +106,12 @@ function move(s: PaddleState, dt: number): void {
     const speed = Math.min(0.24, Math.hypot(s.vx, s.vy) * 1.02);
     s.vx = Math.cos(a) * speed;
     s.vy = Math.sin(a) * speed;
-    sfx("paddle");
+    sfx("paddle", { x: s.ballX, y: PADDLE_Y, color: "accent" });
     s.ballY = PADDLE_Y - 2;
   }
   if (s.ballY > BOARD_H + 4) {
     s.lives--;
-    sfx(s.lives > 0 ? "lose" : "over");
+    sfx(s.lives > 0 ? "lose" : "over", { x: s.ballX, y: BOARD_H - 4, color: "p3" });
     s.held = true;
     return;
   }
@@ -117,11 +119,11 @@ function move(s: PaddleState, dt: number): void {
   const row = Math.floor((s.ballY - BRICK_Y) / (BRICK_H + 3));
   if (col >= 0 && col < BRICK_COLS && row >= 0 && row < BRICK_ROWS && s.bricks[row * BRICK_COLS + col]) {
     s.bricks[row * BRICK_COLS + col] = false;
-    sfx("brick");
+    sfx("brick", { x: BRICK_X + col * (BRICK_W + 3) + BRICK_W / 2, y: BRICK_Y + row * (BRICK_H + 3) + BRICK_H / 2, points: (BRICK_ROWS - row) * 10, color: BRICK_COLORS[row] });
     s.vy = -s.vy;
     s.score += (BRICK_ROWS - row) * 10;
     if (s.bricks.every((b) => !b)) {
-      sfx("clear");
+      sfx("clear", { x: BOARD_W / 2, y: BOARD_H / 2, color: "ok" });
       s.bricks.fill(true);
       s.held = true;
     }

@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { Button, type Pad } from "@go-link/shared";
-import { JoyConPair } from "../components/landing/JoyConPair";
+import { JoyConPair } from "./JoyConPair";
 import type { ControllerModelId } from "./controllerModels";
+import "./controllers.css";
 
 type Point = [number, number];
 

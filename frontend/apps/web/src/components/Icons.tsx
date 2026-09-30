@@ -203,22 +203,6 @@ export const SoundOffIcon = ({ size = 18 }: P) => (
     <path d="M22 9l-6 6M16 9l6 6" />
   </svg>
 );
-/** A coin: the startup intro's coin sound. */
-export const CoinIcon = ({ size = 17 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="5.5" />
-    <path d="M12 9.5v5" />
-  </svg>
-);
-/** The coin, crossed out: the startup sound is off. */
-export const CoinOffIcon = ({ size = 17 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="5.5" />
-    <path d="M4 4l16 16" />
-  </svg>
-);
 export const SpeakingIcon = () => (
   <svg
     width="16"
@@ -279,6 +263,18 @@ export const BookIcon = ({ size = 18 }: P) => (
 export const ToolsIcon = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
     <path d="M4 20l8-8M15.5 3.5a5 5 0 0 0-3.4 8.4 5 5 0 0 0 8.4-3.4l-3 1.5-3-3z" />
+  </svg>
+);
+/** A little devil (the "Destroy this page" easter egg): horns, a grin. */
+export const DevilIcon = ({ size = 20 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={1.9} {...base}>
+    {/* An outlined devil: round head with two horns, frowning brows, round eyes and a sly smile. */}
+    <path d="M6.1 7.1 4.4 2.6l4.8 2.6M17.9 7.1l1.7-4.5-4.8 2.6" />
+    <circle cx="12" cy="13" r="8.4" />
+    <path d="M7.4 8.9l3 1.5M16.6 8.9l-3 1.5" />
+    <circle cx="9.2" cy="13.3" r="1.1" />
+    <circle cx="14.8" cy="13.3" r="1.1" />
+    <path d="M8.8 16.8q3.2 2.2 6.4 0" />
   </svg>
 );
 export const DownloadIcon = ({ size = 18 }: P) => (

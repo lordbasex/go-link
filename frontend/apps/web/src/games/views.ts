@@ -7,7 +7,7 @@
 import { E, N, S, W, flow, tileMask, type LinkState } from "./link";
 import { SNAKE_COLS, SNAKE_ROWS, type SnakeState } from "./snake";
 import type { MemoryState } from "./memory";
-import { BRICK_COLS, BRICK_H, BRICK_ROWS, BRICK_W, BRICK_X, BRICK_Y, PADDLE_W, PADDLE_Y, type PaddleState } from "./paddle";
+import { BRICK_COLORS, BRICK_COLS, BRICK_H, BRICK_ROWS, BRICK_W, BRICK_X, BRICK_Y, PADDLE_W, PADDLE_Y, type PaddleState } from "./paddle";
 import { ROAD_HALF, roadCenter, type RacerState } from "./racer";
 import { ARROWS, type MovesState } from "./moves";
 import { BOARD_H, BOARD_W, type Palette } from "./types";
@@ -45,7 +45,10 @@ export function linkGeometry(s: Pick<LinkState, "cols" | "rows">): { size: numbe
 export function drawLink(ctx: Ctx, s: LinkState, pal: Palette, now: number): void {
   clear(ctx, pal, 10);
   const { size, x0, y0 } = linkGeometry(s);
-  const { lit, reached } = flow(s);
+  const { lit, depth, reached } = flow(s);
+  // A pulse runs along the lit cables from DEV, one tile every 90 ms.
+  const longest = Math.max(0, ...depth);
+  const wave = (now / 90) % (longest + 6);
   const arm = Math.max(4, Math.round(size / 5));
   const half = size / 2;
   for (let y = 0; y < s.rows; y++) {
@@ -54,7 +57,8 @@ export function drawLink(ctx: Ctx, s: LinkState, pal: Palette, now: number): voi
       const tx = x0 + x * size;
       const ty = y0 + y * size;
       rect(ctx, tx + 1, ty + 1, size - 2, size - 2, pal.grid);
-      const c = lit[i] ? pal.accent : pal.dim;
+      const pulse = lit[i] && Math.abs(depth[i]! - wave) < 0.8;
+      const c = pulse ? pal.text : lit[i] ? pal.accent : pal.dim;
       const m = tileMask(s, i);
       const cx = tx + half;
       const cy = ty + half;
@@ -139,7 +143,7 @@ export function drawMemory(ctx: Ctx, s: MemoryState, pal: Palette): void {
 
 export function drawPaddle(ctx: Ctx, s: PaddleState, pal: Palette): void {
   clear(ctx, pal);
-  const colors = [pal.p2, pal.p4, pal.p3, pal.p1];
+  const colors = BRICK_COLORS.map((k) => pal[k]);
   for (let r = 0; r < BRICK_ROWS; r++) {
     for (let c = 0; c < BRICK_COLS; c++) {
       if (s.bricks[r * BRICK_COLS + c]) rect(ctx, BRICK_X + c * (BRICK_W + 3), BRICK_Y + r * (BRICK_H + 3), BRICK_W, BRICK_H, colors[r]!);

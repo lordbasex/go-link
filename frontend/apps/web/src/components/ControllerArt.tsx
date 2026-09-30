@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import type { ReactNode } from "react";
 import { Button, type Pad } from "@go-link/shared";
+import "../controllers/controllers.css";
 
 /** The controller families we draw; anything else gets the generic pad. */
 export type ControllerFamily = "playstation" | "nintendo" | "xbox" | "generic";

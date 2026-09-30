@@ -27,14 +27,24 @@ export type SfxEvent =
   | "good"
   | "miss"; // Special moves' grades
 
-type Sink = (e: SfxEvent) => void;
+/** Where on the 320 × 200 board it happened, for the visual effects. */
+export interface SfxAt {
+  x: number;
+  y: number;
+  /** Points won, shown floating up. */
+  points?: number;
+  /** A palette color for the particles (types.ts Palette key). */
+  color?: "accent" | "ok" | "p1" | "p2" | "p3" | "p4" | "text";
+}
+
+type Sink = (e: SfxEvent, at?: SfxAt) => void;
 let sink: Sink | null = null;
 
-/** Plugs (or unplugs, with null) the sound player. */
+/** Plugs (or unplugs, with null) what plays the events: the sound and the board's effects. */
 export function setSfxSink(s: Sink | null): void {
   sink = s;
 }
 
-export function sfx(e: SfxEvent): void {
-  sink?.(e);
+export function sfx(e: SfxEvent, at?: SfxAt): void {
+  sink?.(e, at);
 }

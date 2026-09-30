@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { t } from "../i18n";
 import { ToolsIcon } from "../components/Icons";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
-import { ControllerModel } from "../tools/ControllerModel";
+import { ControllerModel } from "../controllers/ControllerModel";
 import { EMPTY_PAD } from "@go-link/shared";
 import { SkinThumb } from "../tools/SkinThumb";
 

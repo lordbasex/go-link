@@ -7,8 +7,8 @@ import { useRefreshRate } from "../picture/refreshRate";
 import { PadConsole } from "./PadConsole";
 import { PadLog, STANDARD_NAMES, buildReport, type ReportPad } from "./padLog";
 import { useInputConfig } from "../signal/useInputConfig";
-import { ControllerModel } from "./ControllerModel";
-import { identify, type ControllerIdentity } from "./controllerModels";
+import { ControllerModel } from "../controllers/ControllerModel";
+import { identify, type ControllerIdentity } from "../controllers/controllerModels";
 import {
   BounceProbe,
   DeadzoneProbe,

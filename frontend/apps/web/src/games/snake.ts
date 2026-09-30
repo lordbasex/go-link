@@ -4,7 +4,7 @@
 // often each direction was used, so a direction that never answers shows.
 
 import { rng, type Frame } from "./input";
-import type { Hud } from "./types";
+import { BOARD_H, BOARD_W, type Hud } from "./types";
 import { sfx } from "./sfx";
 
 export const SNAKE_COLS = 32;
@@ -77,12 +77,12 @@ export function advance(s: SnakeState): void {
   const body = eats ? s.body : s.body.slice(0, -1);
   if (head[0] < 0 || head[1] < 0 || head[0] >= SNAKE_COLS || head[1] >= SNAKE_ROWS || body.some(([x, y]) => x === head[0] && y === head[1])) {
     s.alive = false;
-    sfx("over");
+    sfx("over", { x: (hx + 0.5) * (BOARD_W / SNAKE_COLS), y: (hy + 0.5) * (BOARD_H / SNAKE_ROWS), color: "p3" });
     return;
   }
   s.body = [head, ...body];
   if (eats) {
-    sfx("eat");
+    sfx("eat", { x: (head[0] + 0.5) * (BOARD_W / SNAKE_COLS), y: (head[1] + 0.5) * (BOARD_H / SNAKE_ROWS), points: 1, color: "p2" });
     s.score++;
     s.interval = Math.max(60, s.interval - 3);
     placeFood(s);

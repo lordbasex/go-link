@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { StartupSoundButton } from "./components/Headers";
+import { DevilButton } from "./components/Headers";
 import { JoinForm } from "./components/JoinForm";
-import { installIntro, setStartupSound, STARTUP_SOUND_KEY, startupSoundOn } from "./intro";
+import { installIntro } from "./intro";
 
 /** Counts the notes the coin sound schedules. */
 function fakeAudio() {
@@ -29,7 +29,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  setStartupSound(true);
   vi.unstubAllGlobals();
 });
 
@@ -45,26 +44,13 @@ describe("startup intro", () => {
     expect(notes).toHaveLength(3);
   });
 
-  it("stays silent when the startup sound is off, but still skips", () => {
-    const notes = fakeAudio();
-    setStartupSound(false);
-    installIntro();
-    fireEvent.mouseDown(window);
-    expect(notes).toHaveLength(0);
-    expect(document.getElementById("splash")?.classList.contains("is-gone")).toBe(true);
-  });
-
-  it("the header button turns the startup sound off and on", async () => {
-    const user = userEvent.setup();
-    render(<StartupSoundButton />);
-    const button = screen.getByRole("button", { name: "Startup sound" });
-    expect(button).toHaveAttribute("aria-pressed", "true");
-    await user.click(button);
-    expect(button).toHaveAttribute("aria-pressed", "false");
-    expect(window.localStorage.getItem(STARTUP_SOUND_KEY)).toBe("off");
-    expect(startupSoundOn()).toBe(false);
-    await user.click(button);
-    expect(startupSoundOn()).toBe(true);
+  it("the header's devil (in place of the old sound switch) invites to destroy the page", () => {
+    render(
+      <MemoryRouter>
+        <DevilButton />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("button", { name: "Destroy this page!" })).toHaveAttribute("data-tip", "Destroy this page!");
   });
 });
 

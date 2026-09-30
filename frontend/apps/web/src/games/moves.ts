@@ -112,7 +112,7 @@ export function step(s: MovesState, f: Frame): void {
   const gap = pressed === s.move.button ? recognize(s.buffer, s.move, f.now) : null;
   const kind = grade(gap);
   s.flash = { kind, ms: gap === null ? null : Math.round(gap), at: f.now };
-  sfx(kind === "late" ? "miss" : kind);
+  sfx(kind === "late" ? "miss" : kind, { x: 110, y: 138, points: kind === "perfect" ? 300 : kind === "great" ? 200 : kind === "good" ? 100 : undefined, color: kind === "perfect" ? "ok" : "accent" });
   if (kind === "late" || kind === "miss") return;
   s.combos++;
   s.score += kind === "perfect" ? 300 : kind === "great" ? 200 : 100;

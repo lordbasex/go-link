@@ -6,7 +6,7 @@
 // every tile is turned at random.
 
 import { rng, type Frame } from "./input";
-import type { Hud } from "./types";
+import { BOARD_H, BOARD_W, type Hud } from "./types";
 import { sfx } from "./sfx";
 
 /** Connection sides as bits: north, east, south, west. */
@@ -96,14 +96,19 @@ export function makeBoard(level: number, next: () => number): Pick<LinkState, "c
   return { cols, rows, base, rot, source, sinks };
 }
 
-/** The tiles the signal reaches from DEV, and whether every player is reached. */
-export function flow(s: Pick<LinkState, "cols" | "rows" | "base" | "rot" | "source" | "sinks">): { lit: boolean[]; done: boolean; reached: boolean[] } {
+/**
+ * The tiles the signal reaches from DEV, how many steps from DEV each one
+ * is (-1 when not reached), and whether every player is reached.
+ */
+export function flow(s: Pick<LinkState, "cols" | "rows" | "base" | "rot" | "source" | "sinks">): { lit: boolean[]; depth: number[]; done: boolean; reached: boolean[] } {
   const { cols, rows } = s;
   const mask = (i: number) => rotate(s.base[i]!, s.rot[i]!);
   const lit = new Array<boolean>(cols * rows).fill(false);
+  const depth = new Array<number>(cols * rows).fill(-1);
   const start = s.source * cols;
   if (mask(start) & W) {
     lit[start] = true;
+    depth[start] = 0;
     const queue = [start];
     while (queue.length) {
       const cur = queue.shift()!;
@@ -117,12 +122,13 @@ export function flow(s: Pick<LinkState, "cols" | "rows" | "base" | "rot" | "sour
         const nb = ny * cols + nx;
         if (lit[nb] || !(mask(nb) & OPPOSITE[d]!)) continue;
         lit[nb] = true;
+        depth[nb] = depth[cur]! + 1;
         queue.push(nb);
       }
     }
   }
   const reached = s.sinks.map((r) => lit[r * cols + cols - 1]! && !!(mask(r * cols + cols - 1) & E));
-  return { lit, done: reached.every(Boolean), reached };
+  return { lit, depth, done: reached.every(Boolean), reached };
 }
 
 function newLevel(s: LinkState, level: number): void {
@@ -163,7 +169,7 @@ export function step(s: LinkState, f: Frame): void {
     s.rot[i] = (s.rot[i]! + turn) % 4;
     sfx("turn");
     if (flow(s).done) {
-      sfx("clear");
+      sfx("clear", { x: BOARD_W / 2, y: BOARD_H / 2, points: s.cols * s.rows * 10, color: "accent" });
       s.cleared = true;
       s.clearedAt = f.now;
       s.score += s.cols * s.rows * 10;

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LANGS, setLang, t, useLang } from "../i18n";
 import { useSignal } from "../signal/SignalProvider";
 import { DEMO_DEVICE_NAME } from "../fixtures";
@@ -16,8 +16,8 @@ import {
   ToolsIcon,
 } from "./Icons";
 import { setTheme, useTheme } from "../theme";
-import { CoinIcon, CoinOffIcon, GithubIcon } from "./Icons";
-import { setStartupSound, useStartupSound } from "../intro";
+import { DevilIcon, GithubIcon } from "./Icons";
+import { launchDestroy } from "../destroyLauncher";
 import { REPO_URL } from "../config";
 
 export function Brand() {
@@ -159,6 +159,8 @@ export function MainHeader() {
       </div>
       <div className="header-right" ref={toolsRef}>
         <DeviceBadge />
+        {/* Always in sight (not folded into the tools on phones): it wants to be found. */}
+        <DevilButton />
         <button
           type="button"
           className={`icon-button header-more${toolsOpen ? " is-on" : ""}`}
@@ -172,7 +174,6 @@ export function MainHeader() {
           <LangSwitch />
           <ServerButton />
           <ThemeButton />
-          <StartupSoundButton />
           <a
             className="icon-button tip-below"
             href={REPO_URL}
@@ -190,22 +191,23 @@ export function MainHeader() {
 }
 
 /**
- * The startup intro's coin sound, on or off. It sits with the other
- * per-browser preferences (language, theme) in the header's tools.
+ * The devil: an easter egg that turns the landing into a game where you
+ * destroy the page and rescue the people trapped in it. It wiggles now and
+ * then to be noticed; on another page it goes to the landing first.
  */
-export function StartupSoundButton() {
-  const on = useStartupSound();
-  const tip = on ? t.intro.on : t.intro.off;
+export function DevilButton() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   return (
     <button
       type="button"
-      className="icon-button header-icon tip-below"
-      aria-label={t.intro.sound}
-      aria-pressed={on}
-      data-tip={tip}
-      onClick={() => setStartupSound(!on)}
+      className="icon-button header-icon tip-below devil-button"
+      aria-label={t.destroy.devil}
+      data-tip={t.destroy.devil}
+      onClick={() => void launchDestroy(pathname, navigate)}
     >
-      {on ? <CoinIcon /> : <CoinOffIcon />}
+      <span className="devil-ring" aria-hidden="true" />
+      <DevilIcon />
     </button>
   );
 }

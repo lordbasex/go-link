@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { Button, type Pad } from "@go-link/shared";
+import "./controllers.css";
 
 // A pair of Switch Joy-Con side by side, in the same outline style as
 // ControllerArt: the left one with its stick and four direction buttons,

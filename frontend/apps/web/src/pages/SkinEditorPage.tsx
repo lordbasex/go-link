@@ -6,6 +6,7 @@ import { en } from "../i18n/en";
 import { es } from "../i18n/es";
 import { pt } from "../i18n/pt";
 import { Select } from "../components/ui/Select";
+import { LockIcon } from "../components/Icons";
 import { BUILTIN_SKINS, smokeSkin } from "../skins/builtin";
 import {
   DEVICES,
@@ -1631,7 +1632,8 @@ export function SkinEditorPage() {
             <span className={`small ${S.saveFailed ? "se-bad" : "muted"}`}>{S.saveFailed ? e.library.notSaved : S.dirty ? e.notExported : e.library.saved}</span>
           ) : (
             <span className="se-badge" title={e.library.builtinNote}>
-              {e.library.builtinBadge}
+              <LockIcon size={13} />
+              <span className="se-badge-text">{e.library.builtinBadge}</span>
             </span>
           )}
           <span className="spacer" />
@@ -1661,20 +1663,6 @@ export function SkinEditorPage() {
           />
           {iconButton(e.undo, "undo", doUndo, false, !undoStack.current.length)}
           {iconButton(e.redo, "redo", doRedo, false, !redoStack.current.length)}
-          {iconButton(e.zoomOut, "minus", () => zoomBy(0.8))}
-          <span className="mono se-zoom">{Math.round(S.zoom * 100)} %</span>
-          {iconButton(e.zoomIn, "plus", () => zoomBy(1.25))}
-          <button
-            type="button"
-            className="button button-secondary"
-            title={e.fitTip}
-            onClick={() => {
-              fit();
-              force();
-            }}
-          >
-            {e.fit}
-          </button>
           <button
             type="button"
             className="button button-secondary"
@@ -1873,6 +1861,23 @@ export function SkinEditorPage() {
                 </div>
               </div>
               <svg className="se-overlay">{overlay}</svg>
+            </div>
+            {/* The zoom floats on the canvas, like in drawing apps, so the top bar fits one row. */}
+            <div className="se-zoombar" role="group" aria-label={e.zoomLabel}>
+              {iconButton(e.zoomOut, "minus", () => zoomBy(0.8))}
+              <span className="mono se-zoom">{Math.round(S.zoom * 100)} %</span>
+              {iconButton(e.zoomIn, "plus", () => zoomBy(1.25))}
+              <button
+                type="button"
+                className="button button-secondary button-compact"
+                title={e.fitTip}
+                onClick={() => {
+                  fit();
+                  force();
+                }}
+              >
+                {e.fit}
+              </button>
             </div>
             {S.toast && (
               <div className="se-toast" role="status">

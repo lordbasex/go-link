@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button, EMPTY_PAD, type Pad } from "@go-link/shared";
 import { t } from "../../i18n";
 import { ControllerArt, type ControllerFamily } from "../ControllerArt";
-import { JoyConPair } from "./JoyConPair";
+import { JoyConPair } from "../../controllers/JoyConPair";
 
 // The controllers go-link knows, each "playing" a fighting game move on
 // its own (down, down-forward, forward and a punch, then a kick), so the

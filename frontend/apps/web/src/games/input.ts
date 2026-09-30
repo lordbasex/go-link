@@ -128,6 +128,43 @@ export function addKeys(inp: FrameInput, keys: ReadonlySet<string>): void {
   if (ky && Math.abs(inp.ly) < 1) inp.ly = ky;
 }
 
+/**
+ * The on-screen touch pad's state, written by the page's touch controls.
+ * A tap shorter than a frame still counts: `tapped` keeps a press (and
+ * `tappedDirs` a direction) until the next frame has seen it.
+ */
+export interface TouchInput {
+  dirs: Set<"up" | "down" | "left" | "right">;
+  tappedDirs: Set<"up" | "down" | "left" | "right">;
+  held: Set<Btn>;
+  tapped: Set<Btn>;
+  /** The steering slider, -1..1. */
+  lx: number;
+  /** Gas and brake pads, 0-1. */
+  lt: number;
+  rt: number;
+}
+
+export function emptyTouch(): TouchInput {
+  return { dirs: new Set(), tappedDirs: new Set(), held: new Set(), tapped: new Set(), lx: 0, lt: 0, rt: 0 };
+}
+
+/** Adds the touch pad to the frame, then forgets its taps (the frame has them now). */
+export function addTouch(inp: FrameInput, t: TouchInput): void {
+  for (const d of ["up", "down", "left", "right"] as const) if (t.dirs.has(d) || t.tappedDirs.has(d)) inp[d] = true;
+  for (const b of BUTTONS) if (t.held.has(b) || t.tapped.has(b)) inp.held[b] = true;
+  inp.lt = Math.max(inp.lt, t.lt);
+  inp.rt = Math.max(inp.rt, t.rt);
+  if (Math.abs(t.lx) > Math.abs(inp.lx)) inp.lx = t.lx;
+  // The slider is a stick with no drift: the games that read the raw
+  // stick (Paddle) see it too.
+  if (Math.abs(t.lx) > Math.abs(inp.rawLx)) inp.rawLx = t.lx;
+  const tx = (t.dirs.has("right") ? 1 : 0) - (t.dirs.has("left") ? 1 : 0);
+  if (tx && Math.abs(inp.lx) < 1) inp.lx = tx;
+  t.tapped.clear();
+  t.tappedDirs.clear();
+}
+
 /** Builds the next frame from the input and the previous one. */
 export function nextFrame(prev: FrameInput | null, input: FrameInput, now: number, lastNow: number | null): Frame {
   const pressed = new Set<Btn>();

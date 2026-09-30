@@ -92,3 +92,41 @@ export function identify(id: string): ControllerIdentity {
   const name = id.replace(/\s*\((?:STANDARD GAMEPAD|Vendor:)[^)]*\)\s*/gi, " ").replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, "").trim();
   return { model, brand, modelName: NAMES[model] || name || "Gamepad", vendor, product };
 }
+
+/**
+ * What a model prints on each button of the standard mapping, so help texts
+ * can say "press ✕" or "press B" instead of "button 1": b1-b4 are the face
+ * buttons (bottom, right, left, top), then the shoulders, triggers and the
+ * two small buttons in the middle.
+ */
+export interface ButtonNames {
+  b1: string;
+  b2: string;
+  b3: string;
+  b4: string;
+  l1: string;
+  r1: string;
+  l2: string;
+  r2: string;
+  select: string;
+  start: string;
+}
+
+export function buttonNames(model: ControllerModelId): ButtonNames {
+  switch (model) {
+    case "switchpro":
+    case "joycon":
+    case "eightbitdo":
+      return { b1: "B", b2: "A", b3: "Y", b4: "X", l1: "L", r1: "R", l2: "ZL", r2: "ZR", select: "−", start: "+" };
+    case "dualsense":
+      return { b1: "✕", b2: "○", b3: "□", b4: "△", l1: "L1", r1: "R1", l2: "L2", r2: "R2", select: "Create", start: "Options" };
+    case "dualshock4":
+      return { b1: "✕", b2: "○", b3: "□", b4: "△", l1: "L1", r1: "R1", l2: "L2", r2: "R2", select: "Share", start: "Options" };
+    case "xboxseries":
+      return { b1: "A", b2: "B", b3: "X", b4: "Y", l1: "LB", r1: "RB", l2: "LT", r2: "RT", select: "View", start: "Menu" };
+    case "xbox360":
+      return { b1: "A", b2: "B", b3: "X", b4: "Y", l1: "LB", r1: "RB", l2: "LT", r2: "RT", select: "Back", start: "Start" };
+    default:
+      return { b1: "1", b2: "2", b3: "3", b4: "4", l1: "L1", r1: "R1", l2: "L2", r2: "R2", select: "Select", start: "Start" };
+  }
+}

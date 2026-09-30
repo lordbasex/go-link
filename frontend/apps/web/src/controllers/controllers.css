@@ -1,0 +1,29 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+/* The controller drawings shared by the site and the games (src/controllers): tokens only. */
+
+/* Gamepad drawings in outline (components/ControllerArt.tsx, JoyConPair.tsx): thin lines, parts fill
+   with the accent color while pressed. */
+.ca { width: 100%; height: auto; display: block; }
+.ca-body { fill: none; stroke: var(--color-border-strong); stroke-width: 1.6; stroke-linejoin: round; }
+.ca-line { fill: none; stroke: var(--color-border-strong); stroke-width: 1.2; }
+.ca-part { fill: transparent; stroke: var(--color-text-muted); stroke-width: 1.3; transition: fill 60ms, stroke 60ms; }
+.ca-part.is-on { fill: var(--color-accent); stroke: var(--color-accent); }
+.ca-bumper { fill: none; stroke: var(--color-text-muted); stroke-width: 5; stroke-linecap: round; }
+.ca-bumper.is-on { stroke: var(--color-accent); }
+.ca-label { fill: var(--color-text); font-size: 9px; font-weight: 600; text-anchor: middle; pointer-events: none; font-family: var(--font-text); }
+.ca-label.is-faint { fill: var(--color-text-faint); font-size: 8px; }
+.ca-part.is-on + .ca-label, .ca g:has(.is-on) .ca-label { fill: var(--color-on-accent); }
+.ca-joycon .jc-left { stroke: var(--color-voice); }
+.ca-joycon .jc-right { stroke: var(--color-p3); }
+
+/* Faithful controller drawings (ControllerModel.tsx): a filled body, parts lit while pressed. */
+.cm { width: 100%; height: auto; display: block; }
+.cm-body { fill: var(--color-surface-2); stroke: var(--color-border-strong); stroke-width: 1.6; stroke-linejoin: round; }
+.cm-line { fill: none; stroke: var(--color-border-strong); stroke-width: 1.2; }
+.cm-dot { fill: var(--color-border-strong); }
+.cm-part { fill: var(--color-bg); stroke: var(--color-text-muted); stroke-width: 1.4; transition: fill 60ms, stroke 60ms; }
+.cm-part.is-on, .cm-part.is-moved { fill: var(--color-accent); stroke: var(--color-accent); }
+.cm-fill { fill: var(--color-accent); }
+.cm-label { fill: var(--color-text-muted); font: 600 11px var(--font-text); text-anchor: middle; pointer-events: none; }
+.cm-label.is-faint { font-size: 10px; fill: var(--color-text-faint); }
+.cm g:has(> .is-on) > .cm-label { fill: var(--color-on-accent); }

@@ -307,3 +307,44 @@ describe("sound events", () => {
     }
   });
 });
+
+describe("touch pad", () => {
+  it("feeds the frame like a controller, and a quick tap lasts one frame", async () => {
+    const { addTouch, emptyTouch } = await import("./input");
+    const t = emptyTouch();
+    t.tapped.add("b1");
+    t.tappedDirs.add("up");
+    t.lx = -0.6;
+    t.rt = 0.8;
+    const a = emptyInput();
+    addTouch(a, t);
+    expect(a.held.b1).toBe(true);
+    expect(a.up).toBe(true);
+    expect(a.lx).toBeCloseTo(-0.6);
+    expect(a.rawLx).toBeCloseTo(-0.6);
+    expect(a.rt).toBeCloseTo(0.8);
+    const b = emptyInput();
+    addTouch(b, t);
+    expect(b.held.b1).toBe(false);
+    expect(b.up).toBe(false);
+  });
+});
+
+describe("board effects", () => {
+  it("bursts, pops points and fades out; reduced motion never shakes", async () => {
+    const { BoardFx } = await import("./fx");
+    const pal = { bg: "#000", grid: "#111", line: "#222", dim: "#333", text: "#fff", accent: "#f80", ok: "#0f0", p1: "#f80", p2: "#0cf", p3: "#f06", p4: "#96f", mono: "monospace" };
+    const fx = new BoardFx();
+    fx.on("brick", { x: 100, y: 30, points: 40, color: "p2" }, pal, 0);
+    expect(fx.counts.particles).toBeGreaterThan(5);
+    expect(fx.counts.pops).toBe(1);
+    fx.on("over", undefined, pal, 0);
+    expect(fx.offset(10)).not.toEqual([0, 0]);
+    const ctx = { fillRect() {}, fillText() {}, set globalAlpha(_: number) {}, set fillStyle(_: string) {}, set font(_: string) {}, set textAlign(_: string) {}, set textBaseline(_: string) {} } as unknown as CanvasRenderingContext2D;
+    fx.draw(ctx, pal, 5000);
+    expect(fx.counts).toEqual({ particles: 0, pops: 0 });
+    const calm = new BoardFx(true);
+    calm.on("over", undefined, pal, 0);
+    expect(calm.offset(10)).toEqual([0, 0]);
+  });
+});

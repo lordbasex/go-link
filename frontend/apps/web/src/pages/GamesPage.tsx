@@ -5,12 +5,14 @@ import { t } from "../i18n";
 import { GamepadIcon, MusicIcon, SoundOffIcon, SoundOnIcon } from "../components/Icons";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
 import { GAMES, GAME_IDS, type GameId } from "../games";
-import { addKeys, addPad, emptyInput, nextFrame, type FrameInput } from "../games/input";
+import { addKeys, addPad, addTouch, emptyInput, emptyTouch, nextFrame, type FrameInput } from "../games/input";
 import { readPalette } from "../games/palette";
 import { BOARD_H, BOARD_W, type Hud } from "../games/types";
-import { identify } from "../tools/controllerModels";
+import { identify } from "../controllers/controllerModels";
 import { ChipSound } from "../games/sound";
-import { setSfxSink } from "../games/sfx";
+import { setSfxSink, type SfxAt, type SfxEvent } from "../games/sfx";
+import { BoardFx } from "../games/fx";
+import { GameTouchPad } from "../components/GameTouchPad";
 import { MAX_SPEED, type RacerState } from "../games/racer";
 
 /**
@@ -155,6 +157,19 @@ function GameStage({ id }: { id: GameId }) {
   const game = GAMES[id];
   const info = t.games.list[id];
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** The on-screen pad's state, read by the game loop like the keyboard. */
+  const touch = useRef(emptyTouch());
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  /** The board's effects handler, set by the game loop (it knows the colors). */
+  const onFx = useRef<((e: SfxEvent, at?: SfxAt) => void) | null>(null);
+  // Phones and tablets get the touch pad; any touch on a hybrid screen shows it too.
+  const [touchPad, setTouchPad] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches);
+  useEffect(() => {
+    if (touchPad) return;
+    const seen = (e: PointerEvent) => e.pointerType === "touch" && setTouchPad(true);
+    window.addEventListener("pointerdown", seen);
+    return () => window.removeEventListener("pointerdown", seen);
+  }, [touchPad]);
   const [hud, setHud] = useState<Hud>(() => game.hud(game.create(1)));
   const [pad, setPad] = useState<string | null>(null);
   const [round, setRound] = useState(0);
@@ -165,7 +180,10 @@ function GameStage({ id }: { id: GameId }) {
   // Sound: this game's music and effects; the browser only lets audio start
   // after a click or a key, so any of them unlocks it.
   useEffect(() => {
-    setSfxSink((e) => chip.fx(e));
+    setSfxSink((e, at) => {
+      chip.fx(e);
+      onFx.current?.(e, at);
+    });
     chip.play(id);
     const unlock = () => {
       chip.unlock();
@@ -219,6 +237,9 @@ function GameStage({ id }: { id: GameId }) {
     let lastHud = 0;
     let padName: string | null = null;
     let pal = readPalette(canvas);
+    const reduced = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const fx = new BoardFx(reduced);
+    onFx.current = (e, at) => fx.on(e, at, pal, performance.now());
     let ctx = fitCanvas(canvas);
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => (ctx = fitCanvas(canvas)));
     ro?.observe(canvas);
@@ -235,6 +256,7 @@ function GameStage({ id }: { id: GameId }) {
         name ??= identify(gp.id).modelName || gp.id;
       }
       addKeys(input, keys);
+      addTouch(input, touch.current);
       unseen.clear();
       for (const k of released) keys.delete(k);
       released.clear();
@@ -244,7 +266,19 @@ function GameStage({ id }: { id: GameId }) {
       const h = game.hud(state);
       if (h.over && f.pressed.has("start")) state = game.create(Math.floor(Math.random() * 1e9));
       else if (!document.hidden) game.step(state, f);
-      if (ctx) game.draw(ctx, state, pal, now);
+      if (ctx) {
+        // A shake moves the whole board; its uncovered edge stays the board's color.
+        const [dx, dy] = fx.offset(now);
+        if (dx || dy) {
+          ctx.fillStyle = pal.bg;
+          ctx.fillRect(0, 0, BOARD_W, BOARD_H);
+          ctx.save();
+          ctx.translate(dx, dy);
+        }
+        game.draw(ctx, state, pal, now);
+        if (dx || dy) ctx.restore();
+        fx.draw(ctx, pal, now);
+      }
       if (id === "racer") {
         const r = state as RacerState;
         chip.engineAt(r.done ? 0 : r.speed / MAX_SPEED);
@@ -269,12 +303,13 @@ function GameStage({ id }: { id: GameId }) {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
+      onFx.current = null;
     };
   }, [game, id, round]);
 
   const flash = hud.flash && performance.now() - hud.flash.at < 1200 ? hud.flash : null;
   return (
-    <div className="game-stage">
+    <div className={`game-stage${touchPad ? " has-touch" : ""}`}>
       <div className="game-bar">
         <span className="game-score">
           <span className="small muted">{t.games.score}</span> <strong className="mono">{hud.score}</strong>
@@ -324,7 +359,23 @@ function GameStage({ id }: { id: GameId }) {
           {t.games.doMove(t.games.moves[hud.move])} <span className="mono">{hud.motion}</span>
         </p>
       )}
-      <div className="game-screen is-big stage-tokens">
+      <div
+        className="game-screen is-big stage-tokens"
+        onPointerDown={(e) => {
+          if (e.pointerType !== "touch") return;
+          swipe.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerUp={(e) => {
+          // A swipe on the board turns the snake (a direction for one frame).
+          const from = swipe.current;
+          swipe.current = null;
+          if (!from || id !== "snake") return;
+          const dx = e.clientX - from.x;
+          const dy = e.clientY - from.y;
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+          touch.current.tappedDirs.add(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
+        }}
+      >
         <canvas ref={canvasRef} role="img" aria-label={t.games.board(info.title)} />
         {hud.over && (
           <div className="game-overlay" role="status">
@@ -346,6 +397,7 @@ function GameStage({ id }: { id: GameId }) {
           </div>
         )}
       </div>
+      {touchPad && <GameTouchPad id={id} touch={touch.current} />}
       {hud.drift != null && (
         <p className="game-notice" role="status">
           {t.games.drift(hud.drift.toFixed(2))}
@@ -360,7 +412,7 @@ function GameStage({ id }: { id: GameId }) {
         ))}
       </dl>
       <p className="small muted">{pad ? t.games.padOn(pad) : t.games.noPad}</p>
-      <p className="small muted">{t.games.keys}</p>
+      {!touchPad && <p className="small muted">{t.games.keys}</p>}
     </div>
   );
 }
@@ -400,6 +452,7 @@ function GameRules({ id }: { id: GameId }) {
             ))}
           </tbody>
         </table>
+        <p className="game-rules-touch">{g.touch}</p>
         <p className="small muted">{r.buttonsNote}</p>
       </section>
       <section>
