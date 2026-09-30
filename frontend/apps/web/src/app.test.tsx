@@ -79,6 +79,20 @@ describe("lobby", () => {
   });
 });
 
+describe("destroy easter egg", () => {
+  it("shows the devil only on the landing", async () => {
+    const { unmount } = renderApp("/");
+    expect(await screen.findByRole("button", { name: "Destroy this page!" })).toBeInTheDocument();
+    unmount();
+    for (const path of ["/rooms", "/device", "/docs", "/tools", "/tools/skin-editor", "/tools/games", "/test-controller"]) {
+      const r = renderApp(path);
+      await screen.findByRole("navigation", { name: "Main" });
+      expect(screen.queryByRole("button", { name: "Destroy this page!" })).toBeNull();
+      r.unmount();
+    }
+  });
+});
+
 describe("languages", () => {
   it("switches between English, Spanish and Portuguese without reloading", async () => {
     FakeSocket.reset((env) => (env.type === "rooms_list" ? lobbyRooms : undefined));

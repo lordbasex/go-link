@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { SkinEditorPage } from "./SkinEditorPage";
 import { smokeSkin } from "../skins/builtin";
 import { STORE_KEY, type Library } from "../skins/store";
+import { WELCOME_KEY } from "../skins/Welcome";
 
 const stored = () => JSON.parse(localStorage.getItem(STORE_KEY) ?? "null") as Library;
 const open = () => render(<MemoryRouter><SkinEditorPage /></MemoryRouter>);
@@ -12,6 +13,8 @@ const myButton = () => screen.getByRole("button", { name: /^My skins/ });
 
 beforeEach(() => {
   localStorage.clear();
+  // The library tests start past the first-visit welcome (it has its own tests below).
+  localStorage.setItem(WELCOME_KEY, "1");
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
 });
 afterEach(() => {
@@ -73,5 +76,42 @@ describe("skin editor library", () => {
     fireEvent.click(within(dialog).getAllByRole("button", { name: "Delete" })[0]!);
     fireEvent.click(within(within(dialog).getByRole("group", { name: /^Delete .*\?$/ })).getByRole("button", { name: "Delete" }));
     expect(Object.keys(stored().skins)).toHaveLength(2);
+  });
+});
+
+describe("skin editor welcome", () => {
+  it("opens on the first visit, walks its steps and is not shown again once closed", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    open();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Design skins for the go-link apps" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    expect(within(dialog).getByRole("heading", { name: "The canvas" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(within(dialog).getByRole("heading", { name: "Precise to the pixel" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Skip" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(localStorage.getItem(WELCOME_KEY)).toBe("1");
+    cleanup();
+    open();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("reopens from the Guide button and closes with Escape", () => {
+    open();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "What this tool does, step by step" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("still opens when the browser blocks storage", () => {
+    localStorage.removeItem(WELCOME_KEY);
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    open();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

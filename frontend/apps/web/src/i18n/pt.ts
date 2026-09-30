@@ -1784,6 +1784,47 @@ export const pt: Messages = {
     /** Added to each name of a copy (per name language, like newNames). */
     /** Added to a copied skin's name in this language. */
     copySuffix: "(cópia)",
+    welcome: {
+      eyebrow: "Boas-vindas ao editor de skins",
+      stepOf: (n: number, total: number) => `${n} de ${total}`,
+      stepsLabel: "Passos",
+      close: "Fechar",
+      back: "Voltar",
+      next: "Próximo",
+      skip: "Pular",
+      start: "Começar a desenhar",
+      manual: "Abrir o manual",
+      guide: "Guia",
+      guideTip: "O que esta ferramenta faz, passo a passo",
+      manualLink: "Manual",
+      steps: [
+        {
+          title: "Desenhe skins para os apps do go-link",
+          text: "Uma skin é a carcaça de console ao redor do jogo no celular, nos apps go-link Player (iOS e Android): o plástico, a moldura da tela, o direcional, os botões, Coin, os botões de início e o menu da sala.",
+          points: ["Cada skin é um arquivo JSON pequeno: dá para fazer aqui, à mão ou com uma IA.", "Os jogadores escolhem em Configurações do jogo › Skin no app.", "Nada sai do seu navegador: você exporta o arquivo quando terminar."],
+        },
+        {
+          title: "A tela de desenho",
+          text: "Comece por uma skin incluída (em cima à esquerda) ou abra um arquivo de skin, e ajuste para cada orientação.",
+          points: ["Vertical e Horizontal são desenhados separados; veja em iPhones, celulares Android e um iPad.", "Camadas lista cada parte: clique numa ou direto no celular.", "Arraste uma parte para mover e as alças para mudar o tamanho; as setas movem aos poucos (Shift: 10)."],
+        },
+        {
+          title: "Precisão ao pixel",
+          text: "Alinhe tudo como numa ferramenta de design.",
+          points: ["As réguas medem em unidades da tela de desenho; arraste de uma régua para criar uma guia.", "O ímã encaixa bordas e centros nas guias, nas partes e na tela; segure Alt para mover livre.", "A grade arredonda para 8, e a cápsula de zoom (embaixo à direita) aproxima, afasta e ajusta."],
+        },
+        {
+          title: "Deixe do seu jeito",
+          text: "Dê estilo ao plástico e aos controles no painel Skin.",
+          points: ["Cores do plástico, brilho e granulado; placas e grades de alto-falante moldadas na carcaça; uma imagem de fundo por orientação.", "Botões: forma, aro, rótulos, brilho convexo e o rebaixo ao redor.", "O direcional: largura dos braços, cantos e marcas; veja como fica pressionado."],
+        },
+        {
+          title: "Verifique, exporte e instale",
+          text: "As mesmas verificações dos apps rodam a cada mudança: o que você vê é o que o celular mostra.",
+          points: ["Uma parte fora da tela, sobre a imagem, menor que um dedo ou em cima de outra é marcada na hora.", "Design, Dividida e Código mostram o celular, os dois ou o JSON, que também dá para editar.", "Exporte o JSON e copie o arquivo para a pasta Skins do app: o app Arquivos no iOS, Android/data/org.golink.player/files/Skins no Android.", "Minhas skins guarda seu trabalho só neste navegador; as skins incluídas não mudam: a primeira alteração cria sua própria cópia."],
+        },
+      ],
+    },
     library: {
       button: "Minhas skins",
       tip: "As skins que você fez, salvas neste navegador",

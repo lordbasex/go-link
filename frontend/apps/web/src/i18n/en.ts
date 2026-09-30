@@ -1794,6 +1794,47 @@ export const en = {
     /** Added to each name of a copy (per name language, like newNames). */
     /** Added to a copied skin's name in this language. */
     copySuffix: "(copy)",
+    welcome: {
+      eyebrow: "Welcome to the skin editor",
+      stepOf: (n: number, total: number) => `${n} of ${total}`,
+      stepsLabel: "Steps",
+      close: "Close",
+      back: "Back",
+      next: "Next",
+      skip: "Skip",
+      start: "Start designing",
+      manual: "Open the manual",
+      guide: "Guide",
+      guideTip: "What this tool does, step by step",
+      manualLink: "Manual",
+      steps: [
+        {
+          title: "Design skins for the go-link apps",
+          text: "A skin is the console shell around the game on a phone in the go-link Player apps (iOS and Android): the plastic, the screen's frame, the D-pad, the buttons, Coin, the start buttons and the room's menu.",
+          points: ["Every skin is a small JSON file: you can make one here, by hand or with an AI.", "Players pick it in the app's Game settings › Skin.", "Nothing leaves your browser: you export the file when you are done."],
+        },
+        {
+          title: "The canvas",
+          text: "Start from a built-in skin (top left) or open a skin file, then shape it for each orientation.",
+          points: ["Portrait and Landscape are designed separately; preview them on iPhones, Android phones and an iPad.", "Layers lists every part: click one or click it on the phone.", "Drag a part to move it, its handles to resize it; the arrows nudge it (Shift: 10)."],
+        },
+        {
+          title: "Precise to the pixel",
+          text: "Line things up the way design tools do.",
+          points: ["Rulers measure in canvas units; drag from a ruler to add a guide.", "The magnet snaps edges and centers to guides, parts and the screen; hold Alt to move freely.", "The grid rounds to 8, and the zoom capsule (bottom right) zooms and fits."],
+        },
+        {
+          title: "Make it yours",
+          text: "Style the plastic and the controls in the Skin panel.",
+          points: ["Plastic colors, gloss and grain; plates and speaker grills molded into the shell; a background picture per orientation.", "Buttons: shape, ring, labels, convex shine (dome) and the hollow around them (well).", "The D-pad: arm width, corners and marks; preview the pressed look."],
+        },
+        {
+          title: "Check, export and install",
+          text: "The apps' own checks run on every change, so what you see is what the phone shows.",
+          points: ["A part off the screen, over the picture, too small for a finger or overlapping another is flagged live.", "Design, Split and Code show the phone, both or the JSON, which you can also edit.", "Export JSON and copy the file to the app's Skins folder: the Files app on iOS, Android/data/org.golink.player/files/Skins on Android.", "My skins keeps your work in this browser only; built-in skins stay read-only, the first change makes your own copy."],
+        },
+      ],
+    },
     library: {
       button: "My skins",
       tip: "The skins you made, saved in this browser",

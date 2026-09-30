@@ -193,11 +193,13 @@ export function MainHeader() {
 /**
  * The devil: an easter egg that turns the landing into a game where you
  * destroy the page and rescue the people trapped in it. It wiggles now and
- * then to be noticed; on another page it goes to the landing first.
+ * then to be noticed, and it only lives on the landing ("/"): the game is
+ * that page's easter egg, so no other page shows it.
  */
 export function DevilButton() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  if (pathname !== "/") return null;
   return (
     <button
       type="button"

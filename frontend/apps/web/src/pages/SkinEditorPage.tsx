@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { t, useLang } from "../i18n";
 import { en } from "../i18n/en";
 import { es } from "../i18n/es";
@@ -48,6 +48,7 @@ import {
   type SkinJson,
 } from "../skins/model";
 import { SkinPhone } from "../skins/SkinPhone";
+import { SkinEditorWelcome, welcomeNeeded } from "../skins/Welcome";
 import {
   addRecord,
   copyOf,
@@ -328,6 +329,9 @@ export function SkinEditorPage() {
   const lang = useLang();
   const S = st.current;
   const e = t.skinEditor;
+  // The welcome opens by itself on the first visit, and from the Guide button.
+  const [welcome, setWelcome] = useState(welcomeNeeded);
+  const navigate = useNavigate();
 
   // ------------------------------------------------------------ geometry
 
@@ -1516,8 +1520,8 @@ export function SkinEditorPage() {
       <div className="skin-editor-small">
         <h1>{e.title}</h1>
         <p className="muted">{e.smallScreen}</p>
-        <Link to="/docs" className="button button-secondary">
-          {e.guide}
+        <Link to="/docs/skin-editor" className="button button-secondary">
+          {e.welcome.manual}
         </Link>
       </div>
       <div
@@ -1704,6 +1708,9 @@ export function SkinEditorPage() {
               ev.target.value = "";
             }}
           />
+          <button type="button" className="icon-button se-guide" aria-label={e.welcome.guideTip} data-tip={e.welcome.guide} onClick={() => setWelcome(true)}>
+            <span aria-hidden="true">?</span>
+          </button>
           <button type="button" className="button button-primary" title={e.exportTip} onClick={exportJson}>
             {e.exportJson}
           </button>
@@ -1980,6 +1987,7 @@ export function SkinEditorPage() {
           <span className={errors ? "is-bad" : "is-ok"}>{errors ? e.problems(errors) : issues.length ? e.notes(issues.length) : e.ready}</span>
         </footer>
       </div>
+      {welcome && <SkinEditorWelcome onClose={() => setWelcome(false)} onManual={() => navigate("/docs/skin-editor")} />}
     </div>
   );
 }

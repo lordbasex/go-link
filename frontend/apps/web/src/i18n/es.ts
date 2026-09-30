@@ -1803,6 +1803,47 @@ export const es: Messages = {
     /** Added to each name of a copy (per name language, like newNames). */
     /** Added to a copied skin's name in this language. */
     copySuffix: "(copia)",
+    welcome: {
+      eyebrow: "Bienvenido al editor de pieles",
+      stepOf: (n: number, total: number) => `${n} de ${total}`,
+      stepsLabel: "Pasos",
+      close: "Cerrar",
+      back: "Atrás",
+      next: "Siguiente",
+      skip: "Saltar",
+      start: "Empezar a diseñar",
+      manual: "Abrir el manual",
+      guide: "Guía",
+      guideTip: "Qué hace esta herramienta, paso a paso",
+      manualLink: "Manual",
+      steps: [
+        {
+          title: "Diseña pieles para las apps de go-link",
+          text: "Una piel es la carcasa de consola alrededor del juego en el teléfono, en las apps go-link Player (iOS y Android): el plástico, el marco de la pantalla, la cruz, los botones, Coin, los botones de inicio y el menú de la sala.",
+          points: ["Cada piel es un archivo JSON pequeño: puedes hacerla aquí, a mano o con una IA.", "Los jugadores la eligen en Ajustes del juego › Piel de la app.", "Nada sale de tu navegador: exportas el archivo cuando terminas."],
+        },
+        {
+          title: "El lienzo",
+          text: "Empieza con una piel incluida (arriba a la izquierda) o abre un archivo de piel, y dale forma para cada orientación.",
+          points: ["Vertical y Horizontal se diseñan por separado; míralas en iPhone, en teléfonos Android y en un iPad.", "Capas muestra cada parte: haz clic en una o sobre el teléfono.", "Arrastra una parte para moverla y sus tiradores para cambiar su tamaño; las flechas la mueven de a poco (Shift: 10)."],
+        },
+        {
+          title: "Precisión al píxel",
+          text: "Alinea todo como en una herramienta de diseño.",
+          points: ["Las reglas miden en unidades del lienzo; arrastra desde una regla para crear una guía.", "El imán pega bordes y centros a las guías, a las partes y a la pantalla; mantén Alt para moverla libre.", "La cuadrícula redondea a 8, y la cápsula de zoom (abajo a la derecha) acerca, aleja y ajusta."],
+        },
+        {
+          title: "Hazla tuya",
+          text: "Dale estilo al plástico y a los controles en el panel Piel.",
+          points: ["Colores del plástico, brillo y grano; placas y rejillas de parlante moldeadas en la carcasa; una imagen de fondo por orientación.", "Botones: forma, aro, etiquetas, brillo convexo y el hueco a su alrededor.", "La cruz: ancho de los brazos, esquinas y marcas; mira cómo se ve apretada."],
+        },
+        {
+          title: "Revisa, exporta e instala",
+          text: "Las mismas comprobaciones de las apps corren con cada cambio: lo que ves es lo que muestra el teléfono.",
+          points: ["Una parte fuera de la pantalla, sobre la imagen, más chica que un dedo o encima de otra se marca al instante.", "Diseño, Dividida y Código muestran el teléfono, los dos o el JSON, que también puedes editar.", "Exporta el JSON y copia el archivo a la carpeta Skins de la app: la app Archivos en iOS, Android/data/org.golink.player/files/Skins en Android.", "Mis pieles guarda tu trabajo solo en este navegador; las pieles incluidas no se tocan: el primer cambio crea tu propia copia."],
+        },
+      ],
+    },
     library: {
       button: "Mis pieles",
       tip: "Las pieles que hiciste, guardadas en este navegador",
