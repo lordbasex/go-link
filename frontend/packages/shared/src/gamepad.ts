@@ -97,6 +97,9 @@ export function readGamepad(gp: GamepadLike, map: Record<number, number> = STAND
   };
   let buttons = 0;
   gp.buttons.forEach((b, i) => {
+    // A button held at the first reading (often the press that made the
+    // browser list the pad) counts again once it has been let go.
+    if (base?.pressed[i] && !isPressed(b)) base.pressed[i] = false;
     const bit = map[i];
     if (bit === undefined || !isPressed(b)) return;
     if (base?.pressed[i]) return; // held at rest: not a real press

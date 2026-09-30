@@ -4,14 +4,15 @@
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
-export function CapsuleButton({ children, onClick, tone = "plain", label, pressed, autoFocus }: { children: ReactNode; onClick: () => void; tone?: "plain" | "primary" | "danger" | "ok"; label?: string; pressed?: boolean; autoFocus?: boolean }) {
+export function CapsuleButton({ children, onClick, tone = "plain", label, pressed, autoFocus, busy }: { children: ReactNode; onClick: () => void; tone?: "plain" | "primary" | "danger" | "ok"; label?: string; pressed?: boolean; autoFocus?: boolean; busy?: boolean }) {
   // Focused when shown, without scrolling its dialog (the top must stay in view).
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (autoFocus) ref.current?.focus({ preventScroll: true });
   }, [autoFocus]);
   return (
-    <button ref={ref} type="button" className={`dz-btn is-${tone}`} onClick={onClick} aria-label={label} aria-pressed={pressed}>
+    // `busy`: not ready yet (it keeps its focus, so it can be pressed as soon as it is).
+    <button ref={ref} type="button" className={`dz-btn is-${tone}${busy ? " is-busy" : ""}`} onClick={busy ? undefined : onClick} aria-label={label} aria-pressed={pressed} aria-disabled={busy || undefined}>
       {children}
     </button>
   );

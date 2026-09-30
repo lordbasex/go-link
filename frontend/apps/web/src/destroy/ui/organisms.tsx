@@ -68,7 +68,8 @@ export function Briefing({ m, people, foes, count, ready, error, muted, hero, on
   // and the actions in a bar that is always visible.
   return (
     <div className="dz-modal is-brief" role="dialog" aria-modal="true" aria-labelledby="dz-brief-title">
-      <div className="dz-card is-alert dz-brief">
+      {/* Until the characters are loaded their places shimmer (skeletons), then they fade in. */}
+      <div className={`dz-card is-alert dz-brief${!ready && !error ? " is-loading" : ""}`} aria-busy={!ready && !error}>
         <header className="dz-brief-head">
           <span className="dz-px dz-blink is-danger">⚠ {m.alert}</span>
           <h2 id="dz-brief-title" className="dz-px">
@@ -114,7 +115,7 @@ export function Briefing({ m, people, foes, count, ready, error, muted, hero, on
           {error ? (
             <p className="dz-muted">{m.error}</p>
           ) : (
-            <CapsuleButton tone="danger" onClick={onStart} autoFocus>
+            <CapsuleButton tone="danger" onClick={onStart} autoFocus busy={!ready}>
               {ready ? `▶ ${m.start}` : m.loading}
             </CapsuleButton>
           )}

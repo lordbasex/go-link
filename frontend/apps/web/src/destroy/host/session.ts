@@ -269,8 +269,7 @@ export class Session {
 
   /** A controller's Start (standard mapping button 9) is held. */
   private padStart(): boolean {
-    const pads = this.win.navigator.getGamepads?.() ?? [];
-    return [...pads].some((gp) => !!gp && gp.connected && !!gp.buttons[9]?.pressed);
+    return this.input.padStart;
   }
 
   private loop = (now: number) => {

@@ -4,7 +4,8 @@
 // every animation's right-facing frames are cut out of the sheet's regions,
 // the background is keyed to transparency (only the background connected to
 // the region's edge, so dark clothes stay), labels and separator lines are
-// dropped, and the frames are packed into one PNG per character with a JSON
+// dropped, and the frames are packed into one picture per character (lossless
+// WebP when cwebp is installed, else PNG) with a JSON
 // manifest (frame boxes, a feet pivot, and animations with their fps).
 //
 // Usage (needs the e2e workspace's Playwright, which draws with a real canvas):
@@ -12,6 +13,7 @@
 // The sheets dir holds raw/01_player_avatar.png, raw/05_rescue_npcs.png and
 // manifests/source_regions.json. The output defaults to apps/web/public/destroy.
 
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -1004,7 +1006,7 @@ for (const [name, ch] of Object.entries(CHARACTERS)) {
   );
   fs.writeFileSync(path.join(out, `${name}.png`), Buffer.from(png.split(",")[1], "base64"));
   const manifest = {
-    image: `${name}.png`,
+    image: toWebp(out, name),
     frames: Object.fromEntries(frames.map((f) => [f.name, { x: f.x, y: f.y, w: f.w, h: f.h, px: f.px, py: f.py, ...(f.muzzle ? { muzzle: f.muzzle } : {}) }])),
     anims: Object.fromEntries(
       Object.entries(ch.anims).map(([anim, v]) => [anim, { frames: frames.filter((f) => f.anim === (v.of ?? anim)).map((f) => f.name), fps: v.fps, loop: v.loop }]),
@@ -1014,3 +1016,20 @@ for (const [name, ch] of Object.entries(CHARACTERS)) {
   console.log(name, Object.entries(manifest.anims).map(([a, v]) => `${a}:${v.frames.length}`).join(" "), `${ATLAS_W}x${atlasH}`);
 }
 await browser.close();
+
+/**
+ * The atlas as lossless WebP when cwebp is installed (about a third lighter,
+ * the same pixels: -exact keeps the colors under transparent pixels), else
+ * the PNG. Returns the picture's file name for the manifest.
+ */
+function toWebp(dir, name) {
+  const png = path.join(dir, `${name}.png`);
+  const webp = path.join(dir, `${name}.webp`);
+  try {
+    execFileSync("cwebp", ["-quiet", "-lossless", "-z", "9", "-exact", png, "-o", webp]);
+    fs.rmSync(png);
+    return `${name}.webp`;
+  } catch {
+    return `${name}.png`;
+  }
+}

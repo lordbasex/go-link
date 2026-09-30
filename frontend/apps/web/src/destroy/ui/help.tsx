@@ -9,7 +9,8 @@
 // browsers list a controller only after one.
 
 import { useEffect, useState } from "react";
-import { Button, readGamepad, type Pad } from "@go-link/shared";
+import { Button, type Pad } from "@go-link/shared";
+import { loadPadConfig, readPad } from "../host/pad";
 import { ControllerModel } from "../../controllers/ControllerModel";
 import { buttonNames, identify, type ButtonNames, type ControllerIdentity } from "../../controllers/controllerModels";
 import type { DestroyMessages } from "../messages";
@@ -23,17 +24,22 @@ export function useGamepad(): { id: ControllerIdentity; pad: Pad; pressed: reado
     if (typeof navigator === "undefined" || !navigator.getGamepads) return;
     let raf = 0;
     let last = "";
+    // The site's map for each controller model, like the controller test.
+    const cfg = loadPadConfig(typeof window === "undefined" ? undefined : window);
     const loop = () => {
       let found: ReturnType<typeof useGamepad> = null;
       for (const gp of navigator.getGamepads()) {
         if (!gp || !gp.connected) continue;
         const pressed = gp.buttons.map((b) => b.pressed || b.value > 0.5);
-        const triggers: [number, number] = [gp.buttons[6]?.value ?? 0, gp.buttons[7]?.value ?? 0];
-        found = { id: identify(gp.id), pad: readGamepad(gp), pressed, triggers };
+        const pad = readPad(gp, cfg);
+        // Analog triggers where the pad has them; a remapped pad's trigger buttons show full.
+        const triggers: [number, number] =
+          gp.mapping === "standard" ? [gp.buttons[6]?.value ?? 0, gp.buttons[7]?.value ?? 0] : [pad.buttons & Button.L2 ? 1 : 0, pad.buttons & Button.R2 ? 1 : 0];
+        found = { id: identify(gp.id), pad, pressed, triggers };
         break;
       }
       // Re-render only when something changed (the id or what is held).
-      const key = found ? `${found.id.modelName}|${found.pad.buttons}|${found.pad.axes.map((a) => Math.round(a * 4)).join(",")}|${found.triggers.map((v) => Math.round(v * 4)).join(",")}` : "";
+      const key = found ? `${found.id.modelName}|${found.pad.buttons}|${found.pad.axes.map((a) => Math.round(a / 32)).join(",")}|${found.triggers.map((v) => Math.round(v * 4)).join(",")}` : "";
       if (key !== last) {
         last = key;
         setState(found);

@@ -237,3 +237,19 @@
 .dz-touch-try-btn.is-stick { border-radius: 50%; width: 56px; height: 56px; padding: 0; }
 .dz-touch-try-btn.is-lit { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); transform: scale(0.94); }
 @media (prefers-reduced-motion: reduce) { .dz-touch-try-btn.is-lit { transform: none; } }
+
+/* The briefing while the characters load: their places shimmer like the
+   site's skeletons (same tokens), then the pictures fade in. */
+.dz-brief.is-loading .dz-person {
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--color-surface-2) 0%, var(--skeleton-shine, var(--color-surface-selected)) 40%, var(--color-surface-2) 80%);
+  background-size: 300% 100%;
+  animation: dz-skeleton 1.4s ease-in-out infinite;
+}
+@keyframes dz-skeleton { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.dz-brief:not(.is-loading) .dz-person { animation: dz-sprite-in 0.3s ease-out both; }
+@keyframes dz-sprite-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .dz-brief.is-loading .dz-person, .dz-brief:not(.is-loading) .dz-person { animation: none; }
+}
+.dz-btn.is-busy { opacity: 0.6; cursor: progress; }

@@ -33,6 +33,20 @@ describe("readGamepad", () => {
     // Plugged in again while holding B1: that becomes the new rest.
     expect(readGamepad(pad("", [0], [0, 0, 0, 0], 1)).buttons).toBe(0);
   });
+
+  it("counts a button held at the first reading once it is let go", () => {
+    // The press that makes the browser list a pad is often its first reading.
+    const first = pad("", [0], [0, 0], 2);
+    expect(readGamepad(first).buttons).toBe(0);
+    expect(readGamepad(pad("", [], [0, 0], 2)).buttons).toBe(0);
+    expect(readGamepad(pad("", [0], [0, 0], 2)).buttons).toBe(Button.B1);
+    // A button that stays held from the start never counts.
+    const stuck = pad("", [5], [0, 0], 3);
+    expect(readGamepad(stuck).buttons).toBe(0);
+    expect(readGamepad(pad("", [5, 0], [0, 0], 3)).buttons).toBe(Button.B1);
+    forgetGamepad(first);
+    forgetGamepad(stuck);
+  });
 });
 
 describe("ROM checks in device_status", () => {

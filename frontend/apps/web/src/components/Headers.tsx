@@ -17,7 +17,7 @@ import {
 } from "./Icons";
 import { setTheme, useTheme } from "../theme";
 import { DevilIcon, GithubIcon } from "./Icons";
-import { launchDestroy } from "../destroyLauncher";
+import { launchDestroy, prefetchDestroy } from "../destroyLauncher";
 import { REPO_URL } from "../config";
 
 export function Brand() {
@@ -207,6 +207,9 @@ export function DevilButton() {
       aria-label={t.destroy.devil}
       data-tip={t.destroy.devil}
       onClick={() => void launchDestroy(pathname, navigate)}
+      // The game and its characters start downloading as the pointer or the focus arrives.
+      onPointerEnter={prefetchDestroy}
+      onFocus={prefetchDestroy}
     >
       <span className="devil-ring" aria-hidden="true" />
       <DevilIcon />
