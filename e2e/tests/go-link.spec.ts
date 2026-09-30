@@ -37,7 +37,7 @@ test("the landing page opens with the quick way into a game", async () => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: /Your arcade, online/ })).toBeVisible();
   const menu = page.getByRole("navigation", { name: "Main" });
-  await expect(menu.getByRole("link")).toHaveText(["How it works", "Rooms", "My device", "Docs"]);
+  await expect(menu.getByRole("link")).toHaveText(["How it works", "Rooms", "My device", "Docs", "Tools"]);
   await page.getByRole("button", { name: "Join a game" }).first().click();
   const dialog = page.getByRole("dialog", { name: "Join a game" });
   await expect(dialog.getByPlaceholder("123 456 789")).toBeVisible();
