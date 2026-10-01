@@ -8,10 +8,11 @@
 import { layoutOf } from "../board/cps1";
 import type { EditorStore } from "../editor/store";
 import { BUILTIN_HERO, RUN_TAP_MAX, RUN_TAP_MIN, type DipSettings, type Project, type ValidationIssue } from "../model";
+import { rulesWith, type GameRules } from "../engine/rules";
 import { Capsule, Eyebrow, Segmented } from "../ui/atoms";
 import { IconWarn } from "../ui/icons";
 import { ControllerPanel } from "./ControllerPanel";
-import { actionLabel, actionRows, heroChoices, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRunTap, slotResolves } from "./settings";
+import { actionLabel, actionRows, heroChoices, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRules, setRunTap, slotResolves } from "./settings";
 import { fill, issueText, useGameText, useMenusText } from "./texts";
 import "./game.css";
 
@@ -135,6 +136,7 @@ export function GameScreen({ store, project, issues, onGo }: GameScreenProps) {
 
       <div className="wm-game-col">
         <DipCard store={store} dip={s.dip} />
+        <RulesCard store={store} saved={s.rules} />
         <IssuesCard issues={issues} onGo={onGo} />
       </div>
     </div>
@@ -175,6 +177,78 @@ function DipCard({ store, dip }: { store: EditorStore; dip: DipSettings }) {
         <Segmented label={t.dip.demoSound} value={dip.demoSound ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ demoSound: v === "yes" })} />
       </div>
       <p className="wm-dim wm-small">{t.dip.note}</p>
+    </section>
+  );
+}
+
+function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRules> | undefined }) {
+  const t = useGameText();
+  const r = rulesWith(saved);
+  const set = (patch: Partial<GameRules>) => setRules(store, patch, t.undo.rules);
+  const yesNo = [
+    { value: "yes", label: t.rules.yes },
+    { value: "no", label: t.rules.no },
+  ] as const;
+  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies") => (
+    <div className="wm-game-stack" key={key}>
+      <span className="wm-field-label">{t.rules[key]}</span>
+      <Segmented label={t.rules[key]} value={r[key] ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ [key]: v === "yes" })} />
+    </div>
+  );
+  const number = (key: "enemyHp" | "enemyScore" | "rescueScore" | "crateScore", min: number, max: number, step: number) => (
+    <label className="wm-game-stack wm-rules-num" key={key}>
+      <span className="wm-field-label">{t.rules[key]}</span>
+      <input
+        className="wm-input is-sm wm-mono"
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={r[key]}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          if (Number.isFinite(v) && e.target.value !== "") set({ [key]: Math.max(min, Math.min(max, Math.round(v))) });
+        }}
+      />
+    </label>
+  );
+  return (
+    <section className="wm-game-card wm-card" aria-labelledby="wm-rules-title">
+      <h2 id="wm-rules-title" className="wm-h is-accent">
+        {t.rules.title}
+      </h2>
+      <p className="wm-dim wm-small">{t.rules.help}</p>
+      <div className="wm-grid2 is-tight">
+        {number("enemyHp", 1, 99, 1)}
+        {number("enemyScore", 0, 9900, 100)}
+        {number("rescueScore", 0, 9900, 100)}
+        {number("crateScore", 0, 9900, 100)}
+      </div>
+      {flag("touchHurts")}
+      {flag("enemiesChase")}
+      {flag("enemiesShoot")}
+      {flag("exitNeedsEnemies")}
+      <div className="wm-game-stack">
+        <span className="wm-field-label">{t.rules.respawnOnHurt}</span>
+        <Segmented
+          label={t.rules.respawnOnHurt}
+          value={r.respawnOnHurt ? "respawn" : "stay"}
+          options={[
+            { value: "respawn", label: t.rules.respawn },
+            { value: "stay", label: t.rules.stay },
+          ]}
+          onChange={(v) => set({ respawnOnHurt: v === "respawn" })}
+        />
+      </div>
+      <label className="wm-game-range">
+        <span>{t.rules.hurtFrames}</span>
+        <input type="range" min={0} max={240} step={10} value={r.hurtFrames} aria-label={t.rules.hurtFrames} onChange={(e) => set({ hurtFrames: Number(e.target.value) })} />
+        <span className="wm-mono">{fill(t.rules.frames, { n: r.hurtFrames, s: Math.round((r.hurtFrames / 60) * 10) / 10 })}</span>
+      </label>
+      <p className="wm-dim wm-small">{t.rules.note}</p>
+      <Capsule size="sm" disabled={!saved} onClick={() => setRules(store, null, t.undo.rules)}>
+        {t.rules.reset}
+      </Capsule>
     </section>
   );
 }

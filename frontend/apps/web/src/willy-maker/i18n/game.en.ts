@@ -73,6 +73,27 @@ export const gameEn = {
     no: "No",
     note: "The arcade's switches: saved with the game. Play mode uses the lives now; the ROM reads the rest.",
   },
+  rules: {
+    title: "Rules",
+    help: "How enemies, damage, points and the exit work, in play mode and in the ROM.",
+    enemyHp: "Hits an enemy takes",
+    enemyScore: "Points per enemy",
+    rescueScore: "Points per rescue",
+    crateScore: "Points per crate",
+    touchHurts: "Touching an enemy hurts",
+    enemiesChase: "Enemies chase players",
+    enemiesShoot: "Enemies shoot",
+    exitNeedsEnemies: "The exit needs every enemy down",
+    respawnOnHurt: "After a hit",
+    respawn: "Back near the camera",
+    stay: "Blink in place",
+    hurtFrames: "Blinking after a hit",
+    frames: "{n} frames ({s} s)",
+    yes: "Yes",
+    no: "No",
+    reset: "Prototype rules",
+    note: "A player takes as many hits as the board's lives. An enemy's own hits (its inspector) win over this number.",
+  },
   issues: {
     title: "Checks",
     none: "No problems in the game settings or the menus.",
@@ -85,7 +106,7 @@ export const gameEn = {
     safe: "{screen}: the {field} line reaches outside the safe area.",
     glyphs: "{screen}: the {field} line uses letters the board's font does not have: {chars}",
   },
-  undo: { players: "Players", action: "Action label", run: "Run window", character: "Player character", dip: "DIP switches" },
+  undo: { players: "Players", action: "Action label", run: "Run window", character: "Player character", dip: "DIP switches", rules: "Rules" },
 };
 
 export type GameMessages = typeof gameEn;

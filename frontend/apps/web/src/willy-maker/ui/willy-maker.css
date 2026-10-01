@@ -233,6 +233,12 @@ input.wm-layer-name { cursor: text; }
 .wm-rom-steps li svg { color: var(--color-ok); flex: none; }
 .wm-rom-steps li.is-todo svg { color: var(--color-text-faint); }
 .wm-rom-card .wm-cap:disabled { opacity: 0.6; }
+.wm-rom-steps li.is-run { font-weight: 600; }
+.wm-rom-steps li.is-run svg { color: var(--color-accent); }
+.wm-rom-steps li.is-bad svg { color: var(--color-danger-text); }
+.wm-rom-card .wm-note ul { margin: 4px 0 0; padding-left: 18px; }
+.wm-rom-play { display: flex; flex-direction: column; gap: 8px; }
+.wm-rules-num .wm-input { width: 100%; }
 /* power-on test (validation level 3) */
 .wm-power-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border: 1px dashed var(--color-border-dashed); border-radius: var(--radius-card); background: var(--color-surface); text-align: center; }
 .wm-power-drop.is-over { border-color: var(--color-accent); background: var(--tint-accent-bg); }

@@ -12,6 +12,7 @@ import { deleteObject, nameFree, updateObject } from "../../editor/ops";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
+import { rulesWith } from "../../engine/rules";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow } from "../molecules";
@@ -286,6 +287,13 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           <NumberInput label={t.inspector.y} value={o.y} min={0} max={level.size.h} step={8} onChange={(y) => set({ y })} />
         </PropRow>
       </div>
+      {o.type === "exit" && (
+        <div className="wm-grid2 is-tight">
+          <PropRow label={t.inspector.w}>
+            <NumberInput label={t.inspector.w} value={Number(o.w ?? 2 * CELL)} min={CELL} max={level.size.w} step={CELL} onChange={(w) => set({ w })} />
+          </PropRow>
+        </div>
+      )}
       {(o.type === "camera_lock" || o.type === "boss") && (
         <div className="wm-grid2 is-tight">
           <PropRow label={t.inspector.w}>
@@ -316,6 +324,9 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           </PropRow>
           <PropRow label={t.inspector.patrol}>
             <NumberInput label={t.inspector.patrol} value={Number(o.patrol ?? 96)} min={0} max={1024} step={16} onChange={(patrol) => set({ patrol })} />
+          </PropRow>
+          <PropRow label={t.inspector.hp}>
+            <NumberInput label={t.inspector.hp} value={Number(o.hp ?? rulesWith(store.project.settings.rules).enemyHp)} min={1} max={99} onChange={(hp) => set({ hp })} />
           </PropRow>
         </>
       )}
