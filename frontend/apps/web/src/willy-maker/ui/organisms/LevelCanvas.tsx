@@ -376,6 +376,7 @@ export function LevelCanvas(p: CanvasProps) {
         tabIndex={0}
         aria-label={t.canvas.label}
         role="application"
+        data-view={`${p.view.x},${p.view.y},${p.view.zoom}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

@@ -167,20 +167,40 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images }: {
   );
 }
 
-function NumberInput({ value, onChange, min, max, step = 1, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string }) {
+/**
+ * A number field. What is typed stays as typed while it is out of range
+ * (typing 64 into a field whose minimum is 16 passes through 6), and is
+ * kept in range when the field is left (experiment 1, case C: clamping
+ * every keystroke turned 64 into 164).
+ */
+export function NumberInput({ value, onChange, min, max, step = 1, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string }) {
+  const shown = Number.isFinite(value) ? value : 0;
+  const [text, setText] = useState<string | null>(null);
+  const clamp = (v: number) => Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v));
   return (
     <input
       className="wm-input is-sm wm-num"
       type="number"
       aria-label={label}
-      value={Number.isFinite(value) ? value : 0}
+      value={text ?? shown}
       min={min}
       max={max}
       step={step}
       onChange={(e) => {
-        const v = Number(e.target.value);
-        if (Number.isFinite(v)) onChange(Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v)));
+        const raw = e.target.value;
+        const v = Number(raw);
+        if (raw !== "" && Number.isFinite(v) && v === clamp(v)) {
+          setText(null);
+          if (v !== shown) onChange(v);
+        } else setText(raw);
       }}
+      onBlur={() => {
+        if (text === null) return;
+        const v = Number(text);
+        setText(null);
+        if (text !== "" && Number.isFinite(v) && clamp(v) !== shown) onChange(clamp(v));
+      }}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
     />
   );
 }
