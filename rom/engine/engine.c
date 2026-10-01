@@ -1577,7 +1577,7 @@ static int play(int first)
 					clear_text();
 					draw_screen(WM_SCR_CONTINUE, 1);
 				}
-				put_big(23, 12, (char)('0' + 9 - (frame_count - end_t) / 60), INK_WHITE);
+				print_num(23, 12, (u32)(9 - (frame_count - end_t) / 60), 1, INK_WHITE);
 				if (frame_count - end_t >= 600)
 					cont = 0, outcome = END_OVER;
 			} else
