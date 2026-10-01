@@ -297,6 +297,91 @@
           "error": null
         }
       ]
+    },
+    "laya": {
+      "games": 3,
+      "clears": 0,
+      "clearRate": 0,
+      "clearFrame": null,
+      "energyLost": 0,
+      "falls": 0,
+      "errors": [],
+      "note": "game 1 by acceptance.mjs; games 2 and 3 by the same runner command (--seed 1, --seed 2) in parallel, to save wall time on a loaded machine",
+      "list": [
+        {
+          "game": 1,
+          "dir": "laya/game-01",
+          "seed": null,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 1639,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 574
+          },
+          "finalX": 32,
+          "error": null
+        },
+        {
+          "game": 2,
+          "dir": "../laya-parallel/game-02",
+          "seed": 1,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 2033,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 462,
+            "jump": 2,
+            "run_right": 110
+          },
+          "finalX": 186,
+          "error": null
+        },
+        {
+          "game": 3,
+          "dir": "../laya-parallel/game-03",
+          "seed": 2,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 2033,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 480,
+            "climb_up": 1,
+            "run_right": 91,
+            "jump": 2
+          },
+          "finalX": 186,
+          "error": null
+        }
+      ]
     }
+  },
+  "summary": {
+    "level3": true,
+    "level4": true,
+    "scripted": true,
+    "sameAsCore": true,
+    "bot": "5/5 cleared",
+    "laya": "0/3 cleared"
   }
 }

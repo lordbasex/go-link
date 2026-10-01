@@ -69,9 +69,6 @@ Experiment 1, case C: Willy Maker's stage 2 (a data-driven engine and Create ROM
 
 - `docs/willy-maker/engine.md` (new), the Willy Maker README, architecture, file format and validation, the user guide in three languages, `rom/README.md`, status and CHANGELOG (D-019). Commit `528e392`.
 
-## Acceptance results
-
-(Filled in from `acceptance.json` when the run ends, below.)
 
 ## 19:16-19:30 A stray letter on the title, and everything again
 
@@ -81,3 +78,11 @@ Experiment 1, case C: Willy Maker's stage 2 (a data-driven engine and Create ROM
 - Recorded the session again: 82 steps, no errors, 227 s; ROM `b1742aac…`. The route player clears it at 1883 again; `clear.json` (18 expectations) and `damage.json` were regenerated from it and pass; the damage and odd-input scripts are identical on the core.
 - The AI pack's round-trip test timed out at 30 s while the machine was this loaded, with and without the reach change (it passed in the full run at 18:35); to be run again when the load drops.
 - Started the acceptance again, with Laya games 2 and 3 also run in parallel by the same command line the acceptance uses (`--seed 1`, `--seed 2`), to save wall time.
+
+## 19:30-19:48 Results on the final ROM (b1742aac…)
+
+- Level 3 passes (10 steps); level 4 passes (10 device steps); the scripted run clears at 1883 with 18 of 18 expectations; the real core gives **0 % different pixels at all 11 checkpoints**.
+- Route bot: **5 of 5** clear (frames 1260-1478, median 1354), never hurt, never falls; it rescues only the child.
+- Laya: **0 of 3**. Game 1 pressed fire 574 times out of 574; games 2 and 3 (sampling, seeds 1 and 2) chose fire 462 times, run_right 110 and jump 2, reached x 186 and shot two crates open (200 points). 1.6-2.0 s per decision. The sequential acceptance was stopped after its game 1 and games 2-3 from the parallel runs merged into `acceptance.json`.
+- Frontend: typecheck, **622 tests** and the build pass (the AI pack round trip passed once the load dropped).
+- Records, evidence and the shared folder (`exp1/case-c/`: the zip, the symbol map, `session.mp4`, `evidence/`, the acceptance and checklist runs) written at 19:49.
