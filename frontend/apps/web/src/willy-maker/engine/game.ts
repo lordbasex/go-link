@@ -18,13 +18,11 @@ import {
   CRATE_HP,
   DROP_FRAMES,
   ENEMY_FIRE_EVERY,
-  ENEMY_HP,
   ENEMY_SHOT_SPEED,
   ENEMY_SIGHT,
   FIRE_EVERY,
   GRAVITY,
   HALF_W,
-  INVULNERABLE_FRAMES,
   Input,
   JUMP_VY,
   KNIFE_FRAMES,
@@ -33,15 +31,14 @@ import {
   MAX_FALL,
   PUSH_FRAMES,
   RUN_TAP_FRAMES,
-  SCORE_CRATE,
-  SCORE_ENEMY,
-  SCORE_RESCUE,
   SCREEN_H,
   SCREEN_W,
   SHOTS_PER_PLAYER,
   SHOT_SPEED,
   STEP_UP,
   Tag,
+  rulesWith,
+  type GameRules,
 } from "./rules";
 
 export const MAX_PLAYERS = 4;
@@ -166,6 +163,8 @@ export interface GameOptions {
   startAt?: { x: number; y: number };
   /** The double-tap window for running, in frames (RUN_TAP_FRAMES by default). */
   runTapFrames?: number;
+  /** The game's rules (the Game tab's Rules card); the prototype's when missing. */
+  rules?: Partial<GameRules>;
 }
 
 export class Game {
@@ -193,6 +192,7 @@ export class Game {
   private readonly lives: number;
   private readonly startAt?: { x: number; y: number };
   private readonly runTap: number;
+  readonly rules: GameRules;
   private readonly cellHp = new Map<number, number>();
 
   constructor(level: LevelView, opts: GameOptions = {}) {
@@ -205,6 +205,7 @@ export class Game {
     this.lives = opts.lives ?? LIVES;
     this.startAt = opts.startAt;
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
+    this.rules = rulesWith(opts.rules);
     for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives));
     this.loadObjects(level.objects);
     const n = Math.max(1, Math.min(this.maxPlayers, opts.players ?? 1));
@@ -250,7 +251,7 @@ export class Game {
             min: o.x - patrol / 2,
             max: o.x + patrol / 2,
             state: "walk",
-            hp: num(o.hp, ENEMY_HP),
+            hp: num(o.hp, this.rules.enemyHp),
             dir: o.facing === "right" ? 1 : -1,
             flip: o.facing !== "right",
             t: this.enemies.length * 11,
@@ -336,7 +337,7 @@ export class Game {
       if (hp <= 0) {
         this.cells[i] = Tag.Air;
         this.cellHp.delete(i);
-        if (by) by.score += SCORE_CRATE;
+        if (by) by.score += this.rules.crateScore;
       } else this.cellHp.set(i, hp);
       return true;
     }
@@ -352,7 +353,7 @@ export class Game {
     crate.broken = true;
     for (let r = crate.row; r < crate.row + crate.cells; r++)
       for (let c = crate.col; c < crate.col + crate.cells; c++) if (this.cell(c, r) === Tag.Crate) this.cells[r * this.cols + c] = Tag.Air;
-    if (by) by.score += SCORE_CRATE;
+    if (by) by.score += this.rules.crateScore;
     this.events.push({ kind: "crate", name: crate.name });
     const x = (crate.col + crate.cells / 2) * CELL;
     if (crate.contents) this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
@@ -377,7 +378,7 @@ export class Game {
       fy = this.groundBelow(x, this.camY);
     }
     spawn(p, x, fy);
-    p.invulnerable = INVULNERABLE_FRAMES;
+    p.invulnerable = this.rules.hurtFrames;
     this.events.push({ kind: "join", player: i });
   }
 
@@ -395,9 +396,12 @@ export class Game {
       p.active = false;
       return;
     }
+    p.invulnerable = this.rules.hurtFrames;
+    if (!fell && !this.rules.respawnOnHurt) return;
     const x = Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64));
+    const keep = p.invulnerable;
     spawn(p, x, this.groundBelow(x, this.camY));
-    p.invulnerable = INVULNERABLE_FRAMES;
+    p.invulnerable = keep;
   }
 
   private pressed(p: Player, bit: number): boolean {
@@ -618,7 +622,7 @@ export class Game {
     e.t = 0;
     if (e.hp <= 0) {
       e.state = "down";
-      by.score += SCORE_ENEMY;
+      by.score += this.rules.enemyScore;
       this.events.push({ kind: "enemy_down", name: e.name });
     } else e.state = "hit";
   }
@@ -630,7 +634,7 @@ export class Game {
         // chase a player on the same floor, else patrol
         let target: Player | undefined;
         let best = ENEMY_SIGHT;
-        for (const p of this.players) {
+        if (this.rules.enemiesChase || this.rules.enemiesShoot) for (const p of this.players) {
           const dx = Math.abs(p.x - e.x);
           const dy = (p.y >> 4) - e.fy;
           if (p.active && dy > -16 && dy < 16 && dx < best) {
@@ -638,18 +642,22 @@ export class Game {
             target = p;
           }
         }
-        if (target) {
+        if (target && this.rules.enemiesChase) {
           const dx = target.x - e.x;
           e.dir = dx > 0 ? 1 : -1;
           if ((dx > 22 || dx < -22) && e.t & 1) e.x += e.dir;
+        } else if (e.t & 1) {
+          e.x += e.dir;
+          if (e.x <= e.min || e.x >= e.max) e.dir = -e.dir;
+        }
+        if (target && this.rules.enemiesShoot) {
+          const dx = target.x - e.x;
+          if (!this.rules.enemiesChase) e.dir = dx > 0 ? 1 : -1;
           if (e.fireWait) e.fireWait--;
           else if (dx > 40 || dx < -40) {
             this.enemyShots.push({ x: e.x + e.dir * 16, y: e.fy - 26, dir: e.dir });
             e.fireWait = ENEMY_FIRE_EVERY;
           }
-        } else if (e.t & 1) {
-          e.x += e.dir;
-          if (e.x <= e.min || e.x >= e.max) e.dir = -e.dir;
         }
         e.x = Math.max(e.min, Math.min(e.max, e.x));
         e.flip = e.dir < 0; // sheets face right
@@ -659,6 +667,13 @@ export class Game {
           e.t = 0;
         }
       } else if (e.state === "down" && e.t > 90) e.state = "off";
+      // touching an enemy hurts
+      if (this.rules.touchHurts && this.alive(e))
+        for (const p of this.players) {
+          const dx = p.x - e.x;
+          const dy = (p.y >> 4) - e.fy;
+          if (p.active && !p.invulnerable && dx > -14 && dx < 14 && dy > -24 && dy < 24) this.hurt(p);
+        }
     }
     this.enemyShots = this.enemyShots.filter((s) => {
       s.x += s.dir * ENEMY_SHOT_SPEED;
@@ -684,7 +699,7 @@ export class Game {
           v.rescued = true;
           v.t = 0;
           this.rescued++;
-          p.score += SCORE_RESCUE;
+          p.score += this.rules.rescueScore;
           this.events.push({ kind: "rescue", name: v.name, player: p.index });
           break;
         }
@@ -767,6 +782,7 @@ export class Game {
     for (const p of this.players) {
       if (!p.active) continue;
       const fy = p.y >> 4;
+      if (this.rules.exitNeedsEnemies && this.enemies.some((e) => this.alive(e))) break;
       if (this.exits.some((x) => p.x >= x.x && p.x <= x.x + x.w && fy >= x.y && fy <= x.y + x.h)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });

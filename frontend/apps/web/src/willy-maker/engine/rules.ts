@@ -60,6 +60,63 @@ export const SCORE_ENEMY = 500;
 export const SCORE_RESCUE = 1000;
 
 /**
+ * The rules a game can change (the Game tab's Rules card), read by play
+ * mode and packed for the ROM engine (rom/engine/wmdata.h, `wm_rules`).
+ * The defaults are the prototype's.
+ */
+export interface GameRules {
+  /** Hits an enemy takes when its object gives none. */
+  enemyHp: number;
+  enemyScore: number;
+  rescueScore: number;
+  crateScore: number;
+  /** Touching an enemy hurts. */
+  touchHurts: boolean;
+  /** Enemies walk toward a player on their floor (else they keep their patrol). */
+  enemiesChase: boolean;
+  /** Enemies shoot at a player on their floor. */
+  enemiesShoot: boolean;
+  /** The exit clears the level only with every enemy down. */
+  exitNeedsEnemies: boolean;
+  /** A hurt player comes back near the camera's left side (else stays where they are). */
+  respawnOnHurt: boolean;
+  /** Frames a player blinks and cannot be hurt after a hit or a join. */
+  hurtFrames: number;
+}
+
+export const DEFAULT_RULES: GameRules = {
+  enemyHp: ENEMY_HP,
+  enemyScore: SCORE_ENEMY,
+  rescueScore: SCORE_RESCUE,
+  crateScore: SCORE_CRATE,
+  touchHurts: false,
+  enemiesChase: true,
+  enemiesShoot: true,
+  exitNeedsEnemies: false,
+  respawnOnHurt: true,
+  hurtFrames: INVULNERABLE_FRAMES,
+};
+
+/** A game's rules: its saved ones over the defaults, numbers kept in range. */
+export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
+  const r = { ...DEFAULT_RULES, ...(saved ?? {}) };
+  const int = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d);
+  const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+  return {
+    enemyHp: int(r.enemyHp, 1, 99, DEFAULT_RULES.enemyHp),
+    enemyScore: int(r.enemyScore, 0, 9900, DEFAULT_RULES.enemyScore),
+    rescueScore: int(r.rescueScore, 0, 9900, DEFAULT_RULES.rescueScore),
+    crateScore: int(r.crateScore, 0, 9900, DEFAULT_RULES.crateScore),
+    touchHurts: bool(r.touchHurts, DEFAULT_RULES.touchHurts),
+    enemiesChase: bool(r.enemiesChase, DEFAULT_RULES.enemiesChase),
+    enemiesShoot: bool(r.enemiesShoot, DEFAULT_RULES.enemiesShoot),
+    exitNeedsEnemies: bool(r.exitNeedsEnemies, DEFAULT_RULES.exitNeedsEnemies),
+    respawnOnHurt: bool(r.respawnOnHurt, DEFAULT_RULES.respawnOnHurt),
+    hurtFrames: int(r.hurtFrames, 0, 600, DEFAULT_RULES.hurtFrames),
+  };
+}
+
+/**
  * The collision tags of a cell, as stored in a project's tag layer
  * (docs/willy-maker/file-format.md): 0 air, 1 solid, 2 one-way, 3 ladder,
  * 4 crate, 5 breakable, 6 hazard, 7 water.

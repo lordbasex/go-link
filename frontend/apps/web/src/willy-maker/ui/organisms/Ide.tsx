@@ -508,6 +508,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               players={Math.min(2, p.settings.players)}
               maxPlayers={p.settings.players}
               lives={p.settings.dip.lives}
+              rules={p.settings.rules}
               runTapMs={runTapMs(p)}
               combo={layout.buttons < 3}
               variants={playerSlots(p).map((s) => s.variant)}

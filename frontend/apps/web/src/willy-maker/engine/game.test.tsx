@@ -263,3 +263,60 @@ describe("Willy Maker engine", () => {
     expect(g.crates).toHaveLength(5);
   });
 });
+
+describe("the Rules card (Game Spec v1's numbers)", () => {
+  const SPEC_RULES = { enemyHp: 3, enemyScore: 100, rescueScore: 500, touchHurts: true, enemiesChase: false, enemiesShoot: false, exitNeedsEnemies: true, respawnOnHurt: false, hurtFrames: 60 };
+  const trooper = (x: number): LevelObject => ({ name: `t${x}`, type: "enemy", x, y: 400, kind: "trooper", facing: "left", patrol: 96 });
+
+  it("keeps the prototype's rules when a game has none", () => {
+    const g = new Game(flat(undefined, [trooper(300)]));
+    expect(g.rules.enemyHp).toBe(4);
+    expect(g.enemies[0]!.hp).toBe(4);
+    expect(g.rules.touchHurts).toBe(false);
+  });
+
+  it("enemies keep their 96 px patrol and turn at its ends when they do not chase", () => {
+    const g = new Game(flat(undefined, [trooper(200)]), { rules: SPEC_RULES });
+    let min = 200;
+    let max = 200;
+    for (let f = 0; f < 600; f++) {
+      run(g, 1, 0);
+      min = Math.min(min, g.enemies[0]!.x);
+      max = Math.max(max, g.enemies[0]!.x);
+    }
+    expect([min, max]).toEqual([152, 248]);
+    expect(g.enemyShots).toHaveLength(0);
+  });
+
+  it("an enemy takes 3 shots and gives 100 points", () => {
+    const g = new Game(flat(undefined, [trooper(200)]), { rules: SPEC_RULES });
+    for (let f = 0; f < 120 && g.enemies[0]!.state !== "down"; f++) run(g, 1, f % 8 < 4 ? Input.B2 : 0);
+    expect(g.enemies[0]!.state).toBe("down");
+    expect(g.players[0]!.score).toBe(100);
+  });
+
+  it("touching an enemy costs 1 of 3 energy and blinks 1 s in place", () => {
+    const g = new Game(flat(undefined, [trooper(80)]), { rules: SPEC_RULES, lives: 3 });
+    run(g, 61, 0); // the join's own blink ends
+    const x = g.players[0]!.x;
+    let hurtAt = -1;
+    for (let f = 0; f < 120 && hurtAt < 0; f++) {
+      run(g, 1, 0);
+      if (g.players[0]!.lives < 3) hurtAt = f;
+    }
+    expect(hurtAt).toBeGreaterThanOrEqual(0);
+    expect(g.players[0]!.lives).toBe(2);
+    expect(g.players[0]!.x).toBe(x);
+    expect(g.players[0]!.invulnerable).toBe(60);
+  });
+
+  it("the exit clears only with every enemy down", () => {
+    const view = flat(undefined, [trooper(900), { name: "exit", type: "exit", x: 70, y: 400, w: 64 }]);
+    const g = new Game(view, { rules: SPEC_RULES });
+    run(g, 30, Input.Right);
+    expect(g.outcome).toBe("playing");
+    const free = new Game(view, { rules: { ...SPEC_RULES, exitNeedsEnemies: false } });
+    run(free, 30, Input.Right);
+    expect(free.outcome).toBe("cleared");
+  });
+});

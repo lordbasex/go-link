@@ -5,6 +5,8 @@
 // exported in a .zip and read by every part of the module (editor, sprite
 // importer, play mode, exports).
 
+import type { GameRules } from "../engine/rules";
+
 /** The current project format; older ones are migrated on load. */
 export const PROJECT_FORMAT = 2;
 
@@ -96,6 +98,8 @@ export interface GameSettings {
   /** The credits line the menu screens show ("(C) 2026 GO-LINK" by default). */
   credits?: string;
   dip: DipSettings;
+  /** The rules the Game tab's Rules card changes; the prototype's for missing ones. */
+  rules?: Partial<GameRules>;
   menus: MenuSettings;
   /** Level ids in play order. */
   levels: string[];
