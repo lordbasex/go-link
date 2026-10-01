@@ -17,10 +17,9 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { GfxRegion, solid } from "./cps1gfx.mjs";
+import { GfxRegion, KEYS, encodeOpcodes, solid } from "../../frontend/packages/cps1/src/index.ts";
 import { glyphPixels } from "./font.mjs";
 import { addArt } from "./art.mjs";
-import { KEYS, encodeOpcodes } from "./kabuki.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(ROOT, "src");
@@ -162,7 +161,7 @@ let sound = pad(z80code, LAYOUT.z80.size);
 if (LAYOUT.z80.kabuki) {
   // QSound boards decrypt the Z80's opcodes (Kabuki): store ours encrypted
   // so they decode to what we wrote. The padding after them never runs.
-  encodeOpcodes(z80code, LAYOUT.z80.kabuki).copy(sound);
+  sound.set(encodeOpcodes(z80code, LAYOUT.z80.kabuki));
 }
 files[LAYOUT.z80.name] = sound;
 for (const f of LAYOUT.samples) files[f.name] = Buffer.alloc(f.size, f.fill);

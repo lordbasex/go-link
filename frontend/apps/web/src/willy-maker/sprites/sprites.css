@@ -1,0 +1,568 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+
+/* Willy Maker › Characters. Colors only from the site's tokens. */
+
+.wms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  color: var(--color-text);
+  font-family: var(--font-text);
+}
+
+.wms-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .wms-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.wms-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.wms-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-width: 0;
+}
+
+.wms-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wms-h {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.wms-accent {
+  color: var(--color-accent-text);
+}
+
+.wms-title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.wms-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-2);
+}
+
+.wms-warn {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-accent-text);
+}
+
+.wms-alert {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.wms-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.wms-ok {
+  margin: 0;
+  color: var(--color-ok);
+}
+
+.wms-dim {
+  color: var(--color-text-muted);
+}
+
+.wms-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wms-wrap {
+  flex-wrap: wrap;
+}
+
+.wms-spacer {
+  flex: 1;
+}
+
+.wms-grow {
+  flex: 1;
+  min-width: 140px;
+}
+
+.wms-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* capsule buttons (the site's capsule rule: 36 px, never square) */
+.wms-cap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wms-cap:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.wms-cap.is-on {
+  border-color: var(--tint-accent-border);
+  background: var(--tint-accent-bg);
+  color: var(--color-accent-text);
+}
+
+.wms-cap:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wms-cap:focus-visible,
+.wms-anim:focus-visible,
+.wms-swatch:focus-visible,
+.wms-x:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .wms-cap::before,
+  .wms-x::before,
+  .wms-swatch::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+}
+
+.wms-seg {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.wms-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-2);
+}
+
+.wms-field input,
+.wms-field select {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-input);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.wms-grow input {
+  flex: 1;
+}
+
+.wms-field-num input {
+  width: 84px;
+  padding: 0 10px 0 14px;
+}
+
+.wms-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+/* the sheet and its boxes */
+.wms-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 24px;
+  text-align: center;
+  border-radius: 12px;
+  border: 2px dashed var(--color-border-dashed);
+  background: var(--color-surface-sunken);
+}
+
+.wms-sheet-scroll {
+  overflow: auto;
+  padding: 18px 6px 6px;
+  max-height: 68vh;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-surface-sunken);
+  background-image: radial-gradient(var(--color-dots) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+.wms-sheet {
+  position: relative;
+  width: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+.wms-sheet-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  opacity: 0.95;
+}
+
+.wms-box {
+  --c: var(--color-text-2);
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--c);
+  border-radius: 4px;
+  background: transparent;
+  cursor: move;
+}
+
+.wms-box.is-on {
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  outline: 2px solid var(--color-text);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.wms-box-tag {
+  position: absolute;
+  left: -2px;
+  bottom: calc(100% + 1px);
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--c);
+  color: var(--tc-black);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.wms-box-pivot {
+  position: absolute;
+  left: var(--pvx, 50%);
+  top: var(--pvy, 100%);
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 1px var(--tc-black);
+  pointer-events: none;
+}
+
+.wms-box-grip {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text);
+  background: var(--c);
+  cursor: nwse-resize;
+}
+
+/* color slots: one per animation, -1 = no animation yet */
+[data-c="0"] { --c: var(--color-ok); }
+[data-c="1"] { --c: var(--color-p2); }
+[data-c="2"] { --c: var(--color-voice); }
+[data-c="3"] { --c: var(--color-accent); }
+[data-c="4"] { --c: var(--color-p1); }
+[data-c="5"] { --c: var(--color-p3); }
+[data-c="6"] { --c: var(--color-p4); }
+[data-c="7"] { --c: var(--color-danger-text); }
+
+.wms-box-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+/* animations */
+.wms-anims {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 6px;
+}
+
+.wms-anim {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.wms-anim.is-on {
+  border-color: var(--tint-accent-border);
+  background: var(--tint-accent-bg);
+}
+
+.wms-anim.is-empty .wms-anim-name {
+  color: var(--color-text-2);
+}
+
+.wms-anim-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wms-anim-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.wms-dot {
+  --c: var(--color-border-strong);
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.wms-anim-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+}
+
+.wms-anim-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.wms-frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wms-frame-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px 2px;
+  border-radius: 10px;
+  background: var(--color-surface-2);
+}
+
+.wms-thumb {
+  height: 44px;
+  image-rendering: pixelated;
+}
+
+.wms-frame-n {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.wms-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* the board panel */
+.wms-board {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.wms-board-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wms-zones {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wms-preview {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--color-surface-2);
+  overflow: auto;
+  max-width: 100%;
+}
+
+.wms-px {
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.wms-zone-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.wms-zone[data-level="ok"] .wms-zone-count { color: var(--color-ok); }
+.wms-zone[data-level="warn"] .wms-zone-count { color: var(--color-accent-text); }
+.wms-zone[data-level="over"] .wms-zone-count { color: var(--color-danger-text); }
+
+.wms-meter {
+  height: 4px;
+  margin: 4px 0;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  overflow: hidden;
+}
+
+.wms-meter-fill {
+  display: block;
+  height: 100%;
+  width: var(--fill, 0%);
+  background: var(--color-ok);
+}
+
+.wms-zone[data-level="warn"] .wms-meter-fill { background: var(--color-accent); }
+.wms-zone[data-level="over"] .wms-meter-fill { background: var(--color-danger-text); }
+
+.wms-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.wms-swatch {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: var(--sw, transparent);
+  cursor: pointer;
+}
+
+.wms-swatch.is-swap {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.wms-status {
+  font-size: 12px;
+  color: var(--color-text-2);
+}

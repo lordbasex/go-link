@@ -1276,6 +1276,11 @@ export const en = {
     gamesText: "Six short games that test your controller while you play: Link, Snake, Memory, Paddle, Racer and Special moves.",
     gamesCta: "Play",
     gamesTag: "6 games",
+    makerTitle: "Willy Maker",
+    makerText: "Make your own arcade game for MAME: build levels with layers and collision, place enemies and civilians, check every jump and export the project.",
+    makerCta: "Open Willy Maker",
+    makerTag: "CPS-1 · New",
+    makerLoading: "Loading Willy Maker…",
     more: "More tools soon",
   },
   padTest: {

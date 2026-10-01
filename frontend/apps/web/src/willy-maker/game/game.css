@@ -1,0 +1,66 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+
+/* The Game and Menus tabs. Colors only as the site's tokens. */
+
+.wm-game,
+.wm-menus { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 16px; padding: 16px; align-items: start; }
+.wm-game { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wm-menus { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.wm-game-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.wm-game-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wm-game-card h2 { margin: 0; }
+.wm-game-card p { margin: 0; }
+.wm-game-stack { display: flex; flex-direction: column; gap: 6px; }
+
+/* actions */
+.wm-game-actions { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 13px; }
+.wm-game-actions th { text-align: left; font: 600 11px var(--font-text); color: var(--color-text-faint); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 8px; }
+.wm-game-actions td { background: var(--color-surface); padding: 6px 8px; vertical-align: top; }
+.wm-game-actions td:first-child { border-radius: 12px 0 0 12px; width: 92px; }
+.wm-game-actions td:last-child { border-radius: 0 12px 12px 0; }
+.wm-game-actions td .wm-input { width: 100%; }
+.wm-game-actions .wm-chip { min-width: 64px; justify-content: center; }
+.wm-game-help { display: block; margin-top: 4px; line-height: 1.4; }
+.wm-game-range { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.wm-game-range input { flex: 1; accent-color: var(--color-accent); }
+
+/* players */
+.wm-game-slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.wm-game-slot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: var(--color-surface); font-size: 13px; }
+.wm-game-slot.is-off { opacity: 0.6; }
+.wm-game-slot.is-bad { box-shadow: inset 0 0 0 1px var(--color-danger-border); }
+.wm-game-slot .wm-input { flex: 1; min-width: 110px; }
+.wm-game-slot-name { min-width: 64px; }
+.wm-game-dot { width: 24px; height: 24px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--font-mono); color: var(--color-video); }
+.wm-game-dot.is-p1 { background: var(--color-p1); }
+.wm-game-dot.is-p2 { background: var(--color-p2); }
+.wm-game-dot.is-p3 { background: var(--color-p3); }
+.wm-game-dot.is-p4 { background: var(--color-p4); }
+
+/* controller */
+.wm-game-led { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-faint); }
+.wm-game-led.is-on { background: var(--color-ok); }
+.wm-game-pad { max-width: 360px; }
+.wm-game-pad svg { width: 100%; height: auto; }
+.wm-game-binds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.wm-game-binds li { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--color-surface); font-size: 13px; border: 1px solid transparent; }
+.wm-game-binds li.is-lit { border-color: var(--color-accent); background: var(--tint-accent-bg); }
+.wm-game-bind-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-game-bind-key { color: var(--color-text-2); min-width: 72px; text-align: right; }
+
+/* menus */
+.wm-menus-stage { background: var(--color-video); border-radius: 10px; overflow: hidden; border: 1px solid var(--color-border); }
+.wm-menus-canvas { display: block; width: 100%; height: auto; aspect-ratio: 384 / 224; image-rendering: pixelated; }
+.wm-menus-field { display: flex; flex-direction: column; gap: 4px; }
+.wm-menus-field .wm-row { align-items: center; }
+.wm-menus-color { width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--color-border-strong); background: var(--color-surface); cursor: pointer; overflow: hidden; }
+.wm-menus-color::-webkit-color-swatch-wrapper { padding: 3px; }
+.wm-menus-color::-webkit-color-swatch { border: 0; border-radius: 50%; }
+
+@media (max-width: 1180px) {
+  .wm-game { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wm-menus { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .wm-game { grid-template-columns: 1fr; }
+}

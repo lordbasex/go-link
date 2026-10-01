@@ -1,0 +1,51 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+// The Menus tab's texts (the reference shape for es and pt).
+
+export const menusEn = {
+  title: "Menus and screens",
+  screensLabel: "Screens",
+  screens: { title: "Title", attract: "Demo", select: "Player select", hud: "HUD", continue: "Continue", gameOver: "Game over", highScores: "High scores" },
+  fields: {
+    title: "Title",
+    subtitle: "Subtitle",
+    prompt: "Prompt",
+    caption: "Caption",
+    heading: "Heading",
+    join: "Join prompt",
+    ammo: "Ammo",
+    rescued: "Rescued",
+    cleared: "Level clear",
+    line: "Line",
+    footer: "Footer",
+    credits: "Credits line",
+    slots: "Players",
+    scores: "Score table",
+  },
+  preview: "Preview of the {screen} screen at 384 × 224",
+  safeArea: "Safe area",
+  safeTip: "Shows the area every arcade monitor shows (2 characters in from each edge)",
+  text: "Text",
+  font: "8 × 8 font · lowercase shows as uppercase",
+  reset: "Default",
+  resetTip: "Back to the default text",
+  count: "{n} / {max}",
+  background: "Background",
+  backgrounds: { level: "A level, darkened", solid: "Solid color" },
+  level: "Level",
+  color: "Color",
+  music: "Music",
+  musicSlots: { none: "None", title: "Title theme", select: "Select theme", stage: "Stage theme", boss: "Boss theme", continue: "Continue jingle", "game-over": "Game over jingle", "high-scores": "High-score theme" },
+  musicNote: "Sound arrives in Phase 2: the slot is kept with the game.",
+  credits: "Credits",
+  showCredits: "Show the credits line on this screen",
+  creditsLine: "Credits line (every screen)",
+  demoLevel: "Demo level",
+  fits: "Fits the screen and the font.",
+  overflow: "Too wide for the screen.",
+  outside: "Reaches outside the safe area.",
+  glyphs: "Not in the font: {chars}",
+  undo: { text: "Menu text", background: "Menu background", music: "Menu music", credits: "Credits", demo: "Demo level" },
+};
+
+export type MenusMessages = typeof menusEn;

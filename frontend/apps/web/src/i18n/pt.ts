@@ -1266,6 +1266,11 @@ export const pt: Messages = {
     gamesText: "Seis jogos curtos que testam seu controle enquanto você joga: Conexão, Cobrinha, Memória, Raquete, Corrida e Golpes especiais.",
     gamesCta: "Jogar",
     gamesTag: "6 jogos",
+    makerTitle: "Willy Maker",
+    makerText: "Crie o seu próprio jogo de arcade para MAME: monte fases com camadas e colisão, posicione inimigos e civis, confira cada pulo e exporte o projeto.",
+    makerCta: "Abrir o Willy Maker",
+    makerTag: "CPS-1 · Novo",
+    makerLoading: "Carregando o Willy Maker…",
     more: "Mais ferramentas em breve",
   },
   padTest: {

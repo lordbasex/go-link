@@ -1,0 +1,51 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+// The Menus tab's texts in Portuguese (same shape as menus.en.ts).
+
+import type { MenusMessages } from "./menus.en";
+
+export const menusPt: MenusMessages = {
+  title: "Menus e telas",
+  screensLabel: "Telas",
+  screens: { title: "Título", attract: "Demo", select: "Escolher jogador", hud: "HUD", continue: "Continuar", gameOver: "Fim de jogo", highScores: "Recordes" },
+  fields: {
+    title: "Título",
+    subtitle: "Subtítulo",
+    prompt: "Chamada",
+    caption: "Legenda",
+    heading: "Cabeçalho",
+    join: "Convite para entrar",
+    ammo: "Munição",
+    rescued: "Resgatados",
+    cleared: "Fase concluída",
+    line: "Linha",
+    footer: "Rodapé",
+    credits: "Linha de créditos",
+    slots: "Jogadores",
+    scores: "Tabela de pontos",
+  },
+  preview: "Prévia da tela {screen} em 384 × 224",
+  safeArea: "Área segura",
+  safeTip: "Mostra a área que todo monitor de fliperama exibe (2 caracteres para dentro de cada borda)",
+  text: "Texto",
+  font: "Fonte 8 × 8 · minúsculas aparecem em maiúsculas",
+  reset: "Padrão",
+  resetTip: "Volta ao texto padrão",
+  count: "{n} / {max}",
+  background: "Fundo",
+  backgrounds: { level: "Uma fase, escurecida", solid: "Cor sólida" },
+  level: "Fase",
+  color: "Cor",
+  music: "Música",
+  musicSlots: { none: "Nenhuma", title: "Tema do título", select: "Tema da seleção", stage: "Tema da fase", boss: "Tema do chefe", continue: "Vinheta de continuar", "game-over": "Vinheta de fim de jogo", "high-scores": "Tema dos recordes" },
+  musicNote: "O som chega na fase 2: o espaço fica salvo com o jogo.",
+  credits: "Créditos",
+  showCredits: "Mostrar a linha de créditos nesta tela",
+  creditsLine: "Linha de créditos (todas as telas)",
+  demoLevel: "Fase da demo",
+  fits: "Cabe na tela e na fonte.",
+  overflow: "Largo demais para a tela.",
+  outside: "Sai da área segura.",
+  glyphs: "Fora da fonte: {chars}",
+  undo: { text: "Texto do menu", background: "Fundo do menu", music: "Música do menu", credits: "Créditos", demo: "Fase da demo" },
+};

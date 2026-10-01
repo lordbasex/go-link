@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHARACTERS, fillEnclosed, legacyScale, legacyQuantize, splitPoses, SHEETS } from "./art.mjs";
 import { readImage, writePng } from "./png.mjs";
-import { convertCharacter, downscaleDominant, gridScore, renderFrame } from "./sprites.mjs";
+import { convertCharacter, downscaleDominant, gridScore, renderFrame } from "../../frontend/packages/cps1/src/index.ts";
 
 const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "build", "quality");
 fs.mkdirSync(OUT, { recursive: true });

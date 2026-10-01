@@ -40,6 +40,15 @@ export function ToolsPage() {
       art: <GamesArt />,
       cls: "is-games",
     },
+    {
+      to: "/tools/willy-maker",
+      title: t.tools.makerTitle,
+      text: t.tools.makerText,
+      cta: t.tools.makerCta,
+      tag: t.tools.makerTag,
+      art: <MakerArt />,
+      cls: "is-maker",
+    },
   ];
   return (
     <div className="page page-frame tools-page">
@@ -102,6 +111,35 @@ function GamesArt() {
       <rect className="ga-food" x={104} y={56} width={6} height={6} />
       <rect className="ga-ball" x={118} y={70} width={5} height={5} />
       <rect className="ga-paddle" x={100} y={88} width={36} height={5} />
+    </svg>
+  );
+}
+
+/** Willy Maker's card picture: a street, a ledge, a ladder, crates and a hero, on the 16 px grid. */
+function MakerArt() {
+  return (
+    <svg className="maker-art" viewBox="0 0 160 100" aria-hidden="true">
+      {Array.from({ length: 10 }, (_, i) => (
+        <line key={`v${i}`} className="ma-grid" x1={i * 16} y1={0} x2={i * 16} y2={100} />
+      ))}
+      {Array.from({ length: 7 }, (_, i) => (
+        <line key={`h${i}`} className="ma-grid" x1={0} y1={i * 16 + 4} x2={160} y2={i * 16 + 4} />
+      ))}
+      <rect className="ma-sky" x={96} y={20} width={56} height={64} />
+      <rect className="ma-ground" x={0} y={84} width={160} height={16} />
+      <rect className="ma-ledge" x={96} y={36} width={56} height={4} />
+      <rect className="ma-ladder" x={84} y={36} width={2} height={48} />
+      <rect className="ma-ladder" x={92} y={36} width={2} height={48} />
+      {[44, 54, 64, 74].map((y) => (
+        <rect key={y} className="ma-ladder" x={84} y={y} width={10} height={2} />
+      ))}
+      <rect className="ma-crate" x={36} y={68} width={16} height={16} />
+      <rect className="ma-crate" x={52} y={68} width={16} height={16} />
+      <rect className="ma-crate" x={52} y={52} width={16} height={16} />
+      <rect className="ma-hero" x={20} y={66} width={8} height={18} />
+      <rect className="ma-hero-head" x={20} y={60} width={8} height={7} />
+      <rect className="ma-enemy" x={128} y={20} width={8} height={16} />
+      <rect className="ma-cursor" x={112} y={36} width={16} height={4} />
     </svg>
   );
 }

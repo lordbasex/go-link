@@ -79,6 +79,7 @@ export function readPng(buf) {
 
 /** Writes an RGBA image as PNG (for previews of the converted art). */
 export function writePng(file, w, h, rgba) {
+  rgba = Buffer.from(rgba.buffer, rgba.byteOffset, rgba.byteLength); // a Uint8Array from @go-link/cps1 too
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

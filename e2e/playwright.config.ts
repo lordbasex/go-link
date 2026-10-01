@@ -16,6 +16,12 @@ import { PORTS } from "./ports";
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
 
+// Tests that need only the website (Willy Maker): when they are the only
+// files named on the command line, no signalhub or device is built or started.
+const WEB_ONLY = /willy-maker\.spec\.ts$/;
+const named = process.argv.filter((a) => /\.spec\.ts$/.test(a));
+const webOnly = named.length > 0 && named.every((a) => WEB_ONLY.test(a));
+
 export default defineConfig({
   testDir: "tests",
   fullyParallel: false,
@@ -24,8 +30,8 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   retries: 0,
   reporter: [["list"], ["html", { open: "never" }]],
-  globalSetup: "./global-setup.ts",
-  globalTeardown: "./global-teardown.ts",
+  globalSetup: webOnly ? undefined : "./global-setup.ts",
+  globalTeardown: webOnly ? undefined : "./global-teardown.ts",
   use: {
     baseURL: `http://localhost:${PORTS.web}`,
     locale: "en-US",

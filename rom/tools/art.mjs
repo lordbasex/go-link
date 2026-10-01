@@ -12,8 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readImage, writePng } from "./png.mjs";
-import { convertCharacter, downscaleDominant, renderFrame } from "./sprites.mjs";
-import { deltaE, toCps1, toLab } from "./color.mjs";
+import { convertCharacter, deltaE, downscaleDominant, renderFrame, toCps1, toLab } from "../../frontend/packages/cps1/src/index.ts";
 import { CELL, COLS, CRATES, OBJECTS, PALETTE as LEVEL_PALETTE, ROWS, buildLevel } from "./level.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -554,7 +553,7 @@ export function addArt(gfx, defs, genDir) {
     const prev = Buffer.alloc(pw * ph * 4);
     let ox = 0;
     for (const f of pics) {
-      for (let y = 0; y < f.h; y++) f.rgba.copy(prev, ((ph - f.h + y) * pw + ox) * 4, y * f.w * 4, (y + 1) * f.w * 4);
+      for (let y = 0; y < f.h; y++) prev.set(f.rgba.subarray(y * f.w * 4, (y + 1) * f.w * 4), ((ph - f.h + y) * pw + ox) * 4);
       ox += f.w + 4;
     }
     writePng(path.join(genDir, `preview-${ch.name}.png`), pw, ph, prev);

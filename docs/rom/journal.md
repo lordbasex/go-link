@@ -2,6 +2,8 @@
 
 A step-by-step record of the prototype, meant to become a guide. Every step lists the goal, what was read, the exact commands, the files, the result, what failed and what was learned. Dead ends stay in, marked **Dead end**. Hardware facts confirmed along the way are collected in [hardware.md](hardware.md).
 
+> Since 2026-10-01 the conversion modules this journal calls `rom/tools/color.mjs`, `sprites.mjs`, `cps1gfx.mjs` and `kabuki.mjs` live in [`frontend/packages/cps1`](../../frontend/packages/cps1) as TypeScript (`color.ts`, `sprites.ts`, `gfx.ts`, `kabuki.ts`), shared with Willy Maker; the steps below keep their old names. The tools need Node 22.18 or newer.
+
 ## How to reproduce from zero
 
 Machine used: an Intel Mac on macOS 15.7.3, with Homebrew. Tool versions:

@@ -48,6 +48,7 @@ const GamesPage = lazy(() =>
   import("./pages/GamesPage").then((m) => ({ default: m.GamesPage })),
 );
 const SkinEditorPage = lazy(() => import("./pages/SkinEditorPage").then((m) => ({ default: m.SkinEditorPage })));
+const WillyMakerPage = lazy(() => import("./pages/WillyMakerPage").then((m) => ({ default: m.WillyMakerPage })));
 const TestControllerPage = lazy(() =>
   import("./pages/TestControllerPage").then((m) => ({ default: m.TestControllerPage })),
 );
@@ -166,6 +167,8 @@ export function App() {
             <Route path="/tools" element={<ToolsPage />} />
             <Route path="/tools/skin-editor" element={<SkinEditorPage />} />
             <Route path="/tools/games" element={<GamesPage />} />
+            <Route path="/tools/willy-maker" element={<WillyMakerPage />} />
+            <Route path="/tools/willy-maker/:gameId" element={<WillyMakerPage />} />
             <Route path="/picture-demo" element={<PictureDemoPage />} />
             {PictureLabPage && <Route path="/picture-lab" element={<PictureLabPage />} />}
             <Route path="/docs" element={<DocsPage />} />

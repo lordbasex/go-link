@@ -5,6 +5,7 @@ React + TypeScript with npm workspaces.
 | Package | What it is |
 |---|---|
 | `packages/shared` (`@go-link/shared`) | Protocol types, signaling client, WebRTC player, SHA-256/HMAC, design tokens |
+| `packages/cps1` (`@go-link/cps1`) | The CPS-1 conversion code shared with `rom/tools`: OKLab and the board's colors, sprite downscale and palettes, the graphics ROM format, the Kabuki encryption (no DOM, no Node APIs) |
 | `apps/web` (`@go-link/web`) | The website |
 
 ```bash

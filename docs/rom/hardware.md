@@ -50,7 +50,7 @@ Inputs (`cps1.c` L3002-3062, L327-343), all active low:
 
 The 68000 interrupt is the same level 2 vblank (`cps1_qsound_interrupt`). The Z80 runs at 6 MHz with a 250 Hz IRQ; its map (`cps1.c` L385-401): ROM 0x0000-0x7fff, bank 0x8000-0xbfff, shared RAM 0xc000-0xcfff and 0xf000-0xffff (the 68000 sees them at 0xf18000 and 0xf1e000, low bytes), QSound chip at 0xd000-0xd003, status at 0xd007.
 
-**Kabuki** (`kabuki.c` L1-80 for the description, `bytedecode` and `cps1_decode` L105-201) (tested): at start the core decodes the Z80 ROM's first 0x8000 bytes twice, into an opcode table (`select = address + addr_key`) and a data table (`select = (address ^ 0x1fc0) + addr_key + 1`). Opcode fetches read the first, operands and data the second. Each decode is a bijection over 0-255 for a given address, so `rom/tools/kabuki.mjs` stores our own Z80 code by searching the byte that decodes to each one we want. `slammast` keys: swap1 0x54321076, swap2 0x65432107, addr 0x3131, xor 0x19.
+**Kabuki** (`kabuki.c` L1-80 for the description, `bytedecode` and `cps1_decode` L105-201) (tested): at start the core decodes the Z80 ROM's first 0x8000 bytes twice, into an opcode table (`select = address + addr_key`) and a data table (`select = (address ^ 0x1fc0) + addr_key + 1`). Opcode fetches read the first, operands and data the second. Each decode is a bijection over 0-255 for a given address, so `kabuki.ts` in `frontend/packages/cps1` stores our own Z80 code by searching the byte that decodes to each one we want. `slammast` keys: swap1 0x54321076, swap2 0x65432107, addr 0x3131, xor 0x19.
 
 ## `captcomm` (CPS-1 board)
 
@@ -144,7 +144,7 @@ No CPS-B ID check for this set (`cpsb_addr` 0).
 
 ## Palette (`cps1_vidhrdw.c` L625, L1253-1290) (tested)
 
-The exact formula (`cps1_build_palette`): for a word `0xBRGB`, each channel is `value × (B + 2)` when B ≠ 0, and black when B = 0. That gives 56 402 distinct colors (`rom/tools/color.mjs`, `cps1Colors`): a low brightness gives finer dark steps than `value × 17`.
+The exact formula (`cps1_build_palette`): for a word `0xBRGB`, each channel is `value × (B + 2)` when B ≠ 0, and black when B = 0. That gives 56 402 distinct colors (`frontend/packages/cps1/src/color.ts`, `cps1Colors`): a low brightness gives finer dark steps than `value × 17`.
 
 
 - 256 palettes of 16 colors (4096 words): palettes 0-31 sprites, 32-63 scroll1, 64-95 scroll2, 96-127 scroll3, then the starfields.

@@ -10,7 +10,15 @@
 // use the opcode table; operands and data reads use the data table, so the
 // stub uses one-byte opcodes only.
 
-function bitswap1(src, key, select) {
+/** The keys of one set. */
+export interface KabukiKeys {
+  swap1: number;
+  swap2: number;
+  addr: number;
+  xor: number;
+}
+
+function bitswap1(src: number, key: number, select: number): number {
   if (select & (1 << ((key >> 0) & 7))) src = (src & 0xfc) | ((src & 0x01) << 1) | ((src & 0x02) >> 1);
   if (select & (1 << ((key >> 4) & 7))) src = (src & 0xf3) | ((src & 0x04) << 1) | ((src & 0x08) >> 1);
   if (select & (1 << ((key >> 8) & 7))) src = (src & 0xcf) | ((src & 0x10) << 1) | ((src & 0x20) >> 1);
@@ -18,7 +26,7 @@ function bitswap1(src, key, select) {
   return src;
 }
 
-function bitswap2(src, key, select) {
+function bitswap2(src: number, key: number, select: number): number {
   if (select & (1 << ((key >> 12) & 7))) src = (src & 0xfc) | ((src & 0x01) << 1) | ((src & 0x02) >> 1);
   if (select & (1 << ((key >> 8) & 7))) src = (src & 0xf3) | ((src & 0x04) << 1) | ((src & 0x08) >> 1);
   if (select & (1 << ((key >> 4) & 7))) src = (src & 0xcf) | ((src & 0x10) << 1) | ((src & 0x20) >> 1);
@@ -26,9 +34,9 @@ function bitswap2(src, key, select) {
   return src;
 }
 
-const rol = (v) => ((v & 0x7f) << 1) | ((v & 0x80) >> 7);
+const rol = (v: number) => ((v & 0x7f) << 1) | ((v & 0x80) >> 7);
 
-export function bytedecode(src, k) {
+export function bytedecode(src: number, k: KabukiKeys & { select: number }): number {
   const { swap1, swap2, xor } = k;
   const sel = k.select;
   src = bitswap1(src, swap1 & 0xffff, sel & 0xff);
@@ -43,19 +51,19 @@ export function bytedecode(src, k) {
 }
 
 /** The keys of each QSound set (kabuki.c, the *_decode functions). */
-export const KEYS = {
+export const KEYS: Record<string, KabukiKeys> = {
   slammast: { swap1: 0x54321076, swap2: 0x65432107, addr: 0x3131, xor: 0x19 },
 };
 
 /** Opcode-side select for address a (kabuki_decode). */
-const opSelect = (a, k) => (a + k.addr) & 0xffff;
+const opSelect = (a: number, k: KabukiKeys) => (a + k.addr) & 0xffff;
 
 /**
  * Encodes a Z80 program whose bytes are all opcodes (one-byte
  * instructions), so the core's opcode decoding gives them back.
  */
-export function encodeOpcodes(plain, keys) {
-  const out = Buffer.from(plain);
+export function encodeOpcodes(plain: Uint8Array, keys: KabukiKeys): Uint8Array {
+  const out = new Uint8Array(plain);
   for (let a = 0; a < plain.length && a < 0x8000; a++) {
     const k = { ...keys, select: opSelect(a, keys) };
     let found = -1;

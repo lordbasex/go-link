@@ -1,0 +1,51 @@
+// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+
+// The Menus tab's texts in Spanish (same shape as menus.en.ts).
+
+import type { MenusMessages } from "./menus.en";
+
+export const menusEs: MenusMessages = {
+  title: "Menús y pantallas",
+  screensLabel: "Pantallas",
+  screens: { title: "Título", attract: "Demo", select: "Elegir jugador", hud: "HUD", continue: "Continuar", gameOver: "Fin del juego", highScores: "Récords" },
+  fields: {
+    title: "Título",
+    subtitle: "Subtítulo",
+    prompt: "Indicación",
+    caption: "Leyenda",
+    heading: "Encabezado",
+    join: "Invitación a unirse",
+    ammo: "Munición",
+    rescued: "Rescatados",
+    cleared: "Nivel superado",
+    line: "Línea",
+    footer: "Pie",
+    credits: "Línea de créditos",
+    slots: "Jugadores",
+    scores: "Tabla de puntajes",
+  },
+  preview: "Vista previa de la pantalla {screen} a 384 × 224",
+  safeArea: "Área segura",
+  safeTip: "Muestra el área que se ve en cualquier monitor de arcade (2 caracteres hacia dentro de cada borde)",
+  text: "Texto",
+  font: "Fuente de 8 × 8 · las minúsculas se ven en mayúsculas",
+  reset: "Por defecto",
+  resetTip: "Vuelve al texto por defecto",
+  count: "{n} / {max}",
+  background: "Fondo",
+  backgrounds: { level: "Un nivel, oscurecido", solid: "Color sólido" },
+  level: "Nivel",
+  color: "Color",
+  music: "Música",
+  musicSlots: { none: "Ninguna", title: "Tema del título", select: "Tema de selección", stage: "Tema del nivel", boss: "Tema del jefe", continue: "Jingle de continuar", "game-over": "Jingle de fin del juego", "high-scores": "Tema de récords" },
+  musicNote: "El sonido llega en la fase 2: el espacio se guarda con el juego.",
+  credits: "Créditos",
+  showCredits: "Mostrar la línea de créditos en esta pantalla",
+  creditsLine: "Línea de créditos (todas las pantallas)",
+  demoLevel: "Nivel de la demo",
+  fits: "Entra en la pantalla y en la fuente.",
+  overflow: "Demasiado ancho para la pantalla.",
+  outside: "Se sale del área segura.",
+  glyphs: "No está en la fuente: {chars}",
+  undo: { text: "Texto del menú", background: "Fondo del menú", music: "Música del menú", credits: "Créditos", demo: "Nivel de la demo" },
+};

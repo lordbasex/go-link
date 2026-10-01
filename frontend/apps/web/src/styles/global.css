@@ -2612,6 +2612,18 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .ga-head, .ga-paddle { fill: var(--color-accent); }
 .ga-food { fill: var(--color-p2); }
 .ga-ball { fill: var(--color-text); }
+.tool-card-art.is-maker { background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--color-ok) 18%, var(--color-surface-2)), var(--color-surface-2)); }
+.maker-art { width: 72%; height: auto; shape-rendering: crispEdges; }
+.ma-grid { stroke: var(--color-border-strong); stroke-width: 0.5; opacity: 0.6; }
+.ma-sky { fill: var(--color-surface); opacity: 0.6; }
+.ma-ground { fill: var(--color-text-faint); }
+.ma-ledge { fill: var(--color-ok); }
+.ma-ladder { fill: var(--color-voice); }
+.ma-crate { fill: var(--color-accent); stroke: var(--color-on-accent); stroke-width: 1; }
+.ma-hero { fill: var(--color-p1); }
+.ma-hero-head { fill: var(--color-text); }
+.ma-enemy { fill: var(--color-p3); }
+.ma-cursor { fill: none; stroke: var(--color-text); stroke-width: 1.5; }
 .games-grid { flex: 1; min-width: 0; align-self: flex-start; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
 .game-card { display: flex; flex-direction: column; gap: 12px; width: 100%; height: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; transition: border-color 120ms, transform 120ms; }
 .game-card:hover { border-color: var(--color-accent-tint-border); transform: translateY(-2px); }

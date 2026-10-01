@@ -30,6 +30,9 @@
   --color-on-accent: #1a1206;
   --color-voice: #4fc3d9;
   --color-ok: #7ee2a8;
+  /* Willy Maker's collision tags that no other color names. */
+  --color-hazard: #f2d23a;
+  --color-water: #4f8bd9;
 
   --color-danger-bg: #2a1519;
   --color-danger-border: #5a2a33;

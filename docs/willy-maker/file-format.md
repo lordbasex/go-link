@@ -4,11 +4,16 @@ The project file, the `.zip` that carries it between browsers, and the AI pack. 
 
 ## The project file (`project.json`)
 
-Versioned JSON; `format` starts at 1. Unknown fields are kept on import (a newer version's data is not lost), and an older `format` is migrated on load.
+Versioned JSON; the current `format` is 2. Unknown fields are kept on import (a newer version's data is not lost), and an older `format` is migrated on load.
+
+| Format | What changed | Migration from the one before |
+|---|---|---|
+| 1 | the first format | — |
+| 2 | `settings.actionLabels`, `runTapMs`, `playerSlots`, `credits`; every menu screen's `texts`, `background`, `music`, `credits` | the new fields get their defaults (labels empty, 250 ms, Willy and three recruits, `(C) 2026 go-link`, each screen's default background and music); blocks and unknown fields are kept |
 
 ```jsonc
 {
-  "format": 1,
+  "format": 2,
   "id": "a7f3…",                       // random, made on creation
   "title": "Dead Air",
   "author": "",
@@ -28,13 +33,26 @@ Versioned JSON; `format` starts at 1. Unknown fields are kept on import (a newer
       "b3": "special",                 // "b1+b2" on a 2-button layout
       "run": "double-tap"
     },
+    "actionLabels": { "jump": "Hop" },  // optional labels; missing = the action's default name
+    "runTapMs": 250,                   // the double-tap window for running, 100-400
+    "playerSlots": [                   // players 1-4: a character id or "builtin:willy", and a shirt
+      { "character": "builtin:willy", "variant": 0 },   // 0 own colors, 1-3 recruit shirts
+      { "character": "builtin:willy", "variant": 1 },
+      { "character": "vera", "variant": 0 },
+      { "character": "builtin:willy", "variant": 3 }
+    ],
+    "credits": "(C) 2026 go-link",     // the credits line the menu screens show
     "dip": { "difficulty": "normal", "lives": 3, "freePlay": false, "demoSound": true },
-    "menus": {                         // each a screen made of text and sprite blocks
-      "title": { "blocks": [] },
-      "attract": { "demoLevel": "level-1", "panels": [] },
-      "select": { "characters": ["willy", "vera", "glitch9", "jitter"] },
-      "hud": { "blocks": [] },
-      "continue": {}, "gameOver": {}, "highScores": {}
+    "menus": {                         // each screen: text fields, background, music slot, credits line, blocks
+      "title": {
+        "texts": { "title": "DEAD AIR", "prompt": "PUSH START" },   // missing = the field's default
+        "background": { "kind": "level", "level": "level-1" },     // "" = the first level
+        "music": "title", "credits": true, "blocks": []
+      },
+      "attract": { "demoLevel": "level-1", "panels": [], "texts": {}, "background": { "kind": "level", "level": "" }, "music": "none", "credits": true },
+      "select": { "characters": ["willy", "vera", "glitch9", "jitter"], "texts": {}, "background": { "kind": "solid", "color": "#000000" }, "music": "select", "credits": false },
+      "hud": { "texts": { "join": "PRESS START", "ammo": "AMMO" }, "background": { "kind": "level", "level": "" }, "music": "stage", "credits": false },
+      "continue": { "texts": {} }, "gameOver": { "texts": { "heading": "GAME OVER" } }, "highScores": { "texts": {} }
     },
     "levels": ["level-1"]              // play order
   },
@@ -49,14 +67,19 @@ Versioned JSON; `format` starts at 1. Unknown fields are kept on import (a newer
       "name": "Willy",
       "role": "hero",                  // hero | enemy | civilian | boss
       "height": 44,
-      "sheet": "sha256:9c1e…",         // a picture in assets/
+      "sheet": "sha256:9c1e…",         // the 1:1 atlas in assets/ (board colors, transparent)
       "frames": [
         { "id": "idle_0", "x": 0, "y": 0, "w": 48, "h": 48, "px": 24, "py": 47,
           "zones": ["pal-willy-head", "pal-willy-torso", "pal-willy-legs"],
           "muzzle": null, "hand": null }
       ],
       "anims": { "idle": { "frames": ["idle_0", "idle_1"], "fps": 6, "loop": true } },
-      "swapColors": ["#223344", "#334455"]   // the shirt: players 2-4 change only these
+      "swapColors": ["#223344", "#334455"],  // the shirt: players 2-4 change only these
+      "source": {                      // optional: what the importer needs to edit it again
+        "sheet": "sha256:51ab…", "file": "willy.png", "mode": "figures", "tolerance": 18,
+        "grid": { "w": 48, "h": 48 },
+        "frames": [ { "id": "idle_0", "x": 412, "y": 63, "w": 69, "h": 115, "px": 35, "py": 114 } ]
+      }
     }
   ],
 
@@ -93,8 +116,13 @@ Versioned JSON; `format` starts at 1. Unknown fields are kept on import (a newer
 
 Notes:
 
+- **Menu screens**: the text fields of each screen are `title` (title, subtitle, prompt), `attract` (caption, prompt), `select` (heading, prompt), `hud` (join, ammo, rescued, cleared), `continue` (heading, prompt), `gameOver` (heading, line) and `highScores` (heading, footer). Text is drawn with the board's 8 × 8 font, folded to uppercase, on the 48 × 28 character text layer; music ids are `none`, `title`, `select`, `stage`, `boss`, `continue`, `game-over` and `high-scores` (references only until Phase 2).
 - **Tile layers** store tile indices per cell (`0` = empty), run-length encoded as a string, in row order. **Tag layers** store the tag number per cell: 0 air, 1 solid, 2 oneway, 3 ladder, 4 crate, 5 breakable, 6 hazard, 7 water. Per-cell properties live in `props`, keyed `"col,row"`.
 - **Colors** are `#RRGGBB` with every channel a multiple of 17 (the CPS-1's 12-bit colors). A palette has at most 15 colors; transparency is implicit.
+- **Characters**: `sheet` is the picture the game uses, at 1:1 on the board (the importer packs the frames into it, colors already fitted to the zone palettes), and `frames` are rectangles in it, so play mode, the AI pack and the ROM read it as it is. Each frame's `zones` lists its palettes top to bottom, one per 16 px row counted from the feet (a shorter frame lists only its lower rows). `source`, when present, holds the dropped sheet and the boxes drawn on it (sheet pixels, same frame ids), so the Characters screen can open the character again; a character without it (from a template or a hand-made project) still plays.
+- **Tilesets** may carry `columns` (tiles across in the picture) and `count` (tiles in it); the board meters count graphics from them. Layers may carry `opacity` (0-1), used by the editor only. The starter tilesets are `ts-city` (16 px, the play layer) and `ts-sky` (32 px, the far layer), built from the ROM prototype's art.
+- **Timer**: a level may carry `timer`, its time limit in seconds (missing or `0` = none). Play mode has no timer yet; the review compares it with the walk to the exit (`level.timer`) and the ROM keeps it.
+- **Limits on load**: a file with more than 64 levels, or a level wider than 65536 px or taller than 8192 px, is refused; layers, objects, frames, animations, palettes and tilesets with missing or wrong fields are repaired with defaults (or dropped when they are not one at all), so a damaged file never breaks the editor.
 - **Pictures** are referenced by `sha256:<hex>`. In the browser they live in IndexedDB under that hash; in a `.zip` they live in `assets/`.
 - Object `type` and properties are the ones in [art-spec.md](../rom/art-spec.md#4-telling-the-build-what-every-object-is). Every object has a unique `name`.
 
@@ -114,47 +142,46 @@ Import checks `format`, every hash and every size before replacing anything. A p
 
 ## The AI pack
 
-A second export for producing the ROM with an AI (or a person) and the tools in `rom/`:
+A second export for producing the ROM with an AI (or a person) and the tools in `rom/` (`io/aiPack.ts`). It is made only when the Export review has no errors.
 
 ```
 my-game.ai-pack.zip
-  PROMPT.md               the generated brief (below)
+  PROMPT.md               the generated brief (below), always the first entry
   project.json            the same project file
+  review.json             the Export review: ready, errors, warnings, every check with its English message
   levels/
-    level-1.tmj           Tiled maps: play, collision and objects layers
-    level-1/far.png       each layer as a full picture
-    level-1/play.png
+    level-1.tmj           Tiled map: far (image layer), play, collision and objects layers
+    level-1/far.png       the far layer, with the middle one merged in, as one picture
+    level-1/play.png      the play layer as one picture
+    level-1/text.png      the text layer, only when it has tiles
     level-1/collision.png the tag colors of art-spec.md, on the 16 px grid
+  tilesets/
+    ts-city.png           each tileset picture
+    collision.png         the collision tileset: one 16 px tile per tag, typed (solid, oneway…)
   characters/
-    willy/<anim>.png      one strip per animation, magenta background
-    willy/sheet.json      frames, fps, loop, pivots, muzzle and hand points
+    willy/<anim>.png      one strip per animation, magenta background, feet on one line
+    willy/sheet.json      frames (boxes in the strip), fps, loop, pivots, zones and their palettes, muzzle and hand points
   docs/
     rom-README.md, art-spec.md, hardware.md, story.md, journal.md
 ```
 
+- Every picture is converted to board colors (each channel to the nearest multiple of 17; alpha is on or off). Layers and tilesets keep transparency; strips use magenta `#FF00FF`.
+- The `.tmj` files point at `../tilesets/*.png` and `<level>/far.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles.
+- The docs are the repository's `docs/rom/*.md`, bundled with the website and loaded when the pack is made.
+- **Deterministic**: the same project gives the same bytes. Entries have a fixed date (2026-01-01 00:00) and a fixed order (`PROMPT.md`, then the rest sorted by name), and PNGs are written without a canvas. Compression uses the browser's own deflate, so two browsers may still differ.
+- A picture the browser no longer has (cleared site data) is left out, and `PROMPT.md` names it.
+
 ### The generated prompt (`PROMPT.md`)
 
-Filled in from the project:
+Filled in from the project and the review, in English, with these sections:
 
-```text
-You are building an arcade game ROM for go-link with the tools in the go-link repository
-(rom/). Target board: {{board.name}} ({{screen}}, {{layout}}: {{players}} players ×
-{{buttonCount}} buttons), run by the mame2003-plus core. Every byte must be original.
-Follow docs/rom-README.md, docs/art-spec.md and docs/hardware.md (included). The rules the
-game must keep (jump about 64 px, push-climb 32 px, one-way ledges, ladders, double-tap run,
-automatic knife) are the ones Willy Maker's play mode used, listed in project.json.
+1. **The brief**: build an arcade ROM for go-link with the tools in `rom/`; the target board (CPS-1, 384 × 224 at 60 Hz, 68000), the set layout (`slammast` 4 × 3 or `captcomm` 4 × 2) and the mame2003-plus core; every byte original; which docs to follow (`docs/` in the pack).
+2. **The game**: title and author, players, the levels in play order (id, size, camera, sections, map file), the characters (role, height, animations), the buttons and what each does (with 2 buttons, special is buttons 1 + 2), Start/Coin, the DIP switches and the menus.
+3. **Rules the engine keeps**: a table of the numbers in `engine/rules.ts` (the same as `rom/src/main.c`): body, gravity, jump, fall, ladders, push-climb, run tap, drop-through, camera, weapons, enemies, crates, lives, score.
+4. **Board limits**: palettes, colors, graphics and program ROM, sprite table, and what the game uses now (the meters).
+5. **What is in this pack**: the tree above, the collision tags and the object rules.
+6. **Willy Maker's checks at export**: every warning and note, then what passed.
+7. **Build it**: the tools (`brew install m68k-elf-binutils m68k-elf-gcc z80asm`, Node 22.18 or newer), `node rom/tools/build.mjs` first to prove the toolchain, then extend it to read the pack, framelab with `-log` in the core, and `node rom/tools/room-test.mjs` in a go-link room.
+8. **Task**: produce `<layout>.zip`, keep within the budgets, test it, and report changes and open decisions.
 
-Game: "{{title}}" by {{author}}. Levels, in order: {{levels}}.
-Characters: {{characters with roles and heights}}.
-Buttons: {{button actions}}. Menus: {{menus}}. DIP switches: {{dip}}.
-
-Each level is in levels/<id>.tmj (layers play, collision, objects) with its pictures;
-collision tags: solid, oneway, ladder, crate, breakable, hazard, water. Objects have unique
-names and properties as in art-spec.md section 4.
-
-Willy Maker's checks at export: {{validation summary: budgets, warnings}}.
-
-Task: produce the ROM set ({{layout}}.zip) with rom/tools/build.mjs extended to read this
-pack, keep within the budgets above, test it with framelab and in a go-link room
-(rom/tools/room-test.mjs), and report what you changed and anything that needs a decision.
-```
+The Export screen previews its first paragraph and has **Copy prompt**.

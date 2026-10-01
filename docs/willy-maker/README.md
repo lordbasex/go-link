@@ -8,6 +8,7 @@ This page is the source of truth before any code is written. More detail lives i
 
 - [architecture.md](architecture.md): the module, its layers and what it shares with `rom/`.
 - [file-format.md](file-format.md): the project file, the `.zip` layout, the AI pack and its prompt.
+- [validation.md](validation.md): the four validation levels, from live rules to a power-on test on the device.
 
 Willy Maker builds on the ROM project:
 
@@ -46,9 +47,9 @@ A project picks its board when it is created. Every limit, meter, check and conv
 
 The prototype's 68000 program is turned into a **data-driven engine**: levels, characters, menus and settings become data that the engine reads. Building a game is then **packing**, not compiling:
 
-- Convert the graphics to the board's format. `rom/tools/cps1gfx.mjs`, `sprites.mjs` and `color.mjs` are JavaScript already.
+- Convert the graphics to the board's format, with the shared `@go-link/cps1` package (`frontend/packages/cps1`: `gfx.ts`, `sprites.ts`, `color.ts`), the same code `rom/tools` builds the prototype with.
 - Pack the maps and data next to the prebuilt engine.
-- Encrypt the sound program the way the board expects. `rom/tools/kabuki.mjs` is JavaScript too.
+- Encrypt the sound program the way the board expects (`kabuki.ts` in the same package).
 - Lay everything out as the set's files and zip it.
 
 All of it can run in the browser (WebAssembly where it helps, for example a fast zip or quantizer). A **Create and play** button then sends the `.zip` to the user's go-link device over the existing `files` channel (as ROM uploads already do) and opens a room with it.
@@ -91,19 +92,24 @@ A meter turns amber near its limit and red over it. Clicking a meter lists what 
 
 ### Characters
 
-1. **Drop a sprite sheet** (PNG or WebP, or several files).
+1. **Drop a sprite sheet** (PNG, WebP, GIF or JPEG), or pick it with the button.
 2. **Automatic frame detection**, like `scripts/destroy-atlas.mjs` and the prototype's converter:
-   - the background is keyed from the border of the sheet: only background connected to the border becomes transparent, so a black shirt survives;
-   - the grid (a fixed cell size) is detected when there is one, otherwise each figure is found on its own;
-   - merged poses are split at empty columns;
-   - the pivot is placed on the feet.
-3. **Assign frames to animations** by dragging them onto the list of [art-spec.md](../rom/art-spec.md#frame-list) (`idle`, `walk`, `run`, `jump`, `climb`…), with the frame rate and loop flag, and the special points (`muzzle`, `hand`).
-4. **Size**: the character's height in pixels, with the art-spec sizes as presets (44 px heroes, 32 px child…). Drawn 1:1 art is the best; shrinking a big sheet works but shows a quality warning.
-5. **Palette zones**:
-   - the character is split into zones of 16 px rows (head, torso, legs, weapon), with at most 15 colors per zone;
-   - colors are snapped to the board's colors, perceptually, with the error shown;
-   - the shirt colors are marked for palette swaps (players 2 to 4).
-6. **Preview at 1x and 2x**, on the level's background, with the animation playing.
+   - the background is keyed from the border of the sheet with a tolerance (18 by default, per channel): only background connected to the border becomes transparent, so a black shirt inside the outline survives;
+   - a magenta `#FF00FF` background (the art spec's) is keyed everywhere, enclosed gaps included;
+   - separator lines and underlines (long strokes at most 7 px thick) are removed, so figures standing on a line are not glued together;
+   - each figure is found on its own (near shapes such as a muzzle flash join it; label text and small effects are left out), or the sheet is cut by a **fixed grid** (48 × 48 by default) where empty cells are skipped;
+   - boxes several figures wide are split where poses only touch (a nearly empty column);
+   - frames are numbered in reading order, and the pivot is placed on the middle of the feet, on the box's last row.
+3. **Edit the boxes**: click to select (Shift adds), drag to move, drag the corner to resize, arrows nudge by 1 px (Shift: 8), Delete removes, **Add a box** draws one by hand, and the selected frame's box and pivot can be typed in. Zoom 1×, 2× and 4×.
+4. **Assign frames to animations**: the list of [art-spec.md](../rom/art-spec.md#frame-list) for the character's role (`idle`, `walk`, `run`, `jump`, `climb`… for heroes; enemies, civilians and bosses have their own), each with how many frames it has against the art spec's count. Select boxes, pick an animation and **Add the selected frames**; set its frame rate and loop; other animations can be added by name. Boxes show the animation they belong to. (The special points, `muzzle` and `hand`, come later.)
+5. **Size**: the character's height on screen, with the art-spec sizes as presets (44 px heroes, 48 px android, 42 px adults, 32 px child, 20 px baby…). One scale fits the median `idle` frame (or all frames) to that height, by the dominant color of each footprint (never blended). Drawn 1:1 art is the best; a shrunk sheet says from what height, an enlarged one warns about blocky pixels.
+6. **Palette zones**:
+   - the character is split into zones of 16 px rows counted from the feet (the board's sprite tiles, as the ROM cuts them): head, torso and legs for a 44 px hero, plus a row above the head when a pose is taller; each zone with at most 15 colors;
+   - colors are snapped to the board's 4096 (each channel a multiple of 17) perceptually, in OKLab, with the mean error shown as delta E (below 1 is invisible);
+   - a zone with more than 15 colors turns red and is reduced to the 15 nearest (k-means, the outline color kept); the two most alike colors are named as a merge hint, and painted (not pixel) art gets one note instead;
+   - a click on a color marks it as the shirt, for the palette swaps of players 2 to 4.
+7. **Preview at 1x and 4x** with the animation playing, exactly as the board shows it (zone palettes applied), and the height as a share of the screen.
+8. **Save character**: the frames are packed 1:1 into an atlas picture (transparent background, exact board colors), which becomes the character's `sheet`; its zones become sprite palettes. The dropped sheet and the boxes are kept too, so the character opens again for editing (see [file-format.md](file-format.md)).
 
 ### Backgrounds and layers
 
@@ -169,24 +175,37 @@ The names are references: the AI pack, the warnings and the play mode's debug ov
 
 ### Game settings: the game's "IDE"
 
-- **Players**: 1 to 4, and which characters they can choose.
-- **Buttons**: how many the board's layout has (3 on `slammast`) and their actions:
-  - jump;
-  - fire, with the automatic knife when an enemy is adjacent;
-  - special: the weapon that was picked up;
-  - run: a double tap of the stick;
-  - with 2 buttons, special = both together.
-- **Controller mapping**: the detected controller drawn with its own button names, reusing `src/controllers`, as in the Destroy briefing. Pressing a button lights its action.
-- **Menus** built from blocks on the `text` layer and sprites:
-  - title screen;
-  - attract mode (demo play and story panels);
-  - player select;
-  - HUD (score, lives, rescued, weapon);
-  - continue;
-  - game over;
-  - high scores.
-- **DIP switches**: difficulty, lives, free play, demo sound.
-- **Levels**: their order and their music and sound references (sound is Phase 2 and later).
+Two tabs of the IDE (`src/willy-maker/game/`, texts in `i18n/game.*.ts` and `i18n/menus.*.ts`). Every change is an undoable command on the editor store (`store.editSettings`; the letters typed in one field are one undo step) and is autosaved.
+
+**Game tab**
+
+- **Players**: 1 up to the board layout's count (4 on both CPS-1 layouts).
+- **Actions**: the board inputs are fixed by the layout; each action's label is editable (empty = its default name):
+
+  | Input | Action |
+  |---|---|
+  | B1 | Jump (hold: nothing for now); down + jump drops through a one-way platform |
+  | B2 | Fire: the machine gun, the knife when an enemy is right in front (automatic) |
+  | B3 (`slammast`) / B1+B2 (`captcomm`) | Special: the picked-up weapon, with ammo |
+  | → → | Run: a double tap within the run window (250 ms by default, 100-400 ms) |
+  | ↑ ↓ | Ladders and aim |
+  | START / COIN | Join or pause / a credit |
+
+- **Each player's character**: a project hero or the built-in Willy, plus a shirt (own colors or one of three recruit shirts). New games: Willy for player 1, recruits for players 2-4.
+- **Your controller**: the connected controller (Gamepad API) drawn with its own button names (`src/controllers`) and lit while pressed; press-to-assign remapping of the keyboard and of each controller model for Up, Down, Left, Right, B1-B3, Start and Coin; the on-screen pad in play mode (automatic on touch screens, always or never); and "go-link defaults". The mapping is the site's button map in this browser (`go-link.input`), so play mode and go-link rooms use it; the touch choice is `go-link.wm.touchpad`.
+- **DIP switches**: difficulty (Easy, Normal, Hard, Lag), lives (1-5), free play and demo sound, saved with the game. Play mode uses the lives; the ROM reads the rest.
+- **Checks**: the live rules of the game settings and menus (below), each with Go.
+
+**Menus tab**
+
+- Seven screens: **Title**, **Demo** (attract, with its demo level), **Player select**, **HUD**, **Continue**, **Game over** and **High scores**.
+- Each one has a live 384 × 224 preview drawn with go-link's 8 × 8 board font (`@go-link/cps1` `font.ts`, the same glyphs the ROM prototype uses), its text fields (lowercase is shown as uppercase, as the board draws it), a background (a level's first screen darkened, or a solid board color), a music slot (a reference only until sound arrives in Phase 2) and the credits line (`(C) 2026 go-link` by default, shown per screen).
+- **Fit checks**, live under each field and on the preview: the text must fit the 48 × 28 character text layer (a HUD join prompt fits its player's slot), should stay inside the safe area (2 characters in from each edge), and may use only the font's glyphs.
+- Play mode uses the HUD texts (join prompt, ammo, level clear) and draws the Game over screen in the board font.
+
+**Live rules** (`editor/validate/game.ts`, shown in the Game tab, the Build warnings and the Export review): players within the board's count (error), a character for every active player, a title on the title screen, the continue and game over screens not empty, lines that do not fit the screen or use letters the font lacks (warnings), lines outside the safe area (info).
+
+**Levels**: their order and their music and sound references (sound is Phase 2 and later).
 
 ### Play mode: building and playing at once
 
@@ -210,7 +229,7 @@ Before any export, a checklist runs and links each problem to where it is:
 - unreachable areas;
 - objects without required properties.
 
-Errors block the AI pack; warnings do not.
+Errors block the AI pack; warnings do not. Each entry has **Go** (to the level, object or tab) and, when the change is safe, **Fix** (undoable). The rules and what is built are in [validation.md](validation.md#level-1-live-rules); the pack's layout is in [file-format.md](file-format.md#the-ai-pack).
 
 ## UI overview
 

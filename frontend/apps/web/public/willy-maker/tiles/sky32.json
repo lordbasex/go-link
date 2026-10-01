@@ -1,0 +1,34 @@
+{
+  "tile": 32,
+  "columns": 8,
+  "count": 12,
+  "image": "sky32.png",
+  "palette": [
+    "#111122",
+    "#111133",
+    "#221144",
+    "#332255",
+    "#442255",
+    "#663355",
+    "#111111",
+    "#222233",
+    "#333344",
+    "#EEBB55",
+    "#55BBCC",
+    "#CCCCDD"
+  ],
+  "names": {
+    "sky_0": 1,
+    "sky_1": 2,
+    "sky_2": 3,
+    "sky_3": 4,
+    "sky_4": 5,
+    "sky_5": 6,
+    "skyline_a": 7,
+    "skyline_b": 8,
+    "skyline_c": 9,
+    "skyline_top": 10,
+    "skyline_antenna": 11,
+    "skyline_dark": 12
+  }
+}

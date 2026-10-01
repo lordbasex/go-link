@@ -10,38 +10,43 @@
 
 export const REGION_SIZE = 0x400000;
 
+/** Pens (0-15) by row: px[y][x]. */
+export type Pens = readonly (readonly number[])[];
+
 export class GfxRegion {
+  readonly data: Uint8Array;
+
   constructor(size = REGION_SIZE) {
-    this.data = Buffer.alloc(size, 0xff);
+    this.data = new Uint8Array(size).fill(0xff);
   }
 
   /** Writes 8 pixels (pens 0-15) as the 4 planar bytes at offset. */
-  put8(offset, pens) {
+  put8(offset: number, pens: readonly number[]): void {
     const b = [0, 0, 0, 0];
     for (let j = 0; j < 8; j++) {
-      const p = pens[j] & 15;
-      for (let k = 0; k < 4; k++) if (p & (1 << k)) b[k] |= 0x80 >> j;
+      const p = pens[j]! & 15;
+      for (let k = 0; k < 4; k++) if (p & (1 << k)) b[k]! |= 0x80 >> j;
     }
-    for (let k = 0; k < 4; k++) this.data[offset + k] = b[k];
+    for (let k = 0; k < 4; k++) this.data[offset + k] = b[k]!;
   }
 
   /** px[y][x] pens, 8x8, at tile code c. */
-  tile8(c, px) {
-    for (let y = 0; y < 8; y++) this.put8(c * 64 + y * 8 + 4, px[y]);
+  tile8(c: number, px: Pens): void {
+    for (let y = 0; y < 8; y++) this.put8(c * 64 + y * 8 + 4, px[y]!);
   }
 
   /** px[y][x] pens, 16x16, at tile code c. */
-  tile16(c, px) {
+  tile16(c: number, px: Pens): void {
     for (let y = 0; y < 16; y++) {
-      this.put8(c * 128 + y * 8, px[y].slice(0, 8));
-      this.put8(c * 128 + y * 8 + 4, px[y].slice(8, 16));
+      this.put8(c * 128 + y * 8, px[y]!.slice(0, 8));
+      this.put8(c * 128 + y * 8 + 4, px[y]!.slice(8, 16));
     }
   }
 
   /** px[y][x] pens, 32x32, at tile code c. */
-  tile32(c, px) {
+  tile32(c: number, px: Pens): void {
     for (let y = 0; y < 32; y++)
-      for (let q = 0; q < 4; q++) this.put8(c * 512 + y * 16 + q * 4, px[y].slice(q * 8, q * 8 + 8));
+      for (let q = 0; q < 4; q++) this.put8(c * 512 + y * 16 + q * 4, px[y]!.slice(q * 8, q * 8 + 8));
   }
 
   /**
@@ -50,13 +55,13 @@ export class GfxRegion {
    * bytes 0-1 come from the first file, 2-3 the second, 4-5 the third, 6-7
    * the fourth; the second 2 MB bank uses the next four files.
    */
-  split(banks) {
-    const out = {};
+  split(banks: readonly (readonly string[])[]): Record<string, Uint8Array> {
+    const out: Record<string, Uint8Array> = {};
     banks.forEach((files, bank) => {
       const base = bank * 0x200000;
       files.forEach((name, i) => {
-        const f = Buffer.alloc(0x80000);
-        for (let n = 0; n < f.length; n++) f[n] = this.data[base + (n >> 1) * 8 + i * 2 + (n & 1)];
+        const f = new Uint8Array(0x80000);
+        for (let n = 0; n < f.length; n++) f[n] = this.data[base + (n >> 1) * 8 + i * 2 + (n & 1)]!;
         out[name] = f;
       });
     });
@@ -65,6 +70,6 @@ export class GfxRegion {
 }
 
 /** A size x size grid of one pen. */
-export function solid(size, pen) {
-  return Array.from({ length: size }, () => new Array(size).fill(pen));
+export function solid(size: number, pen: number): number[][] {
+  return Array.from({ length: size }, () => new Array<number>(size).fill(pen));
 }
