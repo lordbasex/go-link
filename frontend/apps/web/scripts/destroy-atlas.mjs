@@ -2,8 +2,9 @@
 
 // Builds the "Destroy this page" sprite atlases from the character sheets:
 // every animation's right-facing frames are cut out of the sheet's regions,
-// the background is keyed to transparency (only the background connected to
-// the region's edge, so dark clothes stay), labels and separator lines are
+// the background is keyed to transparency (found loosely, then each frame's
+// pixels decided with a tight match plus everything connected to the
+// character, so dark clothes stay solid), labels and separator lines are
 // dropped, and the frames are packed into one picture per character (lossless
 // WebP when cwebp is installed, else PNG) with a JSON
 // manifest (frame boxes, a feet pivot, and animations with their fps).
@@ -101,12 +102,37 @@ const CHARACTERS = {
     regions: regions["02_robot_ai_concept.png"].regions,
     anims: {
       idle: { region: "idle", leftAt: 390, fps: 4, loop: true },
-      walk: { region: "walk_run", leftAt: 1100, fps: 10, loop: true },
+      // Its walking poses touch each other: boxes measured on the sheet,
+      // cut at the empty columns (x0, y0, x1, y1).
+      walk: {
+        region: "walk_run",
+        fps: 10,
+        loop: true,
+        boxes: [
+          [665, 60, 736, 182],
+          [738, 60, 811, 182],
+          [813, 60, 893, 182],
+          [901, 60, 977, 182],
+          [985, 60, 1072, 182],
+        ],
+      },
       turn: { region: "turn", fps: 12, loop: false },
       jump: { region: "jump", leftAt: 1040, fps: 10, loop: false },
       shoot: { region: "arm_cannon", leftAt: 745, fps: 12, loop: false },
-      // Its first punch frame still carries the "RIGHT" label.
-      melee: { region: "punch", leftAt: 745, fps: 14, loop: false, pick: [1, 2, 3, 4] },
+      // Its punches touch each other and the separator line: boxes measured
+      // on the sheet, without the first frame (it carries the "RIGHT" label).
+      melee: {
+        region: "punch",
+        fps: 14,
+        loop: false,
+        boxes: [
+          [124, 550, 222, 652],
+          [224, 550, 342, 652],
+          [343, 550, 483, 652],
+          [484, 550, 576, 652],
+          [593, 550, 686, 652],
+        ],
+      },
       jump_attack: { region: "jump_attack", leftAt: 745, fps: 12, loop: false },
       hit: { region: "hit", leftAt: 745, fps: 10, loop: false },
       defeated: { region: "defeated", leftAt: 745, fps: 8, loop: false },
@@ -256,6 +282,8 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
   let best = -1;
   for (const [k, n] of hist) if (n > best) (best = n), (bgKey = k);
   const bg = [((bgKey >> 12) & 63) * 4 + 2, ((bgKey >> 6) & 63) * 4 + 2, (bgKey & 63) * 4 + 2];
+  // Background-like, loosely: enough to find and separate the frames (the
+  // final pixels of each frame are decided by `framePixels`, more tightly).
   const near = (i) => Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) < tolerance && Math.max(px[i], px[i + 1], px[i + 2]) < 60;
   // Flood fill the background from the region's edge (so dark clothes stay).
   const isBg = new Uint8Array(w * h);
@@ -286,6 +314,8 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
   // Separator and underline strokes: long thin runs of ink with background
   // just above and below them (or left and right, for vertical ones).
   const inkAt = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !isBg[y * w + x];
+  // The strokes found here are left out of the frames for good (see framePixels).
+  const stroke = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) {
     let x = 0;
     while (x < w) {
@@ -298,7 +328,7 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
       if (e - x > 70) {
         let thin = 0;
         for (let k = x; k < e; k++) if (!inkAt(k, y - 4) && !inkAt(k, y + 4)) thin++;
-        if (thin > (e - x) * 0.7) for (let k = x; k < e; k++) for (let t = -3; t <= 3; t++) if (inkAt(k, y + t) && !inkAt(k, y + t - 4 * Math.sign(t || 1))) isBg[(y + t) * w + k] = 1;
+        if (thin > (e - x) * 0.7) for (let k = x; k < e; k++) for (let t = -3; t <= 3; t++) if (inkAt(k, y + t) && !inkAt(k, y + t - 4 * Math.sign(t || 1))) isBg[(y + t) * w + k] = stroke[(y + t) * w + k] = 1;
       }
       x = e;
     }
@@ -315,7 +345,7 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
       if (e - y > 90) {
         let thin = 0;
         for (let k = y; k < e; k++) if (!inkAt(x - 4, k) && !inkAt(x + 4, k)) thin++;
-        if (thin > (e - y) * 0.8) for (let k = y; k < e; k++) for (let t = -2; t <= 2; t++) if (x + t >= 0 && x + t < w) isBg[k * w + x + t] = 1;
+        if (thin > (e - y) * 0.8) for (let k = y; k < e; k++) for (let t = -2; t <= 2; t++) if (x + t >= 0 && x + t < w) isBg[k * w + x + t] = stroke[k * w + x + t] = 1;
       }
       y = e;
     }
@@ -370,6 +400,7 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
     const text = c.y < 70 && c.h < 26 && c.w < 160;
     const speck = c.n < 12;
     if (!line && !text && !speck) keep[k] = 1;
+    if (line) stroke[k] = 1;
     // The diamond before "LEFT": a small, squarish, saturated red mark
     // with the label's light letters just to its right (red gloves have none).
     if (text && c.h >= 8 && c.h <= 22 && c.w >= 8 && c.w <= 22) {
@@ -459,6 +490,16 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
   // Cut each frame with only its own pixels; the pivot is the feet's center.
   return right.map((c) => {
     const ids = new Set(c.ids);
+    const own = new Uint8Array(c.w * c.h);
+    const drop = new Uint8Array(c.w * c.h);
+    for (let y = 0; y < c.h; y++)
+      for (let x = 0; x < c.w; x++) {
+        const k = (c.y + y) * w + (c.x + x);
+        const l = second.lab[k];
+        if (ids.has(l)) own[y * c.w + x] = 1;
+        else if (l >= 0 || stroke[k]) drop[y * c.w + x] = 1;
+      }
+    const mine = window.framePixels(px, W, rx + c.x, ry + c.y, c.w, c.h, bg, own, drop);
     const cv = document.createElement("canvas");
     cv.width = c.w;
     cv.height = c.h;
@@ -468,8 +509,7 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
     let footN = 0;
     for (let y = 0; y < c.h; y++)
       for (let x = 0; x < c.w; x++) {
-        const k = (c.y + y) * w + (c.x + x);
-        if (!ids.has(second.lab[k])) continue;
+        if (!mine[y * c.w + x]) continue;
         const i = at(rx + c.x + x, ry + c.y + y);
         const o = (y * c.w + x) * 4;
         img.data[o] = px[i];
@@ -484,6 +524,88 @@ function cutRegion(imgData, W, H, rx, ry, rw, rh, splitLeft, leftAt, tolerance =
     cx.putImageData(img, 0, 0);
     return { w: c.w, h: c.h, px: footN ? Math.round(footSum / footN) : Math.round(c.w / 2), py: c.h, png: cv.toDataURL("image/png") };
   });
+}
+
+/**
+ * Runs in the page: the pixels of one frame, decided tightly. The loose
+ * background keying that finds the frames also eats the sheets' black
+ * clothes (Willy's T-shirt is only a little darker than the background) when
+ * the edge fill gets in through a gap in the outline. Here the background is
+ * flood filled again from the box's edge with a tight tolerance (only the
+ * background's own noise), and the frame keeps every connected piece of what
+ * is left that touches the frame's own loosely found pixels (`own`), except
+ * pixels `drop` marks (separator strokes, labels, other frames). Enclosed
+ * background of 16 pixels or more (between the legs, inside a halo) and
+ * specks of under 12 pixels go too.
+ */
+function framePixels(px, W, bx0, by0, w, h, bg, own, drop) {
+  const at = (x, y) => (y * W + x) * 4;
+  const dist = (i) => Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]);
+  const TIGHT = 18;
+  const bgT = new Uint8Array(w * h);
+  const st = [];
+  for (let x = 0; x < w; x++) st.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y++) st.push(y * w, y * w + w - 1);
+  while (st.length) {
+    const k = st.pop();
+    if (bgT[k]) continue;
+    const kx = k % w;
+    const ky = (k / w) | 0;
+    if (dist(at(bx0 + kx, by0 + ky)) >= TIGHT) continue;
+    bgT[k] = 1;
+    if (kx > 0) st.push(k - 1);
+    if (kx < w - 1) st.push(k + 1);
+    if (ky > 0) st.push(k - w);
+    if (ky < h - 1) st.push(k + w);
+  }
+  // Enclosed background: connected regions of near-exact background color.
+  const seen = new Uint8Array(w * h);
+  for (let s0 = 0; s0 < w * h; s0++) {
+    if (seen[s0] || bgT[s0] || dist(at(bx0 + (s0 % w), by0 + ((s0 / w) | 0))) >= 14) continue;
+    const q = [s0];
+    const group = [];
+    seen[s0] = 1;
+    while (q.length) {
+      const k = q.pop();
+      group.push(k);
+      const kx = k % w;
+      const ky = (k / w) | 0;
+      for (const n of [kx > 0 ? k - 1 : -1, kx < w - 1 ? k + 1 : -1, ky > 0 ? k - w : -1, ky < h - 1 ? k + w : -1])
+        if (n >= 0 && !seen[n] && !bgT[n] && dist(at(bx0 + (n % w), by0 + ((n / w) | 0))) < 14) {
+          seen[n] = 1;
+          q.push(n);
+        }
+    }
+    if (group.length >= 16) for (const k of group) bgT[k] = 1;
+  }
+  // Pieces of ink connected to the frame's own pixels.
+  const out = new Uint8Array(w * h);
+  const lab = new Uint8Array(w * h);
+  for (let s0 = 0; s0 < w * h; s0++) {
+    if (lab[s0] || bgT[s0] || drop[s0]) continue;
+    const q = [s0];
+    const group = [];
+    lab[s0] = 1;
+    let mine = false;
+    while (q.length) {
+      const k = q.pop();
+      group.push(k);
+      if (own[k]) mine = true;
+      const kx = k % w;
+      const ky = (k / w) | 0;
+      for (let ny = ky - 1; ny <= ky + 1; ny++)
+        for (let nx = kx - 1; nx <= kx + 1; nx++) {
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const n = ny * w + nx;
+          if (!lab[n] && !bgT[n] && !drop[n]) {
+            lab[n] = 1;
+            q.push(n);
+          }
+        }
+    }
+    if (mine && group.length >= 12) for (const k of group) out[k] = 1;
+  }
+  return out;
 }
 
 /**
@@ -511,6 +633,7 @@ function cutBoxes(imgData, W, H, boxes, tolerance = 42) {
     let best = -1;
     for (const [k, n] of hist) if (n > best) (best = n), (bgKey = k);
     const bg = [((bgKey >> 12) & 63) * 4 + 2, ((bgKey >> 6) & 63) * 4 + 2, (bgKey & 63) * 4 + 2];
+    // Background-like, loosely (see cutRegion).
     const near = (i) => Math.abs(px[i] - bg[0]) + Math.abs(px[i + 1] - bg[1]) + Math.abs(px[i + 2] - bg[2]) < tolerance && Math.max(px[i], px[i + 1], px[i + 2]) < 60;
     const isBg = new Uint8Array(w * h);
     const stack = [];
@@ -537,6 +660,7 @@ function cutBoxes(imgData, W, H, boxes, tolerance = 42) {
         }
     // Specks, and slivers of a neighbor frame on the box's side edges, go.
     const seen = new Uint8Array(w * h);
+    const sliver = new Uint8Array(w * h);
     for (let s0 = 0; s0 < w * h; s0++) {
       if (seen[s0] || isBg[s0]) continue;
       const st = [s0];
@@ -559,7 +683,7 @@ function cutBoxes(imgData, W, H, boxes, tolerance = 42) {
             }
           }
       }
-      if (group.length < 12 || (side && group.length < 60)) for (const q of group) isBg[q] = 1;
+      if (group.length < 12 || (side && group.length < 60)) for (const q of group) isBg[q] = sliver[q] = 1;
     }
     let x0 = w, y0 = h, x1 = -1, y1 = -1;
     for (let y = 0; y < h; y++)
@@ -572,6 +696,15 @@ function cutBoxes(imgData, W, H, boxes, tolerance = 42) {
         }
     const cw = x1 - x0 + 1;
     const ch = y1 - y0 + 1;
+    const own = new Uint8Array(cw * ch);
+    const drop = new Uint8Array(cw * ch);
+    for (let y = 0; y < ch; y++)
+      for (let x = 0; x < cw; x++) {
+        const k = (y0 + y) * w + x0 + x;
+        own[y * cw + x] = isBg[k] ? 0 : 1;
+        drop[y * cw + x] = sliver[k];
+      }
+    const mine = window.framePixels(px, W, bx0 + x0, by0 + y0, cw, ch, bg, own, drop);
     const cv = document.createElement("canvas");
     cv.width = cw;
     cv.height = ch;
@@ -581,7 +714,7 @@ function cutBoxes(imgData, W, H, boxes, tolerance = 42) {
     let footN = 0;
     for (let y = 0; y < ch; y++)
       for (let x = 0; x < cw; x++) {
-        if (isBg[(y0 + y) * w + x0 + x]) continue;
+        if (!mine[y * cw + x]) continue;
         const i = at(bx0 + x0 + x, by0 + y0 + y);
         const o = (y * cw + x) * 4;
         img.data[o] = px[i];
@@ -875,7 +1008,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 // The cutter runs in the page, where it has a real canvas.
 await page.addScriptTag({ content: cutRegion.toString() });
-for (const fn of [cutBoxes, shotMuzzle, findMuzzle, aimPose, frameMuzzle]) await page.addScriptTag({ content: fn.toString() });
+for (const fn of [framePixels, cutBoxes, shotMuzzle, findMuzzle, aimPose, frameMuzzle]) await page.addScriptTag({ content: fn.toString() });
 // DEBUG_ATLAS=1 also writes each sheet with the found frames boxed (green: kept, red: left-facing).
 const debug = !!process.env.DEBUG_ATLAS;
 fs.mkdirSync(out, { recursive: true });
