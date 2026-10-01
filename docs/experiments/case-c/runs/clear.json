@@ -1,0 +1,353 @@
+{
+ "name": "case-c-clear",
+ "description": "Case C (Willy Maker's Create ROM, Game Spec v1): Coin, 1P Start, then the route player's recorded inputs: up the crates, a jump to the one-way ledge (civilian 1), down + jump to the dock, the lower trooper shot, up the 160 px ladder, the upper trooper shot, civilian 2, off the dock's end, the exit's trooper shot, into the exit (SECTION CLEAR).",
+ "frames": 2003,
+ "checkpoints": [
+  150,
+  156,
+  330,
+  444,
+  718,
+  864,
+  1088,
+  1348,
+  1682,
+  1883,
+  2003
+ ],
+ "expect": [
+  {
+   "frame": 150,
+   "path": "mode",
+   "equals": "title"
+  },
+  {
+   "frame": 156,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 156,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 156,
+   "path": "flags.exit",
+   "equals": true
+  },
+  {
+   "frame": 330,
+   "path": "players.0.y",
+   "equals": 352
+  },
+  {
+   "frame": 444,
+   "path": "civilians.0.rescued",
+   "equals": true
+  },
+  {
+   "frame": 444,
+   "path": "players.0.score",
+   "equals": 500
+  },
+  {
+   "frame": 718,
+   "path": "enemies.0.alive",
+   "equals": false
+  },
+  {
+   "frame": 718,
+   "path": "players.0.score",
+   "equals": 600
+  },
+  {
+   "frame": 864,
+   "path": "players.0.y",
+   "equals": 256
+  },
+  {
+   "frame": 1088,
+   "path": "enemies.1.alive",
+   "equals": false
+  },
+  {
+   "frame": 1348,
+   "path": "civilians.1.rescued",
+   "equals": true
+  },
+  {
+   "frame": 1682,
+   "path": "enemies.2.alive",
+   "equals": false
+  },
+  {
+   "frame": 1883,
+   "path": "sectionClear",
+   "equals": true
+  },
+  {
+   "frame": 1883,
+   "path": "players.0.x",
+   "min": 1440,
+   "max": 1504
+  },
+  {
+   "frame": 2003,
+   "path": "mode",
+   "equals": "clear"
+  },
+  {
+   "frame": 2003,
+   "path": "players.0.score",
+   "equals": 1300
+  },
+  {
+   "frame": 2003,
+   "path": "players.0.energy",
+   "equals": 3
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 156,
+   "to": 443,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 366,
+   "to": 368,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 444,
+   "to": 449,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 445,
+   "to": 446,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 456,
+   "to": 461,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 457,
+   "to": 458,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 468,
+   "to": 689,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 690,
+   "to": 694,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 696,
+   "to": 700,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 702,
+   "to": 706,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 708,
+   "to": 712,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 714,
+   "to": 718,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 720,
+   "to": 755,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 756,
+   "to": 863,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 864,
+   "to": 1061,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1062,
+   "to": 1066,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1068,
+   "to": 1072,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1074,
+   "to": 1078,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1080,
+   "to": 1084,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1086,
+   "to": 1090,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1092,
+   "to": 1649,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1650,
+   "to": 1654,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1656,
+   "to": 1660,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1662,
+   "to": 1666,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1668,
+   "to": 1672,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1674,
+   "to": 1678,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1680,
+   "to": 1684,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1686,
+   "to": 1882,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}
