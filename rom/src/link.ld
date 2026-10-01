@@ -20,6 +20,14 @@ SECTIONS
     . = ALIGN(2);
   } > rom
 
+  /* the lab state (lab_state.h) first, at 0xff0000: a fixed address
+     even for a reader without the symbol map */
+  .lab_state (NOLOAD) :
+  {
+    KEEP(*(.lab_state))
+    . = ALIGN(2);
+  } > ram
+
   .data :
   {
     _data_start = .;

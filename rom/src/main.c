@@ -14,6 +14,7 @@
  */
 #include "hw.h"
 #include "gfx.h"
+#include "lab_state.h"
 
 volatile u32 frame_count;
 
@@ -957,6 +958,94 @@ static void draw_world(void)
 	flush_sprites();
 }
 
+/* ------------------------------------------------------------ lab state */
+
+/* The state the experiment's harness reads (lab_state.h), filled every frame. */
+struct lab_state lab_state __attribute__((section(".lab_state")));
+
+static int lab_mode;
+
+static void lab_update(void)
+{
+	struct lab_state *s = &lab_state;
+	int i;
+	s->magic = LAB_MAGIC;
+	s->version = LAB_VERSION;
+	s->size = sizeof(struct lab_state);
+	s->frame = frame_count;
+	s->mode = (u8)lab_mode;
+	s->credits = (u8)credits;
+	s->section_clear = lab_mode == LAB_MODE_CLEAR;
+	/* this prototype has no exit and no damage: the section clears when
+	   every civilian is rescued */
+	s->flags = LAB_FLAG_RESCUE_ALL;
+	s->cam_x = (s16)cam_x;
+	s->cam_y = (s16)cam_y;
+	s->level_w = LEVEL_W;
+	s->level_h = LEVEL_H;
+	s->exit_x0 = s->exit_x1 = s->exit_y = -1;
+	s->n_enemies = ROBOTS < LAB_ENEMIES ? ROBOTS : LAB_ENEMIES;
+	s->n_civilians = CIVILIANS < LAB_CIVILIANS ? CIVILIANS : LAB_CIVILIANS;
+	s->col_map = (u32)col_map;
+	s->col_cols = LEVEL_COLS;
+	s->col_rows = LEVEL_ROWS;
+	for (i = 0; i < LAB_PLAYERS; i++) {
+		struct lab_player *o = &s->player[i];
+		struct player *p = i < PLAYERS ? &pl[i] : 0;
+		if (!p || !p->active || (lab_mode != LAB_MODE_PLAYING && lab_mode != LAB_MODE_CLEAR)) {
+			memset(o, 0, sizeof *o);
+			if (p)
+				o->score = p->score;
+			continue;
+		}
+		o->active = 1;
+		if (p->climbing)
+			o->state = LAB_PL_CLIMB;
+		else if (!p->on_ground)
+			o->state = LAB_PL_AIR;
+		else if (p->knife_t || p->bazooka_t || p->firing)
+			o->state = LAB_PL_ATTACK;
+		else if (p->pad & (BTN_LEFT | BTN_RIGHT))
+			o->state = p->running ? LAB_PL_RUN : LAB_PL_WALK;
+		else
+			o->state = LAB_PL_IDLE;
+		o->facing = p->flip ? -1 : 1;
+		o->energy = 3;
+		o->x = (s16)p->x;
+		o->y = (s16)(p->y >> 4);
+		o->score = p->score;
+		o->hurt = 0;
+		o->pflags = (u8)((p->on_ground ? LAB_PF_GROUND : 0) | (p->climbing ? LAB_PF_CLIMB : 0) |
+				 (p->running ? LAB_PF_RUN : 0) | (p->firing ? LAB_PF_FIRE : 0));
+		o->vy = (s16)p->vy;
+	}
+	for (i = 0; i < LAB_ENEMIES; i++) {
+		struct lab_enemy *o = &s->enemy[i];
+		if (i >= ROBOTS) {
+			memset(o, 0, sizeof *o);
+			continue;
+		}
+		o->alive = (u8)robot_alive(i);
+		o->hp = (u8)(robot[i].hp > 0 ? robot[i].hp : 0);
+		o->x = (s16)robot[i].x;
+		o->y = (s16)robot[i].fy;
+		o->facing = robot[i].flip ? -1 : 1;
+		o->estate = (u8)robot[i].state; /* ROBOT_* matches LAB_EN_* */
+	}
+	for (i = 0; i < LAB_CIVILIANS; i++) {
+		struct lab_civ *o = &s->civ[i];
+		if (i >= CIVILIANS) {
+			memset(o, 0, sizeof *o);
+			continue;
+		}
+		o->rescued = (u8)civ[i].rescued;
+		o->present = 1;
+		o->x = (s16)civ[i].x;
+		o->y = (s16)civ[i].fy;
+		o->reserved = 0;
+	}
+}
+
 /* ------------------------------------------------------------- screens */
 
 static void hud(void)
@@ -1016,6 +1105,8 @@ static void attract(void)
 			print(17, 14, (t / 20) & 1 ? "INSERT COIN" : "           ", TXT_ORANGE);
 		update_robots();
 		draw_world();
+		lab_mode = LAB_MODE_TITLE;
+		lab_update();
 		if (credits && SYS_PRESSED(SYS_START1)) {
 			credits--;
 			return;
@@ -1052,6 +1143,8 @@ static void play(void)
 		set_scroll();
 		draw_world();
 		hud();
+		lab_mode = rescued == CIVILIANS ? LAB_MODE_CLEAR : LAB_MODE_PLAYING;
+		lab_update();
 		if (rescued == CIVILIANS) {
 			if (!done_t)
 				done_t = frame_count;

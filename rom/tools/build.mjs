@@ -83,7 +83,7 @@ function pad(buf, size, fill = 0xff) {
 }
 
 // only this build's own outputs (build/room and build/quality belong to other tools)
-for (const d of ["obj", "gen", SET, `${SET}.zip`, "program.map"]) fs.rmSync(path.join(OUT, d), { recursive: true, force: true });
+for (const d of ["obj", "gen", SET, `${SET}.zip`, "program.map", "symbols.json", `${SET}.symbols.json`]) fs.rmSync(path.join(OUT, d), { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, "obj"), { recursive: true });
 const GEN = path.join(OUT, "gen"); // generated sources: gfx.h, art_data.c, previews
 fs.mkdirSync(GEN, { recursive: true });
@@ -127,6 +127,20 @@ const risky = disasm.split("\n").filter((l) => {
   return m && m[1] === m[2];
 });
 if (risky.length) throw new Error(`68000 code with a post-increment source and an indexed destination on the same register:\n${risky.join("\n")}`);
+// The symbol map (experiment 1's harness reads the game's state through
+// it, docs/experiments/harness.md): every symbol with its address, size
+// and nm type, as <set>.symbols.json and symbols.json next to the zip.
+const symbols = {};
+for (const line of execFileSync("m68k-elf-nm", ["-S", "-n", elf], { encoding: "utf8" }).split("\n")) {
+  const f = line.trim().split(/\s+/);
+  if (f.length === 4) symbols[f[3]] = { address: parseInt(f[0], 16), size: parseInt(f[1], 16), type: f[2] };
+  else if (f.length === 3) symbols[f[2]] = { address: parseInt(f[0], 16), size: 0, type: f[1] };
+}
+if (!symbols.lab_state) throw new Error("the program has no lab_state symbol (rom/src/lab_state.h)");
+const symJson = JSON.stringify({ set: SET, lab_state: symbols.lab_state, symbols }, null, 1);
+fs.writeFileSync(path.join(OUT, `${SET}.symbols.json`), symJson + "\n");
+fs.writeFileSync(path.join(OUT, "symbols.json"), symJson + "\n");
+console.log(`lab_state at 0x${symbols.lab_state.address.toString(16)} (${symbols.lab_state.size} bytes)`);
 const bin = path.join(OUT, "obj", "program.bin");
 run("m68k-elf-objcopy", ["-O", "binary", elf, bin]);
 const program = fs.readFileSync(bin);
