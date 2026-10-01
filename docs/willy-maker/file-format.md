@@ -43,6 +43,7 @@ Versioned JSON; the current `format` is 2. Unknown fields are kept on import (a 
     ],
     "credits": "(C) 2026 go-link",     // the credits line the menu screens show
     "dip": { "difficulty": "normal", "lives": 3, "freePlay": false, "demoSound": true },
+    "rules": { "enemyHp": 3, "touchHurts": true },  // optional: only what the Rules card changed (engine.md)
     "menus": {                         // each screen: text fields, background, music slot, credits line, blocks
       "title": {
         "texts": { "title": "DEAD AIR", "prompt": "PUSH START" },   // missing = the field's default
@@ -116,6 +117,7 @@ Versioned JSON; the current `format` is 2. Unknown fields are kept on import (a 
 
 Notes:
 
+- **Rules** (`settings.rules`, optional, no format change): `enemyHp`, `enemyScore`, `rescueScore`, `crateScore`, `touchHurts`, `enemiesChase`, `enemiesShoot`, `exitNeedsEnemies`, `respawnOnHurt`, `hurtFrames`. A missing field is the prototype's value (`engine/rules.ts` `DEFAULT_RULES`); out-of-range numbers are brought into range on read (`rulesWith`). Play mode and Create ROM read the same values ([engine.md](engine.md#rules-the-game-tab)). An enemy object's own `hp` wins over `enemyHp`; an exit object may have `w` and `h` (32 px and the level's height by default).
 - **Menu screens**: the text fields of each screen are `title` (title, subtitle, prompt), `attract` (caption, prompt), `select` (heading, prompt), `hud` (join, ammo, rescued, cleared), `continue` (heading, prompt), `gameOver` (heading, line) and `highScores` (heading, footer). Text is drawn with the board's 8 × 8 font, folded to uppercase, on the 48 × 28 character text layer; music ids are `none`, `title`, `select`, `stage`, `boss`, `continue`, `game-over` and `high-scores` (references only until Phase 2).
 - **Tile layers** store tile indices per cell (`0` = empty), run-length encoded as a string, in row order. **Tag layers** store the tag number per cell: 0 air, 1 solid, 2 oneway, 3 ladder, 4 crate, 5 breakable, 6 hazard, 7 water. Per-cell properties live in `props`, keyed `"col,row"`.
 - **Colors** are `#RRGGBB` with every channel a multiple of 17 (the CPS-1's 12-bit colors). A palette has at most 15 colors; transparency is implicit.

@@ -16,6 +16,8 @@ frontend/apps/web/src/willy-maker/
   play/             play mode (entry play/index.ts), edit while playing
   io/               storage (localStorage + IndexedDB), project .zip, Tiled import, starter pictures
   power/            the power-on test of a ROM .zip (validation level 3): its Worker and client
+  rom/              Create ROM (stage 2, engine.md): pack.ts (the game as wm_data, graphics, the set's
+                    files), createRom.ts (engine loader, tile pictures, zip), specFixture.ts (Game Spec v1)
   sprites/          the Characters screen (entry sprites/index.ts): frame detection,
                     animations, palette zones, preview
   game/             the Game and Menus tabs (entry game/index.ts): actions, players, your controller,
@@ -24,6 +26,7 @@ frontend/apps/web/src/willy-maker/
   ui/               atomic design: atoms.tsx, molecules.tsx, organisms/, WillyMakerApp.tsx, render.ts
 frontend/apps/web/public/willy-maker/
   tiles/            city16.png and sky32.png (+ .json): the starter tilesets
+  engine/           engine.bin and engine.json: the prebuilt ROM engine (rom/tools/engine.mjs)
 frontend/apps/web/scripts/willy-maker-tiles.mjs   builds them from the ROM prototype's art
 ```
 
@@ -48,7 +51,7 @@ Pure TypeScript with no DOM, tested on its own. It holds:
 - enemies, civilians, pickups, camera locks, checkpoints and the camera rule (forward only, a small backtrack margin);
 - a fixed 60 Hz step, so the browser and the ROM step the same way.
 
-The ROM's data-driven engine (Phase 2) implements the same rules on the 68000. The engine's tests double as the specification both must pass. A shared table of test levels and expected positions keeps them in step.
+The ROM's data-driven engine (Phase 2, [engine.md](engine.md), `rom/engine/engine.c`) implements the same rules on the 68000, and both read the game's `GameRules` (`engine/rules.ts`). The engine's tests double as the specification both must pass. A shared table of test levels and expected positions keeps them in step.
 
 ### `editor/`: the project and its changes
 
@@ -107,10 +110,10 @@ The CPS-1 conversion code is one TypeScript package, [`frontend/packages/cps1`](
 |---|---|---|
 | `color.ts` | OKLab, every CPS-1 color with its palette word, the 4096 full-brightness colors (`toBoardColor`), k-means | color snapping, palette zones, the color meters |
 | `sprites.ts` | dominant-color downscale, per-tile palettes, `renderFrame` | the sprite importer (downscale); Phase 2: converting characters |
-| `gfx.ts` | the board's graphics format (`GfxRegion`, ROM file split) | Phase 2: converting to ROM files |
-| `kabuki.ts` | the sound CPU's encryption | Phase 2: Create ROM on `slammast` |
+| `gfx.ts` | the board's graphics format (`GfxRegion`, ROM file split) | Create ROM: the font, the engine's sprites and the level's tiles into the graphics files |
+| `kabuki.ts` | the sound CPU's encryption | Create ROM: the Z80 program for `slammast` |
 | `font.ts` | go-link's 8 × 8 font for the text layer (`rom/tools/font.mjs` re-exports it), glyph checks | the Menus tab's previews and fit checks, play mode's Game over screen |
-| `sets.ts` | the `slammast` set's files and sizes, and the loader in reverse: the program files back into the 68000's space (`assembleProgram`), the graphics files back into one region (`joinGfx`) | the power-on test |
+| `sets.ts` | the `slammast` set's files and sizes, the loader in reverse (`assembleProgram`, `joinGfx`) and forward (`splitProgram`: the 68000's space into the program files) | the power-on test; Create ROM |
 | `screen.ts` | draws the board's screen from graphics RAM, the CPS-A/CPS-B registers and the graphics region (`renderScreen`), the palette formula (`paletteRgb`) | the power-on test's picture |
 
 `level.mjs` (the prototype level) stays in `rom/tools` until the "Prototype street" template needs it, and `png.mjs` is not needed in the browser (the browser decodes images). The move changed no byte of the prototype's set: the 28 files of `slammast.zip` were compared one by one before and after.
