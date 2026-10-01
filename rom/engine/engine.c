@@ -1496,7 +1496,8 @@ static int title(void)
 		on = (t / 20) & 1;
 		if (has_prompt)
 			draw_line(&prompt, 0);
-		if (has_coin && coin.row != (has_prompt ? prompt.row : -1))
+		/* both prompts share a row: clear both (a longer one leaves letters behind) */
+		if (has_coin)
 			draw_line(&coin, 0);
 		if (credits || free_play()) {
 			if (has_prompt)
