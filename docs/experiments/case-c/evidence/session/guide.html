@@ -1,0 +1,777 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case C session guide</title>
+<style>
+  :root { --bg: #f6f4fa; --card: #ffffff; --text: #1d1a24; --dim: #5f5970; --accent: #c4720a; --line: #e2dcec; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121018; --card: #1b1824; --text: #eeeaf5; --dim: #a59fb5; --accent: #f2a33a; --line: #2e2939; } }
+  :root[data-theme="dark"] { --bg: #121018; --card: #1b1824; --text: #eeeaf5; --dim: #a59fb5; --accent: #f2a33a; --line: #2e2939; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  header p { color: var(--dim); max-width: 760px; }
+  ol { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 16px; }
+  .step { display: grid; grid-template-columns: 72px 1fr; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .meta { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .n { background: var(--accent); color: #141018; font-weight: 800; border-radius: 999px; min-width: 40px; text-align: center; padding: 2px 10px; }
+  .t { color: var(--dim); font: 13px ui-monospace, Menlo, monospace; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .why { margin: 0 0 6px; color: var(--dim); }
+  .sel { margin: 0 0 10px; }
+  code { font: 12px ui-monospace, Menlo, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
+  img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+  @media (max-width: 600px) { .step { grid-template-columns: 1fr; } .meta { flex-direction: row; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Case C: Game Spec v1 made in Willy Maker, step by step</h1>
+  <p>Experiment 1, case C. A browser driven by Playwright builds the spec's level from "New game", sets the rules and texts, and uses <b>Create ROM</b>. Before every action a note said what would happen and why, and outlined the control; each picture below is that moment. The times match the chapters of <code>session.mp4</code>. Recorded 2026-10-01T22:19:37.183Z at 1920x1080, 82 steps, no errors.</p>
+</header>
+<ol>
+  <li class="step" id="step-1">
+    <div class="meta"><span class="n">1</span><span class="t" title="the moment the note shows in session.mp4">0:03</span></div>
+    <div class="body">
+      <h2>Open Willy Maker and start a new game</h2>
+      <p class="why">Game Spec v1 is built from &quot;New game&quot;, the way any user starts.</p>
+      <p class="sel"><code>role=button[name=&quot;New game&quot;]</code></p>
+      <a href="shots/01.jpg"><img loading="lazy" src="shots/01.jpg" alt="Step 1: Open Willy Maker and start a new game" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-2">
+    <div class="meta"><span class="n">2</span><span class="t" title="the moment the note shows in session.mp4">0:05</span></div>
+    <div class="body">
+      <h2>Keep the CPS-1 board with the slammast layout (4 players × 3 buttons)</h2>
+      <p class="why">The spec's set is slammast: B1 jump, B2 fire, B3 special.</p>
+      <p class="sel"><code>role=radio[name~=&quot;4 players · 3 buttons&quot;]</code></p>
+      <a href="shots/02.jpg"><img loading="lazy" src="shots/02.jpg" alt="Step 2: Keep the CPS-1 board with the slammast layout (4 players × 3 buttons)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-3">
+    <div class="meta"><span class="n">3</span><span class="t" title="the moment the note shows in session.mp4">0:08</span></div>
+    <div class="body">
+      <h2>Start from the Empty template</h2>
+      <p class="why">The spec's level is small (4 screens × 2) and its own; the Buenos Aires template is the whole mission.</p>
+      <p class="sel"><code>role=radio[name~=&quot;Empty&quot;]</code></p>
+      <a href="shots/03.jpg"><img loading="lazy" src="shots/03.jpg" alt="Step 3: Start from the Empty template" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-4">
+    <div class="meta"><span class="n">4</span><span class="t" title="the moment the note shows in session.mp4">0:10</span></div>
+    <div class="body">
+      <h2>Next: name and players</h2>
+      <p class="why">The wizard's second step.</p>
+      <p class="sel"><code>role=button[name~=&quot;Next: name and players&quot;]</code></p>
+      <a href="shots/04.jpg"><img loading="lazy" src="shots/04.jpg" alt="Step 4: Next: name and players" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-5">
+    <div class="meta"><span class="n">5</span><span class="t" title="the moment the note shows in session.mp4">0:12</span></div>
+    <div class="body">
+      <h2>Type the game's title: Willy Gorklingo</h2>
+      <p class="why">The title screen shows it (WILLY GORKLINGO, the board's font is uppercase).</p>
+      <p class="sel"><code>label=&quot;Game title&quot;</code></p>
+      <a href="shots/05.jpg"><img loading="lazy" src="shots/05.jpg" alt="Step 5: Type the game's title: Willy Gorklingo" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-6">
+    <div class="meta"><span class="n">6</span><span class="t" title="the moment the note shows in session.mp4">0:15</span></div>
+    <div class="body">
+      <h2>Type the author</h2>
+      <p class="why">Recorded with the project.</p>
+      <p class="sel"><code>label=&quot;Author (optional)&quot;</code></p>
+      <a href="shots/06.jpg"><img loading="lazy" src="shots/06.jpg" alt="Step 6: Type the author" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-7">
+    <div class="meta"><span class="n">7</span><span class="t" title="the moment the note shows in session.mp4">0:19</span></div>
+    <div class="body">
+      <h2>Choose 2 players</h2>
+      <p class="why">The spec: P1 Willy and P2 a recruit play at once.</p>
+      <p class="sel"><code>role=radio[name=&quot;2 players&quot;]</code></p>
+      <a href="shots/07.jpg"><img loading="lazy" src="shots/07.jpg" alt="Step 7: Choose 2 players" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-8">
+    <div class="meta"><span class="n">8</span><span class="t" title="the moment the note shows in session.mp4">0:21</span></div>
+    <div class="body">
+      <h2>Next: the first level</h2>
+      <p class="why">Its name and size come next.</p>
+      <p class="sel"><code>role=button[name~=&quot;Next: the first level&quot;]</code></p>
+      <a href="shots/08.jpg"><img loading="lazy" src="shots/08.jpg" alt="Step 8: Next: the first level" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-9">
+    <div class="meta"><span class="n">9</span><span class="t" title="the moment the note shows in session.mp4">0:24</span></div>
+    <div class="body">
+      <h2>Name the level Dead Air</h2>
+      <p class="why">Mission 1, section 1: the Puerto Madero docks.</p>
+      <p class="sel"><code>label=&quot;Level name&quot;</code></p>
+      <a href="shots/09.jpg"><img loading="lazy" src="shots/09.jpg" alt="Step 9: Name the level Dead Air" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-10">
+    <div class="meta"><span class="n">10</span><span class="t" title="the moment the note shows in session.mp4">0:26</span></div>
+    <div class="body">
+      <h2>Length: 4 screens (1536 px)</h2>
+      <p class="why">The spec's level is 1536 px wide.</p>
+      <p class="sel"><code>role=radio[name=&quot;4 screens&quot;]</code></p>
+      <a href="shots/10.jpg"><img loading="lazy" src="shots/10.jpg" alt="Step 10: Length: 4 screens (1536 px)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-11">
+    <div class="meta"><span class="n">11</span><span class="t" title="the moment the note shows in session.mp4">0:29</span></div>
+    <div class="body">
+      <h2>Height: 448 px (2 screens)</h2>
+      <p class="why">The spec's level is 448 px tall, for the upper dock.</p>
+      <p class="sel"><code>role=radio[name~=&quot;448 px&quot;]</code></p>
+      <a href="shots/11.jpg"><img loading="lazy" src="shots/11.jpg" alt="Step 11: Height: 448 px (2 screens)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-12">
+    <div class="meta"><span class="n">12</span><span class="t" title="the moment the note shows in session.mp4">0:31</span></div>
+    <div class="body">
+      <h2>Create the game</h2>
+      <p class="why">Willy Maker makes the level with its dock floor, the two players' starts and an exit.</p>
+      <p class="sel"><code>role=button[name=&quot;Create the game&quot;]</code></p>
+      <a href="shots/12.jpg"><img loading="lazy" src="shots/12.jpg" alt="Step 12: Create the game" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-13">
+    <div class="meta"><span class="n">13</span><span class="t" title="the moment the note shows in session.mp4">0:34</span></div>
+    <div class="body">
+      <h2>Zoom out to see the whole level</h2>
+      <p class="why">The 1536 × 448 level fits the canvas at about 80 %.</p>
+      <p class="sel"><code>role=button[name=&quot;Zoom out (−)&quot;]</code></p>
+      <a href="shots/13.jpg"><img loading="lazy" src="shots/13.jpg" alt="Step 13: Zoom out to see the whole level" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-14">
+    <div class="meta"><span class="n">14</span><span class="t" title="the moment the note shows in session.mp4">0:37</span></div>
+    <div class="body">
+      <h2>Center the view on the level with the map strip</h2>
+      <p class="why">So every cell of the level is on the canvas.</p>
+      <p class="sel"><code>role=slider[name~=&quot;Level map&quot;]</code></p>
+      <a href="shots/14.jpg"><img loading="lazy" src="shots/14.jpg" alt="Step 14: Center the view on the level with the map strip" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-15">
+    <div class="meta"><span class="n">15</span><span class="t" title="the moment the note shows in session.mp4">0:40</span></div>
+    <div class="body">
+      <h2>Select the Far background layer</h2>
+      <p class="why">The spec's night palette and dark sky go on the far layer (scroll3, 32 px tiles).</p>
+      <p class="sel"><code>.wm-layer-name:has-text(&quot;Far background&quot;)</code></p>
+      <a href="shots/15.jpg"><img loading="lazy" src="shots/15.jpg" alt="Step 15: Select the Far background layer" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-16">
+    <div class="meta"><span class="n">16</span><span class="t" title="the moment the note shows in session.mp4">0:42</span></div>
+    <div class="body">
+      <h2>Open the Tiles parts</h2>
+      <p class="why">The far layer's tileset is the starter night sky.</p>
+      <p class="sel"><code>button:has-text(&quot;Tiles&quot;)</code></p>
+      <a href="shots/16.jpg"><img loading="lazy" src="shots/16.jpg" alt="Step 16: Open the Tiles parts" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-17">
+    <div class="meta"><span class="n">17</span><span class="t" title="the moment the note shows in session.mp4">0:44</span></div>
+    <div class="body">
+      <h2>Pick the Fill tool</h2>
+      <p class="why">A rectangle of tiles in one stroke.</p>
+      <p class="sel"><code>role=button[name=&quot;Fill a rectangle (G)&quot;]</code></p>
+      <a href="shots/17.jpg"><img loading="lazy" src="shots/17.jpg" alt="Step 17: Pick the Fill tool" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-18">
+    <div class="meta"><span class="n">18</span><span class="t" title="the moment the note shows in session.mp4">0:47</span></div>
+    <div class="body">
+      <h2>Pick sky tile 1</h2>
+      <p class="why">Tile 1 of the night sky: the darkest sky at the top.</p>
+      <p class="sel"><code>role=button[name=&quot;Tile 1&quot;]</code></p>
+      <a href="shots/18.jpg"><img loading="lazy" src="shots/18.jpg" alt="Step 18: Pick sky tile 1" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-19">
+    <div class="meta"><span class="n">19</span><span class="t" title="the moment the note shows in session.mp4">0:49</span></div>
+    <div class="body">
+      <h2>Fill the far layer's rows 0-4 with it</h2>
+      <p class="why">A banded night sky, like the prototype's.</p>
+      <p class="sel"><code>canvas cells 32px (0,0)-(47,4)</code></p>
+      <a href="shots/19.jpg"><img loading="lazy" src="shots/19.jpg" alt="Step 19: Fill the far layer's rows 0-4 with it" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-20">
+    <div class="meta"><span class="n">20</span><span class="t" title="the moment the note shows in session.mp4">0:54</span></div>
+    <div class="body">
+      <h2>Pick sky tile 3</h2>
+      <p class="why">Tile 3 of the night sky: a lighter band in the middle.</p>
+      <p class="sel"><code>role=button[name=&quot;Tile 3&quot;]</code></p>
+      <a href="shots/20.jpg"><img loading="lazy" src="shots/20.jpg" alt="Step 20: Pick sky tile 3" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-21">
+    <div class="meta"><span class="n">21</span><span class="t" title="the moment the note shows in session.mp4">0:56</span></div>
+    <div class="body">
+      <h2>Fill the far layer's rows 5-9 with it</h2>
+      <p class="why">A banded night sky, like the prototype's.</p>
+      <p class="sel"><code>canvas cells 32px (0,5)-(47,9)</code></p>
+      <a href="shots/21.jpg"><img loading="lazy" src="shots/21.jpg" alt="Step 21: Fill the far layer's rows 5-9 with it" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-22">
+    <div class="meta"><span class="n">22</span><span class="t" title="the moment the note shows in session.mp4">1:01</span></div>
+    <div class="body">
+      <h2>Pick sky tile 5</h2>
+      <p class="why">Tile 5 of the night sky: the city glow near the horizon.</p>
+      <p class="sel"><code>role=button[name=&quot;Tile 5&quot;]</code></p>
+      <a href="shots/22.jpg"><img loading="lazy" src="shots/22.jpg" alt="Step 22: Pick sky tile 5" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-23">
+    <div class="meta"><span class="n">23</span><span class="t" title="the moment the note shows in session.mp4">1:03</span></div>
+    <div class="body">
+      <h2>Fill the far layer's rows 10-13 with it</h2>
+      <p class="why">A banded night sky, like the prototype's.</p>
+      <p class="sel"><code>canvas cells 32px (0,10)-(47,13)</code></p>
+      <a href="shots/23.jpg"><img loading="lazy" src="shots/23.jpg" alt="Step 23: Fill the far layer's rows 10-13 with it" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-24">
+    <div class="meta"><span class="n">24</span><span class="t" title="the moment the note shows in session.mp4">1:07</span></div>
+    <div class="body">
+      <h2>Back to the Collision layer</h2>
+      <p class="why">The level's shape is painted as collision tags; the street art follows them (Auto art).</p>
+      <p class="sel"><code>.wm-layer-name:has-text(&quot;Collision&quot;)</code></p>
+      <a href="shots/24.jpg"><img loading="lazy" src="shots/24.jpg" alt="Step 24: Back to the Collision layer" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-25">
+    <div class="meta"><span class="n">25</span><span class="t" title="the moment the note shows in session.mp4">1:10</span></div>
+    <div class="body">
+      <h2>Open the Terrain parts</h2>
+      <p class="why">Solid, platform, ladder and crate.</p>
+      <p class="sel"><code>button:has-text(&quot;Terrain&quot;)</code></p>
+      <a href="shots/25.jpg"><img loading="lazy" src="shots/25.jpg" alt="Step 25: Open the Terrain parts" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-26">
+    <div class="meta"><span class="n">26</span><span class="t" title="the moment the note shows in session.mp4">1:12</span></div>
+    <div class="body">
+      <h2>Pick the Pencil</h2>
+      <p class="why">Crates are placed with one click each.</p>
+      <p class="sel"><code>role=button[name=&quot;Pencil: paint the part (B)&quot;]</code></p>
+      <a href="shots/26.jpg"><img loading="lazy" src="shots/26.jpg" alt="Step 26: Pick the Pencil" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-27">
+    <div class="meta"><span class="n">27</span><span class="t" title="the moment the note shows in session.mp4">1:14</span></div>
+    <div class="body">
+      <h2>Pick the Crate part</h2>
+      <p class="why">32 px crates, climbed by pushing.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Crate&quot;)</code></p>
+      <a href="shots/27.jpg"><img loading="lazy" src="shots/27.jpg" alt="Step 27: Pick the Crate part" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-28">
+    <div class="meta"><span class="n">28</span><span class="t" title="the moment the note shows in session.mp4">1:17</span></div>
+    <div class="body">
+      <h2>Place a crate on the dock at x 160</h2>
+      <p class="why">The first step of the stack: 32 px.</p>
+      <p class="sel"><code>canvas cell (10,24)</code></p>
+      <a href="shots/28.jpg"><img loading="lazy" src="shots/28.jpg" alt="Step 28: Place a crate on the dock at x 160" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-29">
+    <div class="meta"><span class="n">29</span><span class="t" title="the moment the note shows in session.mp4">1:19</span></div>
+    <div class="body">
+      <h2>Place a crate next to it at x 192</h2>
+      <p class="why">The bottom of the 64 px stack.</p>
+      <p class="sel"><code>canvas cell (12,24)</code></p>
+      <a href="shots/29.jpg"><img loading="lazy" src="shots/29.jpg" alt="Step 29: Place a crate next to it at x 192" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-30">
+    <div class="meta"><span class="n">30</span><span class="t" title="the moment the note shows in session.mp4">1:21</span></div>
+    <div class="body">
+      <h2>Stack a crate on top of it</h2>
+      <p class="why">The stack is now 64 px: pushed up from the 32 px crate, then a jump.</p>
+      <p class="sel"><code>canvas cell (12,22)</code></p>
+      <a href="shots/30.jpg"><img loading="lazy" src="shots/30.jpg" alt="Step 30: Stack a crate on top of it" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-31">
+    <div class="meta"><span class="n">31</span><span class="t" title="the moment the note shows in session.mp4">1:24</span></div>
+    <div class="body">
+      <h2>Pick the Fill tool again</h2>
+      <p class="why">Ledges, ladders and docks are rectangles of tags.</p>
+      <p class="sel"><code>role=button[name=&quot;Fill a rectangle (G)&quot;]</code></p>
+      <a href="shots/31.jpg"><img loading="lazy" src="shots/31.jpg" alt="Step 31: Pick the Fill tool again" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-32">
+    <div class="meta"><span class="n">32</span><span class="t" title="the moment the note shows in session.mp4">1:26</span></div>
+    <div class="body">
+      <h2>Pick the Platform part (one-way)</h2>
+      <p class="why">Stood on, jumped up through, and down + B1 drops through it.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Platform&quot;)</code></p>
+      <a href="shots/32.jpg"><img loading="lazy" src="shots/32.jpg" alt="Step 32: Pick the Platform part (one-way)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-33">
+    <div class="meta"><span class="n">33</span><span class="t" title="the moment the note shows in session.mp4">1:28</span></div>
+    <div class="body">
+      <h2>Draw the one-way ledge 64 px up, x 256-367</h2>
+      <p class="why">Reached by a jump from the crate stack; down + B1 is its way down.</p>
+      <p class="sel"><code>canvas cells (16,22)-(22,22)</code></p>
+      <a href="shots/33.jpg"><img loading="lazy" src="shots/33.jpg" alt="Step 33: Draw the one-way ledge 64 px up, x 256-367" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-34">
+    <div class="meta"><span class="n">34</span><span class="t" title="the moment the note shows in session.mp4">1:33</span></div>
+    <div class="body">
+      <h2>Pick the Ladder part</h2>
+      <p class="why">The way up to the upper dock.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Ladder&quot;)</code></p>
+      <a href="shots/34.jpg"><img loading="lazy" src="shots/34.jpg" alt="Step 34: Pick the Ladder part" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-35">
+    <div class="meta"><span class="n">35</span><span class="t" title="the moment the note shows in session.mp4">1:35</span></div>
+    <div class="body">
+      <h2>Draw the ladder at x 480, 160 px tall</h2>
+      <p class="why">From the dock floor (y 416) up to the upper dock (y 256).</p>
+      <p class="sel"><code>canvas cells (30,16)-(30,25)</code></p>
+      <a href="shots/35.jpg"><img loading="lazy" src="shots/35.jpg" alt="Step 35: Draw the ladder at x 480, 160 px tall" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-36">
+    <div class="meta"><span class="n">36</span><span class="t" title="the moment the note shows in session.mp4">1:40</span></div>
+    <div class="body">
+      <h2>Pick the Solid part</h2>
+      <p class="why">The upper dock is a solid floor.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Solid&quot;)</code></p>
+      <a href="shots/36.jpg"><img loading="lazy" src="shots/36.jpg" alt="Step 36: Pick the Solid part" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-37">
+    <div class="meta"><span class="n">37</span><span class="t" title="the moment the note shows in session.mp4">1:42</span></div>
+    <div class="body">
+      <h2>Draw the upper dock, x 496-1023 at y 256</h2>
+      <p class="why">The second floor; its right end is open, so players drop back to the lower dock.</p>
+      <p class="sel"><code>canvas cells (31,16)-(63,16)</code></p>
+      <a href="shots/37.jpg"><img loading="lazy" src="shots/37.jpg" alt="Step 37: Draw the upper dock, x 496-1023 at y 256" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-38">
+    <div class="meta"><span class="n">38</span><span class="t" title="the moment the note shows in session.mp4">1:46</span></div>
+    <div class="body">
+      <h2>Pick the Pencil</h2>
+      <p class="why">Enemies, civilians and the exit are placed by clicking.</p>
+      <p class="sel"><code>role=button[name=&quot;Pencil: paint the part (B)&quot;]</code></p>
+      <a href="shots/38.jpg"><img loading="lazy" src="shots/38.jpg" alt="Step 38: Pick the Pencil" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-39">
+    <div class="meta"><span class="n">39</span><span class="t" title="the moment the note shows in session.mp4">1:49</span></div>
+    <div class="body">
+      <h2>Open the Enemies parts</h2>
+      <p class="why">The spec's enemy is the Trooper.</p>
+      <p class="sel"><code>button:has-text(&quot;Enemies&quot;)</code></p>
+      <a href="shots/39.jpg"><img loading="lazy" src="shots/39.jpg" alt="Step 39: Open the Enemies parts" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-40">
+    <div class="meta"><span class="n">40</span><span class="t" title="the moment the note shows in session.mp4">1:51</span></div>
+    <div class="body">
+      <h2>Pick the Trooper</h2>
+      <p class="why">Each Trooper walks a 96 px patrol and turns at its ends.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Trooper&quot;)</code></p>
+      <a href="shots/40.jpg"><img loading="lazy" src="shots/40.jpg" alt="Step 40: Pick the Trooper" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-41">
+    <div class="meta"><span class="n">41</span><span class="t" title="the moment the note shows in session.mp4">1:54</span></div>
+    <div class="body">
+      <h2>Place a Trooper at x 640, on the lower dock, under the upper dock</h2>
+      <p class="why">The spec's three enemies: lower dock, upper dock, exit.</p>
+      <p class="sel"><code>canvas world (640,416)</code></p>
+      <a href="shots/41.jpg"><img loading="lazy" src="shots/41.jpg" alt="Step 41: Place a Trooper at x 640, on the lower dock, under the upper dock" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-42">
+    <div class="meta"><span class="n">42</span><span class="t" title="the moment the note shows in session.mp4">1:56</span></div>
+    <div class="body">
+      <h2>Place a Trooper at x 800, on the upper dock</h2>
+      <p class="why">The spec's three enemies: lower dock, upper dock, exit.</p>
+      <p class="sel"><code>canvas world (800,256)</code></p>
+      <a href="shots/42.jpg"><img loading="lazy" src="shots/42.jpg" alt="Step 42: Place a Trooper at x 800, on the upper dock" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-43">
+    <div class="meta"><span class="n">43</span><span class="t" title="the moment the note shows in session.mp4">1:58</span></div>
+    <div class="body">
+      <h2>Place a Trooper at x 1360, guarding the exit</h2>
+      <p class="why">The spec's three enemies: lower dock, upper dock, exit.</p>
+      <p class="sel"><code>canvas world (1360,416)</code></p>
+      <a href="shots/43.jpg"><img loading="lazy" src="shots/43.jpg" alt="Step 43: Place a Trooper at x 1360, guarding the exit" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-44">
+    <div class="meta"><span class="n">44</span><span class="t" title="the moment the note shows in session.mp4">2:01</span></div>
+    <div class="body">
+      <h2>Open the Civilians parts</h2>
+      <p class="why">Two civilians to rescue by touching them.</p>
+      <p class="sel"><code>button:has-text(&quot;Civilians&quot;)</code></p>
+      <a href="shots/44.jpg"><img loading="lazy" src="shots/44.jpg" alt="Step 44: Open the Civilians parts" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-45">
+    <div class="meta"><span class="n">45</span><span class="t" title="the moment the note shows in session.mp4">2:03</span></div>
+    <div class="body">
+      <h2>Pick the Woman</h2>
+      <p class="why">The first civilian waits on the one-way ledge.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Woman&quot;)</code></p>
+      <a href="shots/45.jpg"><img loading="lazy" src="shots/45.jpg" alt="Step 45: Pick the Woman" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-46">
+    <div class="meta"><span class="n">46</span><span class="t" title="the moment the note shows in session.mp4">2:05</span></div>
+    <div class="body">
+      <h2>Place her on the ledge at x 320</h2>
+      <p class="why">Rescued after the jump from the crates.</p>
+      <p class="sel"><code>canvas world (320,352)</code></p>
+      <a href="shots/46.jpg"><img loading="lazy" src="shots/46.jpg" alt="Step 46: Place her on the ledge at x 320" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-47">
+    <div class="meta"><span class="n">47</span><span class="t" title="the moment the note shows in session.mp4">2:07</span></div>
+    <div class="body">
+      <h2>Pick the Child</h2>
+      <p class="why">The second civilian waits on the upper dock.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;Child&quot;)</code></p>
+      <a href="shots/47.jpg"><img loading="lazy" src="shots/47.jpg" alt="Step 47: Pick the Child" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-48">
+    <div class="meta"><span class="n">48</span><span class="t" title="the moment the note shows in session.mp4">2:10</span></div>
+    <div class="body">
+      <h2>Place the child on the upper dock at x 960</h2>
+      <p class="why">Past the upper dock's Trooper.</p>
+      <p class="sel"><code>canvas world (960,256)</code></p>
+      <a href="shots/48.jpg"><img loading="lazy" src="shots/48.jpg" alt="Step 48: Place the child on the upper dock at x 960" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-49">
+    <div class="meta"><span class="n">49</span><span class="t" title="the moment the note shows in session.mp4">2:12</span></div>
+    <div class="body">
+      <h2>Open the Helpers parts</h2>
+      <p class="why">Starts, checkpoints, camera locks and the exit.</p>
+      <p class="sel"><code>button:has-text(&quot;Helpers&quot;)</code></p>
+      <a href="shots/49.jpg"><img loading="lazy" src="shots/49.jpg" alt="Step 49: Open the Helpers parts" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-50">
+    <div class="meta"><span class="n">50</span><span class="t" title="the moment the note shows in session.mp4">2:14</span></div>
+    <div class="body">
+      <h2>Pick the Exit</h2>
+      <p class="why">The spec's exit is at x 1440-1504 on the lower dock.</p>
+      <p class="sel"><code>.wm-part:has-text(&quot;exit&quot;)</code></p>
+      <a href="shots/50.jpg"><img loading="lazy" src="shots/50.jpg" alt="Step 50: Pick the Exit" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-51">
+    <div class="meta"><span class="n">51</span><span class="t" title="the moment the note shows in session.mp4">2:17</span></div>
+    <div class="body">
+      <h2>Place the exit at x 1440 on the lower dock</h2>
+      <p class="why">A new exit replaces the one the template made at x 1488.</p>
+      <p class="sel"><code>canvas world (1440,416)</code></p>
+      <a href="shots/51.jpg"><img loading="lazy" src="shots/51.jpg" alt="Step 51: Place the exit at x 1440 on the lower dock" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-52">
+    <div class="meta"><span class="n">52</span><span class="t" title="the moment the note shows in session.mp4">2:19</span></div>
+    <div class="body">
+      <h2>Make the exit 64 px wide in the inspector</h2>
+      <p class="why">x 1440 to 1504, as the spec says.</p>
+      <p class="sel"><code>role=spinbutton[name=&quot;Width&quot;]</code></p>
+      <a href="shots/52.jpg"><img loading="lazy" src="shots/52.jpg" alt="Step 52: Make the exit 64 px wide in the inspector" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-53">
+    <div class="meta"><span class="n">53</span><span class="t" title="the moment the note shows in session.mp4">2:22</span></div>
+    <div class="body">
+      <h2>Check the level with Reach</h2>
+      <p class="why">Willy Maker shades what players cannot get to; nothing should be left out.</p>
+      <p class="sel"><code>role=button[name=&quot;Reach&quot;]</code></p>
+      <a href="shots/53.jpg"><img loading="lazy" src="shots/53.jpg" alt="Step 53: Check the level with Reach" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-54">
+    <div class="meta"><span class="n">54</span><span class="t" title="the moment the note shows in session.mp4">2:25</span></div>
+    <div class="body">
+      <h2>Turn Reach off again</h2>
+      <p class="why">The level reads better without the shading.</p>
+      <p class="sel"><code>role=button[name=&quot;Reach&quot;]</code></p>
+      <a href="shots/54.jpg"><img loading="lazy" src="shots/54.jpg" alt="Step 54: Turn Reach off again" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-55">
+    <div class="meta"><span class="n">55</span><span class="t" title="the moment the note shows in session.mp4">2:27</span></div>
+    <div class="body">
+      <h2>Open the Game tab</h2>
+      <p class="why">The spec's rules are set in the Rules card.</p>
+      <p class="sel"><code>button:has-text(&quot;Game&quot;)</code></p>
+      <a href="shots/55.jpg"><img loading="lazy" src="shots/55.jpg" alt="Step 55: Open the Game tab" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-56">
+    <div class="meta"><span class="n">56</span><span class="t" title="the moment the note shows in session.mp4">2:29</span></div>
+    <div class="body">
+      <h2>Enemies take 3 hits</h2>
+      <p class="why">The spec: a Trooper takes 3 shots.</p>
+      <p class="sel"><code>role=spinbutton[name=&quot;Hits an enemy takes&quot;]</code></p>
+      <a href="shots/56.jpg"><img loading="lazy" src="shots/56.jpg" alt="Step 56: Enemies take 3 hits" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-57">
+    <div class="meta"><span class="n">57</span><span class="t" title="the moment the note shows in session.mp4">2:32</span></div>
+    <div class="body">
+      <h2>100 points per enemy</h2>
+      <p class="why">The spec: each Trooper gives 100 points.</p>
+      <p class="sel"><code>role=spinbutton[name=&quot;Points per enemy&quot;]</code></p>
+      <a href="shots/57.jpg"><img loading="lazy" src="shots/57.jpg" alt="Step 57: 100 points per enemy" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-58">
+    <div class="meta"><span class="n">58</span><span class="t" title="the moment the note shows in session.mp4">2:35</span></div>
+    <div class="body">
+      <h2>500 points per rescue</h2>
+      <p class="why">The spec: each civilian gives 500 points.</p>
+      <p class="sel"><code>role=spinbutton[name=&quot;Points per rescue&quot;]</code></p>
+      <a href="shots/58.jpg"><img loading="lazy" src="shots/58.jpg" alt="Step 58: 500 points per rescue" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-59">
+    <div class="meta"><span class="n">59</span><span class="t" title="the moment the note shows in session.mp4">2:37</span></div>
+    <div class="body">
+      <h2>Touching an enemy hurts: Yes</h2>
+      <p class="why">The spec: they hurt a player on touch.</p>
+      <p class="sel"><code>radiogroup &quot;Touching an enemy hurts&quot; &gt; radio &quot;Yes&quot;</code></p>
+      <a href="shots/59.jpg"><img loading="lazy" src="shots/59.jpg" alt="Step 59: Touching an enemy hurts: Yes" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-60">
+    <div class="meta"><span class="n">60</span><span class="t" title="the moment the note shows in session.mp4">2:39</span></div>
+    <div class="body">
+      <h2>Enemies chase players: No</h2>
+      <p class="why">The spec's Troopers walk their patrol and turn at its ends.</p>
+      <p class="sel"><code>radiogroup &quot;Enemies chase players&quot; &gt; radio &quot;No&quot;</code></p>
+      <a href="shots/60.jpg"><img loading="lazy" src="shots/60.jpg" alt="Step 60: Enemies chase players: No" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-61">
+    <div class="meta"><span class="n">61</span><span class="t" title="the moment the note shows in session.mp4">2:42</span></div>
+    <div class="body">
+      <h2>Enemies shoot: No</h2>
+      <p class="why">The spec gives them touch damage only.</p>
+      <p class="sel"><code>radiogroup &quot;Enemies shoot&quot; &gt; radio &quot;No&quot;</code></p>
+      <a href="shots/61.jpg"><img loading="lazy" src="shots/61.jpg" alt="Step 61: Enemies shoot: No" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-62">
+    <div class="meta"><span class="n">62</span><span class="t" title="the moment the note shows in session.mp4">2:44</span></div>
+    <div class="body">
+      <h2>The exit needs every enemy down: Yes</h2>
+      <p class="why">The spec: reaching the exit with all enemies down shows SECTION CLEAR.</p>
+      <p class="sel"><code>radiogroup &quot;The exit needs every enemy down&quot; &gt; radio &quot;Yes&quot;</code></p>
+      <a href="shots/62.jpg"><img loading="lazy" src="shots/62.jpg" alt="Step 62: The exit needs every enemy down: Yes" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-63">
+    <div class="meta"><span class="n">63</span><span class="t" title="the moment the note shows in session.mp4">2:47</span></div>
+    <div class="body">
+      <h2>After a hit: blink in place</h2>
+      <p class="why">The spec: the player blinks and loses 1 of 3 energy.</p>
+      <p class="sel"><code>radiogroup &quot;After a hit&quot; &gt; radio &quot;Blink in place&quot;</code></p>
+      <a href="shots/63.jpg"><img loading="lazy" src="shots/63.jpg" alt="Step 63: After a hit: blink in place" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-64">
+    <div class="meta"><span class="n">64</span><span class="t" title="the moment the note shows in session.mp4">2:49</span></div>
+    <div class="body">
+      <h2>Blink for 1 s (60 frames)</h2>
+      <p class="why">The spec: the player blinks 1 s.</p>
+      <p class="sel"><code>role=slider[name=&quot;Blinking after a hit&quot;]</code></p>
+      <a href="shots/64.jpg"><img loading="lazy" src="shots/64.jpg" alt="Step 64: Blink for 1 s (60 frames)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-65">
+    <div class="meta"><span class="n">65</span><span class="t" title="the moment the note shows in session.mp4">2:52</span></div>
+    <div class="body">
+      <h2>Keep 3 lives (energy 3)</h2>
+      <p class="why">The spec: 1 of 3 energy per hit.</p>
+      <p class="sel"><code>radiogroup &quot;Lives&quot; &gt; radio &quot;3&quot;</code></p>
+      <a href="shots/65.jpg"><img loading="lazy" src="shots/65.jpg" alt="Step 65: Keep 3 lives (energy 3)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-66">
+    <div class="meta"><span class="n">66</span><span class="t" title="the moment the note shows in session.mp4">2:54</span></div>
+    <div class="body">
+      <h2>Try it at once: Play</h2>
+      <p class="why">Willy Maker runs the level in the browser with the same rules the ROM gets.</p>
+      <p class="sel"><code>role=button[name=&quot;Play&quot;]</code></p>
+      <a href="shots/66.jpg"><img loading="lazy" src="shots/66.jpg" alt="Step 66: Try it at once: Play" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-67">
+    <div class="meta"><span class="n">67</span><span class="t" title="the moment the note shows in session.mp4">2:58</span></div>
+    <div class="body">
+      <h2>Walk right toward the crates (arrow key)</h2>
+      <p class="why">A quick feel of the start before making the ROM.</p>
+      <p class="sel"><code>keyboard ArrowRight</code></p>
+      <a href="shots/67.jpg"><img loading="lazy" src="shots/67.jpg" alt="Step 67: Walk right toward the crates (arrow key)" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-68">
+    <div class="meta"><span class="n">68</span><span class="t" title="the moment the note shows in session.mp4">3:02</span></div>
+    <div class="body">
+      <h2>Back to building</h2>
+      <p class="why">The texts are next.</p>
+      <p class="sel"><code>role=button[name=&quot;Back to building&quot;]</code></p>
+      <a href="shots/68.jpg"><img loading="lazy" src="shots/68.jpg" alt="Step 68: Back to building" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-69">
+    <div class="meta"><span class="n">69</span><span class="t" title="the moment the note shows in session.mp4">3:05</span></div>
+    <div class="body">
+      <h2>Open the Menus tab</h2>
+      <p class="why">The title screen and the clear text come from here.</p>
+      <p class="sel"><code>button:has-text(&quot;Menus&quot;)</code></p>
+      <a href="shots/69.jpg"><img loading="lazy" src="shots/69.jpg" alt="Step 69: Open the Menus tab" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-70">
+    <div class="meta"><span class="n">70</span><span class="t" title="the moment the note shows in session.mp4">3:07</span></div>
+    <div class="body">
+      <h2>Title: WILLY GORKLINGO</h2>
+      <p class="why">The spec's title screen.</p>
+      <p class="sel"><code>#wm-menu-field-title</code></p>
+      <a href="shots/70.jpg"><img loading="lazy" src="shots/70.jpg" alt="Step 70: Title: WILLY GORKLINGO" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-71">
+    <div class="meta"><span class="n">71</span><span class="t" title="the moment the note shows in session.mp4">3:10</span></div>
+    <div class="body">
+      <h2>Subtitle: THE LAG PROTOCOL</h2>
+      <p class="why">The spec's second line.</p>
+      <p class="sel"><code>#wm-menu-field-subtitle</code></p>
+      <a href="shots/71.jpg"><img loading="lazy" src="shots/71.jpg" alt="Step 71: Subtitle: THE LAG PROTOCOL" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-72">
+    <div class="meta"><span class="n">72</span><span class="t" title="the moment the note shows in session.mp4">3:14</span></div>
+    <div class="body">
+      <h2>Check the prompt says PUSH START</h2>
+      <p class="why">The spec's prompt; the credits line (C) 2026 GO-LINK is on by default.</p>
+      <p class="sel"><code>#wm-menu-field-prompt</code></p>
+      <a href="shots/72.jpg"><img loading="lazy" src="shots/72.jpg" alt="Step 72: Check the prompt says PUSH START" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-73">
+    <div class="meta"><span class="n">73</span><span class="t" title="the moment the note shows in session.mp4">3:16</span></div>
+    <div class="body">
+      <h2>Open the HUD screen</h2>
+      <p class="why">Its Level clear text is what the section shows at the exit.</p>
+      <p class="sel"><code>role=tab[name=&quot;HUD&quot;]</code></p>
+      <a href="shots/73.jpg"><img loading="lazy" src="shots/73.jpg" alt="Step 73: Open the HUD screen" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-74">
+    <div class="meta"><span class="n">74</span><span class="t" title="the moment the note shows in session.mp4">3:18</span></div>
+    <div class="body">
+      <h2>Level clear: SECTION CLEAR</h2>
+      <p class="why">The spec's text at the exit.</p>
+      <p class="sel"><code>#wm-menu-field-cleared</code></p>
+      <a href="shots/74.jpg"><img loading="lazy" src="shots/74.jpg" alt="Step 74: Level clear: SECTION CLEAR" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-75">
+    <div class="meta"><span class="n">75</span><span class="t" title="the moment the note shows in session.mp4">3:21</span></div>
+    <div class="body">
+      <h2>Look at the Game over screen</h2>
+      <p class="why">GAME OVER shows when every player is out of energy and there is no credit.</p>
+      <p class="sel"><code>role=tab[name=&quot;Game over&quot;]</code></p>
+      <a href="shots/75.jpg"><img loading="lazy" src="shots/75.jpg" alt="Step 75: Look at the Game over screen" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-76">
+    <div class="meta"><span class="n">76</span><span class="t" title="the moment the note shows in session.mp4">3:24</span></div>
+    <div class="body">
+      <h2>Open the Export tab</h2>
+      <p class="why">The review, then Create ROM.</p>
+      <p class="sel"><code>button:has-text(&quot;Export&quot;)</code></p>
+      <a href="shots/76.jpg"><img loading="lazy" src="shots/76.jpg" alt="Step 76: Open the Export tab" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-77">
+    <div class="meta"><span class="n">77</span><span class="t" title="the moment the note shows in session.mp4">3:28</span></div>
+    <div class="body">
+      <h2>Create ROM</h2>
+      <p class="why">Stage 2: the game is packed as data next to the prebuilt engine, as slammast's files, then powered on in the board model.</p>
+      <p class="sel"><code>role=button[name=&quot;Create ROM&quot;]</code></p>
+      <a href="shots/77.jpg"><img loading="lazy" src="shots/77.jpg" alt="Step 77: Create ROM" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-78">
+    <div class="meta"><span class="n">78</span><span class="t" title="the moment the note shows in session.mp4">3:31</span></div>
+    <div class="body">
+      <h2>Read the result: every power-on step and the picture</h2>
+      <p class="why">Validation level 3 ran by itself on the new ROM.</p>
+      <p class="sel"><code>.wm-rom-card</code></p>
+      <a href="shots/78.jpg"><img loading="lazy" src="shots/78.jpg" alt="Step 78: Read the result: every power-on step and the picture" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-79">
+    <div class="meta"><span class="n">79</span><span class="t" title="the moment the note shows in session.mp4">3:34</span></div>
+    <div class="body">
+      <h2>Download the ROM</h2>
+      <p class="why">slammast.zip: the set the mame2003-plus core and a go-link room run.</p>
+      <p class="sel"><code>role=button[name~=&quot;Download ROM&quot;]</code></p>
+      <a href="shots/79.jpg"><img loading="lazy" src="shots/79.jpg" alt="Step 79: Download the ROM" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-80">
+    <div class="meta"><span class="n">80</span><span class="t" title="the moment the note shows in session.mp4">3:36</span></div>
+    <div class="body">
+      <h2>Download the symbol map</h2>
+      <p class="why">symbols.json: where the game keeps its state, for the experiment's harness.</p>
+      <p class="sel"><code>role=button[name~=&quot;Symbol map&quot;]</code></p>
+      <a href="shots/80.jpg"><img loading="lazy" src="shots/80.jpg" alt="Step 80: Download the symbol map" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-81">
+    <div class="meta"><span class="n">81</span><span class="t" title="the moment the note shows in session.mp4">3:38</span></div>
+    <div class="body">
+      <h2>Play on my go-link</h2>
+      <p class="why">It sends the ROM to the linked go-link; this recording has no device linked, so it says how to link one.</p>
+      <p class="sel"><code>role=button[name=&quot;Play on my go-link&quot;]</code></p>
+      <a href="shots/81.jpg"><img loading="lazy" src="shots/81.jpg" alt="Step 81: Play on my go-link" width="1024" height="576"></a>
+    </div>
+  </li>
+  <li class="step" id="step-82">
+    <div class="meta"><span class="n">82</span><span class="t" title="the moment the note shows in session.mp4">3:42</span></div>
+    <div class="body">
+      <h2>Done: the level is built, the ROM created, powered on and downloaded</h2>
+      <p class="why">Next: the harness checks this exact zip (levels 3 and 4, the clear script, the real core).</p>
+      <p class="sel"><code>.wm-rom-card</code></p>
+      <a href="shots/82.jpg"><img loading="lazy" src="shots/82.jpg" alt="Step 82: Done: the level is built, the ROM created, powered on and downloaded" width="1024" height="576"></a>
+    </div>
+  </li>
+</ol>
+</main>
+</body>
+</html>

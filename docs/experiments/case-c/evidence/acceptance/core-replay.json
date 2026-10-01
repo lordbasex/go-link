@@ -1,0 +1,69 @@
+{
+  "type": "rom_replay",
+  "set": "slammast",
+  "core": "MAME 2003-Plus  3141930",
+  "fps": 60,
+  "width": 384,
+  "height": 224,
+  "frames": 2003,
+  "seconds": 16.234388959,
+  "checkpoints": [
+    {
+      "frame": 150,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000150.png",
+      "hash": "6ae28cb0"
+    },
+    {
+      "frame": 156,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000156.png",
+      "hash": "0b24ddcc"
+    },
+    {
+      "frame": 330,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000330.png",
+      "hash": "6d9a2092"
+    },
+    {
+      "frame": 444,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000444.png",
+      "hash": "e9d6f263"
+    },
+    {
+      "frame": 718,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000718.png",
+      "hash": "4ec71301"
+    },
+    {
+      "frame": 864,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f000864.png",
+      "hash": "c73b0f40"
+    },
+    {
+      "frame": 1088,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f001088.png",
+      "hash": "3bc27cde"
+    },
+    {
+      "frame": 1348,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f001348.png",
+      "hash": "bae6e6f7"
+    },
+    {
+      "frame": 1682,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f001682.png",
+      "hash": "8ef099d7"
+    },
+    {
+      "frame": 1883,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f001883.png",
+      "hash": "70287cca"
+    },
+    {
+      "frame": 2003,
+      "png": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames/f002003.png",
+      "hash": "00d13244"
+    }
+  ],
+  "pngs": 11,
+  "mp4": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/run.mp4"
+}

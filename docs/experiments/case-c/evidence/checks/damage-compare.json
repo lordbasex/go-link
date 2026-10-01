@@ -1,0 +1,57 @@
+{
+  "sim": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/checks/damage/sim/frames",
+  "core": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/checks/damage/core",
+  "tolerance": 0,
+  "frames": 6,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 888,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000888.png",
+      "pairPng": "pair-000888.png"
+    },
+    {
+      "frame": 918,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000918.png",
+      "pairPng": "pair-000918.png"
+    },
+    {
+      "frame": 1096,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001096.png",
+      "pairPng": "pair-001096.png"
+    },
+    {
+      "frame": 1273,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001273.png",
+      "pairPng": "pair-001273.png"
+    },
+    {
+      "frame": 1393,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001393.png",
+      "pairPng": "pair-001393.png"
+    },
+    {
+      "frame": 1693,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001693.png",
+      "pairPng": "pair-001693.png"
+    }
+  ]
+}

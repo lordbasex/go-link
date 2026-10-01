@@ -1,0 +1,97 @@
+{
+  "sim": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/sim/frames",
+  "core": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/acceptance/scripted/core/frames",
+  "tolerance": 8,
+  "frames": 11,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 150,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000150.png",
+      "pairPng": "pair-000150.png"
+    },
+    {
+      "frame": 156,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000156.png",
+      "pairPng": "pair-000156.png"
+    },
+    {
+      "frame": 330,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000330.png",
+      "pairPng": "pair-000330.png"
+    },
+    {
+      "frame": 444,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000444.png",
+      "pairPng": "pair-000444.png"
+    },
+    {
+      "frame": 718,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000718.png",
+      "pairPng": "pair-000718.png"
+    },
+    {
+      "frame": 864,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000864.png",
+      "pairPng": "pair-000864.png"
+    },
+    {
+      "frame": 1088,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001088.png",
+      "pairPng": "pair-001088.png"
+    },
+    {
+      "frame": 1348,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001348.png",
+      "pairPng": "pair-001348.png"
+    },
+    {
+      "frame": 1682,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001682.png",
+      "pairPng": "pair-001682.png"
+    },
+    {
+      "frame": 1883,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001883.png",
+      "pairPng": "pair-001883.png"
+    },
+    {
+      "frame": 2003,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-002003.png",
+      "pairPng": "pair-002003.png"
+    }
+  ]
+}

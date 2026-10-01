@@ -1,0 +1,49 @@
+{
+  "sim": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/checks/odd-inputs/sim/frames",
+  "core": "/private/tmp/claude-501/-Volumes-HD12TB-github-MAME-WEBRTC/803c7b22-6422-492e-81d9-7eb515a01110/scratchpad/exp1/case-c/checks/odd-inputs/core",
+  "tolerance": 0,
+  "frames": 5,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 150,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000150.png",
+      "pairPng": "pair-000150.png"
+    },
+    {
+      "frame": 210,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000210.png",
+      "pairPng": "pair-000210.png"
+    },
+    {
+      "frame": 330,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000330.png",
+      "pairPng": "pair-000330.png"
+    },
+    {
+      "frame": 600,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000600.png",
+      "pairPng": "pair-000600.png"
+    },
+    {
+      "frame": 900,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000900.png",
+      "pairPng": "pair-000900.png"
+    }
+  ]
+}
