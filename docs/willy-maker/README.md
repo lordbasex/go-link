@@ -166,7 +166,7 @@ The names are references: the AI pack, the warnings and the play mode's debug ov
 
 - Grids (8, 16 and 32 px), rulers, guides and snapping, like the skin editor.
 - A **minimap** of the whole canvas, with the visible screen (384 × 224) and the sections.
-- **Reachability check** with the engine's rules (jump about 64 px, push-climb 32 px, ladders, drop through one-way ledges): it shades what a player cannot reach and points at the gap.
+- **Reachability check** with the engine's rules (a jump reaches ledges up to 48 px, push-climb 32 px, ladders, drop through one-way ledges): it shades what a player cannot reach and points at the gap.
 - **Warnings** while working:
   - no exit;
   - a civilian behind an unbreakable wall;

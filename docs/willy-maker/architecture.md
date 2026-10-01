@@ -42,7 +42,7 @@ Pure TypeScript with no DOM, tested on its own. It holds:
 
 - the world: the collision grid and tags, objects, breakable state;
 - the player physics, with the prototype's numbers (`rom/src/main.c`):
-  - gravity 6/16 px per frame², jump −7 px per frame (about 64 px high);
+  - gravity 6/16 px per frame², jump −7 px per frame (it peaks at 61.9 px, so ledges up to 48 px);
   - push-climb up to 32 px;
   - ladders at 1.5 px per frame;
   - drop through `oneway` with down + jump;

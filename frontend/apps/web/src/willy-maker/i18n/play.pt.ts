@@ -62,7 +62,7 @@ export const playPt: PlayMessages = {
   sectionLine: " · seção {n} {name}",
   locked: " · travada",
   enemiesLine: "inimigos {n} · civis {r}/{t} · tempo {time}",
-  note: "Joga com as mesmas regras da ROM: pulo de 64 px, caixas de 32 px, a câmera que só avança. O que você muda aparece na hora.",
+  note: "Joga com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px, a câmera que só avança. O que você muda aparece na hora.",
   touchPad: "Controles na tela",
   more: "Mais",
   startButton: "Start",

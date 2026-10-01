@@ -62,7 +62,7 @@ export const playEs: PlayMessages = {
   sectionLine: " · sección {n} {name}",
   locked: " · trabada",
   enemiesLine: "enemigos {n} · civiles {r}/{t} · tiempo {time}",
-  note: "Juega con las mismas reglas que la ROM: salto de 64 px, cajas de 32 px, la cámara que solo avanza. Lo que cambias se ve al instante.",
+  note: "Juega con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px, la cámara que solo avanza. Lo que cambias se ve al instante.",
   touchPad: "Controles en pantalla",
   more: "Más",
   startButton: "Start",

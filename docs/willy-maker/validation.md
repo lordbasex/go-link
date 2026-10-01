@@ -63,7 +63,7 @@ Rules added by the implementation, beyond the tables: `level.start` also warns w
 |---|---|---|---|
 | `level.start` | error | there is exactly one P1 start, and starts for P2-P4 when the game has those players | "Level {n} has no start for player {p}." |
 | `level.exit` | error | there is one exit | "Level {n} has no exit." |
-| `level.reachable` | error | the exit can be reached from the start with the engine's moves: walk, jump of 64 px, push-climb of up to 32 px (`STEP_UP`), ladders, drop-through platforms. This is a flood fill over the collision grid using the same constants as `engine/`. | "Players cannot reach the exit from the start. The path stops at x {x}." |
+| `level.reachable` | error | the exit can be reached from the start with the engine's moves: walk, a jump onto ledges up to 48 px (it peaks at 61.9 px), push-climb of up to 32 px (`STEP_UP`), ladders, drop-through platforms. This is a flood fill over the collision grid using the same constants as `engine/`. | "Players cannot reach the exit from the start. The path stops at x {x}." |
 | `level.ledge` | warning | every tagged platform can be reached (same search) | "Nobody can reach the ledge at x {x}: it is {h} px high." |
 | `level.trap` | warning | no reachable spot lets the player fall out of the map or get stuck with no way forward | "A player can get stuck at x {x}." |
 | `level.camera` | error | the camera can scroll through the level: no wall that blocks the screen, and a 48 px back margin | "The camera cannot pass x {x}." |

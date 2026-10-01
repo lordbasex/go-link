@@ -15,7 +15,7 @@ export const FRAME_MS = 1000 / 60;
 /** A player's collision height and half width at the feet. */
 export const BODY_H = 40;
 export const HALF_W = 5;
-/** Gravity, jump and fall speed, in 1/16 px per frame (jump height about 64 px). */
+/** Gravity, jump and fall speed, in 1/16 px per frame (a jump peaks at 61.9 px: ledges up to 48 px are reachable). */
 export const GRAVITY = 6;
 export const JUMP_VY = -7 * 16;
 export const MAX_FALL = 8 * 16;

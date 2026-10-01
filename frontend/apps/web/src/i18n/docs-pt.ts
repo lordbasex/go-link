@@ -744,7 +744,7 @@ export const docsPt: Docs = {
             "**Objetos**: inícios de jogador, inimigos, civis, caixas, itens, câmeras fixas, checkpoints, chefes e a saída. Selecione um para mudá-lo no **Inspetor**: o seu **Nome de referência** (letras, números e _, único; a ROM encontra o objeto por esse nome) e as suas propriedades, como o tipo, para onde olha, a patrulha, os golpes ou o conteúdo.",
             "**Camadas**: tiles, colisão e objetos, cada uma com mostrar, travar, renomear, ordem e opacidade; **Camada** adiciona uma camada de tiles.",
             "**Limites da placa**: medidores de paletas, cores, gráficos e sprites numa tela, sempre à vista.",
-            "**Alcance** sombreia aonde os jogadores não conseguem chegar (pulos de 64 px, caixas de 32 px, escadas), e **Avisos** lista cada problema com **Ir** para levar você até lá.",
+            "**Alcance** sombreia aonde os jogadores não conseguem chegar (pulos a plataformas de até 48 px, caixas de 32 px, escadas), e **Avisos** lista cada problema com **Ir** para levar você até lá.",
             "Desfaça e refaça cada mudança com Ctrl+Z e Ctrl+Shift+Z (⌘ num Mac). A barra de cima mostra quando o jogo está salvo neste navegador.",
           ],
         },
@@ -779,7 +779,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Jogar** (P) roda a fase com as mesmas regras da ROM: pulo de 64 px, caixas de 32 px e uma câmera que só avança.",
+            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança.",
             "Jogue com o teclado (setas, Z, X, C), controles ou os botões na tela em telas de toque; aperte um botão para entrar, até 4 jogadores.",
             "**Editar enquanto jogo**: coloque peças (caixa, plataforma, escada, inimigo, civil, arma) enquanto o jogo continua rodando, ou use **Pausar e editar** e continue **Daqui** ou **Do início**.",
             "**Depuração** mostra a colisão, as caixas de golpe, a câmera, os FPS e a câmera lenta. **Voltar a construir** leva de volta ao editor.",

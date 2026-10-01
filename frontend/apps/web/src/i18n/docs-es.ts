@@ -744,7 +744,7 @@ export const docsEs: Docs = {
             "**Objetos**: inicios de jugador, enemigos, civiles, cajas, ítems, cámaras fijas, controles, jefes y la salida. Selecciona uno para cambiarlo en el **Inspector**: su **Nombre de referencia** (letras, números y _, único; la ROM encuentra el objeto por este nombre) y sus propiedades, como el tipo, hacia dónde mira, la patrulla, los golpes o el contenido.",
             "**Capas**: tiles, colisión y objetos, cada una con mostrar, bloquear, renombrar, orden y opacidad; **Capa** agrega una capa de tiles.",
             "**Límites de la placa**: medidores de paletas, colores, gráficos y sprites en una pantalla, siempre a la vista.",
-            "**Alcance** sombrea adonde los jugadores no pueden llegar (saltos de 64 px, cajas de 32 px, escaleras), y **Avisos** lista cada problema con **Ir** para llevarte ahí.",
+            "**Alcance** sombrea adonde los jugadores no pueden llegar (saltos a repisas de hasta 48 px, cajas de 32 px, escaleras), y **Avisos** lista cada problema con **Ir** para llevarte ahí.",
             "Deshaz y rehaz cada cambio con Ctrl+Z y Ctrl+Shift+Z (⌘ en una Mac). La barra de arriba muestra cuándo el juego está guardado en este navegador.",
           ],
         },
@@ -779,7 +779,7 @@ export const docsEs: Docs = {
         {
           t: "list",
           items: [
-            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: salto de 64 px, cajas de 32 px y una cámara que solo avanza.",
+            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px y una cámara que solo avanza.",
             "Juega con el teclado (flechas, Z, X, C), mandos o los botones en pantalla en pantallas táctiles; aprieta un botón para unirte, hasta 4 jugadores.",
             "**Editar mientras juego**: coloca piezas (caja, plataforma, escalera, enemigo, civil, arma) mientras el juego sigue corriendo, o usa **Pausar y editar** y sigue **Desde aquí** o **Desde el inicio**.",
             "**Depuración** muestra la colisión, las cajas de golpe, la cámara, los FPS y la cámara lenta. **Volver a construir** te devuelve al editor.",

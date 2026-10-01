@@ -744,7 +744,7 @@ export const docsEn: Docs = {
             "**Objects**: player starts, enemies, civilians, crates, pickups, camera locks, checkpoints, bosses and the exit. Select one to change it in the **Inspector**: its **Reference name** (letters, digits and _, unique; the ROM finds the object by it) and its properties, such as kind, facing, patrol, hits or contents.",
             "**Layers**: tiles, collision and objects, each with show, lock, rename, order and opacity; **Layer** adds a tile layer.",
             "**Board limits**: meters for palettes, colors, graphics and sprites on one screen, always visible.",
-            "**Reach** shades what players cannot get to (64 px jumps, 32 px crates, ladders), and **Warnings** lists each problem with **Go** to take you there.",
+            "**Reach** shades what players cannot get to (jumps onto ledges up to 48 px, 32 px crates, ladders), and **Warnings** lists each problem with **Go** to take you there.",
             "Undo and redo every change with Ctrl+Z and Ctrl+Shift+Z (⌘ on a Mac). The top bar shows when the game is saved in this browser.",
           ],
         },
@@ -779,7 +779,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Play** (P) runs the level with the same rules as the ROM: a 64 px jump, 32 px crates and a camera that only moves forward.",
+            "**Play** (P) runs the level with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates and a camera that only moves forward.",
             "Play with the keyboard (arrows, Z, X, C), controllers or the on-screen buttons on touch screens; press a button to join, up to 4 players.",
             "**Edit while playing**: place pieces (crate, platform, ladder, enemy, civilian, weapon) while the game keeps running, or **Pause and edit** and go on **From here** or **From the start**.",
             "**Debug** shows collision, hitboxes, the camera, the FPS and slow motion. **Back to building** returns to the editor.",
