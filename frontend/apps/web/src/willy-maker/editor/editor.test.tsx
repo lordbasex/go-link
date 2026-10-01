@@ -166,8 +166,13 @@ describe("reachability", () => {
     g.commit();
     return level;
   };
-  it("reaches a ledge 64 px up with a jump", () => {
-    expect(reachability(ledgeLevel(4)).ledges).toEqual([]);
+  it("reaches a ledge 48 px up with a jump", () => {
+    expect(reachability(ledgeLevel(3)).ledges).toEqual([]);
+  });
+  it("warns about a ledge 64 px up: the jump peaks at 61.9 px (engine/game.test.tsx)", () => {
+    const r = reachability(ledgeLevel(4));
+    expect(r.ledges).toHaveLength(1);
+    expect(r.ledges[0]!.rise).toBe(64);
   });
   it("warns about a ledge 96 px up", () => {
     const r = reachability(ledgeLevel(6));
@@ -182,10 +187,10 @@ describe("reachability", () => {
     g.commit();
     expect(reachability(level).ledges).toEqual([]);
   });
-  it("reaches it with a crate stair", () => {
+  it("reaches it with a crate stair (32 px, then 64 px, then a jump)", () => {
     const level = ledgeLevel(6);
     const g = tagGrid(level);
-    for (const [c, r] of [[6, 10], [7, 10], [6, 11], [7, 11]] as const) g.set(c, r, TAG_NUMBER.crate);
+    for (const [c, r] of [[6, 10], [7, 10], [6, 11], [7, 11], [8, 8], [9, 8], [8, 9], [9, 9], [8, 10], [9, 10], [8, 11], [9, 11]] as const) g.set(c, r, TAG_NUMBER.crate);
     g.commit();
     expect(reachability(level).ledges).toEqual([]);
   });

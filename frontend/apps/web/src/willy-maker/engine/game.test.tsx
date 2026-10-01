@@ -264,6 +264,27 @@ describe("Willy Maker engine", () => {
   });
 });
 
+describe("how high a jump reaches (experiment 1, case C)", () => {
+  /** A one-way ledge `up` px above the floor (y 400), 4 cells right of the start; true when a jump toward it lands on it. */
+  function lands(up: number): boolean {
+    const row = (400 - up) / 16;
+    const g = new Game(flat((set) => {
+      for (let c = 6; c < 14; c++) set(c, row, Tag.Oneway);
+    }));
+    run(g, 1, Input.B1 | Input.Right);
+    for (let f = 0; f < 90; f++) {
+      run(g, 1, Input.Right);
+      if (g.players[0]!.onGround && feet(g) === 400 - up) return true;
+    }
+    return false;
+  }
+
+  it("lands on a ledge 48 px up but not on one 64 px up: the jump peaks at 61.9 px", () => {
+    expect(lands(48)).toBe(true);
+    expect(lands(64)).toBe(false);
+  });
+});
+
 describe("the Rules card (Game Spec v1's numbers)", () => {
   const SPEC_RULES = { enemyHp: 3, enemyScore: 100, rescueScore: 500, touchHurts: true, enemiesChase: false, enemiesShoot: false, exitNeedsEnemies: true, respawnOnHurt: false, hurtFrames: 60 };
   const trooper = (x: number): LevelObject => ({ name: `t${x}`, type: "enemy", x, y: 400, kind: "trooper", facing: "left", patrol: 96 });

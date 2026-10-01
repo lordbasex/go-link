@@ -147,8 +147,8 @@ export function buenosAiresLevel(players = 4): Level {
   });
   tag(214, STREET - 1, 217, STREET - 1, hazard);
   for (let c = 214; c <= 217; c++) tile(c, STREET - 1, CITY.hazard);
-  platform(222, 232, STREET - 4);
-  civilian("civ_lobby_1", "baby", 228, STREET - 4);
+  platform(222, 232, STREET - 3); // 48 px: a jump peaks at 61.9 px, so 64 px is out of reach
+  civilian("civ_lobby_1", "baby", 228, STREET - 3);
   enemy("trooper_lobby_1", "trooper", 236, STREET, 64);
   obj({ name: "lock_lobby", type: "camera_lock", x: 240 * CELL, y: H - 224, w: 384, h: 224 });
   obj({ name: "boss_truck", type: "boss", x: 258 * CELL, y: y(STREET), kind: "armored_truck", w: 384, h: 224 });
