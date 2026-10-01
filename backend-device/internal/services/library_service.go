@@ -21,6 +21,7 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/cores"
+	"github.com/lordbasex/go-link/backend-device/pkg/ownsets"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/sysinfo"
 	"github.com/lordbasex/go-link/backend-device/pkg/thumbnails"
@@ -51,6 +52,7 @@ type LibraryService struct {
 	thumbsDir  string
 	thumbKind  thumbnails.Kind
 	thumbCache *thumbnails.Cache
+	own        *ownsets.Matcher // go-link's own sets, by their files' hashes
 }
 
 // SetCore configures the libretro core: its folder and the buildbot URL
@@ -163,6 +165,16 @@ func (l *LibraryService) HasRom(name string) bool {
 // RomPath returns the file of a ROM set.
 func (l *LibraryService) RomPath(name string) string { return filepath.Join(l.Dir(), name+".zip") }
 
+// Own returns the go-link set a ROM of the folder is, or nil. It is decided
+// by the SHA-256 of every file inside the zip, never by the name: a real
+// set with the same name is the original game.
+func (l *LibraryService) Own(name string) *ownsets.Set {
+	if !romNameRE.MatchString(name) {
+		return nil
+	}
+	return l.own.Match(l.RomPath(name))
+}
+
 // Title returns the catalog title of a set, or its short name.
 func (l *LibraryService) Title(name string) string {
 	if lib := l.status.Snapshot().Library; lib != nil {
@@ -252,7 +264,7 @@ func NewLibraryService(dir string, status *StatusService, logger *slog.Logger) *
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &LibraryService{dir: dir, status: status, log: logger, thumbCache: thumbnails.NewCache(512)}
+	return &LibraryService{dir: dir, status: status, log: logger, thumbCache: thumbnails.NewCache(512), own: ownsets.NewMatcher(nil)}
 }
 
 // Dir returns the ROM folder.
@@ -424,10 +436,24 @@ func (l *LibraryService) Scan() {
 			}
 		}
 	}
+	// go-link's own sets show go-link's game, never the original set's
+	// title or the host's pictures of it.
+	for i := range roms {
+		if s := l.Own(roms[i].Name); s != nil {
+			roms[i].Own = true
+			roms[i].Title, roms[i].Year, roms[i].Maker, roms[i].Description = s.Title, s.Year, s.Maker, s.Description
+			roms[i].Controls = &models.RomControls{Players: s.Players, Buttons: s.Buttons, Labels: s.Labels}
+		}
+	}
 	// Thumbnails can be named after the set or the title, so look after
 	// the titles are known.
 	thumbsDir := l.ThumbnailsDir()
 	for i := range roms {
+		if roms[i].Own {
+			_, art := l.Own(roms[i].Name).Picture()
+			roms[i].Thumbs = models.Thumbs{Boxart: art, Title: art, Snap: art}
+			continue
+		}
 		has := thumbnails.Has(thumbsDir, roms[i].Name, roms[i].Title)
 		roms[i].Thumbs = models.Thumbs{Boxart: has[thumbnails.Boxart], Title: has[thumbnails.Title], Snap: has[thumbnails.Snap]}
 	}
@@ -495,6 +521,15 @@ func (l *LibraryService) ThumbnailPath(name string, kind thumbnails.Kind) (strin
 // Thumbnail returns a small JPEG of a set's thumbnail that fits in
 // maxW x maxH (and in maxBytes when it is above 0).
 func (l *LibraryService) Thumbnail(name string, kind thumbnails.Kind, maxW, maxH, maxBytes int) ([]byte, error) {
+	// A go-link set has its own picture (any kind), or none: the host's
+	// thumbnails for its name are the original game's.
+	if s := l.Own(name); s != nil {
+		art, ok := s.Picture()
+		if !ok || !kind.Valid() {
+			return nil, os.ErrNotExist
+		}
+		return l.thumbCache.SmallBytes(s.PictureKey(), art, maxW, maxH, maxBytes)
+	}
 	p, ok := l.ThumbnailPath(name, kind)
 	if !ok {
 		return nil, os.ErrNotExist

@@ -8,6 +8,7 @@
 | Device window on Linux | OpenGL, X11 and Wayland development packages (`libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols`) |
 | Website | Node.js (version in `frontend/.nvmrc`) and npm |
 | Cross builds | Docker with `buildx` (Linux and Windows device builds run in containers); `nasm` for the macOS Intel build (`brew install nasm`) |
+| Willy Maker's board model (only to rebuild it) | Emscripten from [emsdk](https://emscripten.org/docs/getting_started/downloads.html) and a host C compiler (see below) |
 | End-to-end tests | A clone of [signalhub](https://github.com/lordbasex/signalhub) next to this repository (`../signaling`) or `SIGNALING_DIR` |
 
 Install the device's C libraries:
@@ -19,6 +20,21 @@ Install the device's C libraries:
 | Windows (MSYS2) | `pacman -S mingw-w64-x86_64-libvpx mingw-w64-x86_64-opus mingw-w64-x86_64-pkg-config` |
 
 These libraries are needed **only to build** and to run `go test`. The release builds link them statically (on macOS, built from source by `build/macos/static-libs.sh`), so the binaries run without them.
+
+### The power-on test's WebAssembly
+
+Willy Maker's power-on test runs a 68000 and a CPS-1 board model compiled to WebAssembly (`frontend/packages/cps1-sim`, see [the architecture](willy-maker/architecture.md#the-power-on-test-go-linkcps1-sim-and-power)). The built file, `wasm/cps1sim.wasm`, is **committed**: the website build, the tests and CI use it as it is and never need Emscripten. Only a change to `c/` or `musashi/` needs a rebuild:
+
+```bash
+git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+~/emsdk/emsdk install latest && ~/emsdk/emsdk activate latest
+source ~/emsdk/emsdk_env.sh                 # puts emcc on PATH (and sets EMSDK)
+cd frontend
+npm run wasm -w @go-link/cps1-sim           # rebuilds wasm/cps1sim.wasm and cps1sim.json
+npm run wasm:check -w @go-link/cps1-sim     # rebuilds in a temporary folder and compares
+```
+
+`tools/build.mjs` uses `emcc` from `PATH`, or `$EMSDK/upstream/emscripten/emcc` when only `EMSDK` is set. `wasm/cps1sim.json` records the `emcc` version that built the committed file; a different version may give different bytes, so `wasm:check` is meant for the machine that last rebuilt it, not for CI.
 
 ## Makefile
 

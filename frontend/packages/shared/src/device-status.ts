@@ -39,6 +39,30 @@ export interface DeviceRom {
   thumbs: { boxart: boolean; title: boolean; snap: boolean };
   /** Whether the core can run the set; absent until the core's game list is on the device. */
   check?: RomCheck;
+  /**
+   * A game go-link made itself: the device matched the SHA-256 of every
+   * file inside the zip (never its name), so title, year, maker,
+   * description and controls are go-link's, not the original set's.
+   */
+  own?: boolean;
+  description?: string;
+  controls?: RomControls;
+}
+
+/** A game's control panel as the library shows it (go-link's own games). */
+export interface RomControls {
+  players: number;
+  buttons: number;
+  /** What each button does, button 1 first, in English ("Jump", "Fire", "Special"). */
+  labels: string[];
+}
+
+function parseRomControls(v: unknown): RomControls | undefined {
+  if (typeof v !== "object" || v === null) return undefined;
+  const c = v as Record<string, unknown>;
+  const count = (x: unknown, hi: number) => (typeof x === "number" && Number.isFinite(x) ? Math.min(Math.max(Math.round(x), 0), hi) : 0);
+  const labels = Array.isArray(c.labels) ? c.labels.filter((l): l is string => typeof l === "string").slice(0, 6).map((l) => l.slice(0, 20)) : [];
+  return { players: count(c.players, 4), buttons: count(c.buttons, 6), labels };
 }
 
 /** Verdict of the device's ROM check, made without running the game. */
@@ -281,7 +305,13 @@ function parseLibrary(v: unknown): DeviceLibrary | undefined {
       const o = (typeof r === "object" && r !== null ? r : {}) as Record<string, unknown>;
       const name = text(o.name, 16);
       if (!name) return [];
-      return [{ name, size: typeof o.size === "number" ? o.size : 0, title: text(o.title, 160), year: text(o.year, 4), maker: text(o.maker), thumbs: parseThumbs(o.thumbs), check: parseCheck(o.check) }];
+      const rom: DeviceRom = { name, size: typeof o.size === "number" ? o.size : 0, title: text(o.title, 160), year: text(o.year, 4), maker: text(o.maker), thumbs: parseThumbs(o.thumbs), check: parseCheck(o.check) };
+      if (o.own === true) {
+        rom.own = true;
+        rom.description = text(o.description, 400);
+        rom.controls = parseRomControls(o.controls);
+      }
+      return [rom];
     }),
     core: (() => {
       const c = (typeof l.core === "object" && l.core !== null ? l.core : {}) as Record<string, unknown>;

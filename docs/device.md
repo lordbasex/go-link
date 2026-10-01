@@ -59,6 +59,7 @@ device core download                     # download the emulator core and its ga
 device roms dir [PATH]                   # show or change the ROM folder
 device roms check [--dir D] [--json]     # check which ROM sets the core can run
 device roms saves [--json]               # test which games can resume from a save
+device romtest [--frames N] [--json] [--shot FILE] ZIP   # power a set on with the exact core
 device thumbnails check [--json]         # count the thumbnails of the ROM sets
 device thumbnails dir [PATH|default]     # show or change the thumbnails folder
 device thumbnails kind [boxart|title|snap]   # which thumbnail is shown
@@ -70,6 +71,36 @@ device reset --yes                       # factory reset (with the device stoppe
 ```
 
 Every subcommand accepts `--config PATH`. Settings changed from the CLI are saved in `device.json`; a running device picks them up on its next start.
+
+### go-link's own sets
+
+go-link makes its own games (the [CPS-1 ROM](rom/README.md), and later Willy Maker's). The stock core only runs sets of its driver list, so they are laid out as one of them (`slammast`) and, by name, look like that original game. The device ships a list of them, `backend-device/pkg/ownsets/sets.json` (embedded), with the **SHA-256 and size of every file inside the zip**: never the zip's own hash, which changes with its entry timestamps on every build. `rom/tools/ownsets.mjs` writes it, and `rom/tools/build.mjs` runs it after every build, so the list always matches the last build.
+
+- A zip is a go-link set only when it has exactly the listed files, each with its size and SHA-256. A set that only matches by name (a real `slammast.zip`, or ours with one byte changed) stays the original game, as `romcheck` sees it. Hashes are kept per file path, size and modification time, so a rescan hashes nothing new.
+- The library (`device_status.library.roms`) then shows go-link's `title`, `year`, `maker` and `description`, `own: true` and `controls` (`players`, `buttons`, `labels`: Jump, Fire, Special), and the picture go-link ships with the set for every thumbnail kind (or none): never the host's thumbnails for that name, which are the original game's. Rooms of it carry `room_state.info.own` and `room_state.controls.labels`.
+- `device roms check` marks it `[go-link set, verified]` (`"own": true` with `--json`).
+- Nothing is weakened: the list only renames, every set still goes through `romcheck`, and a go-link set runs exactly like any other.
+
+### ROM test
+
+`device romtest ZIP` is validation level 4 from a terminal: the same test as the website's **Test on my go-link** ([protocol](protocol.md#rom-test)). It copies the zip to `~/go-link/tmp/romtest/run-<random>/`, runs the two worker processes (`device romtest --child`, with and without scripted input) with the core in `~/go-link/cores` (`--core` for another one), prints the checklist and deletes the copy. It never reads or changes `device.json` or the ROM folder. `--json` prints the result, `--shot FILE` saves the last frame, and the exit status is 1 when a check fails.
+
+```
+ROM test of slammast.zip (slammast)
+  ok    zip             28 files
+  ok    set             the core's slammast (Saturday Night Slam Masters (World 930713) layout)
+  ok    identity        go-link set "Willy Gorklingo: The Lag Protocol (prototype)", verified by the SHA-256 of its 28 files
+  ok    core.loaded     MAME 2003-Plus 3141930, 384x224 at 60.00 Hz
+  ok    core.files      every file found with its size; 28 differ from the original set, as expected for a go-link set
+  ok    video.picture   first picture at frame 9
+  ok    video.alive     220 different pictures in the last 300 frames (at least 10)
+  ok    audio           sound runs, silent in these 900 frames
+  ok    input.reacts    the picture changed at frame 301, after Coin at frame 300 (the run without input stayed the same until then)
+  ok    time.realtime   900 frames in 2.8 s: 5.4x real time
+PASSED: the set powers on in this core. 900 frames in 6.5 s.
+```
+
+A copy whose 68000 program was erased crashes the core: the worker dies (`core.run`: "the set crashed the emulator (SIGSEGV: segmentation violation)") or the screen stays black (`video.picture`), and the device itself is never touched. One test runs at a time per device.
 
 ## Configuration: `device.json`
 
@@ -100,7 +131,7 @@ Created on the first run with mode `0600`:
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.
 - STUN and TURN are **not** stored here.
-- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600) and `logs/device.log`.
+- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600), `tmp/romtest/` (sets waiting for or under a [ROM test](#rom-test), deleted after each test and at startup) and `logs/device.log`.
 
 ### Video quality
 

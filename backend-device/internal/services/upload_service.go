@@ -24,6 +24,13 @@ type Importer interface {
 	Import(fileName string, r io.Reader) error
 }
 
+// TestImporter keeps a set sent for a ROM test (RomTestService), apart
+// from the library.
+type TestImporter interface {
+	CheckTestUpload(id, fileName string, size int64) error
+	StoreTest(id, fileName string, r io.Reader) error
+}
+
 // UploadService receives ROM files from the owner's browser on the
 // "files" DataChannel, straight over WebRTC: no web server involved.
 //
@@ -33,9 +40,13 @@ type Importer interface {
 //	binary chunks of the file
 //	text   {"type":"end","id":"…"}
 //
-// The device answers with upload_result on the control channel.
+// With "purpose":"rom_test" in begin, the file is a set to power on with
+// rom_test: it goes to the ROM test's folder (never the ROM folder, never
+// the library). The device answers with upload_result on the control
+// channel.
 type UploadService struct {
 	lib   Importer
+	tests TestImporter // nil: tests are refused
 	reply func(peerID string, r FileReply)
 
 	mu      sync.Mutex
@@ -56,11 +67,15 @@ func NewUploadService(lib Importer, reply func(peerID string, r FileReply)) *Upl
 	return &UploadService{lib: lib, reply: reply, current: make(map[string]*upload)}
 }
 
+// SetTests accepts uploads for ROM tests.
+func (u *UploadService) SetTests(t TestImporter) { u.tests = t }
+
 type fileControl struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Size int64  `json:"size"`
+	Type    string `json:"type"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Size    int64  `json:"size"`
+	Purpose string `json:"purpose,omitempty"` // "" (the library) or "rom_test"
 }
 
 // Handle processes one message of the files channel.
@@ -83,14 +98,31 @@ func (u *UploadService) Handle(peerID string, isString bool, data []byte) {
 
 func (u *UploadService) begin(peerID string, msg fileControl) {
 	u.abort(peerID, errors.New("replaced by a new upload"))
-	if _, err := u.lib.CheckImportName(msg.Name); err != nil {
+	check := func() error { _, err := u.lib.CheckImportName(msg.Name); return err }
+	store := func(r io.Reader) error { return u.lib.Import(msg.Name, r) }
+	maxSize := int64(MaxImportSize)
+	switch msg.Purpose {
+	case "":
+	case "rom_test":
+		check = func() error {
+			if u.tests == nil {
+				return errors.New("this device cannot test ROMs")
+			}
+			return u.tests.CheckTestUpload(msg.ID, msg.Name, msg.Size)
+		}
+		store = func(r io.Reader) error { return u.tests.StoreTest(msg.ID, msg.Name, r) }
+		maxSize = RomTestMaxSize
+	default:
+		check = func() error { return errors.New("unknown upload purpose") }
+	}
+	if err := check(); err != nil {
 		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error()})
 		u.mu.Lock()
 		u.current[peerID] = &upload{id: msg.ID, name: msg.Name, failed: err} // swallow its chunks
 		u.mu.Unlock()
 		return
 	}
-	if msg.Size <= 0 || msg.Size > MaxImportSize {
+	if msg.Size <= 0 || msg.Size > maxSize {
 		err := ErrBadRom
 		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error()})
 		u.mu.Lock()
@@ -101,7 +133,7 @@ func (u *UploadService) begin(peerID string, msg fileControl) {
 	pr, pw := io.Pipe()
 	up := &upload{id: msg.ID, name: msg.Name, size: msg.Size, pw: pw, done: make(chan error, 1)}
 	go func() {
-		err := u.lib.Import(msg.Name, pr)
+		err := store(pr)
 		_ = pr.CloseWithError(err) // unblock the writer if Import stopped early
 		up.done <- err
 	}()

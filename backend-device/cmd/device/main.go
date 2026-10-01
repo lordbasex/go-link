@@ -272,6 +272,14 @@ func run() error {
 			stream.SendControl(peerID, b)
 		}
 	})
+	// ROM tests (validation level 4): a set the owner sends with purpose
+	// rom_test, powered on by a worker process; never the ROM folder.
+	romTests := services.NewRomTestService(services.RomTestConfig{
+		Dir: filepath.Join(base, "tmp", "romtest"), CorePath: library.CorePath,
+		Catalog: library.Catalog, Logger: logger,
+	})
+	romTests.Cleanup()
+	uploads.SetTests(romTests)
 	// Recordings to the owner, pulled piece by piece on the same channel.
 	downloads := services.NewDownloadService(recordings, stream.SendFiles)
 	stream.OnLinkFiles(func(peerID string, isString bool, data []byte) {
@@ -306,6 +314,7 @@ func run() error {
 			Style   string `json:"style"` // room_action picture
 			Bands   string `json:"bands"`
 			Quality string `json:"quality"` // set_video_quality
+			Frames  int    `json:"frames"`  // rom_test
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -340,6 +349,19 @@ func run() error {
 			if b, err := json.Marshal(res); err == nil {
 				stream.SendControl(peerID, b)
 			}
+			return
+		case "rom_test":
+			// Power on a set the owner sent on the files channel with
+			// purpose rom_test, in a worker process (one test at a time,
+			// up to a minute); the set is deleted afterwards.
+			id, set, frames := msg.ID, msg.Set, msg.Frames
+			go func() {
+				res := romTests.Run(ctx, id, set, frames)
+				logger.Info("rom test", "set", set, "ok", res.OK, "seconds", res.Seconds)
+				if b, err := json.Marshal(res); err == nil {
+					stream.SendControl(peerID, b)
+				}
+			}()
 			return
 		case "set_roms_dir":
 			res := map[string]any{"type": "roms_dir_result", "dir": msg.Dir, "ok": true}

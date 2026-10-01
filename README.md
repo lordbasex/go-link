@@ -18,7 +18,18 @@ Your computer becomes the arcade: it runs the games and streams them live. Frien
 
 </div>
 
-> **Do you like go-link?** Give it a ⭐ **star** (top right of this page). It is free, it takes one click, and it helps other retro gamers find the project. Then [install it](#install-in-a-minute), invite a friend, and tell us how it went.
+## Why go-link
+
+> *"Come on, the next token's on me."*
+
+go-link started with a simple wish: to get together with friends and play like we did in the arcades of the 80s and 90s. Sitting side by side at the machine, running tournaments, and joking with each other the whole game. Life spread us out, so go-link brings the arcade to us: one friend hosts, sends a link, and everyone is back at the same machine, talking and laughing while they play.
+
+What makes it different:
+
+- **Only the host needs the games.** With classic netplay every player needs the same ROM and emulator setup; with go-link friends only open a link.
+- **Nothing to install for players.** A browser is enough, on a computer, a tablet or a phone (or the go-link Player app).
+- **It feels like the arcade:** four seats, a queue for the next game, spectators, voice and chat between players.
+- **No accounts and no middleman.** The games run on the host's own computer and never touch a server; you can even run your own signaling server.
 
 A **host** runs the go-link app (the **device**) on their own computer, with **their own ROMs**. Friends join from a web browser **without needing the ROM**: they get the game's video and sound over WebRTC and send their controls back, peer to peer.
 
@@ -50,6 +61,10 @@ Then open [go-link.org/device](https://go-link.org/device), type the 9-digit cod
 - **ROM validation without running the game:** each set is checked against the core's game list with the MAME 0.78 loader rules.
 - **Native app:** a window and tray icon on macOS, Windows and Linux; headless mode with a local web panel for a Raspberry Pi, a server or Docker; and a full CLI.
 - **Your own infrastructure if you want:** the signaling server is open source, and the website can switch to another one.
+- **Willy Maker:** make your own arcade game in the browser, for the real CPS-1 board that MAME runs. Draw the level, bring your characters, play it while you build it, and export everything to turn it into a ROM ([guide](https://go-link.org/docs/willy-maker), [docs](docs/willy-maker/README.md)).
+
+<img src="docs/images/willy-maker.png" alt="Willy Maker: playing a level while building it" width="860">
+
 - **Website in English, Spanish and Portuguese**, dark and light themes.
 
 ## How it works
@@ -130,7 +145,7 @@ Details in [docs/deploy.md](docs/deploy.md).
 
 go-link is built in the open, and every bit of help counts:
 
-- ⭐ **Star the repository.** It is the easiest way to help others discover it.
+- ⭐ **Star the repository** (top right of this page). It is free, it takes one click, and it is the easiest way to help other retro gamers find the project.
 - 🕹️ **Install it and play** with your friends, then tell us what worked and what did not.
 - 🐛 **Report bugs** and 💡 **suggest ideas** in [Issues](https://github.com/lordbasex/go-link/issues/new/choose), or ask and share in [Discussions](https://github.com/lordbasex/go-link/discussions).
 - 🌍 **Translate** the website: English, Spanish and Portuguese today, and more languages are welcome.

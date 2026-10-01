@@ -1,0 +1,164 @@
+{
+  "format": 1,
+  "sets": [
+    {
+      "id": "willy-proto",
+      "title": "Willy Gorklingo: The Lag Protocol (prototype)",
+      "description": "go-link's own arcade game: a side-scrolling run-and-gun for up to four players. Willy Gorklingo runs, jumps, climbs and rescues civilians across the rooftops of Buenos Aires. A prototype made by go-link, every byte original.",
+      "year": "2026",
+      "maker": "go-link",
+      "players": 4,
+      "buttons": 3,
+      "control": "joy8way",
+      "labels": [
+        "Jump",
+        "Fire",
+        "Special"
+      ],
+      "set": "slammast",
+      "art": "willy-proto.png",
+      "files": [
+        {
+          "name": "mb_05.bin",
+          "size": 524288,
+          "sha256": "92410268705b091005fd75ff5d6199cdd9dc80da3d8bf637ae0c5affcb76933d"
+        },
+        {
+          "name": "mb_06.bin",
+          "size": 524288,
+          "sha256": "de09e716821648da3b1ac3ca5f962084d4f17d88a364a32d6b648c5dc8d280d5"
+        },
+        {
+          "name": "mb_07.bin",
+          "size": 524288,
+          "sha256": "e28f57b0c5b9631c269424bdd061dfec29ed2112a6e3d69863a4c703d7b5cb89"
+        },
+        {
+          "name": "mb_08.bin",
+          "size": 524288,
+          "sha256": "d2bf7ba3255431d3abbf07aa9feabdd83ef941bc079201b4f99ca00844bdbd4e"
+        },
+        {
+          "name": "mb_10.bin",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mb_11.bin",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mb_12.bin",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mb_13.bin",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mb_gfx01.rom",
+          "size": 524288,
+          "sha256": "b4d741df5084795c8c72d0d11ec99976be79be75017f188349f85f6665581340"
+        },
+        {
+          "name": "mb_gfx02.rom",
+          "size": 524288,
+          "sha256": "85592e3c45405fbcf70a289465cea570eacc84f7e3ec1267d0678d5ad652e39d"
+        },
+        {
+          "name": "mb_gfx03.rom",
+          "size": 524288,
+          "sha256": "3ff72adbb222feff9db82599c80905b056f002325492f9ad7cf77beeac2cb579"
+        },
+        {
+          "name": "mb_gfx04.rom",
+          "size": 524288,
+          "sha256": "d1b603ae61904b8702b2a3f69a5c057c836c958b0a376a23c2c14704b918eef6"
+        },
+        {
+          "name": "mb_q1.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q2.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q3.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q4.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q5.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q6.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q7.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_q8.bin",
+          "size": 524288,
+          "sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541"
+        },
+        {
+          "name": "mb_qa.rom",
+          "size": 131072,
+          "sha256": "97aa20f433373110eb6c1a4cad8b2fa80eeaf275578c40326a5fca073abd4cb1"
+        },
+        {
+          "name": "mbe_20a.rom",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mbe_21a.rom",
+          "size": 524288,
+          "sha256": "043e238a765f7cfbc62596a50e53c8ffb6b188a99357b0ebede251725d67589f"
+        },
+        {
+          "name": "mbe_23e.rom",
+          "size": 524288,
+          "sha256": "a7e485bdc2eee41805386e8c4b6a87f853441369c4e9679abcf8808c730fb299"
+        },
+        {
+          "name": "mbe_24b.rom",
+          "size": 131072,
+          "sha256": "b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260"
+        },
+        {
+          "name": "mbe_25b.rom",
+          "size": 131072,
+          "sha256": "b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260"
+        },
+        {
+          "name": "mbe_28b.rom",
+          "size": 131072,
+          "sha256": "b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260"
+        },
+        {
+          "name": "mbe_29b.rom",
+          "size": 131072,
+          "sha256": "b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260"
+        }
+      ]
+    }
+  ]
+}

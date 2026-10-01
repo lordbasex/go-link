@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // The Export tab: the review before exporting (validation level 1, live,
-// with Go and Fix), the project .zip, the AI pack with its prompt, and
-// Create ROM, shown as the next stage.
+// with Go and Fix), the project .zip, the AI pack with its prompt, Create
+// ROM, shown as the next stage, and the power-on test of a ROM .zip.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useExportMessages } from "../../i18n";
@@ -18,6 +18,7 @@ import { Capsule, Card, Eyebrow } from "../atoms";
 import { IconCheck, IconCircle, IconCopy, IconDownload, IconInfo, IconWarn, IconX } from "../icons";
 import { downloadBytes } from "../download";
 import { levelThumbnail } from "../thumbnail";
+import { PowerOnCard } from "./PowerOnCard";
 
 type Busy = null | "project" | "ai";
 
@@ -185,32 +186,35 @@ export function ExportView({ project, version, store, onGo }: { project: Project
         )}
       </div>
 
-      <Card className="wm-export-col is-dashed wm-rom-card" aria-disabled="true">
-        <div className="wm-row">
-          <span className="wm-h is-violet">{t.rom.title}</span>
-          <span className="wm-chip is-violet">{t.rom.stage}</span>
-        </div>
-        <p className="wm-dim">{t.rom.text}</p>
-        <ul className="wm-rom-steps">
-          {t.rom.steps.map((s) => (
-            <li key={s}>
-              <IconCheck /> {s}
+      <div className="wm-export-col">
+        <Card className="wm-export-card is-dashed wm-rom-card" aria-disabled="true">
+          <div className="wm-row">
+            <span className="wm-h is-violet">{t.rom.title}</span>
+            <span className="wm-chip is-violet">{t.rom.stage}</span>
+          </div>
+          <p className="wm-dim">{t.rom.text}</p>
+          <ul className="wm-rom-steps">
+            {t.rom.steps.map((s) => (
+              <li key={s}>
+                <IconCheck /> {s}
+              </li>
+            ))}
+            <li className="is-todo">
+              <IconCircle /> <span className="wm-mono">{t.rom.set(layout.id)}</span>
             </li>
-          ))}
-          <li className="is-todo">
-            <IconCircle /> <span className="wm-mono">{t.rom.set(layout.id)}</span>
-          </li>
-        </ul>
-        <div className="wm-row wm-export-actions">
-          <Capsule size="lg" disabled>
-            <IconDownload /> {t.rom.download}
-          </Capsule>
-          <Capsule size="lg" disabled>
-            {t.rom.play}
-          </Capsule>
-        </div>
-        <p className="wm-small wm-dim">{t.rom.note}</p>
-      </Card>
+          </ul>
+          <div className="wm-row wm-export-actions">
+            <Capsule size="lg" disabled>
+              <IconDownload /> {t.rom.download}
+            </Capsule>
+            <Capsule size="lg" disabled>
+              {t.rom.play}
+            </Capsule>
+          </div>
+          <p className="wm-small wm-dim">{t.rom.note}</p>
+        </Card>
+        <PowerOnCard />
+      </div>
     </div>
   );
 }

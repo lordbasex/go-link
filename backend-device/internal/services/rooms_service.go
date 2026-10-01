@@ -829,7 +829,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	gr.pauseAsks = nil
 	hostLinked := r.hostLinked
 	gr.art = r.art(saved.Rom, saved.Art)
-	info := RoomInfo{Title: saved.Name, Game: game, Host: r.cfg.HostName, Art: gr.art}
+	info := RoomInfo{Title: saved.Name, Game: game, Host: r.cfg.HostName, Art: gr.art, Own: r.cfg.Library != nil && r.cfg.Library.Own(saved.Rom) != nil}
 	r.mu.Unlock()
 	manager.SetInfo(info)
 	manager.SetHostLinked(hostLinked)
@@ -1390,6 +1390,10 @@ func (r *RoomsService) art(rom, kind string) string {
 func (r *RoomsService) controlsOf(rom string) GameControls {
 	var game *romcheck.Game
 	if r.cfg.Library != nil {
+		// go-link's own games name their buttons.
+		if s := r.cfg.Library.Own(rom); s != nil {
+			return GameControls{Players: s.Players, Buttons: s.Buttons, Control: s.Control, Labels: s.Labels}
+		}
 		game = r.cfg.Library.Catalog().Game(rom)
 	}
 	if game == nil || game.Input == (romcheck.Input{}) {

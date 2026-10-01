@@ -231,6 +231,8 @@ Before any export, a checklist runs and links each problem to where it is:
 
 Errors block the AI pack; warnings do not. Each entry has **Go** (to the level, object or tab) and, when the change is safe, **Fix** (undoable). The rules and what is built are in [validation.md](validation.md#level-1-live-rules); the pack's layout is in [file-format.md](file-format.md#the-ai-pack).
 
+Export also has a **Power-on test**: drop a ROM `.zip` (for example the one an AI built from the pack) and a 68000 with a model of the CPS-1 board starts it in the browser, presses Coin and Start, and lists each step with a picture of what the board drew. Nothing is uploaded. See [validation.md](validation.md#level-3-power-on-in-the-browser).
+
 ## UI overview
 
 The screens match the mocks being designed on the go-link design canvas:
@@ -242,7 +244,7 @@ The screens match the mocks being designed on the go-link design canvas:
 | **Sprite import** | the dropped sheet with detected frames, animation slots, pivot editor, palette zones with their 15-color meters, CPS-1 snap preview, 1x and 2x preview |
 | **Play test** | the 2× game view with HUD, debug overlay switches, the controller panel with live buttons, Pause / Edit / Resume / Restart here |
 | **Game settings** | players, buttons and actions, controller mapping, menus, DIP switches, level order |
-| **Export / Build** | validation checklist, Export project, Export AI pack (with a preview of the prompt), Create ROM (Phase 2, shown as coming), Create and play (Phase 2) |
+| **Export / Build** | validation checklist, Export project, Export AI pack (with a preview of the prompt), Create ROM (Phase 2, shown as coming), the power-on test of a ROM `.zip`, Create and play (Phase 2) |
 
 ### Keyboard shortcuts
 

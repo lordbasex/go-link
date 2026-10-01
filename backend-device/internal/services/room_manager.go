@@ -266,6 +266,9 @@ type RoomInfo struct {
 	Host  string `json:"host"`
 	// Art is a small JPEG of the game (base64), or "".
 	Art string `json:"art,omitempty"`
+	// Own is set when the game is a set go-link made itself (verified by
+	// its files' hashes, see ownsets).
+	Own bool `json:"own,omitempty"`
 }
 
 // SetInfo tells guests the room's name, game, host and picture.
@@ -363,6 +366,9 @@ type GameControls struct {
 	Players int    `json:"players,omitempty"`
 	Buttons int    `json:"buttons"`           // action buttons per player
 	Control string `json:"control,omitempty"` // joy4way, joy8way, dial... from MAME
+	// Labels say what each button does, button 1 first (go-link's own
+	// games; MAME's list has no such names).
+	Labels []string `json:"labels,omitempty"`
 }
 
 // TestCardControls is what the test card offers: every button lights up.

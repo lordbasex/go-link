@@ -1,0 +1,10 @@
+{
+  "emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)",
+  "musashi": {
+    "version": "4.60",
+    "commit": "313ebf1bd9f4d0d93341eb5ce21fd8a119e9dbdd"
+  },
+  "bytes": 316508,
+  "sha256": "804114be22c50c7003570de53c2d6efc959fe7fb85c20b16de60e8a46f9e8d27",
+  "imports": []
+}

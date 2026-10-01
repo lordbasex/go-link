@@ -38,7 +38,14 @@ mame2003-plus only runs the games in its own driver list (identified by the set'
 - **A. A replacement set:** build our game to the exact ROM layout (file names and sizes) of an existing CPS-1 set in the driver list, so the stock core runs it unchanged. MAME 0.78 still loads a ROM whose name matches with a different CRC (it warns). go-link's device checks every set against the core's list (`pkg/romcheck`); the prototype showed it accepts such a set as it is, because it matches files by name like the core does ([journal, step 3](journal.md#step-3--a-go-link-room)), but it then shows the original game's title and art, so the device still needs an allow-list of go-link's own sets, identified by our own hashes, to show our title and to tell our set from the original one. The game would show under the original set's name in the core; go-link's library can show our title and art instead.
 - **B. A new driver entry:** add `willy` to a fork of mame2003-plus. Cleanest for players, but it means shipping and maintaining our own core build, and checking the core's license terms for redistribution first.
 
-Option A keeps goal 2 (stock core). It needs one change in go-link: `romcheck` and `RoomsService` accept a set when its hashes match a go-link-owned ROM list shipped with the device.
+Option A keeps goal 2 (stock core). Its one change in go-link is built (2026-10-01): the device ships a list of go-link's own sets by the SHA-256 of every file inside the zip (`backend-device/pkg/ownsets`), and the library, the New game page and the rooms show our title, description, picture and controls (Jump, Fire, Special) with a "go-link" mark when every file matches. A set that only matches by name stays the original game. See [device.md, go-link's own sets](../device.md#go-links-own-sets).
+
+### Releasing the set
+
+1. Build it: `node rom/tools/build.mjs`. The build ends by running `rom/tools/ownsets.mjs`, which writes the SHA-256 and size of each file inside `rom/build/slammast.zip` to `backend-device/pkg/ownsets/sets.json` (and copies the set's picture to `backend-device/pkg/ownsets/art/`). Run `node rom/tools/ownsets.mjs` alone to refresh the list from an existing build. Builds are reproducible file by file, so an unchanged program prints "unchanged"; the zip's own hash changes on every build, which is why the list never uses it.
+2. Check it with the exact core: `device romtest rom/build/slammast.zip` must print PASSED and `identity: go-link set`.
+3. Commit `backend-device/pkg/ownsets/` together with the source change, and ship **that** build's zip: a zip from another build with different files would show as the original game.
+4. Release the device as usual: the list is embedded in the binary, so devices of older releases keep showing the set as the original game.
 
 ## Technical plan
 
@@ -73,7 +80,7 @@ Option A keeps goal 2 (stock core). It needs one change in go-link: `romcheck` a
 3. **Level 1 complete:** "Dead Air", with enemies, civilians, the gunship boss, four players, score and continue.
 4. **The team:** Vera, Glitch-9 and Jitter playable, the brainwashing fights and freeing them.
 5. **Levels 2 to 10**, the endings and the attract mode.
-6. **go-link integration:** the device's allow-list for go-link's own sets, the game in the ROM library with its title and art, and the set shipped with go-link releases.
+6. **go-link integration:** the device's allow-list for go-link's own sets and the game in the ROM library with its title and art (built 2026-10-01), and the set shipped with go-link releases.
 
 ## Rules
 

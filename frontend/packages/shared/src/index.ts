@@ -18,3 +18,4 @@ export * from "./hmac";
 export * from "./recordings";
 export * from "./picture";
 export * from "./video";
+export * from "./rom-test";

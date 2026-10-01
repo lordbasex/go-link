@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { GfxRegion, KEYS, encodeOpcodes, solid } from "../../frontend/packages/cps1/src/index.ts";
 import { glyphPixels } from "./font.mjs";
 import { addArt } from "./art.mjs";
+import { GAMES, writeOwnSets } from "./ownsets.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(ROOT, "src");
@@ -174,3 +175,6 @@ run("zip", ["-q", "-X", "-j", zip, ...Object.keys(files).sort().map((n) => path.
 // Keep only the zip: next to a folder of the same name the core would read the folder.
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(`built ${zip} (${Object.keys(files).length} files)`);
+// The device's list of go-link sets (backend-device/pkg/ownsets) follows
+// every build: the SHA-256 of each file inside the zip.
+if (GAMES[SET]) writeOwnSets([SET]);

@@ -15,6 +15,7 @@ frontend/apps/web/src/willy-maker/
   engine/           the game rules, pure TypeScript, no DOM
   play/             play mode (entry play/index.ts), edit while playing
   io/               storage (localStorage + IndexedDB), project .zip, Tiled import, starter pictures
+  power/            the power-on test of a ROM .zip (validation level 3): its Worker and client
   sprites/          the Characters screen (entry sprites/index.ts): frame detection,
                     animations, palette zones, preview
   game/             the Game and Menus tabs (entry game/index.ts): actions, players, your controller,
@@ -27,7 +28,7 @@ frontend/apps/web/scripts/willy-maker-tiles.mjs   builds them from the ROM proto
 ```
 
 - The site only adds the route `/tools/willy-maker`, a card on `/tools`, and a lazy `import()` of the entry, the same way `destroyLauncher.ts` loads Destroy. The module is loaded only when the page opens.
-- The module imports **only** `@go-link/shared`, `@go-link/cps1` (the board conversion code, shared with `rom/tools`) and `src/controllers` (the controller drawings and model recognition). It never imports from `pages/`, `components/` or landing code, and nothing outside imports its internals.
+- The module imports **only** `@go-link/shared`, `@go-link/cps1` (the board conversion code, shared with `rom/tools`), `@go-link/cps1-sim` (the board model of the power-on test) and `src/controllers` (the controller drawings and model recognition). It never imports from `pages/`, `components/` or landing code, and nothing outside imports its internals.
 - **Its texts are its own**, so it can move out: each part keeps `i18n/<part>.<lang>.ts` (`core` for the shell, `sprites`, `play`, `game`, `menus`), English being the reference shape that Spanish and Portuguese must match (a test checks it); these es/pt files are the only non-English text in the module. The site passes its current language to the entry (`lang`), `i18n/index.ts` provides it, and a part reads its texts with `useMessages({ en, es, pt })`. The site's own `en.ts`/`es.ts`/`pt.ts` only hold the Tools card. Its styles are its own CSS (`ui/willy-maker.css`), using the site's tokens; the root carries `.stage-tokens`, so the IDE stays dark in both themes.
 
 ## Layers
@@ -109,6 +110,8 @@ The CPS-1 conversion code is one TypeScript package, [`frontend/packages/cps1`](
 | `gfx.ts` | the board's graphics format (`GfxRegion`, ROM file split) | Phase 2: converting to ROM files |
 | `kabuki.ts` | the sound CPU's encryption | Phase 2: Create ROM on `slammast` |
 | `font.ts` | go-link's 8 × 8 font for the text layer (`rom/tools/font.mjs` re-exports it), glyph checks | the Menus tab's previews and fit checks, play mode's Game over screen |
+| `sets.ts` | the `slammast` set's files and sizes, and the loader in reverse: the program files back into the 68000's space (`assembleProgram`), the graphics files back into one region (`joinGfx`) | the power-on test |
+| `screen.ts` | draws the board's screen from graphics RAM, the CPS-A/CPS-B registers and the graphics region (`renderScreen`), the palette formula (`paletteRgb`) | the power-on test's picture |
 
 `level.mjs` (the prototype level) stays in `rom/tools` until the "Prototype street" template needs it, and `png.mjs` is not needed in the browser (the browser decodes images). The move changed no byte of the prototype's set: the 28 files of `slammast.zip` were compared one by one before and after.
 
@@ -120,9 +123,22 @@ The CPS-1 conversion code is one TypeScript package, [`frontend/packages/cps1`](
 - `image.ts`: the only browser part (decode a picture, encode a PNG through a canvas), replaced in the tests.
 - `ui/`: `SheetView` (the sheet and its editable boxes), `AnimationPanel`, `BoardPanel` (preview and zones); `CharactersScreen.tsx` puts them together and is the entry the shell mounts: `<CharactersScreen project onChange characterId? />`.
 
+## The power-on test: `@go-link/cps1-sim` and `power/`
+
+Validation level 3 ([validation.md](validation.md#level-3-power-on-in-the-browser)) runs a ROM set's 68000 program in the browser. It has two parts:
+
+- [`frontend/packages/cps1-sim`](../../frontend/packages/cps1-sim) (`@go-link/cps1-sim`), with no DOM and no Node APIs:
+  - `musashi/`: the 68000 emulator [Musashi](https://github.com/kstenerud/Musashi) 4.60 by Karl Stenerud, **MIT license**, vendored from commit `313ebf1` (`VENDORED.txt` lists the files kept and the one change: a hook in `m68ki_jump_vector` so the board sees every exception). Its notice is in `THIRD_PARTY_NOTICES.md` (`scripts/third-party-notices.sh`).
+  - `c/board.c`: the board model. The `slammast` memory map as the core's driver wires it (program ROM, work RAM, graphics RAM, the CPS-A/CPS-B registers with the CPS-B-21 ID at `0x80016e`, the inputs, the sound latch, the QSound shared RAM and EEPROM port), the level 2 vblank interrupt held until taken, and 10 MHz / 60 cycles per frame. Any other address, a write to ROM, an odd word access, an exception or a stack outside work RAM stops the CPU and is reported. The Z80 and QSound are not run. `c/conf.h` is Musashi's configuration (a plain 68000), `c/nofpu.c` stands in for the floating point routines a 68000 never calls.
+  - `wasm/cps1sim.wasm`: the build, **committed**, so the website and CI never need Emscripten. `tools/build.mjs` (`npm run wasm -w @go-link/cps1-sim`) builds it with `emcc` as a standalone module: no JavaScript runtime, no imports, a fixed 4 MB memory, only the `board_*` functions exported. `npm run wasm:check -w @go-link/cps1-sim` rebuilds it in a temporary folder and fails when the committed file differs; `wasm/cps1sim.json` records the `emcc` version, Musashi's commit and the SHA-256.
+  - `src/sim.ts` (`BoardSim`, a thin wrapper over the exports), `src/powerOn.ts` (`runPowerOn(files, { wasm })`: the steps), `src/text.ts` (each result's English sentence) and `src/wasmUrl.ts` (the asset URL, imported only by the Worker).
+- `src/willy-maker/power/`: `powerOn.ts` reads the zip with `io/zip.ts` and calls `runPowerOn`; `powerOn.worker.ts` fetches the `.wasm` (same origin, `application/wasm`) the first time a test runs and posts each step as it finishes; `client.ts` starts one Worker per test. `ui/organisms/PowerOnCard.tsx` is the Export tab's card. Nothing loads until the user drops a file: the Worker and the `.wasm` are separate files of the build.
+
+The CSP already allows it: `script-src 'self' 'wasm-unsafe-eval'` (WebAssembly compilation, added for the MP4 conversion), the Worker and the `.wasm` are same-origin files, and nothing is fetched from another site.
+
 ## Why this shape
 
-- **Movable**: one entry, its own folders, assets and CSS, and only two dependencies (`@go-link/shared`, `src/controllers`). It can become its own app or package.
+- **Movable**: one entry, its own folders, assets and CSS, and few dependencies (`@go-link/shared`, `@go-link/cps1`, `@go-link/cps1-sim`, `src/controllers`). It can become its own app or package.
 - **One set of rules**: play mode and the ROM run the same physics and object rules, tested once.
 - **Boards as data**: profiles keep the editor board-agnostic for Phase 3.
 - **Nothing on a server**: like the rest of Tools, all work stays in the browser until the user exports it or, in Phase 2, sends it to their own go-link device.

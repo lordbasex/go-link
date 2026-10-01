@@ -264,24 +264,42 @@ func (c *Cache) Small(path string, maxW, maxH, maxBytes int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+	return c.small(key, f, maxW, maxH, maxBytes)
+}
+
+// SmallBytes is Small for a picture held in memory (go-link's own sets
+// ship theirs inside the device); key names it in the cache.
+func (c *Cache) SmallBytes(key string, data []byte, maxW, maxH, maxBytes int) ([]byte, error) {
+	if len(data) > MaxFileSize {
+		return nil, fmt.Errorf("thumbnails: %s is too large", key)
+	}
+	key = fmt.Sprintf("%s|%d|%d|%d|%d", key, maxW, maxH, maxBytes, len(data))
+	c.mu.Lock()
+	if b, ok := c.items[key]; ok {
+		c.mu.Unlock()
+		return b, nil
+	}
+	c.mu.Unlock()
+	return c.small(key, bytes.NewReader(data), maxW, maxH, maxBytes)
+}
+
+// small decodes a picture, scales it down and caches the JPEG under key.
+func (c *Cache) small(key string, f io.ReadSeeker, maxW, maxH, maxBytes int) ([]byte, error) {
 	// Check the size first: a small file can declare a huge picture, and
 	// decoding it would take gigabytes (images copied into the folder by
 	// hand never went through Import).
 	cfg, _, err := image.DecodeConfig(io.LimitReader(f, MaxFileSize))
 	if err != nil {
-		f.Close()
 		return nil, ErrNotImage
 	}
 	if err := checkPixels(cfg); err != nil {
-		f.Close()
 		return nil, err
 	}
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		f.Close()
 		return nil, err
 	}
 	src, _, err := image.Decode(io.LimitReader(f, MaxFileSize))
-	f.Close()
 	if err != nil {
 		return nil, ErrNotImage
 	}
@@ -301,7 +319,7 @@ func (c *Cache) Small(path string, maxW, maxH, maxBytes int) ([]byte, error) {
 		}
 	}
 	if maxBytes > 0 && len(out) > maxBytes {
-		return nil, fmt.Errorf("thumbnails: %s does not fit in %d bytes", filepath.Base(path), maxBytes)
+		return nil, fmt.Errorf("thumbnails: the picture does not fit in %d bytes", maxBytes)
 	}
 	c.mu.Lock()
 	if len(c.items) >= c.max {

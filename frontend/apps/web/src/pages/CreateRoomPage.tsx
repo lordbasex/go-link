@@ -11,6 +11,7 @@ import { GamePicker } from "../components/GamePicker";
 import { GamepadIcon, LockIcon } from "../components/Icons";
 import { Chip, HeroTile, PageHero } from "../components/ui/PageHero";
 import { useThumbKind, useThumbnail } from "../components/device/useThumbnail";
+import { OwnBadge, ownControlsText } from "../components/device/OwnBadge";
 
 interface RomOption {
   id: string;
@@ -43,7 +44,8 @@ export function CreateRoomPage() {
         id: r.name,
         game: r.title || r.name,
         detail:
-          [r.year, r.maker].filter(Boolean).join(" · ") || `${r.name}.zip`,
+          [r.year, r.maker, ownControlsText(r)].filter(Boolean).join(" · ") ||
+          `${r.name}.zip`,
         playable: romPlayable(r),
         note: romCheckText(r.check),
       }));
@@ -348,7 +350,10 @@ function GamePreview({ option }: { option: RomOption | undefined }) {
         {art ? <img src={art} alt="" /> : <span>{option.game.toUpperCase()}</span>}
       </div>
       <div className="stack-xxs">
-        <span className="create-preview-title">{option.game}</span>
+        <span className="create-preview-title">
+          {option.game}
+          {option.rom?.own && <OwnBadge />}
+        </span>
         <span className="small muted">{option.detail}</span>
         <span className="small faint mono">{option.id}.zip</span>
       </div>

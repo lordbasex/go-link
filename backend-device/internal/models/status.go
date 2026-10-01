@@ -88,6 +88,19 @@ type RomInfo struct {
 	// Check tells whether the core can run the set; nil until the core's
 	// game list is downloaded.
 	Check *romcheck.Result `json:"check,omitempty"`
+	// Own is set for a set go-link made itself, recognized by the SHA-256
+	// of every file inside the zip (never by its name): Title, Year, Maker,
+	// Description and Controls are then go-link's, not the original set's.
+	Own         bool         `json:"own,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Controls    *RomControls `json:"controls,omitempty"`
+}
+
+// RomControls is a game's control panel, as the library shows it.
+type RomControls struct {
+	Players int      `json:"players"`
+	Buttons int      `json:"buttons"`
+	Labels  []string `json:"labels,omitempty"` // what each button does, button 1 first
 }
 
 // SystemStatus is the machine's hardware and live usage.

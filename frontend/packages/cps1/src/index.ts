@@ -8,3 +8,5 @@ export * from "./gfx.ts";
 export * from "./kabuki.ts";
 export * from "./sprites.ts";
 export * from "./font.ts";
+export * from "./sets.ts";
+export * from "./screen.ts";

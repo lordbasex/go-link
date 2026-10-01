@@ -244,14 +244,16 @@ export class HostStream {
    * message, 16 KB binary chunks, and an end message. It waits when more
    * than 4 MB are buffered so large ROMs do not flood the connection.
    * The device answers upload_result (with the same id) on control.
+   * purpose "rom_test" sends a set for rom_test instead of the library
+   * (see rom-test.ts).
    */
-  async sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void): Promise<void> {
+  async sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void, purpose?: "rom_test"): Promise<void> {
     const ch = this.files;
     if (!ch || ch.readyState !== "open") throw new Error("files channel not open");
     const CHUNK = 16 * 1024;
     const HIGH = 4 * 1024 * 1024;
     ch.bufferedAmountLowThreshold = 1024 * 1024;
-    ch.send(JSON.stringify({ type: "begin", id, name, size: file.size }));
+    ch.send(JSON.stringify(purpose ? { type: "begin", id, name, size: file.size, purpose } : { type: "begin", id, name, size: file.size }));
     for (let offset = 0; offset < file.size; offset += CHUNK) {
       if (ch.bufferedAmount > HIGH) {
         await new Promise<void>((resolve) => {

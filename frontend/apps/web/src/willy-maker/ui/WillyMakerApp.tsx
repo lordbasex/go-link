@@ -10,6 +10,7 @@ import { attachStarterImages } from "../io/starter";
 import type { Project } from "../model";
 import { Home } from "./organisms/Home";
 import { Ide } from "./organisms/Ide";
+import { DeviceProvider, type MakerDevice } from "./device";
 import "./willy-maker.css";
 
 export interface WillyMakerProps {
@@ -19,6 +20,8 @@ export interface WillyMakerProps {
   projectId?: string | null;
   /** Called when the open game changes, so the host can keep it in its address. */
   onProjectId?: (id: string | null) => void;
+  /** The owner's linked go-link device, for the ROM test on it (Export tab). */
+  device?: MakerDevice | null;
 }
 
 function storageWorks(): boolean {
@@ -32,7 +35,7 @@ function storageWorks(): boolean {
   }
 }
 
-function Shell({ projectId, onProjectId }: Omit<WillyMakerProps, "lang">) {
+function Shell({ projectId, onProjectId }: Omit<WillyMakerProps, "lang" | "device">) {
   const t = useCore();
   const [openId, setOpenId] = useState<string | null>(projectId ?? null);
   const [project, setProject] = useState<Project | null>(null);
@@ -99,14 +102,16 @@ function Broken() {
   );
 }
 
-export function WillyMakerApp({ lang, ...rest }: WillyMakerProps) {
+export function WillyMakerApp({ lang, device = null, ...rest }: WillyMakerProps) {
   return (
     <LangProvider value={lang}>
-      <div className="wm-root stage-tokens">
-        <Boundary fallback={<Broken />}>
-          <Shell {...rest} />
-        </Boundary>
-      </div>
+      <DeviceProvider value={device}>
+        <div className="wm-root stage-tokens">
+          <Boundary fallback={<Broken />}>
+            <Shell {...rest} />
+          </Boundary>
+        </div>
+      </DeviceProvider>
     </LangProvider>
   );
 }

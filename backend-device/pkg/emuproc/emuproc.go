@@ -439,3 +439,33 @@ func (t Type) String() string {
 	}
 	return fmt.Sprintf("type(0x%02x)", byte(t))
 }
+
+// RomTestReport is what "romtest --child" prints on stdout, as one JSON
+// line: what one power-on run of a set did (see services.RunRomTest).
+type RomTestReport struct {
+	Loaded      bool    `json:"loaded"`
+	Error       string  `json:"error,omitempty"` // why the core did not load it
+	Core        string  `json:"core,omitempty"`
+	CoreVersion string  `json:"core_version,omitempty"`
+	Width       int     `json:"width,omitempty"`
+	Height      int     `json:"height,omitempty"`
+	FPS         float64 `json:"fps,omitempty"`
+	Frames      int     `json:"frames"`  // frames run
+	Seconds     float64 `json:"seconds"` // wall time of those frames, unpaced
+	// FirstPicture is the first frame that is not black, or -1.
+	FirstPicture int `json:"first_picture"`
+	// Hashes has one hash of the picture per frame, to compare runs.
+	Hashes []uint32 `json:"hashes,omitempty"`
+	// Audio: how many times the core sent sound, the samples it sent, the
+	// samples that were not silence and the first frame with sound (-1).
+	AudioCalls   int `json:"audio_calls"`
+	AudioSamples int `json:"audio_samples"`
+	Sound        int `json:"sound"`
+	FirstSound   int `json:"first_sound"`
+	// What the core's ROM loader said about the set's files.
+	NotFound      []string `json:"not_found,omitempty"`
+	BadLength     []string `json:"bad_length,omitempty"`
+	WrongChecksum []string `json:"wrong_checksum,omitempty"`
+	// Shot is a small PNG (base64) of the last frame.
+	Shot string `json:"shot,omitempty"`
+}

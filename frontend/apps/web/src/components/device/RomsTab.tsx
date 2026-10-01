@@ -16,6 +16,7 @@ import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
 import { useThumbKind, useThumbnail } from "./useThumbnail";
 import { SkeletonCards, SkeletonRows } from "../ui/Skeleton";
 import { useInfiniteList } from "../ui/useInfiniteList";
+import { OwnBadge, ownControlsText } from "./OwnBadge";
 import { Select } from "../ui/Select";
 
 type View = "cards" | "list";
@@ -333,11 +334,20 @@ function RomCard({ rom }: { rom: DeviceRom }) {
         <span className="roms-float-badge">{KIND_LABEL[kind]()}</span>
       </div>
       <div className="roms-card-body">
-        <span className="roms-card-title">{title}</span>
+        <span className="roms-card-title">
+          {title}
+          {rom.own && <OwnBadge />}
+        </span>
         <span className="small muted">
           {[rom.year, rom.maker].filter(Boolean).join(" · ") ||
             t.roms.unknownGame}
         </span>
+        {rom.own && rom.description && (
+          <span className="small muted">{rom.description}</span>
+        )}
+        {rom.own && ownControlsText(rom) && (
+          <span className="small faint">{ownControlsText(rom)}</span>
+        )}
         <div className="roms-card-foot">
           <span className="small faint mono">
             {rom.name} · {formatBytes(rom.size)}
@@ -387,7 +397,10 @@ function RomTable({ roms }: { roms: DeviceRom[] }) {
                 <td>
                   <div className="roms-cell-game">
                     <MiniArt rom={r} fallback={initials(title)} />
-                    <span className="strong">{title}</span>
+                    <span className="strong">
+                      {title}
+                      {r.own && <OwnBadge />}
+                    </span>
                   </div>
                 </td>
                 <td className="roms-col-set mono small muted">{r.name}.zip</td>

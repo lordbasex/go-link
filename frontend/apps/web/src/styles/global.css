@@ -612,6 +612,7 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .dash-badge.is-missing { background: var(--tint-accent-bg); color: var(--color-accent-text); }
 .dash-badge.is-unsupported { background: var(--tint-violet-bg); color: var(--color-p4); }
 .dash-badge.is-broken { background: var(--color-danger-bg); color: var(--color-danger-text); }
+.own-badge { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; margin-inline-start: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 16px; vertical-align: 2px; white-space: nowrap; background: var(--color-accent); color: var(--color-on-accent); }
 .dash-drop { padding: 22px; align-items: center; justify-items: center; }
 
 @keyframes dash-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

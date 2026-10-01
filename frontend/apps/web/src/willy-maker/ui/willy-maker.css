@@ -233,6 +233,25 @@ input.wm-layer-name { cursor: text; }
 .wm-rom-steps li svg { color: var(--color-ok); flex: none; }
 .wm-rom-steps li.is-todo svg { color: var(--color-text-faint); }
 .wm-rom-card .wm-cap:disabled { opacity: 0.6; }
+/* power-on test (validation level 3) */
+.wm-power-drop { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border: 1px dashed var(--color-border-dashed); border-radius: var(--radius-card); background: var(--color-surface); text-align: center; }
+.wm-power-drop.is-over { border-color: var(--color-accent); background: var(--tint-accent-bg); }
+.wm-power-head { justify-content: space-between; min-width: 0; }
+.wm-power-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-chip.is-ok { border-color: var(--color-ok); color: var(--color-ok); }
+.wm-chip.is-bad { border-color: var(--color-danger-border); color: var(--color-danger-text); background: var(--color-danger-bg); }
+.wm-power-steps li { align-items: flex-start; }
+.wm-power-steps li > svg { flex: none; margin-top: 2px; }
+.wm-power-steps li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.wm-power-detail { font-size: 12px; color: var(--color-text-muted); }
+.wm-power-steps li.is-todo, .wm-power-steps li.is-skip { opacity: 0.7; }
+.wm-power-steps li.is-todo svg, .wm-power-steps li.is-skip svg { color: var(--color-text-faint); }
+.wm-power-shot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.wm-power-shot canvas { display: block; width: 100%; height: auto; aspect-ratio: 384 / 224; image-rendering: pixelated; border-radius: 10px; background: var(--color-video); }
+.wm-power-shot img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: 10px; background: var(--color-video); }
+.wm-device-test { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+.wm-device-test > .wm-row, .wm-device-test > .wm-power-head, .wm-device-test > .wm-checks, .wm-device-test > .wm-power-shot, .wm-device-test > .wm-note { align-self: stretch; }
+.wm-device-test .wm-note a { color: var(--color-accent); font-weight: 600; }
 
 .wm-soon { flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 40px clamp(16px, 5vw, 80px); max-width: 760px; }
 .wm-tabbody { flex: 1; min-height: 0; overflow: auto; padding: 16px; }

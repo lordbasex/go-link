@@ -154,6 +154,8 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `set_video_quality` / `video_quality_result` | both | `quality` (`high`, `normal` or `saver`): the video quality of game rooms, like the window's Settings; running rooms switch at once / `quality`, `ok`, `error` (an unknown value changes nothing). See [Video scale](#video-scale) |
 | `set_roms_dir` / `roms_dir_result` | both | `dir`: absolute path of an existing folder on the device / `dir`, `ok`, `error` |
 | `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error` |
+| `rom_test` | linked → device | `id` (the one of a `files` upload with `purpose: "rom_test"`), `set` (the set name), optional `frames` (600 to 3600, default 900). Powers the set on with the exact core. See [ROM test](#rom-test) |
+| `rom_test_result` | device → linked | `id`, `set`, `ok`, `steps` (`name`, `ok`, `detail`), `frames`, `seconds`, optional `shot` (PNG of the last frame, base64), `own` (`id`, `title`: a go-link set) or `error` with `code` (`busy`, `not_found`) |
 | `get_history` / `clear_history` / `delete_history` | linked → device | Ask for the game history, clear it (**with every recording**), or delete one game (`id`, with its recordings). The device answers `history` (with `error` for an unknown `id`) |
 | `history` | device → linked | `items`, newest first (up to 500): `id` (absent on games saved before ids existed), `room_id`, `name`, `rom`, `game`, `started_at`, `ended_at`, `peak_players`, `peak_spectators`, `reason` (`archived`, `deleted`, `failed` or `device_stopped`) and `people` (each browser that joined: `name`, `ports`, `ip` as seen on the chosen ICE pair, empty through TURN, and `path`, `direct` or `relay`) and `recordings` (the recordings made during that game, as below). Only the owner sees it |
 | `get_recordings` / `delete_recording` | linked → device | List every finished recording / delete one (`id`). The device answers `recordings` |
@@ -305,3 +307,38 @@ The device answers on `control` with `upload_result`. Rules, enforced on the dev
 - It is written to a temporary file in the same folder and renamed at the end. It **never replaces** an existing set. Files get mode `0644`.
 - If the channel closes halfway, the partial file is removed.
 - The browser watches `bufferedAmount` so large files do not fill its memory.
+
+With `"purpose": "rom_test"` in `begin`, the file is a set for a [ROM test](#rom-test) instead: the device writes it to `~/go-link/tmp/romtest/<id>/<set>.zip` (`0600`, at most 16 MB, `id` of letters, digits, `_` and `-`), never to the ROM folder or the library, and keeps only the last one waiting. Any other `purpose` is refused.
+
+## ROM test
+
+Validation level 4 of [Willy Maker](willy-maker/validation.md#level-4-power-on-on-the-device): does a set really power on in the exact core this device runs? Only the linked owner can ask (the `files` channel and the linked `control` messages), never a room guest; one test runs at a time (`code: "busy"`).
+
+1. Upload the zip on `files` with `purpose: "rom_test"` and wait for `upload_result`.
+2. Send `{ "type": "rom_test", "id": "<the upload id>", "set": "slammast" }`.
+3. The device runs `device romtest --child` twice, each a worker process like a game room's `emulate` (a fresh system folder, the test folder as the only ROM path, 60 s for the whole test): once with scripted input on player 1 (Coin at frame 300, Start at 360, right held from 420, then buttons 1-3) and once without. It answers `rom_test_result` and deletes the test folder (leftovers are removed at startup).
+
+Steps, in order (a failing `zip`, `set` or `core.loaded` ends the test):
+
+| `name` | Passes when |
+|---|---|
+| `zip` | the file is a readable zip with files |
+| `set` | the core's game list knows the set and every file it needs is there (the library's check; skipped without the game list) |
+| `identity` | always passes; `detail` says whether it is a go-link set (verified by the SHA-256 of every file inside, see [device.md](device.md#go-links-own-sets)) |
+| `core.loaded` | the core loads the set |
+| `core.files` | the core's loader found every file with its size (`NOT FOUND` or a wrong length fail; a wrong checksum only warns, as it does for a go-link set) |
+| `video.picture` | a frame that is not black before frame 300 |
+| `video.alive` | at least 10 different pictures in the last 300 frames (no freeze) |
+| `audio` | the core keeps sending sound (at least half the samples of the time run); silence is allowed and said in `detail` |
+| `input.reacts` | both runs show the same pictures until the first press, and a different one after it |
+| `time.realtime` | the core ran faster than real time on this device |
+| `core.run` | only when a worker stopped: a crash (`detail` names the signal) or the 60 s limit |
+
+```json
+{ "type": "rom_test_result", "id": "rt-1", "set": "slammast", "ok": true, "frames": 900, "seconds": 6.5,
+  "own": { "id": "willy-proto", "title": "Willy Gorklingo: The Lag Protocol (prototype)" },
+  "steps": [{ "name": "zip", "ok": true, "detail": "28 files" }, { "name": "video.picture", "ok": true, "detail": "first picture at frame 9" }],
+  "shot": "iVBORw0KGgo…" }
+```
+
+The website's helper is `testRomOnDevice` in `frontend/packages/shared/src/rom-test.ts`. The same test runs from the command line: `device romtest ZIP` (see [device.md](device.md#rom-test)).

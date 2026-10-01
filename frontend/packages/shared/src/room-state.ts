@@ -62,6 +62,8 @@ export interface RoomInfoView {
   host: string;
   /** A data: URL of a small JPEG, or null. */
   art: string | null;
+  /** The game is one go-link made itself, verified by the device. */
+  own?: boolean;
 }
 
 /** A seated player asking the host for a pause. */
@@ -89,6 +91,8 @@ export interface GameControls {
   buttons: number;
   /** MAME control type: joy4way, joy8way, stick, dial... ("" = unknown). */
   control: string;
+  /** What each button does, button 1 first (go-link's own games only). */
+  labels?: string[];
 }
 
 /** What an unknown game (or an older device) offers. */
@@ -99,7 +103,9 @@ function parseControls(v: unknown): GameControls {
   const o = v as Record<string, unknown>;
   const buttons = typeof o.buttons === "number" && Number.isFinite(o.buttons) ? Math.min(Math.max(Math.round(o.buttons), 0), 6) : 6;
   const players = typeof o.players === "number" && Number.isFinite(o.players) ? Math.min(Math.max(Math.round(o.players), 0), 4) : 0;
-  return { players, buttons, control: typeof o.control === "string" ? o.control.slice(0, 20) : "" };
+  const controls: GameControls = { players, buttons, control: typeof o.control === "string" ? o.control.slice(0, 20) : "" };
+  if (Array.isArray(o.labels)) controls.labels = o.labels.filter((l): l is string => typeof l === "string").slice(0, 6).map((l) => l.slice(0, 20));
+  return controls;
 }
 
 /** System chat lines the web shows in the reader's language. */
@@ -153,7 +159,9 @@ const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 function parseInfo(v: unknown): RoomInfoView {
   const o = obj(v);
   const art = typeof o.art === "string" && o.art.length <= 6000 && /^[A-Za-z0-9+/]+={0,2}$/.test(o.art) ? `data:image/jpeg;base64,${o.art}` : null;
-  return { title: str(o.title, 80), game: str(o.game, 160), host: str(o.host, 60), art };
+  const info: RoomInfoView = { title: str(o.title, 80), game: str(o.game, 160), host: str(o.host, 60), art };
+  if (o.own === true) info.own = true;
+  return info;
 }
 
 function parseSwaps(v: unknown, maxPlayers: number): SwapView[] {

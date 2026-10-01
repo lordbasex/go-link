@@ -37,6 +37,10 @@ type GameCoreConfig struct {
 	// Audio receives interleaved stereo samples at 48 kHz. The slice is
 	// reused by the next call.
 	Audio func(pcm []int16)
+	// LogLine, when set, also receives every line of the core's log, from
+	// the moment the game starts loading (the ROM test reads the loader's
+	// verdict on each file).
+	LogLine func(level int, msg string)
 }
 
 // GameCore is a libretro core with a game loaded, set up the way go-link
@@ -133,6 +137,9 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 				return ok && port < len(g.pads) && g.pads[port].Buttons.Pressed(b)
 			},
 			Log: func(level int, msg string) {
+				if cfg.LogLine != nil {
+					cfg.LogLine(level, msg)
+				}
 				if g.listen {
 					g.capture = append(g.capture, msg)
 				}

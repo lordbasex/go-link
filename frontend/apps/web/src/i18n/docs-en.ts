@@ -492,7 +492,7 @@ export const docsEn: Docs = {
       blocks: [
         {
           t: "code",
-          code: "go-link-device                          run go-link\ngo-link-device core download            download the emulator and its game list\ngo-link-device roms dir [PATH]          show or change the ROM folder\ngo-link-device roms check [--json]      check which games run\ngo-link-device roms saves [--json]      test which games can be saved\ngo-link-device thumbnails check         count the game pictures\ngo-link-device thumbnails dir [PATH]    show or change the pictures folder\ngo-link-device thumbnails kind [KIND]   boxart, title or snap\ngo-link-device video quality [Q]        high, normal or saver\ngo-link-device panel token [--new]      show or replace the panel key\ngo-link-device --help                   every option, and the version",
+          code: "go-link-device                          run go-link\ngo-link-device core download            download the emulator and its game list\ngo-link-device roms dir [PATH]          show or change the ROM folder\ngo-link-device roms check [--json]      check which games run\ngo-link-device roms saves [--json]      test which games can be saved\ngo-link-device romtest ZIP              power a game on and check it\ngo-link-device thumbnails check         count the game pictures\ngo-link-device thumbnails dir [PATH]    show or change the pictures folder\ngo-link-device thumbnails kind [KIND]   boxart, title or snap\ngo-link-device video quality [Q]        high, normal or saver\ngo-link-device panel token [--new]      show or replace the panel key\ngo-link-device --help                   every option, and the version",
         },
         {
           t: "table",
@@ -806,6 +806,8 @@ export const docsEn: Docs = {
             "**1 · Save the project**: **Download project (.zip)** keeps everything (levels, characters, backgrounds and settings); **Open .zip** on the home screen continues it in another browser.",
             "**2 · Pack for an AI**: **Download AI pack** gives the project with a `PROMPT.md` (the board, the rules, the story and the art spec), Tiled maps and pictures in board colors, so an AI or a person can build the ROM. **Copy prompt** copies the brief. Errors in the review must be fixed first.",
             "**3 · Create ROM** (stage 2, coming): building the ROM right in the browser and playing it on your go-link.",
+            "**4 · Power-on test**: drop a ROM `.zip` (for example the one an AI built from your pack). A 68000 and a model of the CPS-1 board start it in your browser, press Coin and Start, and list each step (the set's files, the program, the reset vectors, running without a crash, the vblank interrupt, palettes, layers, a picture, still running, the inputs) with a picture of what the board drew. Nothing is uploaded. It is a model, not the core: a ROM that passes still gets the final check on your device.",
+            "**Test on my go-link**: with your go-link linked and connected, the same card sends the dropped `.zip` to it, and it powers the ROM on with the exact core it uses for rooms, presses Coin, Start and the buttons, and lists each check (the zip, the set's files, the core loading it, a picture, a moving picture, sound, the controls, real-time speed) with how many frames ran and the last frame it showed. The set is only tested: it never goes into your ROM folder. Without a linked device the card links to **My device**.",
           ],
         },
         { t: "h2", id: "saving", text: "Where your games are saved" },

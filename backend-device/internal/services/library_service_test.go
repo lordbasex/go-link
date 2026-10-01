@@ -5,6 +5,8 @@ package services
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"image"
 	"image/png"
@@ -14,8 +16,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
+	"github.com/lordbasex/go-link/backend-device/pkg/ownsets"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/thumbnails"
 )
@@ -191,4 +195,65 @@ func TestImportNeverFillsTheDisk(t *testing.T) {
 	if err := lib.Import("robby.zip", strings.NewReader("PK\x03\x04 ok")); err != nil {
 		t.Fatalf("small set: %v", err)
 	}
+}
+
+func TestLibraryOwnSets(t *testing.T) {
+	dir := t.TempDir()
+	prog := []byte("our own program")
+	writeOwnZip(t, filepath.Join(dir, "robby.zip"), map[string][]byte{"robby.1": prog})
+	sum := sha256.Sum256(prog)
+	list := []ownsets.Set{{ID: "ours", Set: "robby", Title: "Our Game", Description: "Made by us", Year: "2026", Maker: "go-link",
+		Players: 4, Buttons: 3, Control: "joy8way", Labels: []string{"Jump", "Fire", "Special"}, Art: "willy-proto.png",
+		Files: []ownsets.File{{Name: "robby.1", Size: int64(len(prog)), SHA256: hex.EncodeToString(sum[:])}}}}
+	st := NewStatusService(deviceID, "test", "ws://x", "")
+	lib := NewLibraryService(dir, st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	lib.own = ownsets.NewMatcher(list)
+	thumbs := t.TempDir()
+	lib.SetThumbnailsDir(thumbs)
+	// The host's picture of the original game must not show for ours.
+	if err := lib.ImportThumbnail(thumbnails.Snap, "robby.png", bytes.NewReader(tinyPNG(t))); err != nil {
+		t.Fatal(err)
+	}
+	lib.Scan()
+	r := st.Snapshot().Library.Roms[0]
+	if !r.Own || r.Title != "Our Game" || r.Maker != "go-link" || r.Description != "Made by us" || r.Controls == nil || r.Controls.Buttons != 3 || r.Controls.Labels[2] != "Special" {
+		t.Fatalf("own set %+v", r)
+	}
+	if !r.Thumbs.Boxart || !r.Thumbs.Snap || lib.Title("robby") != "Our Game" {
+		t.Fatalf("own picture %+v", r.Thumbs)
+	}
+	if b, err := lib.Thumbnail("robby", thumbnails.Snap, 96, 128, 0); err != nil || len(b) < 100 {
+		t.Fatalf("own picture: %v", err)
+	}
+
+	// The same name with other bytes: the original set, never ours.
+	prog[0] ^= 1
+	writeOwnZip(t, filepath.Join(dir, "robby.zip"), map[string][]byte{"robby.1": prog})
+	lib.Scan()
+	r = st.Snapshot().Library.Roms[0]
+	if r.Own || r.Title == "Our Game" || r.Controls != nil || r.Thumbs.Boxart || !r.Thumbs.Snap {
+		t.Fatalf("a name match was trusted: %+v", r)
+	}
+}
+
+func writeOwnZip(t *testing.T, path string, files map[string][]byte) {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, data := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.Write(data)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A new modification time, so caches see the change.
+	later := time.Now().Add(time.Duration(len(buf.Bytes())) * time.Millisecond)
+	_ = os.Chtimes(path, later, later)
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
+	"github.com/lordbasex/go-link/backend-device/pkg/ownsets"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 )
 
@@ -35,6 +36,9 @@ Usage:
   device roms dir [PATH]                 show or change the ROM folder
   device roms check [--dir D] [--json]   check which ROM sets the core can run
   device roms saves [--json]             test which games can resume from a save (a few seconds each)
+  device romtest [--frames N] [--json] [--shot FILE] ZIP
+                                         power a set on with the exact core: picture, sound,
+                                         inputs (the website's "Test on my go-link")
   device thumbnails check [--json]       count the thumbnails of the ROM sets
   device thumbnails dir [PATH|default]   show or change the thumbnails folder
   device thumbnails kind [boxart|title|snap]
@@ -65,6 +69,10 @@ func runCommand(args []string) (handled bool, err error) {
 	// (no window, config or single-instance lock).
 	if args[0] == "emulate" {
 		return true, runEmulate(args[1:])
+	}
+	// The ROM test (and its worker process): no config either.
+	if args[0] == "romtest" {
+		return true, cmdRomTest(args[1:])
 	}
 	key := args[0]
 	if len(args) > 1 {
@@ -187,6 +195,9 @@ type romReport struct {
 	Name  string          `json:"name"`
 	Title string          `json:"title,omitempty"`
 	Check romcheck.Result `json:"check"`
+	// Own is set for a set go-link made itself, verified by the SHA-256 of
+	// every file inside the zip; Title is then go-link's game.
+	Own bool `json:"own,omitempty"`
 }
 
 func cmdRomsCheck(args []string) error {
@@ -309,6 +320,9 @@ func checkFolder(cat *romcheck.Catalog, dir string) ([]romReport, error) {
 		if g := cat.Game(name); g != nil {
 			r.Title = g.Title
 		}
+		if own, _ := ownsets.Match(filepath.Join(dir, e.Name()), ownsets.All()); own != nil {
+			r.Title, r.Own = own.Title, true
+		}
 		out = append(out, r)
 	}
 	slices.SortFunc(out, func(a, b romReport) int { return strings.Compare(a.Name, b.Name) })
@@ -329,6 +343,9 @@ func printReports(w io.Writer, dir string, reports []romReport) {
 			line += reason
 		} else if r.Check.Driver != "" {
 			line += " (driver " + r.Check.Driver + ": may not run well)"
+		}
+		if r.Own {
+			line += " [go-link set, verified]"
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", r.Name, r.Check.Status, line)
 	}

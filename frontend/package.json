@@ -9,7 +9,7 @@
     "dev": "npm run dev -w @go-link/web",
     "build": "npm run build -w @go-link/web",
     "test": "vitest run",
-    "typecheck": "tsc -p packages/shared && tsc -p packages/cps1 && tsc -p apps/web"
+    "typecheck": "tsc -p packages/shared && tsc -p packages/cps1 && tsc -p packages/cps1-sim && tsc -p apps/web"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",

@@ -11,7 +11,7 @@ A browser cannot prove that alone. The checks are split into four levels. Each l
 | 3. Power-on in the browser | browser, a Web Worker with a 68000 in WebAssembly | on Create ROM | the 68000 program starts, draws and keeps running on a model of the board | ~1 s for 10 s of game |
 | 4. Power-on on the device | the user's linked go-link device, the exact core | on **Create and play**, or **Test on my device** | the real core loads the set without warnings, shows a picture, plays sound and reacts to inputs | ~15 s |
 
-Levels 1 and 2 are needed for Phase 1, because the AI pack must already be correct. Levels 3 and 4 come with Phase 2, when there is a ROM to start. Level 4 is the ground truth. When level 4 disagrees with level 3, level 4 wins, and the case is added to level 3 or level 2 as a new rule.
+Levels 1 and 2 are needed for Phase 1, because the AI pack must already be correct. Level 3 is built as a power-on test of any ROM `.zip` the user drops (for example one an AI built from the pack); level 4 is reached from the same Export card (**Test on my go-link**, with a linked device); levels 3 and 4 run on their own in Phase 2, when Willy Maker builds the ROM. Level 4 is the ground truth. When level 4 disagrees with level 3, level 4 wins, and the case is added to level 3 or level 2 as a new rule.
 
 ## Level 1: live rules
 
@@ -145,7 +145,7 @@ Tests: `io/fuzz.test.tsx`, with a seeded generator (mulberry32) so a failure rep
 
 ## Level 3: power-on in the browser
 
-**Status (2026-10-01): not built.** It needs a ROM to start, so it comes with Create ROM in Phase 2. Option B below is the recommended design; its experiment ran outside the repository, and nothing of it is in go-link yet.
+**Status (2026-10-01): built** as the Export tab's **Power-on test** card, with Option B below: the user drops a ROM `.zip` (for example the one an AI built from the pack) and sees each step pass or fail as it runs, then a picture of what the board drew. Create ROM (Phase 2) will run the same test on the set it builds. What is built, its steps and its limits are in [the power-on test](#the-power-on-test-built) below; the code layout is in [architecture.md](architecture.md#the-power-on-test-go-linkcps1-sim-and-power).
 
 ### Option A: the mame2003-plus core compiled to WebAssembly (rejected)
 
@@ -193,7 +193,41 @@ The native build has about 520 KB of code, including the disassembler and a soft
 
 The model can also **draw the frame**: graphics RAM, palettes and the sprite table go through the same `@go-link/cps1` decoders that build the ROM. The Export screen shows "what the board drew at second 3" next to play mode's picture of the same moment, which catches wrong palettes or tiles before the device is involved.
 
+### The power-on test (built)
+
+`@go-link/cps1-sim` (`frontend/packages/cps1-sim`) is Option B: Musashi 4.60 (MIT, commit `313ebf1`) and `c/board.c`, the `slammast` board model, built with Emscripten into one standalone WebAssembly file, **316 KB** (316,508 bytes; 43 KB with gzip), built with `-Os`, with no JavaScript runtime and no imports. The file is committed (`wasm/cps1sim.wasm`), so the website and CI never need Emscripten; `npm run wasm:check -w @go-link/cps1-sim` rebuilds it and fails when it differs (needs Emscripten from emsdk: `source ~/emsdk/emsdk_env.sh`; see [building.md](../building.md)). The Export tab loads the Worker and the `.wasm` only when a file is dropped.
+
+`runPowerOn(files, { wasm })` runs these steps in order and stops at the first that makes the rest meaningless (files, program, vectors, run); the others are always reported. Each step has a result code with its values, an English sentence (`src/text.ts`) and the module's es/pt translations (`i18n/export.*.ts`, `powerOn.codes`):
+
+| Step | Passes when | Fails with (code) |
+|---|---|---|
+| `files` | every file of the `slammast` set is in the zip with its exact size | `files.not-zip`, `files.damaged` (a CRC that does not match), `files.too-big` (over 64 MB), `files.missing`, `files.size` |
+| `program` | the program files, un-swapped (`ROM_LOAD16_WORD_SWAP`) and interleaved (`ROM_LOAD16_BYTE`) as the loader does, hold a program | `program.empty` |
+| `vectors` | the initial stack is in work RAM, the reset PC is inside the program (after the vector table) and the level 2 vector points to the program or RAM | `vectors.stack`, `vectors.reset`, `vectors.vblank` |
+| `run` | 300 frames (5 s) run with no fault, with Coin 1 pressed on frame 120 and Start 1 on frame 150 (6 frames each). `boot.no-exception`, `boot.mapped` and `boot.stack` of the plan | `run.exception` (illegal instruction, line A/F, zero divide, CHK, TRAPV, privilege, address or bus error; `TRAP #n` is allowed), `run.unmapped` (read or write), `run.rom-write`, `run.odd` (a word at an odd address), `run.stack` (SP outside work RAM), `run.stuck` (60 frames with the PC inside 16 bytes, no interrupt taken and nothing drawn) |
+| `vblank` | the level 2 interrupt is taken on at least 90 % of the frames after the first one (`boot.vblank`) | `vblank.none` (interrupts stay masked, with the SR), `vblank.missed` |
+| `palette` | the program writes the palette and at least one color is not black | `palette.none`, `palette.base`, `palette.black` |
+| `layers` | the layer control enables a scroll layer or the sprite table has entries, and every enabled map is inside graphics RAM | `layers.none`, `layers.base` |
+| `picture` | a frame drawn from graphics RAM, the registers and the graphics ROMs (`@go-link/cps1` `renderScreen`, sampled every 30 frames) has more than one color | `picture.flat` |
+| `alive` | graphics RAM was written in the last 60 frames (`boot.alive`) | `alive.frozen` |
+| `inputs` | the same 300 frames from power-on **without** Coin and Start end with different work RAM or graphics RAM (`boot.inputs`) | `inputs.ignored` |
+
+The prototype's set passes every step in about 0.2 s (Node on an Intel Mac: both 300-frame runs, the ten sampled pictures and the zip; 0.23 s in Chromium through the built Worker, fetching and compiling the `.wasm` included), and the screenshot shows the level with Willy after Start. `boot.sound-cmd` is not a step: the prototype writes no sound command yet; the sound latch writes are counted (`run.ok`'s `sound`) for when it does.
+
+**Limits** (a model, not the core; level 4 stays the ground truth):
+
+- Only the `slammast` layout. `captcomm` would need its own map and CPS-B registers.
+- The Z80 and QSound are not run: the sound latch and the QSound shared RAM only record what the 68000 writes, and nothing answers from the sound side. A program that waits for the sound CPU would fail at `run.stuck` or `alive`.
+- The board answers the CPS-B-21 ID (`0x0c01` at `0x80016e`) and nothing else of the protection or multiply registers; the EEPROM port reads as ready.
+- Odd word accesses are faults here. The core's 68000 may not raise the address error, but a program that does it is wrong anyway.
+- The picture draws the layers in the layer control's order without the priority masks, uses the current sprite table (the board shows the previous frame's), and has no row scroll, starfields or flip screen. It is close to the board's, not pixel-perfect.
+- Timing is frames of 166,666 cycles with the interrupt at the start of each frame, not the board's exact raster timing.
+
+Tests: `src/willy-maker/power/powerOn.test.tsx` (Vitest + Node, the same `.wasm`). The real `rom/build/slammast.zip` must pass every step (skipped when the ROM is not built, as in CI), and these broken copies fail at the expected step with their message: a truncated program file (`files.size`), a graphics file one byte too long and a missing sound ROM (`files.size`, `files.missing`), a program cut short inside its file (`run.exception`, line F), a zeroed reset vector (`vectors.reset`), a zeroed stack pointer (`vectors.stack`), an endless loop at reset (`run.stuck`), an `ILLEGAL` at reset (`run.exception`), a jump to an unmapped address (`run.unmapped`) and a text file (`files.not-zip`).
+
 ### Level 3 checks (the "boots" criteria)
+
+The plan below, before it was built. The built steps above cover them, with 300 frames instead of 600.
 
 All of them run with the inputs script, over 600 frames (10 s):
 
@@ -210,7 +244,9 @@ All of them run with the inputs script, over 600 frames (10 s):
 
 ## Level 4: power-on on the device
 
-**Status (2026-10-01): not built**, Phase 2. The protocol below is a proposal; nothing of it exists in the device yet. **Open decision:** the device's allow-list of go-link-made sets by the SHA-256 of their inner files (see Safety), needed before a Willy Maker game can open a room for guests.
+**Status (2026-10-01): built in the device**, from the website (`rom_test` over WebRTC) and the command line (`device romtest ZIP`). The exact protocol, steps and rules are in [protocol.md, ROM test](../protocol.md#rom-test) and [device.md, ROM test](../device.md#rom-test). Willy Maker reaches it from **Export › Power-on test**: after a ROM `.zip` is dropped (whether the browser test passed or not), **Test on my go-link** sends that same zip to the linked device with `testRomOnDevice` (`frontend/packages/shared/src/rom-test.ts`) and lists the device's steps (translated names for the steps above, any other name shown as it comes, the device's English `detail` under each), frames, seconds, a go-link set's title and the PNG of the last frame. The set name is the zip's name, or the set the browser test read when the name does not fit. `busy`, `not_found`, a refused upload, a dropped link and the 90 s timeout each get a translated message. Without a linked device, or with one that is offline, the card shows a short note with a link to My device. The site hands the link to the module (`WillyMakerApp`'s `device` prop, `ui/device.tsx`), so Willy Maker never opens a connection itself; tests: `ui/organisms/PowerOnCard.test.tsx` with a fake link. Building the ROM in the browser (Create ROM) still comes in Phase 2. Tested with the real core on the prototype's `slammast.zip` (every check passes in about 6.5 s on the Intel Mac) and on damaged copies (an erased program crashes the core or keeps the screen black; a missing file fails `set`; a short file fails `core.files`; a cut zip fails `zip`).
+
+**Decision taken (2026-10-01): the allow-list by hash.** The device ships the list of go-link-made sets with the SHA-256 and size of **each file inside the zip** (`backend-device/pkg/ownsets/sets.json`, written by `rom/tools/ownsets.mjs`, which `build.mjs` runs after every build). A zip with exactly those files is shown as go-link's game (title, description, picture, controls, a "go-link" mark); a set that only matches by name stays the original game. See [device.md, go-link's own sets](../device.md#go-links-own-sets). Our own set name inside the core (a `willy` driver in a core fork) stays out: it would mean shipping a core.
 
 This is the only level that uses the exact core, so it is the only one that proves a game boots in go-link. It reuses what exists:
 
@@ -218,7 +254,20 @@ This is the only level that uses the exact core, so it is the only one that prov
 - the `device emulate` worker, which already runs a set at its own fps in a child process;
 - the framelab capture logic (`cmd/framelab`: frames and the core's log with `-log`), to collect evidence.
 
-### Protocol (proposal)
+### What was built, against the proposal below
+
+- **Upload:** `files` `begin` with `purpose: "rom_test"`, written to `~/go-link/tmp/romtest/<id>/<set>.zip` (0600, 16 MB, only the last upload waits), never the library. As proposed.
+- **Request:** `rom_test {id, set, frames?}`. The `expect`, `script` and `snapshots` fields are **not** built: the identity comes from the device's own list (`identity` step and `own` in the result), the script is fixed (Coin at 300, Start at 360, right from 420, buttons 1-3 from 560), and the result carries one picture (`shot`, the last frame).
+- **Runs:** two worker processes (`device romtest --child`), with and without the script, each from power on with its own empty system folder; 60 s for the whole test; one test at a time (`code: "busy"`).
+- **Steps** (`steps[]` of `{name, ok, detail}`): `zip`, `set` (the library's `romcheck`), `identity`, `core.loaded`, `core.files`, `video.picture`, `video.alive`, `audio`, `input.reacts`, `time.realtime`, and `core.run` when a worker crashed or ran out of time. Differences with the table below:
+  - `core.no-warnings` became `core.files`: `NOT FOUND` and a wrong length fail, but a wrong checksum only warns, because **every** file of a go-link set differs from the original set's (the core logs `WRONG CHECKSUMS` 28 times for ours, and `mame2003-plus_skip_warnings` keeps the warning off screen).
+  - `files.identity` became `identity`, against the shipped list instead of hashes sent by the browser.
+  - `video.picture` allows up to frame 300 (5 s), so real boards with a slow boot pass; `video.alive` asks for 10 different pictures in the last 300 frames.
+  - `audio.signal` became `audio`: the core must keep sending sound; silence passes with a note, because the prototype's sound program is still a stub.
+  - `input.reacts` needs both runs to be the same before the first press (the core is deterministic from power on: it was for every run tried), then a different picture after it.
+- **Cleanup:** the test folder is deleted after each test, and leftovers older than a minute at startup.
+
+### Protocol (proposal, kept for reference)
 
 Only the **linked owner** may use it, the same peers that may upload ROMs (`StreamService.SetLinkGate`). Room guests never can.
 
@@ -282,7 +331,7 @@ The result appears in Willy Maker's Export screen as the same checklist, with th
 - Only the linked owner, proven by the link token, can send `rom_test`. It runs a ROM the owner made on the owner's own device, which is the same trust as uploading a ROM today.
 - The old core is not a sandbox. A crafted set could try to exploit it, which is why tests run in a **child process** with a time limit, a separate folder, and no access to the room's sockets. The child already exists for every game room (`device emulate`).
 - The test folder is never the library: no import, no overwrite, no game list entry, and it is deleted after the test.
-- Production sets: before Willy Maker games can open rooms for guests, the device needs an allow-list of go-link-made sets by the SHA-256 of their inner files. These sets reuse a real set's file names, so `romcheck` would otherwise see them as a broken real set. This is an open decision, tracked with Phase 2.
+- Production sets: the device has the allow-list of go-link-made sets by the SHA-256 of their inner files (decided and built 2026-10-01, see the status above). These sets reuse a real set's file names, so without it the library shows them as the original game; with it, only a zip whose files all match is shown as ours.
 
 ## Testing the validator itself
 
@@ -293,12 +342,12 @@ The result appears in Willy Maker's Export screen as the same checklist, with th
 | Level 2, AI pack | Vitest | `io/packCheck.test.tsx`: the sample and both templates pass, each check fails on a broken pack, and the Export tab refuses the download with the report. (Built.) |
 | Hard inputs | Vitest | `io/fuzz.test.tsx`: seeded damaged zips, project files, Tiled maps, sheets, names and editor command sequences. (Built.) |
 | Level 2 | Vitest + Node | the template project builds byte-identical inner files to `rom/tools/build.mjs`, compared per inner file, plus every round trip (gfx, Kabuki, swap) |
-| Level 3 | Vitest + Node (the same WebAssembly) | the prototype program passes every `boot.*` check, and the three fault programs above fail the expected check |
-| Level 4 | Go tests in `backend-device` | the protocol and the folder rules use a fake core. A test with the real core runs only when `~/go-link/cores/mame2003_plus_libretro.*` exists, because CI does not download the core. |
+| Level 3 | Vitest + Node (the same WebAssembly) | `power/powerOn.test.tsx`: the prototype's set passes every step, and ten broken copies fail at the expected step with their message (see [the power-on test](#the-power-on-test-built)). (Built.) |
+| Level 4 | Go tests in `backend-device` | `internal/services/romtest_service_test.go`: the upload rules, one test at a time, cleanup and every failing step, with a fake worker. `cmd/device/romtest_test.go`: the real core on `rom/build/slammast.zip` and on a copy with its program erased, only when the core and the built set exist (CI has neither). `frontend/packages/shared/test/rom-test.test.ts`: the result parser and the client helper. `frontend/apps/web/src/willy-maker/ui/organisms/PowerOnCard.test.tsx`: the Export card with a fake link (a passing test, a failing step, busy, a refused upload, no device or offline). (Built.) |
 | End to end, the editor | Playwright, `e2e/tests/willy-maker.spec.ts` | creates a Buenos Aires game, paints, places an object, plays until the clock moves, undoes, reloads (autosave) and downloads both zips, checking their files. It needs only the website: run alone (`cd e2e && npx playwright test tests/willy-maker.spec.ts`) it starts no signalhub or device. (Built.) |
 | End to end | Playwright (`e2e/`) | open Willy Maker, break a project (17-color torso, unreachable ledge, no exit) and check that Export is blocked with **Go to** working. Fix it, export, and run **Test on my device** against the e2e device stack. That step is skipped when the core is missing. |
 
 ## Open questions
 
-- **Open decision:** the allow-list for go-link-made sets on the device, by the SHA-256 of their inner files (see Safety), and whether those games use their own set name in a future core build.
+- Decided (2026-10-01): the allow-list for go-link-made sets by the SHA-256 of their inner files. Still open: whether those games ever get their own set name in a core build of our own.
 - Whether level 3 also models the Z80 to check that the sound program answers the latch. Level 4 covers it today.

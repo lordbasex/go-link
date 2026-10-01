@@ -647,6 +647,36 @@ How the build reaches the user's library:
 
 ---
 
+## Step 5 — Our set in the device: the allow-list and the power-on test
+
+*2026-10-01*
+
+**Goal:** the library shows our game instead of "Saturday Night Slam Masters (World 930713)", without trusting a name; and a check that a built set boots in the exact core, from the website and the command line.
+
+**Commands:**
+```sh
+node rom/tools/build.mjs                       # also writes backend-device/pkg/ownsets/sets.json
+(cd backend-device && go build -tags headless -o /tmp/device ./cmd/device)
+/tmp/device romtest rom/build/slammast.zip     # PASSED: every check, about 6.5 s
+mkdir -p /tmp/romdir && cp rom/build/slammast.zip /tmp/romdir/
+/tmp/device roms check --config /tmp/cfg/device.json --dir /tmp/romdir
+```
+
+**Files created:** `rom/tools/ownsets.mjs` (reads the zip, hashes each inner file, writes the list); `backend-device/pkg/ownsets` (the embedded list, the match, the set's picture); the ROM test in `backend-device/internal/services/romtest_service.go` and `cmd/device/romtest.go`.
+
+**Result:**
+- `roms check`: `slammast  ok  Willy Gorklingo: The Lag Protocol (prototype) [go-link set, verified]`. The same zip with one byte changed is "Saturday Night Slam Masters" again.
+- Two builds in a row: the zip's SHA-256 changed (entry timestamps), the 28 inner files did not. That is why the list is per inner file.
+- `romtest`: the picture at frame 9, 220 different pictures in the last 300 frames, Coin changes the picture at frame 301 while the run without input stays the same, 5.4x real time. The sound runs but is silent (the Z80 program is still a stub).
+- Damaged copies: an erased `mbe_23e.rom` crashed the core with SIGSEGV in the worker process (or left the screen black, depending on the run); without `mbe_23e.rom`, the `set` step fails ("files missing for this core"); half of it fails `core.files` ("wrong size"); a cut zip fails `zip`.
+
+**Learned:**
+- The core logs `WRONG CHECKSUMS` for each of our 28 files, so "no warnings" cannot be a rule for go-link sets: only missing files and wrong sizes fail.
+- The core is deterministic from power on: two runs without input give the same pictures frame by frame, which makes "the input changed something" a clean comparison.
+- A crash of the old core stays in its worker process; the device only reads the worker's report.
+
+---
+
 ## Verdict
 
 **Feasible with the stock core, and no core patch is needed.**

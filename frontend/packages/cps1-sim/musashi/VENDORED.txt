@@ -1,0 +1,12 @@
+Musashi 4.60, from https://github.com/kstenerud/Musashi
+commit 313ebf1bd9f4d0d93341eb5ce21fd8a119e9dbdd (2026-03-08), MIT license (LICENSE).
+
+Files kept: m68k.h, m68kconf.h, m68kcpu.c, m68kcpu.h, m68kfpu.c, m68kmmu.h,
+m68k_in.c and m68kmake.c (the opcode table generator), readme.txt, and the
+SoftFloat 2b headers in softfloat/ (types only: their notice is in each
+file). softfloat.c, the disassembler, the tests and the examples are not
+included; c/nofpu.c stands in for the floating point routines a 68000
+never calls.
+
+One change, in m68kcpu.h, m68ki_jump_vector(): a M68K_JUMP_VECTOR_HOOK
+call (marked "go-link patch") so the board model sees every exception.
