@@ -84,7 +84,7 @@ None of this is written to disk or kept after the process restarts. The signalin
 
 ### 3.4 What your browser keeps
 
-The website stores preferences and keys in your browser's `localStorage`, never in cookies and never on our servers: language, theme, the signaling server you chose, the link with your device (device id, link id and token), return passes for rooms you joined, the local panel token, views and sound settings, and the date you accepted these terms. Clearing your browser's site data removes them.
+The website stores preferences and keys in your browser's `localStorage`, never in cookies and never on our servers: language, theme, the signaling server you chose, the link with your device (device id, link id and token), return passes for rooms you joined, the local panel token, views and sound settings, and the date you accepted these terms. The skin editor and Willy Maker keep the user's skins and games the same way, in `localStorage` and in the browser's IndexedDB, and they never leave the browser unless the user downloads them. Clearing your browser's site data removes all of it.
 
 ### 3.5 What the host's device keeps
 

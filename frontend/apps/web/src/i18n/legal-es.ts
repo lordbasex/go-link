@@ -141,7 +141,7 @@ export const legalEs: LegalTexts = {
         id: "browser",
         title: "Qué guarda tu navegador",
         body: [
-          "El sitio guarda preferencias y claves en el almacenamiento local de tu navegador, nunca en cookies ni en nuestros servidores: idioma, tema, el servidor de señalización que elegiste, el vínculo con tu app, los pases para volver a partidas a las que entraste, la clave del panel local, ajustes de vista y sonido, y la fecha en que aceptaste estos términos. Al borrar los datos de este sitio en tu navegador, se eliminan.",
+          "El sitio guarda preferencias y claves en el almacenamiento local de tu navegador, nunca en cookies ni en nuestros servidores: idioma, tema, el servidor de señalización que elegiste, el vínculo con tu app, los pases para volver a partidas a las que entraste, la clave del panel local, ajustes de vista y sonido, y la fecha en que aceptaste estos términos. El editor de skins y Willy Maker guardan tus skins y tus juegos de la misma forma, en el almacenamiento local y en la base de datos propia del navegador (IndexedDB), y nunca salen de tu navegador salvo que los descargues. Al borrar los datos de este sitio en tu navegador, se elimina todo.",
         ],
         list: [],
       },
