@@ -31,7 +31,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
-import { InputRecorder, Machine, SCREEN_H, SCREEN_W, publicLab, readScript, scriptPorts, CELLS } from "./lab.mjs";
+import { InputRecorder, Machine, SCREEN_H, SCREEN_W, formatScript, publicLab, readScript, scriptPorts, CELLS } from "./lab.mjs";
 import { writePng } from "../png.mjs";
 
 export const ACTIONS = ["right", "left", "jump", "run_right", "fire", "climb_up", "climb_down", "drop", "wait"];
@@ -138,13 +138,25 @@ class Player {
     const line = this.lines.length
       ? this.lines.shift()
       : await new Promise((resolve, reject) => {
-          this.waiting = { resolve, reject };
-          setTimeout(() => {
-            if (this.waiting) {
+          // each wait has its own timer, cleared with the answer (a timer
+          // left from an earlier wait once cancelled a later one)
+          const w = {
+            resolve: (l) => {
+              clearTimeout(timer);
+              resolve(l);
+            },
+            reject: (e) => {
+              clearTimeout(timer);
+              reject(e);
+            },
+          };
+          const timer = setTimeout(() => {
+            if (this.waiting === w) {
               this.waiting = null;
               reject(new Error(`the player did not answer within ${this.timeoutMs} ms`));
             }
-          }, this.timeoutMs).unref();
+          }, this.timeoutMs);
+          this.waiting = w;
         });
     let ans;
     try {
@@ -190,6 +202,20 @@ class Video {
   }
 }
 
+/**
+ * One expectation of a script: { frame, path: "players.0.x", equals | min | max }
+ * on the lab state after that frame (path "" is the whole state).
+ */
+export function checkExpect(x, lab) {
+  let v = lab;
+  for (const k of String(x.path ?? "").split(".").filter(Boolean)) v = v?.[k];
+  let ok = v !== undefined;
+  if ("equals" in x) ok &&= JSON.stringify(v) === JSON.stringify(x.equals);
+  if ("min" in x) ok &&= v >= x.min;
+  if ("max" in x) ok &&= v <= x.max;
+  return { ...x, ok, got: v === undefined ? null : v };
+}
+
 const names = (ports) =>
   ports
     .map((s, i) => (s.size ? `${[...s].sort().join("+")}@${i + 1}` : ""))
@@ -227,8 +253,10 @@ export async function run(o) {
     actions: {},
     energyLost: 0,
     falls: 0,
+    expect: [],
     error: null,
   };
+  const expects = script?.expect ?? [];
   if (player) player.send({ type: "hello", protocol: 1, set: m.set.id, actions: ACTIONS, every: o.every, port: o.port, screen: { w: SCREEN_W, h: SCREEN_H } });
 
   let lab = null;
@@ -249,7 +277,7 @@ export async function run(o) {
           if (f >= PRELUDE.coin && f < PRELUDE.coin + PRELUDE.hold) ports[o.port - 1].add("coin");
           if (f >= PRELUDE.start && f < PRELUDE.start + PRELUDE.hold) ports[o.port - 1].add("start");
           if (f >= PRELUDE.giveUp && sum.startFrame === null) throw new Error(`the game did not start by frame ${PRELUDE.giveUp} (lab mode: ${lab?.mode ?? "none"})`);
-          windowAt = f;
+          windowAt = f + 1; // the first playing frame asks the player
         } else {
           if (f === windowAt) {
             const me = lab.players[o.port - 1];
@@ -308,6 +336,7 @@ export async function run(o) {
           });
         prevPl = lab.players;
       }
+      for (const x of expects) if (x.frame === n) sum.expect.push(checkExpect(x, lab));
       const wantPng = checkpoints.has(n) || (o.pngEvery && n % o.pngEvery === 0);
       if (wantPng || video) {
         const rgba = m.screen();
@@ -334,6 +363,9 @@ export async function run(o) {
     enemies: final.enemies.length,
     p1: { x: final.players[0].x, y: final.players[0].y, energy: final.players[0].energy },
   };
+  for (const x of expects) if (x.frame > sum.frames) sum.expect.push({ ...x, ok: false, got: `the run ended at frame ${sum.frames}` });
+  sum.expectOk = sum.expect.every((x) => x.ok);
+  if (!sum.expectOk && !sum.error) sum.error = `${sum.expect.filter((x) => !x.ok).length} expectation(s) failed`;
   sum.thinkMs.mean = sum.decisions ? Math.round(sum.thinkMs.total / sum.decisions) : 0;
   sum.thinkMs.total = Math.round(sum.thinkMs.total);
   sum.thinkMs.max = Math.round(sum.thinkMs.max);
@@ -341,7 +373,7 @@ export async function run(o) {
   await new Promise((r) => stateOut.end(r));
   if (decOut) await new Promise((r) => decOut.end(r));
   if (player) await player.close({ cleared: sum.cleared, frames: sum.frames, error: sum.error });
-  fs.writeFileSync(path.join(o.out, "inputs.json"), JSON.stringify(rec.finish({ name: `inputs of ${sum.kind} run`, frames: sum.frames, checkpoints: [...checkpoints].sort((a, b) => a - b) }), null, 1) + "\n");
+  fs.writeFileSync(path.join(o.out, "inputs.json"), formatScript(rec.finish({ name: `inputs of ${sum.kind} run`, frames: sum.frames, checkpoints: [...checkpoints].sort((a, b) => a - b) })));
   if (video) {
     try {
       await video.end();

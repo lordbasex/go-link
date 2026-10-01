@@ -109,6 +109,13 @@ export function checkScript(j, name = "script") {
   }
 }
 
+/** A script as JSON text with one step per line (easy to read and diff). */
+export function formatScript(j) {
+  const { steps, ...head } = j;
+  const top = JSON.stringify(head, null, 1).replace(/\n}$/, "");
+  return `${top}${Object.keys(head).length ? "," : ""}\n "steps": [\n${steps.map((s) => "  " + JSON.stringify(s)).join(",\n")}\n ]\n}\n`;
+}
+
 /** The buttons of the four ports at a frame. */
 export function scriptPorts(script, frame) {
   const ports = [new Set(), new Set(), new Set(), new Set()];
