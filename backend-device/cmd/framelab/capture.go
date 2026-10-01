@@ -50,6 +50,7 @@ func runCapture(args []string) error {
 	script := fs.String("script", "", `scripted input, e.g. "300-305:coin 400-405:start 600-3000:play"`)
 	stills := fs.String("stills", "", "comma separated frame numbers saved as PNG")
 	clip := fs.String("clip", "", "FROM:COUNT consecutive frames saved as PNG")
+	logCore := fs.Bool("log", false, "print the core's log to stderr (useful when a ROM does not start)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func runCapture(args []string) error {
 		CorePath:  *core,
 		RomPath:   *rom,
 		SystemDir: *system,
-		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:    captureLogger(*logCore),
 		RawVideo: func(f libretro.Frame) {
 			if f.Data == nil {
 				return // the core repeats the previous picture
@@ -241,4 +242,12 @@ func readJSON(path string, v any) error {
 		return err
 	}
 	return json.Unmarshal(b, v)
+}
+
+// captureLogger discards the core's log unless asked to print it.
+func captureLogger(show bool) *slog.Logger {
+	if show {
+		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	}
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

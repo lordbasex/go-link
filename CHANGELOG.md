@@ -4,6 +4,15 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (docs)
+
+- **Willy Maker** ([docs/willy-maker](docs/willy-maker/README.md)): the plan for a visual game maker in Tools (`/tools/willy-maker`) to build CPS-1 games for go-link: projects with autosave and `.zip` export, board budget meters, sprite sheet import with frame detection and palette zones, layers, collision tags and objects, a play mode that shares the ROM engine's rules with edit-while-playing, game settings (players, buttons, controller mapping, menus, DIP switches), and an AI pack export; later Create ROM in the browser and more boards. Its [architecture](docs/willy-maker/architecture.md) (a self-contained module) and [file format](docs/willy-maker/file-format.md).
+- **Arcade ROM project** ([docs/rom](docs/rom/README.md)): the plan for go-link's own arcade game, *Willy Gorklingo: The Lag Protocol*, built as a ROM set for the CPS-1 board that the mame2003-plus core runs (why that board, how the core and the device would find it, the toolchain, milestones and a prompt to brief an AI), and the game bible ([story.md](docs/rom/story.md)): Major Wilson "Willy" Gorklingo, his brainwashed teammates, the three layers of the Lag and ten detailed levels.
+
+### Fixed (website)
+
+- **Destroy's sprites:** Willy's black T-shirt and parts of his jeans were see-through in most frames (the background keying took dark clothes for the dark sheet background), and two of Glitch-9's walking frames and one punch frame held two poses each. The atlas script (`scripts/destroy-atlas.mjs`) now finds the frames as before but decides each frame's pixels with a tight background match plus everything connected to the character, so clothes stay solid while the gaps between legs and inside effects stay transparent; Glitch-9's walk and punch rows are cut from measured boxes (5 walking frames, 5 punches).
+
 ## [0.1.7] - 2026-09-30
 
 ### Added (Player apps)
