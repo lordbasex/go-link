@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-30
+
 ### Added (Player apps)
 
 - **Gamepad skins** on iOS and Android (Game settings › Skin): a console shell around the picture, with the D-pad, the action buttons in an arc, Coin and the start capsules drawn after Kenney's Mobile Controls (CC0), and the room's menu as a capsule. Six built-in skins (Violet, Red, Green, Blue, Smoke, Orange); Smoke is the default, and the plain pad without a shell is gone from the choices. Every skin is only data: a JSON file (format 1, [docs/skins](docs/skins/README.md), [schema](docs/skins/skin.schema.json)) that places each part in portrait and in landscape as boxes on a canvas, sets the plastic, decor, controls and menu colors, and may bring its own background pictures; more skins go in the app's Skins folder (the Files app on iOS, `Android/data/org.golink.player/files/Skins` on Android). The built-in skins live once in `docs/skins/builtin`, shared by both apps, and both run the same parser and placement math with the same tests. In the built-in skins the menu sits under the picture in portrait and folds into a handle over the picture in landscape; it shrinks to fit narrow phones, and Coin and the start capsules move apart instead of meeting. The game is as large as the phone allows and always whole (edge to edge in portrait, the full height in landscape, square corners); on small screens the picture gives way to the controls rather than the other way round. A held button or capsule sinks (smaller, darker, a shorter shadow) and the D-pad rocks toward the held direction; a skin may add a tint with `style.controls.lit`.
