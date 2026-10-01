@@ -35,6 +35,15 @@ import (
 // starts for each run, like a game room's "emulate" worker.
 //
 //	device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP
+//
+// With --input it replays an input script instead (experiment 1's
+// harness, docs/experiments/harness.md): the JSON script of the simulator
+// runner, frame by frame on the exact core, saving the --checkpoints
+// frames (and every --png-every frame) as PNG in --frames-dir and, with
+// --mp4, every frame as a video.
+//
+//	device romtest --input FILE [--frames N] [--checkpoints 300,600]
+//	    [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--json] ZIP
 func cmdRomTest(args []string) error {
 	if slices.Contains(args, "--child") {
 		return runRomTestChild(args)
@@ -44,6 +53,11 @@ func cmdRomTest(args []string) error {
 	asJSON := fs.Bool("json", false, "print JSON")
 	shot := fs.String("shot", "", "save the last frame as this PNG")
 	corePath := fs.String("core", "", "the libretro core (default: the one in ~/go-link/cores)")
+	inputFile := fs.String("input", "", "replay this input script (JSON) instead of the power-on test")
+	checkpoints := fs.String("checkpoints", "", "replay: frames to save as PNG, e.g. 300,600 (default: the script's)")
+	framesDir := fs.String("frames-dir", "", "replay: the folder for the PNG frames")
+	pngEvery := fs.Int("png-every", 0, "replay: also save every K-th frame")
+	mp4 := fs.String("mp4", "", "replay: record every frame into this MP4 (needs ffmpeg)")
 	// Flags may come before or after the zip.
 	var zips []string
 	for rest := args; ; {
@@ -57,7 +71,7 @@ func cmdRomTest(args []string) error {
 		rest = fs.Args()[1:]
 	}
 	if len(zips) != 1 {
-		return errors.New("usage: device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP")
+		return errors.New("usage: device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP\n       device romtest --input FILE [--frames N] [--checkpoints LIST] [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--json] ZIP")
 	}
 	zipPath := zips[0]
 	base, err := dataDir()
@@ -72,6 +86,39 @@ func cmdRomTest(args []string) error {
 	}
 	if _, err := os.Stat(*corePath); err != nil {
 		return errors.New("the emulator core is not installed; run: device core download")
+	}
+	if *inputFile != "" {
+		o := replayOptions{Input: *inputFile, FramesDir: *framesDir, PNGEvery: *pngEvery, MP4: *mp4, Core: *corePath,
+			Work: filepath.Join(base, "tmp", fmt.Sprintf("romreplay-%d", os.Getpid()))}
+		frameSet := false
+		fs.Visit(func(f *flag.Flag) { frameSet = frameSet || f.Name == "frames" })
+		if frameSet {
+			o.Frames = *frames
+		}
+		if *checkpoints != "" {
+			cps, err := parseCheckpoints(*checkpoints)
+			if err != nil {
+				return err
+			}
+			o.Checkpoints = cps
+		}
+		rep, err := runReplay(zipPath, o)
+		if err != nil {
+			rep.Error = err.Error()
+		}
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(rep); err != nil {
+				return err
+			}
+		} else if err == nil {
+			fmt.Printf("Replay of %s on %s: %d frames (%dx%d at %.2f Hz) in %.1f s, %d PNG\n", filepath.Base(zipPath), rep.Core, rep.Frames, rep.Width, rep.Height, rep.FPS, rep.Seconds, rep.PNGs)
+			for _, c := range rep.Checkpoints {
+				fmt.Printf("  frame %d  %s  %s\n", c.Frame, c.Hash, c.PNG)
+			}
+		}
+		return err
 	}
 	cat, _ := romcheck.Load(filepath.Join(coresDir, romcheck.FileName)) // nil: the set check is skipped
 	tests := services.NewRomTestService(services.RomTestConfig{
