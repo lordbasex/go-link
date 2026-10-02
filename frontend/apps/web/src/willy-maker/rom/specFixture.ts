@@ -66,8 +66,8 @@ export function specProject(): Project {
   for (const v of SPEC.civilians) items.push({ name: v.name, type: "civilian", x: v.x, y: v.y, kind: v.kind, trapped_in: "" } as LevelObject);
   const exit = items.find((o) => o.type === "exit")!;
   Object.assign(exit, { x: SPEC.exit.x, y: SPEC.exit.y, w: SPEC.exit.w });
-  // the rules and the texts of the spec
-  p.settings.rules = { enemyHp: 3, enemyScore: 100, rescueScore: 500, touchHurts: true, enemiesChase: false, enemiesShoot: false, exitNeedsEnemies: true, respawnOnHurt: false, hurtFrames: 60 };
+  // the rules and the texts of the spec ("a 32 px crate is climbed by pushing")
+  p.settings.rules = { enemyHp: 3, enemyScore: 100, rescueScore: 500, touchHurts: true, enemiesChase: false, enemiesShoot: false, exitNeedsEnemies: true, respawnOnHurt: false, hurtFrames: 60, crateClimb: "push" };
   p.settings.dip.lives = 3;
   p.settings.playerSlots = [
     { character: "builtin:willy", variant: 0 },

@@ -37,11 +37,14 @@ import {
   SHOT_SPEED,
   STEP_UP,
   Tag,
+  cancelOpposites,
   rulesWith,
   type GameRules,
 } from "./rules";
 
 export const MAX_PLAYERS = 4;
+/** How long the "defeat every enemy" message stays after a player leaves the closed exit. */
+export const EXIT_CLOSED_FRAMES = 90;
 
 export interface Shot {
   x: number;
@@ -121,6 +124,8 @@ export interface Crate {
   /** Size in cells (1 for 16 px, 2 for 32 px). */
   cells: number;
   hp: number;
+  /** False: shots stop on it and it never breaks (it still breaks when nothing holds it up). */
+  breakable: boolean;
   contents: string;
   broken: boolean;
 }
@@ -150,7 +155,7 @@ export type GameEvent =
   | { kind: "rescue"; name: string; player: number }
   | { kind: "pickup"; item: string; player: number }
   | { kind: "hurt" | "join"; player: number }
-  | { kind: "cleared" | "over" };
+  | { kind: "cleared" | "over" | "exit_closed" };
 
 export interface GameOptions {
   /** Players already in at the start (the rest join by pressing a button). */
@@ -186,6 +191,8 @@ export class Game {
   camFar = 0;
   frame = 0;
   rescued = 0;
+  /** Frames left of the "defeat every enemy" message after the exit was reached too early. */
+  exitClosed = 0;
   outcome: GameOutcome = "playing";
   events: GameEvent[] = [];
   private readonly maxPlayers: number;
@@ -266,7 +273,7 @@ export class Game {
           const cells = num(o.size, 32) >= 32 ? 2 : 1;
           const col = Math.floor(o.x / CELL);
           const row = Math.floor(o.y / CELL);
-          this.crates.push({ name: o.name, col, row, cells, hp: num(o.hp, CRATE_HP), contents: str(o.contents, ""), broken: false });
+          this.crates.push({ name: o.name, col, row, cells, hp: num(o.hp, CRATE_HP), breakable: o.breakable !== false, contents: str(o.contents, ""), broken: false });
           for (let r = row; r < row + cells; r++) for (let c = col; c < col + cells; c++) if (this.cell(c, r) === Tag.Air) this.setCell(c, r, Tag.Crate);
           break;
         }
@@ -326,6 +333,7 @@ export class Game {
     if (t === Tag.Crate) {
       const crate = this.crates.find((k) => !k.broken && c >= k.col && c < k.col + k.cells && r >= k.row && r < k.row + k.cells);
       if (crate) {
+        if (!crate.breakable) return true;
         crate.hp -= damage;
         if (crate.hp <= 0) this.breakCrate(crate, by);
         return true;
@@ -359,6 +367,14 @@ export class Game {
     // "nothing" leaves no pickup; a civilian inside a crate has no effect yet (editor/support.ts)
     if (crate.contents && crate.contents !== "nothing" && crate.contents !== "civilian") this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
     for (const v of this.civilians) if (v.trappedIn === crate.name) v.trappedIn = "";
+    // crates resting on it with nothing else under them break too, so none is left
+    // hanging in the air over the floor (experiment 1, J-03)
+    for (const k of this.crates) {
+      if (k.broken || k.row + k.cells !== crate.row || k.col >= crate.col + crate.cells || k.col + k.cells <= crate.col) continue;
+      let held = false;
+      for (let c = k.col; c < k.col + k.cells; c++) if (this.isSolid(this.cell(c, k.row + k.cells))) held = true;
+      if (!held) this.breakCrate(k, by);
+    }
   }
 
   // ----------------------------------------------------------- players
@@ -419,8 +435,9 @@ export class Game {
         p.pushT = 0;
         continue;
       }
-      // blocked: an edge up to STEP_UP high with room above is climbed after a push
-      if (p.onGround) {
+      // blocked: with the push rule, an edge up to STEP_UP high with room above is
+      // climbed after a push; with the jump rule (the default) it must be jumped
+      if (p.onGround && this.rules.crateClimb === "push") {
         let top = fy;
         while (fy - top < STEP_UP + CELL && this.isSolid(this.cellAt(front, top - 1))) top = Math.floor((top - 1) / CELL) * CELL;
         if (fy - top <= STEP_UP && !this.bodyBlocked(front, top) && !this.bodyBlocked(p.x, top)) {
@@ -766,7 +783,7 @@ export class Game {
     if (this.outcome !== "playing") return;
     this.frame++;
     for (const p of this.players) {
-      const pad = inputs[p.index] ?? 0;
+      const pad = cancelOpposites(inputs[p.index] ?? 0);
       if (!p.active) {
         if (pad & (Input.Start | Input.B1 | Input.B2 | Input.B3) && !(p.last & (Input.Start | Input.B1 | Input.B2 | Input.B3))) this.join(p.index);
         p.last = pad;
@@ -780,15 +797,21 @@ export class Game {
     this.updateEnemies();
     this.updateCivilians();
     this.updateCamera();
+    if (this.exitClosed) this.exitClosed--;
+    const closed = this.rules.exitNeedsEnemies && this.enemies.some((e) => this.alive(e));
     for (const p of this.players) {
       if (!p.active) continue;
       const fy = p.y >> 4;
-      if (this.rules.exitNeedsEnemies && this.enemies.some((e) => this.alive(e))) break;
-      if (this.exits.some((x) => p.x >= x.x && p.x <= x.x + x.w && fy >= x.y && fy <= x.y + x.h)) {
-        this.outcome = "cleared";
-        this.events.push({ kind: "cleared" });
-        return;
+      if (!this.exits.some((x) => p.x >= x.x && p.x <= x.x + x.w && fy >= x.y && fy <= x.y + x.h)) continue;
+      if (closed) {
+        // tell the players why the exit does not open (experiment 1, J-11)
+        if (!this.exitClosed) this.events.push({ kind: "exit_closed" });
+        this.exitClosed = EXIT_CLOSED_FRAMES;
+        continue;
       }
+      this.outcome = "cleared";
+      this.events.push({ kind: "cleared" });
+      return;
     }
     if (this.players.every((p) => !p.active)) {
       // nobody left playing (in a go-link room a new credit would start again)
@@ -814,6 +837,7 @@ export class Game {
         ammo: p.ammo,
       })),
       enemiesLeft: this.enemies.filter((e) => this.alive(e)).length,
+      exitClosed: this.exitClosed > 0,
       civilians: { rescued: this.rescued, total: this.civilians.length },
     };
   }
@@ -827,6 +851,8 @@ export interface GameSnapshot {
   camera: { x: number; y: number; far: number; locked: boolean };
   players: { index: number; active: boolean; x: number; y: number; state: PlayerState; lives: number; score: number; ammo: number }[];
   enemiesLeft: number;
+  /** A player is at the exit while it still needs enemies down (the message shows). */
+  exitClosed: boolean;
   civilians: { rescued: number; total: number };
 }
 

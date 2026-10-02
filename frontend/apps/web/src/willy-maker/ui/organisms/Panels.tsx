@@ -13,7 +13,7 @@ import { optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
-import { rulesWith } from "../../engine/rules";
+import { CRATE_HP, rulesWith } from "../../engine/rules";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
@@ -371,9 +371,14 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
       )}
       {o.type === "crate" && (
         <>
-          <PropRow label={t.inspector.hp}>
-            <NumberInput label={t.inspector.hp} value={Number(o.hp ?? 2)} min={1} max={9} onChange={(hp) => set({ hp })} />
+          <PropRow label={t.inspector.breakable}>
+            <input type="checkbox" aria-label={t.inspector.breakable} title={t.inspector.breakableHelp} checked={o.breakable !== false} onChange={(e) => set({ breakable: e.target.checked })} />
           </PropRow>
+          {o.breakable !== false && (
+            <PropRow label={t.inspector.hp}>
+              <NumberInput label={t.inspector.hp} value={Number(o.hp ?? CRATE_HP)} min={1} max={9} onChange={(hp) => set({ hp })} />
+            </PropRow>
+          )}
           <PropRow label={t.inspector.contents}>
             <Select label={t.inspector.contents} value={String(o.contents ?? "nothing")} options={CRATE_CONTENTS} support={(c) => optionSupport("contents", c)} onChange={(contents) => set({ contents })} />
           </PropRow>

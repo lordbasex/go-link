@@ -12,6 +12,7 @@
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer } from "../model";
 import { rulesWith } from "../engine/rules";
+import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
 import { BUILTIN_HERO } from "../model";
@@ -76,6 +77,10 @@ const TXT_BLINK = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
 const ITEM: Record<string, number> = { bazooka: 1, health: 2 };
 const F_FREE_PLAY = 1;
+const F_PUSH_CLIMB = 2;
+const F_SOON = 4;
+/** The exit door's six 16 px tiles, after the room a level's tileset may use. */
+const DOOR_TILES = PLAY_TILES + 0x700;
 
 /** The first level in play order. */
 export function romLevel(project: Project): Level | undefined {
@@ -327,7 +332,8 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
       case "crate": {
         const contents = String(o.contents ?? "nothing");
         if (contents !== "nothing" && !ITEM[contents]) note("contents", { item: contents });
-        crates.push([Math.floor(o.x / CELL), Math.floor(o.y / CELL), num(o.size, 32) >= 32 ? 2 : 1, num(o.hp, 3), ITEM[contents] ?? 0, 0]);
+        // hits 0 tells the engine the crate never breaks from shots
+        crates.push([Math.floor(o.x / CELL), Math.floor(o.y / CELL), num(o.size, 32) >= 32 ? 2 : 1, o.breakable === false ? 0 : Math.max(1, num(o.hp, 3)), ITEM[contents] ?? 0, 0]);
         break;
       }
       case "pickup": {
@@ -370,6 +376,30 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   const rules = rulesWith(project.settings.rules);
   const dip = project.settings.dip;
 
+  // the exit's door (engine/door.ts), in the play layer's own colors, over empty cells only
+  const playColors = layerPalette(project, playLayer);
+  if (exit[2] > 0 && playColors.length) {
+    const lum = (c: [number, number, number]) => c[0] * 3 + c[1] * 4 + c[2] * 2;
+    const by = (score: (c: [number, number, number]) => number) => playColors.reduce((best, c, i) => (score(c) > score(playColors[best]!) ? i : best), 0);
+    const pens = [15, by(lum), by((c) => -lum(c)), by((c) => c[1] * 2 - c[0] - c[2]), by(lum)];
+    const parts = doorParts();
+    const at = doorAt({ x: exit[0], y: exit[1], w: exit[2] });
+    const c0 = Math.floor(at.x / CELL);
+    const r0 = Math.floor(at.y / CELL);
+    for (let tr = 0; tr < DOOR_H / CELL; tr++)
+      for (let tc = 0; tc < DOOR_W / CELL; tc++) {
+        const c = c0 + tc;
+        const r = r0 + tr;
+        if (c < 0 || r < 0 || c >= cols || r >= rows || tags[r * cols + c] !== 0) continue;
+        const code = DOOR_TILES + tr * (DOOR_W / CELL) + tc;
+        gfx.tile16(
+          code,
+          Array.from({ length: CELL }, (_, y) => Array.from({ length: CELL }, (_, x) => pens[parts[tr * CELL + y]![tc * CELL + x]! as number] ?? 15)),
+        );
+        play.codes[r * cols + c] = code;
+      }
+  }
+
   // the data block
   const out = new Out();
   for (let i = 0; i < HEADER; i++) out.u8(0);
@@ -381,7 +411,6 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   const farAt = out.addr;
   for (const c of far.codes) out.u16(c);
   const palAt = out.addr;
-  const playColors = layerPalette(project, playLayer);
   const farColors = layerPalette(project, farLayer);
   for (const w of [...paletteWords(playColors), ...paletteWords(farColors)]) out.u16(w);
   const objAt = out.addr;
@@ -418,7 +447,7 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16(dip.freePlay ? F_FREE_PLAY : 0);
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);

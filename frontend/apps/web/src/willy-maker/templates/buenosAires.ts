@@ -3,7 +3,7 @@
 // The "Buenos Aires" template: Mission 1's 8192 × 672 canvas with the five
 // sections of docs/rom/art-spec.md, drawn with the prototype's street tiles
 // and following its climbing rules (ledges up to 48 px by a jump, 32 px crates climbed
-// by pushing, ladders for anything higher, a way down from every upper
+// by a jump, or by pushing with that rule, ladders for anything higher, a way down from every upper
 // route). A starting point to edit, not the final mission.
 
 import { CELL, layerGrid, newLevel, objectLayer, tagGrid, TAG_NUMBER, type Level, type LevelObject, type TileLayer } from "../model";

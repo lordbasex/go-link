@@ -202,6 +202,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   const order = (s.levels ?? []).map((id) => p.levels.find((l) => l.id === id)).filter((l): l is Level => !!l);
   const levels = order.length ? order : p.levels;
   const b = (s.buttons ?? {}) as unknown as Record<string, string>;
+  const G = R.rulesWith(s.rules);
   const L: string[] = [];
   const line = (t = "") => L.push(t);
 
@@ -211,7 +212,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   line();
   line("Follow docs/rom-README.md, docs/art-spec.md and docs/hardware.md (in this pack). docs/journal.md is the lab journal of the prototype that already runs in the core and in a go-link room: its section \"How to reproduce from zero\" is the build you start from. docs/story.md is the game bible: the world, the heroes and the tone.");
   line();
-  line(`The rules the game must keep (a jump peaks at about 62 px, so ledges up to 48 px; push-climb ${R.STEP_UP} px, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers, the same as rom/src/main.c.`);
+  line(`The rules the game must keep (a jump peaks at about 62 px, so ledges up to 48 px; 32 px crates climbed ${G.crateClimb === "push" ? "by walking into them" : "by jumping"}, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers. Where this game's own rules (the Game tab's Rules card) differ from the prototype's rom/src/main.c, this game's win.`);
   line();
 
   line("## The game");
@@ -256,7 +257,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
 
   line("## Rules the engine keeps");
   line();
-  line("The numbers of Willy Maker's play mode (its engine/rules.ts), the same as the prototype's rom/src/main.c. Vertical speeds are in 1/16 px per frame, like the 68000 code.");
+  line("The numbers of Willy Maker's play mode (its engine/rules.ts) with this game's Rules card applied. Vertical speeds are in 1/16 px per frame, like the 68000 code.");
   line();
   line("| Rule | Value |");
   line("|---|---|");
@@ -268,17 +269,20 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
     ["Jump", `start speed ${R.JUMP_VY}/16 px per frame (peaks at 61.9 px: a ledge 48 px up is reachable, 64 px is not)`],
     ["Fastest fall", `${R.MAX_FALL}/16 px per frame`],
     ["Ladders", `${R.CLIMB_SPEED}/16 px per frame (up and down on the stick)`],
-    ["Push-climb", `edges up to ${R.STEP_UP} px (one 32 px crate), in ${R.PUSH_FRAMES} frames`],
+    ["Climbing a 32 px crate", G.crateClimb === "push" ? `walking into an edge up to ${R.STEP_UP} px climbs it after ${R.PUSH_FRAMES} frames` : "only by jumping: walking into it does nothing"],
     ["Run", `a second tap toward the same side within ${R.RUN_TAP_FRAMES} frames`],
     ["Drop through a one-way ledge", `down + jump, for ${R.DROP_FRAMES} frames`],
     ["Camera", `moves forward; goes back at most ${R.BACKTRACK} px from the farthest point reached`],
     ["Machine gun", `${R.SHOTS_PER_PLAYER} shots per player on screen, speed ${R.SHOT_SPEED} px per frame, one every ${R.FIRE_EVERY} frames`],
     ["Knife", `${R.KNIFE_FRAMES} frames, reach ${R.KNIFE_REACH} px`],
     ["Bazooka", `${R.BAZOOKA_AMMO} rockets, ${R.BAZOOKA_FRAMES} frames each`],
-    ["Enemies", `${R.ENEMY_HP} hits, see ${R.ENEMY_SIGHT} px, fire every ${R.ENEMY_FIRE_EVERY} frames at ${R.ENEMY_SHOT_SPEED} px per frame`],
-    ["Crates and breakable walls", `${R.CRATE_HP} and ${R.BREAKABLE_HP} hits (a rocket counts 9, a knife 2)`],
-    ["Lives", `${R.LIVES} by default (the DIP switch above wins); ${R.INVULNERABLE_FRAMES} frames without harm after a respawn`],
-    ["Score", `crate ${R.SCORE_CRATE}, enemy ${R.SCORE_ENEMY}, rescued civilian ${R.SCORE_RESCUE}`],
+    ["Enemies", `${G.enemyHp} hits unless the object gives its own; ${G.enemiesChase ? `chase a player on their floor within ${R.ENEMY_SIGHT} px` : "keep their patrol and turn at its ends"}; ${G.enemiesShoot ? `fire every ${R.ENEMY_FIRE_EVERY} frames at ${R.ENEMY_SHOT_SPEED} px per frame` : "never shoot"}; touching one ${G.touchHurts ? "hurts" : "does not hurt"}`],
+    ["Crates and breakable walls", `${R.CRATE_HP} and ${R.BREAKABLE_HP} hits (a rocket counts 9, a knife 2); a crate whose object says breakable: false never breaks from shots; crates resting on a broken crate with nothing else under them break too`],
+    ["Lives", `${R.LIVES} by default (the DIP switch above wins); after a hit the player ${G.respawnOnHurt ? "comes back near the camera's left side" : "blinks in place"} and cannot be hurt for ${G.hurtFrames} frames`],
+    ["Score", `crate ${G.crateScore}, enemy ${G.enemyScore}, rescued civilian ${G.rescueScore}`],
+    ["The exit", `${G.exitNeedsEnemies ? "clears the level only with every enemy down; reaching it earlier shows a message (DEFEAT EVERY ENEMY) and the HUD shows ENEMY n, the enemies left" : "clears the level when a player reaches it"}; a door is drawn on it`],
+    ["Start on a port past the game's players", G.extraPorts === "soon" ? "shows \"3P COMING SOON\" (or 4P) for 2 s; no credit is taken" : "does nothing; no credit is taken"],
+    ["Opposite directions", "left with right, or up with down, held together count as neither (the core delivers them so)"],
   ];
   for (const [k, v] of rows) line(`| ${k} | ${v} |`);
   line();

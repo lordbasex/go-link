@@ -21,7 +21,7 @@ export const JUMP_VY = -7 * 16;
 export const MAX_FALL = 8 * 16;
 /** Ladder speed: 1.5 px per frame. */
 export const CLIMB_SPEED = 24;
-/** The highest edge a push climbs (one 32 px crate), and how long the push takes. */
+/** The highest edge a push climbs (one 32 px crate), and how long the push takes (only when crates are climbed by pushing). */
 export const STEP_UP = 32;
 export const PUSH_FRAMES = 10;
 /** A second press toward the same side within this many frames (250 ms) runs. */
@@ -61,8 +61,10 @@ export const SCORE_RESCUE = 1000;
 
 /**
  * The rules a game can change (the Game tab's Rules card), read by play
- * mode and packed for the ROM engine (rom/engine/wmdata.h, `wm_rules`).
- * The defaults are the prototype's.
+ * mode and packed for the ROM engine (rom/engine/wmdata.h, `wm_rules` and
+ * the header's flags). The defaults are the prototype's, except how crates
+ * are climbed: by jumping, as in most platformers (experiment 1's verdict,
+ * T-07).
  */
 export interface GameRules {
   /** Hits an enemy takes when its object gives none. */
@@ -82,6 +84,10 @@ export interface GameRules {
   respawnOnHurt: boolean;
   /** Frames a player blinks and cannot be hurt after a hit or a join. */
   hurtFrames: number;
+  /** How a 32 px edge is climbed: by jumping, or by walking into it for a moment (the prototype's push). */
+  crateClimb: "jump" | "push";
+  /** Start on a port past the game's players: a "coming soon" line, or nothing. No credit is taken either way. */
+  extraPorts: "soon" | "ignore";
 }
 
 export const DEFAULT_RULES: GameRules = {
@@ -95,6 +101,8 @@ export const DEFAULT_RULES: GameRules = {
   exitNeedsEnemies: false,
   respawnOnHurt: true,
   hurtFrames: INVULNERABLE_FRAMES,
+  crateClimb: "jump",
+  extraPorts: "soon",
 };
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
@@ -113,6 +121,8 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     exitNeedsEnemies: bool(r.exitNeedsEnemies, DEFAULT_RULES.exitNeedsEnemies),
     respawnOnHurt: bool(r.respawnOnHurt, DEFAULT_RULES.respawnOnHurt),
     hurtFrames: int(r.hurtFrames, 0, 600, DEFAULT_RULES.hurtFrames),
+    crateClimb: r.crateClimb === "push" ? "push" : "jump",
+    extraPorts: r.extraPorts === "ignore" ? "ignore" : "soon",
   };
 }
 
@@ -144,3 +154,11 @@ export const Input = {
   B3: 1 << 6, // special: the picked-up weapon
   Start: 1 << 7,
 } as const;
+
+/** Opposite directions pressed together cancel out, as the mame2003-plus core delivers them (experiment 1, J-17). */
+export function cancelOpposites(pad: number): number {
+  let v = pad;
+  if ((v & Input.Left) && (v & Input.Right)) v &= ~(Input.Left | Input.Right);
+  if ((v & Input.Up) && (v & Input.Down)) v &= ~(Input.Up | Input.Down);
+  return v;
+}

@@ -47,7 +47,7 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | Offset | Field | Meaning |
 |---|---|---|
 | 00 | `magic`, `version`, `size` | `WMD1`, 1, 0x70 |
-| 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play |
+| 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play, `0x0002` crates climbed by pushing (else by jumping), `0x0004` Start on a port past the players shows "nP COMING SOON" |
 | 0c | `level_w`, `level_h`, `cols`, `rows` | px, and 16 px cells |
 | 14 | `far_cols`, `far_rows` | 32 px cells |
 | 18 | `tags` | `u8[cols × rows]`: Willy Maker's collision tags (0 air, 1 solid, 2 one-way, 3 ladder, 4 crate, 5 breakable, 6 hazard, 7 water) |
@@ -64,7 +64,7 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | 5c | `rules` | 16 bytes: energy, enemy hits, touch hurts, chase, shoot, exit needs every enemy down, respawn on hurt, the run window; blink frames, enemy, rescue and crate points |
 | 6c | `title` | the game's title (for the record) |
 
-**Objects** (`x, y, a, b, c, d`, s16): an enemy is `x, feet y, patrol min, patrol max, hits (0 = the rules'), facing`; a civilian `x, feet y, child`; a crate `col, row, size in cells, hits, contents (1 bazooka, 2 health)`; a pickup `x, feet y, item`.
+**Objects** (`x, y, a, b, c, d`, s16): an enemy is `x, feet y, patrol min, patrol max, hits (0 = the rules'), facing`; a civilian `x, feet y, child`; a crate `col, row, size in cells, hits (0 = never breaks from shots), contents (1 bazooka, 2 health)`; a pickup `x, feet y, item`.
 
 **Text lines**: `screen, row, col, attr, length`, the characters, padded to an even length; `0xff` ends the table. Screens: 0 title, 1 HUD, 2 clear, 3 continue, 4 game over, 5 the HUD's join prompt, 6 the ammo label, 7 the insert-coin prompt. `attr`: ink (0 accent, 1 white, 2 cyan, 3 red), `0x10` double size, `0x20` a count follows (rescued), `0x40` blinks (the title's prompt). The lines come from the Menus tab (`game/menus.ts` `screenLines`), so the ROM puts each text where the preview shows it.
 
@@ -84,18 +84,20 @@ Only the tiles a level uses are written. A tile's pixels become pens of its tile
 
 ## The engine
 
-The prototype's code, generalized: the same physics (gravity 6/16 px per frame², a −7 px per frame jump, 32 px pushes, ladders at 1.5 px per frame, down + jump through one-way ledges, the double-tap run), the machine gun and the automatic knife, the bazooka from pickups and crates, the forward-only camera with its back margin. What changed:
+The prototype's code, generalized: the same physics (gravity 6/16 px per frame², a −7 px per frame jump, 32 px crates jumped onto or, with the push rule, pushed up, ladders at 1.5 px per frame, down + jump through one-way ledges, the double-tap run), the machine gun and the automatic knife, the bazooka from pickups and crates, the forward-only camera with its back margin. What changed:
 
 - **Everything is read from `wm_data`**: the level, its tiles and palettes, the objects, each player's look, the texts and the rules. Without a valid block it shows "NO GAME DATA" instead of crashing.
 - **Tile columns are streamed**: the board's tilemaps are 64 columns wide (1024 px of 16 px tiles, 2048 px of 32 px tiles), so the engine writes the columns around the camera as it moves (and a broken crate's columns from the collision map in RAM). Levels up to 24 576 cells of 16 px and 1024 px tall fit (the 8192 × 672 Buenos Aires canvas does).
-- **Up to 4 players** on the ports `slammast` wires (P3 and P4 at 0xf1c000/2, their button 3 in the P1/P2 word); a game for 2 players ignores P3 and P4.
+- **Up to 4 players** on the ports `slammast` wires (P3 and P4 at 0xf1c000/2, their button 3 in the P1/P2 word). Start on a port past the game's players shows "3P COMING SOON" (or 4P) for 2 s, or nothing with that rule; it never takes a credit.
+- **Opposite directions cancel**: left with right, and up with down, held together count as neither, as the mame2003-plus core delivers them, so the board model and the core give the same frames (experiment 1, J-17).
+- **Crates**: a crate breaks after its hits, and the crates resting on it with nothing else under them break too, so none is left hanging over the floor (experiment 1, J-03). A crate whose object is not breakable stops shots and never breaks from them.
 - **Energy and game over**: a player takes as many hits as the board's lives; a hit blinks the player (and, with the rule, brings them back near the camera's left); at no energy a credit and Start bring them back, and with every player out and no credit the game shows the Game over screen and returns to the title. With a credit left, the Continue screen counts down from 9.
-- **The exit** clears the section when a player stands in its zone (and, with the rule, every enemy is down); the HUD's Level clear text shows, then the title.
+- **The exit** clears the section when a player stands in its zone (and, with the rule, every enemy is down); the HUD's Level clear text shows, then the title. Create ROM draws a door on it (`engine/door.ts`, in the play layer's own colors, over empty cells), as play mode does. With the rule, the HUD shows `ENEMY n` (the enemies left) and reaching the exit early shows "DEFEAT EVERY ENEMY" (experiment 1, J-11 and J-13).
 - **The lab state** (`rom/src/lab_state.h`) is filled every frame, as in the prototype, so experiment 1's harness and its players read any Willy Maker game.
 
 ## Rules (the Game tab)
 
-`settings.rules` holds only what a game changed; the defaults are the prototype's, so older games play the same. Play mode reads the same rules (`Game` option `rules`), so what is tried while building is what the ROM does.
+`settings.rules` holds only what a game changed; the defaults are the prototype's, except how crates are climbed (by jumping since experiment 1's verdict, T-07; a game that wants the prototype's push picks it). Play mode reads the same rules (`Game` option `rules`), so what is tried while building is what the ROM does.
 
 | Rule | Default | Game Spec v1 |
 |---|---|---|
@@ -107,6 +109,8 @@ The prototype's code, generalized: the same physics (gravity 6/16 px per frame²
 | The exit needs every enemy down | no | yes |
 | After a hit | back near the camera | blink in place |
 | Blinking after a hit | 120 frames | 60 frames (1 s) |
+| Climbing a 32 px crate | by jumping | by walking into it (push) |
+| Start on a port with no player | shows "coming soon" | shows "coming soon" |
 
 ## What the ROM leaves out for now
 

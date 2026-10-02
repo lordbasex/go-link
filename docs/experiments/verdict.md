@@ -74,17 +74,19 @@ On 2026-10-01 an AI outside this project, with only a browser, was asked to "cre
 
 ## Tasks
 
-Each task comes from the evidence that asked for it: the jury's lessons (L-01 to L-16, [foreman's report](#the-jury)), the external AI (E-02 to E-05) and the user's notes (U-01 to U-04). **This round** is done right after the verdict; the rest stays in [status.md](../status.md) in this order.
+Each task comes from the evidence that asked for it: the jury's lessons (L-01 to L-16, [foreman's report](#the-jury)), the external AI (E-02 to E-05) and the user's notes (U-01 to U-04). **This round** was done right after the verdict (2026-10-02, see the CHANGELOG); the rest stays in [status.md](../status.md) in this order.
+
+**Checked on the spec level after this round:** Create ROM's ROM still clears the scripted run at frame 1883 and matches the real core at all 11 checkpoints; the jury's `crate-trap` script no longer stops the player (x 186 before, x 1232 now: the crate on top breaks with the one shot under it), its `opposites` script now matches the core at 0 % (1.80 % before), `p34-title` shows "3P COMING SOON", and the HUD shows `ENEMY n` and the door. The new point of no return check warns about the upper trooper (J-01) and also about the **lower trooper**: players can climb the ladder, walk the upper dock and drop back to the street past it, a second soft-lock in the spec's level that no juror found.
 
 | Id | Task | From | When |
 |---|---|---|---|
-| T-01 | **Point of no return check** in the validator: walk the route graph with the forward-only camera and warn when something the exit needs (or a civilian) can be left behind; offer fixes (a camera lock until the branch is done, a door, more backtrack, or "every enemy you can still reach") | L-01, J-01 | this round |
-| T-02 | **The exit rule as a setting** carried by the project, the play mode, the ROM and the AI pack (every enemy down or touch), with a message when the exit is touched too early and `ENEMY n` in the HUD | L-02, L-07, J-02, J-11 | this round |
-| T-03 | **Crates:** unsupported crates fall; breakable is a per-crate setting, off on climbing stacks | L-04, J-03 | this round |
-| T-04 | **Cancel opposite directions** (left with right, up with down) in the ROM engine, the board model and play mode, as the core does | L-05, J-17 | this round |
-| T-05 | **The exit is drawn** as a door by default | L-07, J-13 | this round |
-| T-06 | **P3 and P4 behaviour** as a setting (join, coming soon, ignore), "coming soon" by default and no credit taken | L-08, J-14 | this round |
-| T-07 | **How crates are climbed** as a rule: by jumping (default, as in Super Mario Bros.) or by pushing (the prototype's) | U-01 | this round |
+| T-01 | **Point of no return check** in the validator: walk the route graph with the forward-only camera and warn when something the exit needs (or a civilian) can be left behind; offer fixes (a camera lock until the branch is done, a door, more backtrack, or "every enemy you can still reach") | L-01, J-01 | done |
+| T-02 | **The exit rule as a setting** carried by the project, the play mode, the ROM and the AI pack (every enemy down or touch), with a message when the exit is touched too early and `ENEMY n` in the HUD | L-02, L-07, J-02, J-11 | done |
+| T-03 | **Crates:** unsupported crates fall; breakable is a per-crate setting, off on climbing stacks | L-04, J-03 | done |
+| T-04 | **Cancel opposite directions** (left with right, up with down) in the ROM engine, the board model and play mode, as the core does | L-05, J-17 | done |
+| T-05 | **The exit is drawn** as a door by default | L-07, J-13 | done |
+| T-06 | **P3 and P4 behaviour** as a setting (join, coming soon, ignore), "coming soon" by default and no credit taken | L-08, J-14 | done |
+| T-07 | **How crates are climbed** as a rule: by jumping (default, as in Super Mario Bros.) or by pushing (the prototype's) | U-01 | done |
 | T-08 | QA run in the acceptance: per-frame invariants, a seeded 4-port fuzz, adversarial players (skipper, newcomer, shooter, masher) and a ddmin minimizer | L-03 | next |
 | T-09 | Camera, ladder and join rules: leaving the ladder column ends the climb, the camera never pushes a player into solid cells, join points checked, every active player kept in the picture vertically | L-06, J-04, J-05, J-06, J-12, J-16 | next |
 | T-10 | Every rule the engine does not decide goes into the project and the AI pack as a setting; P-01 to P-26 are the checklist | L-08, J-07, J-10 | next |
@@ -111,4 +113,4 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 
 ### The jury
 
-Four jurors (QA tester, game designer, technical reviewer, player experience), each alone, then a foreman who took the medians, merged 18 bugs (J-01 to J-18) and ranked 16 lessons (L-01 to L-16, in the order of the table above's "From" column). The report was advice; this page is the verdict.
+Four jurors (QA tester, game designer, technical reviewer, player experience), each alone, then a foreman who took the medians, merged 18 bugs (J-01 to J-18) and ranked 16 lessons (L-01 to L-16, in the foreman's order of priority). The report was advice; this page is the verdict.

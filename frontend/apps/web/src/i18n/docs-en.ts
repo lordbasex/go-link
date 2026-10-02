@@ -742,7 +742,7 @@ export const docsEn: Docs = {
           items: [
             "**Tools**: select and move (V), the pencil (B), the eraser (E), fill a rectangle (G) and the hand (H, or hold Space). Zoom with + and −; **Grid**, **Snap** and **Screen** (what fits on 384 × 224) help you place things.",
             "**Parts**: pick terrain, objects, enemies, civilians, helpers or tiles and paint with the pencil, or click to place. Everything snaps to the 16 px grid. **Auto art** draws the matching street tiles as you paint collision.",
-            "**Objects**: player starts, enemies, civilians, crates, pickups, camera locks, checkpoints, bosses and the exit. Select one to change it in the **Inspector**: its **Reference name** (letters, digits and _, unique; the ROM finds the object by it) and its properties, such as kind, facing, patrol, hits or contents.",
+            "**Objects**: player starts, enemies, civilians, crates, pickups, camera locks, checkpoints, bosses and the exit. Select one to change it in the **Inspector**: its **Reference name** (letters, digits and _, unique; the ROM finds the object by it) and its properties, such as kind, facing, patrol, hits, breakable or contents. The exit is drawn as a door in play mode and in the ROM.",
             "**Layers**: tiles, collision and objects, each with show, lock, rename, order and opacity; **Layer** adds a tile layer.",
             "**Board limits**: meters for palettes, colors, graphics and sprites on one screen, always visible.",
             "**Reach** shades what players cannot get to (jumps onto ledges up to 48 px, 32 px crates, ladders), and **Warnings** lists each problem with **Go** to take you there.",
@@ -759,7 +759,7 @@ export const docsEn: Docs = {
             ["Solid", "Blocks and can be stood on."],
             ["Platform", "Stand on it, jump up through it; down + jump drops."],
             ["Ladder", "Up and down climb it."],
-            ["Crate", "A 32 px crate: climbed by pushing, broken by shots."],
+            ["Crate", "A 32 px crate: jumped onto (or walked up, with that rule), broken by shots unless you untick Breakable. A crate with nothing left under it breaks too."],
             ["Breakable", "Solid until destroyed."],
             ["Hazard", "Hurts: fire, electricity, spikes."],
             ["Water", "Slows down, no jetpack."],
@@ -806,7 +806,7 @@ export const docsEn: Docs = {
             "**Each player's character**: your own hero or the built-in Willy, with his own colors or a recruit shirt.",
             "**Your controller**: the connected controller lights up while pressed; assign each action to a button or key, choose the on-screen pad for play mode, or go back to **go-link defaults**. It is saved in this browser and go-link rooms use it too.",
             "**Board (DIP switches)**: difficulty, lives, free play and sound in demo, saved with the game. In the ROM, lives are how many hits a player takes.",
-            "**Rules**: how many hits an enemy takes, the points for an enemy, a rescue and a crate, whether touching an enemy hurts, whether enemies chase or shoot, whether the exit needs every enemy down, and what a hit does (back near the camera, or blink in place for the time you choose). Play mode and the ROM use the same rules; **Prototype rules** puts the defaults back.",
+            "**Rules**: how many hits an enemy takes, the points for an enemy, a rescue and a crate, whether touching an enemy hurts, whether enemies chase or shoot, whether the exit needs every enemy down (then the HUD counts the enemies left and the exit says why it does not open yet), what a hit does (back near the camera, or blink in place for the time you choose), how a 32 px crate is climbed (by jumping, as in most platformers, or by walking into it) and what Start does on a controller with no player (\"coming soon\" or nothing). Play mode and the ROM use the same rules; **Default rules** puts them back.",
           ],
         },
         { t: "h2", id: "menus", text: "The Menus tab" },
@@ -815,7 +815,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Review before exporting** checks the whole game: starts and exit, reachability, sizes, names, colors, palettes and the board's limits. Each problem has **Go** to where it is and, when the change is safe, **Fix** (undoable).",
+            "**Review before exporting** checks the whole game: starts and exit, reachability, enemies players could leave behind the forward-only camera when the exit needs every enemy down (a warning with the fixes), sizes, names, colors, palettes and the board's limits. Each problem has **Go** to where it is and, when the change is safe, **Fix** (undoable).",
             "**1 · Save the project**: **Download project (.zip)** keeps everything (levels, characters, backgrounds and settings); **Open .zip** on the home screen continues it in another browser.",
             "**2 · Pack for an AI**: **Download AI pack** gives the project with a `PROMPT.md` (the board, the rules, the story and the art spec), Tiled maps and pictures in board colors, so an AI or a person can build the ROM. **Copy prompt** copies the brief. Errors in the review must be fixed first.",
             "**3 · Create ROM**: builds the ROM right in the browser, without compiling. go-link's engine is already built and comes with the site; your first level, its tiles and palettes, the objects, the texts of the screens and the rules are packed next to it as data, laid out as the files of the `slammast` set (the sound program encrypted the way the board expects) and zipped. The power-on test runs on it at once and shows what the board drew. Then **Download ROM** gives `slammast.zip`, **Symbol map** gives `symbols.json` (where the game keeps its state, for test tools) and **Play on my go-link** sends it to your linked go-link, which powers it on with the real core. A box lists what the ROM leaves out for now (more levels, bosses, camera locks, checkpoints, your own characters, which are drawn as Willy). The same game always gives the same `.zip`.",

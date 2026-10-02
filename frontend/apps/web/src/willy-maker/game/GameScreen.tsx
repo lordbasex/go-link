@@ -237,6 +237,30 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {flag("enemiesShoot")}
       {flag("exitNeedsEnemies")}
       <div className="wm-game-stack">
+        <span className="wm-field-label">{t.rules.crateClimb}</span>
+        <Segmented
+          label={t.rules.crateClimb}
+          value={r.crateClimb}
+          options={[
+            { value: "jump", label: t.rules.climbJump },
+            { value: "push", label: t.rules.climbPush },
+          ]}
+          onChange={(v) => set({ crateClimb: v === "push" ? "push" : "jump" })}
+        />
+      </div>
+      <div className="wm-game-stack">
+        <span className="wm-field-label">{t.rules.extraPorts}</span>
+        <Segmented
+          label={t.rules.extraPorts}
+          value={r.extraPorts}
+          options={[
+            { value: "soon", label: t.rules.portsSoon },
+            { value: "ignore", label: t.rules.portsIgnore },
+          ]}
+          onChange={(v) => set({ extraPorts: v === "ignore" ? "ignore" : "soon" })}
+        />
+      </div>
+      <div className="wm-game-stack">
         <span className="wm-field-label">{t.rules.respawnOnHurt}</span>
         <Segmented
           label={t.rules.respawnOnHurt}

@@ -9,7 +9,8 @@ import type { RgbaImage } from "../../io/png";
 import { exportEn } from "../../i18n/export.en";
 import { exportEs } from "../../i18n/export.es";
 import { exportPt } from "../../i18n/export.pt";
-import { reachability, routes } from "../reach";
+import { leftBehind, reachability, routes } from "../reach";
+import { specProject } from "../../rom/specFixture";
 import { applyFix, checkText, mergeReview, reviewProject, type Check } from ".";
 import { EXTRA_RULES } from "./extra";
 import { pictureChecks, reviewPictures, type Pictures } from "./pictures";
@@ -111,6 +112,52 @@ describe("level 1: routes", () => {
     exit.x = 30 * 16 + 40;
     exit.y = 96;
     expect(has(p, "level.camera.ok")).toBeDefined();
+  });
+  it("warns about an enemy the forward-only camera can leave behind (T-01, J-01)", () => {
+    // Game Spec v1: skipping the ladder at x 480 leaves the upper dock's trooper behind for ever
+    const noreturn = (p: Project) => reviewProject(p).checks.filter((c) => c.id === "level.noreturn");
+    const p = specProject();
+    const warned = noreturn(p).filter((c) => c.severity === "warning");
+    const upper = warned.find((c) => c.params.name === "trooper_upper")!;
+    expect(upper).toMatchObject({ msg: "level.noreturn", params: { level: "Dead Air" }, target: { tab: "build", object: "trooper_upper", x: 800, y: 256 } });
+    // past the ladder's reach (480 plus the camera's 164 px way back), not before
+    expect(Number(upper.params.x)).toBeGreaterThan(600);
+    expect(Number(upper.params.x)).toBeLessThan(700);
+    // the trooper at the exit stands on the only way there: everyone meets it
+    expect(warned.find((c) => c.params.name === "trooper_exit")).toBeUndefined();
+    // civilians are only a note: the level still ends
+    expect(noreturn(p).find((c) => c.msg === "level.noreturn.civilian")).toMatchObject({ severity: "info" });
+    for (const m of [exportEn, exportEs, exportPt]) expect(checkText(m, upper)).toContain("trooper_upper");
+
+    // a camera lock over the branch holds the camera until its enemy is down
+    const locked = specProject();
+    objectLayer(locked.levels[0]!).items.push({ name: "lock_dock", type: "camera_lock", x: 400, y: 0, w: 480, h: 448 });
+    expect(noreturn(locked).find((c) => c.params.name === "trooper_upper")).toBeUndefined();
+    // the same lock farther right lets the camera pass the ladder first
+    const late = specProject();
+    objectLayer(late.levels[0]!).items.push({ name: "lock_late", type: "camera_lock", x: 700, y: 0, w: 400, h: 448 });
+    expect(noreturn(late).find((c) => c.params.name === "trooper_upper")?.severity).toBe("warning");
+    // the exit does not need the enemies: only notes
+    const free = specProject();
+    free.settings.rules = { ...free.settings.rules, exitNeedsEnemies: false };
+    expect(noreturn(free).filter((c) => c.severity === "warning")).toEqual([]);
+    expect(noreturn(free).find((c) => c.severity === "ok")).toBeDefined();
+    // the trooper moved onto the main route, past the dock
+    const moved = specProject();
+    Object.assign(objectLayer(moved.levels[0]!).items.find((o) => o.name === "trooper_upper")!, { x: 1200, y: 416 });
+    expect(noreturn(moved).find((c) => c.params.name === "trooper_upper")).toBeUndefined();
+    // a camera that may go back anywhere leaves nothing behind
+    const open = specProject();
+    open.levels[0]!.camera.forwardOnly = false;
+    expect(noreturn(open).map((c) => c.severity)).toEqual(["ok"]);
+  });
+  it("leaves nothing behind on a level with everything on one floor", () => {
+    const p = base();
+    p.settings.rules = { exitNeedsEnemies: true };
+    objectLayer(p.levels[0]!).items.push({ name: "e1", type: "enemy", x: 400, y: 192, kind: "trooper" }, { name: "c1", type: "civilian", x: 900, y: 192, kind: "woman" });
+    const level = p.levels[0]!;
+    expect(leftBehind(level, reachability(level), objectLayer(level).items)).toEqual([]);
+    expect(reviewProject(p).checks.filter((c) => c.id === "level.noreturn")).toMatchObject([{ severity: "ok", msg: "level.noreturn.ok" }]);
   });
   it("compares the timer with the walk to the exit", () => {
     const p = base();
@@ -296,7 +343,7 @@ describe("level 1: every rule of validation.md", () => {
     broken.push(c);
     const d = base();
     objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
-    broken.push(d);
+    broken.push(d, specProject());
     for (const p of broken) add(reviewProject(p, { extra: EXTRA_RULES }).checks);
     add(reviewProject(base(), { board: { ...CPS1, rom: { ...CPS1.rom, programBytes: 1024 } } }).checks);
     const pics = tiled(picture(16, 16, (x) => [x * 17, 0, 0, 255]));
@@ -315,7 +362,7 @@ describe("level 1: every rule of validation.md", () => {
   it("has a message in every language for every check", () => {
     const p = backtrackLevel();
     p.levels[0]!.timer = 1;
-    const all = [...reviewProject(p).checks, ...reviewProject(pitLevel()).checks];
+    const all = [...reviewProject(p).checks, ...reviewProject(pitLevel()).checks, ...reviewProject(specProject()).checks];
     for (const c of all) {
       if (c.texts) continue;
       for (const m of [exportEn, exportEs, exportPt]) expect(checkText(m, c), c.msg).not.toMatch(/undefined|\{|\}|^[a-z]+\.[a-z.-]+$/);

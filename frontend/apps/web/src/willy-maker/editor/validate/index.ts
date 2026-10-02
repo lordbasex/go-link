@@ -10,7 +10,8 @@
 
 import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
 import { boardOf, isBoardColor, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
-import { reachability, routes } from "../reach";
+import { leftBehind, reachability, routes } from "../reach";
+import { rulesWith } from "../../engine/rules";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
 import { supportChecks } from "./support";
 import type { ExportMessages } from "../../i18n/export.en";
@@ -142,11 +143,13 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
   let reachOk = true;
   let trapOk = true;
   let cameraOk = true;
+  let noReturnOk = true;
   let timers = 0;
   let timerOk = true;
   let sizeOk = true;
   let objectsOk = true;
   const players = Math.max(1, Math.min(4, Number(p.settings.players) || 1));
+  const needsEnemies = rulesWith(p.settings.rules).exitNeedsEnemies;
   p.levels.forEach((level, i) => {
     const name = levelName(level, i);
     const go = (x?: number, y?: number, object?: string): Target => ({ tab: "build", level: level.id, x, y, object });
@@ -237,6 +240,23 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
         cameraOk = false;
         out.push({ id: "level.camera", severity: "error", msg: "level.camera", params: { level: name, x: Math.round(r.cameraStop), back: Number(level.camera?.backtrack ?? 48) }, target: go(r.cameraStop, level.size.h / 2) });
       }
+      // the point of no return: what players may leave behind the forward-only camera
+      if (r && r.cameraStop === null) {
+        const behind = leftBehind(
+          level,
+          reach,
+          items.filter((o) => o.type === "civilian" || (needsEnemies && o.type === "enemy")),
+        );
+        for (const b of behind.filter((o) => o.type === "enemy")) {
+          noReturnOk = false;
+          out.push({ id: "level.noreturn", severity: "warning", msg: "level.noreturn", params: { level: name, name: b.name, x: Math.round(b.at) }, target: go(b.x, b.y, b.name) });
+        }
+        const civilians = behind.filter((o) => o.type === "civilian");
+        if (civilians.length) {
+          const c = civilians[0]!;
+          out.push({ id: "level.noreturn", severity: "info", msg: "level.noreturn.civilian", params: { level: name, name: c.name, x: Math.round(c.at), n: civilians.length }, target: go(c.x, c.y, c.name) });
+        }
+      }
       const timer = Number(level.timer);
       if (Number.isFinite(timer) && timer > 0 && r?.walkFrames != null) {
         timers++;
@@ -259,6 +279,7 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     if (reachOk) out.push({ id: "level.reachable", severity: "ok", msg: "level.reachable.ok", params: {} });
     if (trapOk) out.push({ id: "level.trap", severity: "ok", msg: "level.trap.ok", params: {} });
     if (cameraOk) out.push({ id: "level.camera", severity: "ok", msg: "level.camera.ok", params: {} });
+    if (noReturnOk) out.push({ id: "level.noreturn", severity: "ok", msg: "level.noreturn.ok", params: {} });
     if (timers && timerOk) out.push({ id: "level.timer", severity: "ok", msg: "level.timer.ok", params: {} });
     if (sizeOk) out.push({ id: "level.width", severity: "ok", msg: "level.width.ok", params: { maxW: board.levels.maxW, maxH: board.levels.maxH } });
     if (objectsOk) out.push({ id: "level.objects", severity: "ok", msg: "level.objects.ok", params: {} });

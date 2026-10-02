@@ -271,6 +271,8 @@ export const coreEn = {
     patrol: "Patrol (px)",
     size: "Size",
     hp: "Hits",
+    breakable: "Breakable",
+    breakableHelp: "Shots break it. Leave it off on crates players climb; a crate with nothing left under it breaks anyway.",
     contents: "Contains",
     item: "Item",
     damage: "Damage",

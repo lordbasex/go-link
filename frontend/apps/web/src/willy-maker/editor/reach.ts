@@ -224,23 +224,25 @@ const CLIMB_FRAMES_PER_CELL = Math.ceil((CELL * 16) / 24);
  * How far the camera lets players go back from the farthest x reached, the
  * way engine/game.ts moves it: the camera aims a third of a screen ahead of
  * the players, never goes back more than `backtrack` from its farthest
- * point, and players stay 12 px inside the screen.
+ * point, and players stay 12 px inside the screen. `cap` is the farthest
+ * the camera may go (a camera lock holding it).
  */
-export function cameraMinX(farthest: number, levelW: number, backtrack: number, screenW = 384): number {
-  const camFar = Math.max(0, Math.min(levelW - screenW, farthest - Math.trunc(screenW / 3)));
+export function cameraMinX(farthest: number, levelW: number, backtrack: number, screenW = 384, cap = Infinity): number {
+  const camFar = Math.max(0, Math.min(levelW - screenW, cap, farthest - Math.trunc(screenW / 3)));
   return camFar - backtrack + 12;
 }
 
-/**
- * The route checks over a level the flood already searched: traps (level.trap),
- * the forward-only camera (level.camera) and the walk to the exit
- * (level.timer). They use the same moves as the flood.
- */
-export function routes(level: Level, reach: Reach): Routes {
+/** The moves between reached places, as a compact adjacency list: cell i's moves are to[count[i]] .. to[count[i + 1] - 1]. */
+interface RouteGraph {
+  g: CellGrid;
+  count: Int32Array;
+  to: Int32Array;
+}
+
+function routeGraph(level: Level, reach: Reach): RouteGraph {
   const g = tagGrid(level);
   const { cols, rows, reached } = reach;
   const n = cols * rows;
-  // the moves between reached places, as a compact adjacency list
   const count = new Int32Array(n + 1);
   const each = (i: number, fn: (j: number) => void) => {
     const c = i % cols;
@@ -255,36 +257,62 @@ export function routes(level: Level, reach: Reach): Routes {
   const to = new Int32Array(count[n]!);
   const fill = count.slice(0, n);
   for (let i = 0; i < n; i++) if (reached[i]) each(i, (j) => (to[fill[i]!++] = j));
+  return { g, count, to };
+}
 
-  // where the exit is (the same window the object check uses)
-  const goal = new Uint8Array(n);
-  let goals = 0;
-  for (const o of objectLayer(level).items) {
-    if (o.type !== "exit") continue;
-    const c = Math.floor(o.x / CELL);
-    const r = Math.round(o.y / CELL) - 1;
-    for (let dr = -2; dr <= 2; dr++)
-      for (let dc = -2; dc <= 2; dc++) {
-        const cc = c + dc;
-        const rr = r + dr;
-        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) continue;
-        const i = rr * cols + cc;
-        if (reached[i] && !goal[i]) {
-          goal[i] = 1;
-          goals++;
-        }
-      }
-  }
-  const out: Routes = { traps: [], cameraStop: null, walkFrames: null };
-  if (!goals) return out;
-
-  // traps: walk the moves backwards from the exit
+/** The same graph backwards: the moves into cell j come from from[rcount[j]] .. from[rcount[j + 1] - 1]. */
+function reverseGraph(n: number, count: Int32Array, to: Int32Array): { rcount: Int32Array; from: Int32Array } {
   const rcount = new Int32Array(n + 1);
   for (let k = 0; k < to.length; k++) rcount[to[k]! + 1]!++;
   for (let i = 0; i < n; i++) rcount[i + 1]! += rcount[i]!;
   const from = new Int32Array(to.length);
   const rfill = rcount.slice(0, n);
   for (let i = 0; i < n; i++) for (let k = count[i]!; k < count[i + 1]!; k++) from[rfill[to[k]!]!++] = i;
+  return { rcount, from };
+}
+
+/** The reached places within the window around an object (±2 cells of its feet), the same window the object check uses. */
+function windowCells(reach: Reach, o: { x: number; y: number }): number[] {
+  const { cols, rows, reached } = reach;
+  const c = Math.floor(o.x / CELL);
+  const r = Math.round(o.y / CELL) - 1;
+  const out: number[] = [];
+  for (let dr = -2; dr <= 2; dr++)
+    for (let dc = -2; dc <= 2; dc++) {
+      const cc = c + dc;
+      const rr = r + dr;
+      if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) continue;
+      const i = rr * cols + cc;
+      if (reached[i]) out.push(i);
+    }
+  return out;
+}
+
+/**
+ * The route checks over a level the flood already searched: traps (level.trap),
+ * the forward-only camera (level.camera) and the walk to the exit
+ * (level.timer). They use the same moves as the flood.
+ */
+export function routes(level: Level, reach: Reach): Routes {
+  const { g, count, to } = routeGraph(level, reach);
+  const { cols, rows, reached } = reach;
+  const n = cols * rows;
+
+  // where the exit is (the same window the object check uses)
+  const goal = new Uint8Array(n);
+  let goals = 0;
+  for (const o of objectLayer(level).items)
+    if (o.type === "exit")
+      for (const i of windowCells(reach, o))
+        if (!goal[i]) {
+          goal[i] = 1;
+          goals++;
+        }
+  const out: Routes = { traps: [], cameraStop: null, walkFrames: null };
+  if (!goals) return out;
+
+  // traps: walk the moves backwards from the exit
+  const { rcount, from } = reverseGraph(n, count, to);
   const good = new Uint8Array(n);
   const queue: number[] = [];
   for (let i = 0; i < n; i++)
@@ -369,6 +397,150 @@ export function routes(level: Level, reach: Reach): Routes {
       }
     }
     if (!done && out.walkFrames !== null) out.cameraStop = farthest;
+  }
+  return out;
+}
+
+/** Something the exit needs (an enemy) or a civilian that players can leave behind the camera for ever. */
+export interface LeftBehind {
+  name: string;
+  type: string;
+  x: number;
+  y: number;
+  /** The point of no return: the smallest farthest x (px) at which players may have lost the way back to it. */
+  at: number;
+}
+
+const SCREEN_W = 384;
+
+/**
+ * The point of no return check (level.noreturn, docs/experiments/verdict.md
+ * T-01 and J-01). With a forward-only camera, an object off the main route
+ * (an enemy on a dock reached only by a ladder) can end up behind the camera
+ * for ever: when the exit needs every enemy down, nothing ends the level.
+ *
+ * The search works on states (place, farthest x reached), the same camera
+ * rule as `routes`. For each object:
+ *
+ * 1. Meeting it means standing in its window (±2 cells, as the object check).
+ *    We assume players deal with what they meet (shoot the enemy, touch the
+ *    civilian), so only objects players may never meet are reported.
+ * 2. Backwards from the window, a bottleneck search gives each place the
+ *    largest farthest x with which the window can still be reached
+ *    (`keep[i]`): a smaller farthest x only lets the camera go further back,
+ *    so the states that still meet the object are exactly those at or under it.
+ * 3. Forwards from the start, without entering the window, every state the
+ *    camera allows is visited; one whose farthest x is past its place's
+ *    `keep` has lost the object. The smallest such farthest x is reported.
+ *
+ * A camera lock whose x range holds an enemy stops the camera at its right
+ * edge while that enemy stands (engine/game.ts `activeLock`), so the search
+ * caps the camera there for that enemy; we assume the lock catches the camera
+ * on its way (it does whenever the camera comes from the left). Civilians do
+ * not hold locks. One player, at walking moves: a sound approximation, not a
+ * proof (an enemy may also walk or be shot from farther than its window).
+ */
+export function leftBehind(level: Level, reach: Reach, objects: { name: string; type: string; x: number; y: number }[]): LeftBehind[] {
+  if (level.camera?.forwardOnly === false || !objects.length || !reach.starts.length) return [];
+  const { count, to } = routeGraph(level, reach);
+  const { cols, rows, reached } = reach;
+  const n = cols * rows;
+  const { rcount, from } = reverseGraph(n, count, to);
+  const back = Number(level.camera?.backtrack ?? 48);
+  const levelW = level.size.w;
+  const xOf = (i: number) => (i % cols) * CELL + CELL / 2;
+  const locks = objectLayer(level).items.filter((o) => o.type === "camera_lock");
+  // the reached places, numbered compactly
+  const id = new Int32Array(n).fill(-1);
+  const cells: number[] = [];
+  for (let i = 0; i < n; i++) if (reached[i]) id[i] = cells.push(i) - 1;
+  const out: LeftBehind[] = [];
+
+  /**
+   * Backwards from a window: for each place, the largest farthest x with
+   * which a player standing there can still get into the window (-Infinity:
+   * never). `cap` is the camera lock holding the camera, if any.
+   */
+  const keepFrom = (win: number[], cap: number) => {
+    const camMin = (far: number) => cameraMinX(far, levelW, back, SCREEN_W, cap);
+    const maxX = Number.isFinite(cap) ? cap + SCREEN_W - 12 : Infinity;
+    // the largest farthest x with which a player may still stand at x
+    const stay = (x: number) => (camMin(1e9) <= x ? Infinity : x + Math.trunc(SCREEN_W / 3) + back - 12);
+    const keep = new Float64Array(n).fill(-Infinity);
+    const heap = new MinHeap();
+    for (const w of win)
+      if (xOf(w) <= maxX) {
+        keep[w] = Infinity;
+        heap.push(-Infinity, w);
+      }
+    while (heap.size) {
+      const [negK, j] = heap.pop()!;
+      if (-negK < keep[j]!) continue;
+      // a move into j works from a state whose farthest x is at most m
+      const m = Math.min(keep[j]!, stay(xOf(j)));
+      if (xOf(j) > m) continue;
+      for (let k = rcount[j]!; k < rcount[j + 1]!; k++) {
+        const i = from[k]!;
+        if (xOf(i) > maxX || m <= keep[i]!) continue;
+        keep[i] = m;
+        heap.push(-m, i);
+      }
+    }
+    return keep;
+  };
+  // only states that can still get to the exit count: the others are level.trap's and level.camera's
+  const exitKeep = keepFrom(
+    objectLayer(level)
+      .items.filter((o) => o.type === "exit")
+      .flatMap((o) => windowCells(reach, o)),
+    Infinity,
+  );
+
+  for (const o of objects) {
+    const win = windowCells(reach, o);
+    if (!win.length) continue; // nobody reaches it at all: level.object-reach says so
+    let cap = Infinity;
+    if (o.type === "enemy")
+      for (const l of locks) {
+        const w = Number(l.w ?? SCREEN_W);
+        if (o.x >= l.x && o.x <= l.x + w) cap = Math.min(cap, Math.max(l.x, l.x + w - SCREEN_W));
+      }
+    const camMin = (far: number) => cameraMinX(far, levelW, back, SCREEN_W, cap);
+    // players stay 12 px inside the screen: past a held camera's right side nobody goes
+    const maxX = Number.isFinite(cap) ? cap + SCREEN_W - 12 : Infinity;
+    const open = (i: number) => xOf(i) <= maxX;
+    const inWin = new Uint8Array(n);
+    for (const w of win) inWin[w] = 1;
+    // 2. backwards
+    const keep = keepFrom(win, cap);
+
+    // 3. forwards: states (place, farthest column), avoiding the window
+    const span = Math.ceil((SCREEN_W + back) / CELL) + 2;
+    const seen = new Uint8Array(cells.length * span);
+    const queue: number[] = [];
+    let at = Infinity;
+    const visit = (i: number, far: number) => {
+      const off = far - (i % cols);
+      if (off < 0 || off >= span || inWin[i] || !open(i)) return;
+      const s = id[i]! * span + off;
+      if (seen[s]) return;
+      seen[s] = 1;
+      queue.push(i, far);
+    };
+    for (const s of reach.starts) visit(s, s % cols);
+    for (let q = 0; q < queue.length; q += 2) {
+      const i = queue[q]!;
+      const far = queue[q + 1]!;
+      const farX = far * CELL + CELL / 2;
+      if (farX > keep[i]! && farX <= exitKeep[i]! && farX < at) at = farX;
+      for (let k = count[i]!; k < count[i + 1]!; k++) {
+        const j = to[k]!;
+        const nf = Math.max(far, j % cols);
+        if (xOf(j) < camMin(nf * CELL + CELL / 2)) continue;
+        visit(j, nf);
+      }
+    }
+    if (Number.isFinite(at)) out.push({ name: o.name, type: o.type, x: o.x, y: o.y, at });
   }
   return out;
 }

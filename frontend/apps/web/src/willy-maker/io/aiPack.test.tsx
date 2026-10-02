@@ -209,7 +209,7 @@ describe("PROMPT.md", () => {
       "- Genre: Platform shooter (`platform-shooter`)",
       "docs/story.md",
       "docs/art-spec.md",
-      `edges up to ${R.STEP_UP} px`,
+      "only by jumping: walking into it does nothing",
       `${R.JUMP_VY}/16`,
       "Button 1: jump",
       "Button 3: special",

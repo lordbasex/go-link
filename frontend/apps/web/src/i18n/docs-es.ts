@@ -742,7 +742,7 @@ export const docsEs: Docs = {
           items: [
             "**Herramientas**: seleccionar y mover (V), el lápiz (B), el borrador (E), rellenar un rectángulo (G) y la mano (H, o mantén Espacio). Acerca y aleja con + y −; **Grilla**, **Imán** y **Pantalla** (lo que entra en 384 × 224) te ayudan a ubicar las cosas.",
             "**Piezas**: elige terreno, objetos, enemigos, civiles, ayudas o tiles y pinta con el lápiz, o haz clic para colocarlas. Todo se ajusta a la grilla de 16 px. **Arte automático** dibuja los tiles de calle que corresponden mientras pintas la colisión.",
-            "**Objetos**: inicios de jugador, enemigos, civiles, cajas, ítems, cámaras fijas, controles, jefes y la salida. Selecciona uno para cambiarlo en el **Inspector**: su **Nombre de referencia** (letras, números y _, único; la ROM encuentra el objeto por este nombre) y sus propiedades, como el tipo, hacia dónde mira, la patrulla, los golpes o el contenido.",
+            "**Objetos**: inicios de jugador, enemigos, civiles, cajas, ítems, cámaras fijas, controles, jefes y la salida. Selecciona uno para cambiarlo en el **Inspector**: su **Nombre de referencia** (letras, números y _, único; la ROM encuentra el objeto por este nombre) y sus propiedades, como el tipo, hacia dónde mira, la patrulla, los golpes, si es rompible o el contenido. La salida se dibuja como una puerta en el modo juego y en la ROM.",
             "**Capas**: tiles, colisión y objetos, cada una con mostrar, bloquear, renombrar, orden y opacidad; **Capa** agrega una capa de tiles.",
             "**Límites de la placa**: medidores de paletas, colores, gráficos y sprites en una pantalla, siempre a la vista.",
             "**Alcance** sombrea adonde los jugadores no pueden llegar (saltos a repisas de hasta 48 px, cajas de 32 px, escaleras), y **Avisos** lista cada problema con **Ir** para llevarte ahí.",
@@ -759,7 +759,7 @@ export const docsEs: Docs = {
             ["Sólido", "Bloquea y se puede pisar."],
             ["Plataforma", "Se pisa, se atraviesa saltando desde abajo; abajo + salto baja."],
             ["Escalera", "Arriba y abajo la trepan."],
-            ["Caja", "Una caja de 32 px: se trepa empujando y se rompe a tiros."],
+            ["Caja", "Una caja de 32 px: se sube saltando (o caminando contra ella, con esa regla) y se rompe a tiros salvo que desmarques Rompible. Una caja que se queda sin nada debajo también se rompe."],
             ["Rompible", "Sólido hasta que lo destruyen."],
             ["Peligro", "Lastima: fuego, electricidad, pinchos."],
             ["Agua", "Frena, sin jetpack."],
@@ -806,7 +806,7 @@ export const docsEs: Docs = {
             "**Personaje de cada jugador**: tu propio héroe o Willy (incluido), con sus colores o una camiseta de recluta.",
             "**Tu mando**: el mando conectado se ilumina al apretarlo; asigna cada acción a un botón o una tecla, elige el pad en pantalla para jugar, o vuelve a **Valores de go-link**. Se guarda en este navegador y las salas de go-link también lo usan.",
             "**Placa (DIP switches)**: dificultad, vidas, juego libre y sonido en la demo, guardados con el juego. En la ROM, las vidas son los golpes que aguanta un jugador.",
-            "**Reglas**: cuántos golpes aguanta un enemigo, los puntos por enemigo, por rescate y por caja, si tocar a un enemigo hace daño, si los enemigos persiguen o disparan, si la salida pide a todos los enemigos abatidos y qué hace un golpe (volver cerca de la cámara, o parpadear en su lugar el tiempo que elijas). El modo juego y la ROM usan las mismas reglas; **Reglas del prototipo** vuelve a las de siempre.",
+            "**Reglas**: cuántos golpes aguanta un enemigo, los puntos por enemigo, por rescate y por caja, si tocar a un enemigo hace daño, si los enemigos persiguen o disparan, si la salida pide a todos los enemigos abatidos (entonces el HUD cuenta los enemigos que quedan y la salida dice por qué todavía no se abre), qué hace un golpe (volver cerca de la cámara, o parpadear en su lugar el tiempo que elijas), cómo se sube a una caja de 32 px (saltando, como en la mayoría de los juegos de plataformas, o caminando contra ella) y qué hace Start en un control sin jugador (\"próximamente\" o nada). El modo juego y la ROM usan las mismas reglas; **Reglas por defecto** vuelve a las de siempre.",
           ],
         },
         { t: "h2", id: "menus", text: "La pestaña Menús" },
@@ -815,7 +815,7 @@ export const docsEs: Docs = {
         {
           t: "list",
           items: [
-            "**Revisión antes de exportar** revisa todo el juego: inicios y salida, alcance, tamaños, nombres, colores, paletas y los límites de la placa. Cada problema tiene **Ir** para ir adonde está y, cuando el cambio es seguro, **Arreglar** (se puede deshacer).",
+            "**Revisión antes de exportar** revisa todo el juego: inicios y salida, alcance, enemigos que los jugadores podrían dejar detrás de la cámara (que solo avanza) cuando la salida pide a todos los enemigos abatidos (un aviso con las soluciones), tamaños, nombres, colores, paletas y los límites de la placa. Cada problema tiene **Ir** para ir adonde está y, cuando el cambio es seguro, **Arreglar** (se puede deshacer).",
             "**1 · Guardar el proyecto**: **Descargar proyecto (.zip)** guarda todo (niveles, personajes, fondos y ajustes); **Abrir .zip** en la pantalla de inicio lo continúa en otro navegador.",
             "**2 · Paquete para una IA**: **Descargar paquete IA** te da el proyecto con un `PROMPT.md` (la placa, las reglas, la historia y la especificación de arte), mapas de Tiled e imágenes en colores de la placa, para que una IA o una persona arme la ROM. **Copiar prompt** copia el encargo. Primero hay que arreglar los errores de la revisión.",
             "**3 · Crear ROM**: arma la ROM aquí mismo en el navegador, sin compilar. El motor de go-link ya viene armado con el sitio; tu primer nivel, sus tiles y paletas, los objetos, los textos de las pantallas y las reglas se empaquetan a su lado como datos, con los archivos del set `slammast` (el programa de sonido cifrado como lo espera la placa) y en un .zip. La prueba de encendido corre sola sobre el resultado y muestra lo que dibujó la placa. Después **Descargar ROM** te da `slammast.zip`, **Mapa de símbolos** te da `symbols.json` (dónde guarda el juego su estado, para herramientas de prueba) y **Jugar en mi go-link** la envía a tu go-link vinculado, que la enciende con el core real. Un recuadro lista lo que la ROM deja afuera por ahora (más niveles, jefes, bloqueos de cámara, puntos de control, tus propios personajes, que se dibujan como Willy). El mismo juego siempre da el mismo `.zip`.",

@@ -52,7 +52,7 @@ struct wm_object {
 };
 /* enemy:    a = patrol min x, b = patrol max x, c = hits, d = facing (1 right, -1 left) */
 /* civilian: a = 1 for a child */
-/* crate:    a = size in cells (1 or 2), b = hits, c = contents (WM_ITEM_*) */
+/* crate:    a = size in cells (1 or 2), b = hits (0: never breaks from shots), c = contents (WM_ITEM_*) */
 /* pickup:   a = item (WM_ITEM_*) */
 enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH };
 
@@ -65,6 +65,8 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_TXT_BLINK 0x40 /* blinks; the title's prompt */
 
 #define WM_F_FREE_PLAY 0x0001
+#define WM_F_PUSH_CLIMB 0x0002 /* a 32 px edge is climbed by walking into it (else by jumping) */
+#define WM_F_SOON 0x0004       /* Start on a port past the game's players shows "nP COMING SOON" */
 
 struct wm_data {
 	u32 magic;                /* 00 */

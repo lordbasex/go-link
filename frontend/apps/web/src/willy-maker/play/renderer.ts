@@ -6,6 +6,7 @@
 // their sheets, the HUD, and the debug overlays play mode can switch on.
 
 import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, type Game } from "../engine";
+import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, type PlaySprites, type Sheet } from "./sprites";
 import { TEXT_INKS, boardTextWidth, drawBoardText } from "../game/boardText";
 
@@ -69,6 +70,9 @@ const ART = {
   enemyShot: "#ff7a9a",
   rocket: "#bec8d7",
   pickup: "#7ee2a8",
+  doorFrame: "#bec8d7",
+  doorInside: "#14111f",
+  doorLamp: "#7ee2a8",
 };
 
 const TAG_OUTLINE: Record<number, string> = {
@@ -88,7 +92,7 @@ export interface DrawOptions {
   ghost?: Ghost | null;
   fps?: number;
   /** HUD words: the game's own (Menus tab) or the translated defaults. */
-  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string };
+  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's); by player number when missing. */
   variants?: number[];
 }
@@ -106,6 +110,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   ctx.translate(-cx, -cy);
   for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
   drawCells(ctx, game);
+  drawExits(ctx, game);
   drawObjects(ctx, game, sprites, o.variants);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
@@ -242,6 +247,22 @@ function drawCrateCell(ctx: CanvasRenderingContext2D, game: Game, c: number, r: 
   }
   ctx.fillStyle = ART.crateDark;
   ctx.fillRect(x, y + 7, CELL, 2);
+}
+
+/** Each exit's door (engine/door.ts), the same picture the ROM draws, only over empty cells. */
+function drawExits(ctx: CanvasRenderingContext2D, game: Game): void {
+  const parts = doorParts();
+  const ink = [null, ART.doorFrame, ART.doorInside, ART.doorLamp, ART.doorFrame];
+  for (const x of game.exits) {
+    const at = doorAt(x);
+    for (let y = 0; y < DOOR_H; y++)
+      for (let k = 0; k < DOOR_W; k++) {
+        const v = parts[y]![k]!;
+        if (!v || game.cellAt(at.x + k, at.y + y) !== Tag.Air) continue;
+        ctx.fillStyle = ink[v]!;
+        ctx.fillRect(at.x + k, at.y + y, 1, 1);
+      }
+  }
 }
 
 function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[]): void {
@@ -404,6 +425,16 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
     for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
+  }
+  // what the exit still needs, and why it does not open yet (experiment 1, J-11)
+  if (game.rules.exitNeedsEnemies && game.exits.length && game.outcome === "playing") {
+    const left = game.enemies.filter((e) => e.state === "walk" || e.state === "hit").length;
+    ctx.fillStyle = colors.text;
+    ctx.fillText(`${o.words.enemies ?? "ENEMY"} ${left}`, 6, SCREEN_H - 10);
+    if (game.exitClosed && (game.frame >> 4) & 1) {
+      const line = (o.words.exitClosed ?? "DEFEAT EVERY ENEMY").toUpperCase();
+      drawBoardText(ctx, line, Math.floor((SCREEN_W - boardTextWidth(line)) / 16) * 8, 128, 1, TEXT_INKS.white);
+    }
   }
   if (o.overlays.fps && o.fps !== undefined) {
     ctx.fillStyle = colors.accent;

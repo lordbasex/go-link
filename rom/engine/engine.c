@@ -442,7 +442,7 @@ static struct civ {
 static int nciv, rescued;
 
 static struct crate {
-	int col, row, cells, hp, contents, broken;
+	int col, row, cells, hp, contents, broken, breakable;
 } crate[MAX_CRATES];
 static int ncrates;
 
@@ -482,8 +482,14 @@ static void read_inputs(void)
 	u16 p12 = (u16)~IN_P12, p3 = (u16)~IN_P3, p4 = (u16)~IN_P4, coins;
 	int k;
 	for (k = 0; k < MAX_PLAYERS; k++) {
+		u16 v = port_pad(k, p12);
+		/* opposite directions together cancel out, as the core delivers them */
+		if ((v & (BTN_LEFT | BTN_RIGHT)) == (BTN_LEFT | BTN_RIGHT))
+			v &= (u16)~(BTN_LEFT | BTN_RIGHT);
+		if ((v & (BTN_UP | BTN_DOWN)) == (BTN_UP | BTN_DOWN))
+			v &= (u16)~(BTN_UP | BTN_DOWN);
 		pl[k].last = pl[k].pad;
-		pl[k].pad = port_pad(k, p12);
+		pl[k].pad = v;
 	}
 	sys_last = sys_now;
 	sys_now = (u16)(~IN_SYSTEM & 0xff);
@@ -594,6 +600,32 @@ static void spawn_pickup(s32 x, s32 fy, int item)
 	npickups++;
 }
 
+/* breaks crate i, then the crates resting on it with nothing else under them,
+   so none is left hanging over the floor */
+static void crate_break(int i, struct player *by)
+{
+	struct crate *k = &crate[i];
+	int q, j, n = k->cells;
+	k->broken = 1;
+	for (q = 0; q < n * n; q++)
+		if (cell(k->col + q % n, k->row + q / n) == T_CRATE)
+			clear_cell(k->col + q % n, k->row + q / n);
+	if (by)
+		by->score += R->crate_score;
+	spawn_pickup((s32)(k->col * 16 + n * 8), ground_below((s32)(k->col * 16 + n * 8), (s32)((k->row + n - 1) * 16)), k->contents);
+	for (j = 0; j < ncrates; j++) {
+		struct crate *u = &crate[j];
+		int c, held = 0;
+		if (u->broken || u->row + u->cells != k->row || u->col >= k->col + n || u->col + u->cells <= k->col)
+			continue;
+		for (c = u->col; c < u->col + u->cells; c++)
+			if (is_solid(cell(c, u->row + u->cells)))
+				held = 1;
+		if (!held)
+			crate_break(j, by);
+	}
+}
+
 /* a hit on a crate or breakable wall at cell (c, r); 1 if something took it */
 static int hit_cell(int c, int r, int damage, struct player *by)
 {
@@ -601,19 +633,14 @@ static int hit_cell(int c, int r, int damage, struct player *by)
 	if (t == T_CRATE)
 		for (i = 0; i < ncrates; i++) {
 			struct crate *k = &crate[i];
-			int q, n = k->cells;
+			int n = k->cells;
 			if (k->broken || c < k->col || c >= k->col + n || r < k->row || r >= k->row + n)
 				continue;
+			if (!k->breakable)
+				return 1;
 			k->hp -= damage;
-			if (k->hp <= 0) {
-				k->broken = 1;
-				for (q = 0; q < n * n; q++)
-					if (cell(k->col + q % n, k->row + q / n) == T_CRATE)
-						clear_cell(k->col + q % n, k->row + q / n);
-				if (by)
-					by->score += R->crate_score;
-				spawn_pickup((s32)(k->col * 16 + n * 8), ground_below((s32)(k->col * 16 + n * 8), (s32)((k->row + n - 1) * 16)), k->contents);
-			}
+			if (k->hp <= 0)
+				crate_break(i, by);
 			return 1;
 		}
 	if (t == T_CRATE || t == T_BREAKABLE) {
@@ -810,6 +837,7 @@ static void game_reset(void)
 		crate[i].row = o->y;
 		crate[i].cells = o->a;
 		crate[i].hp = o->b;
+		crate[i].breakable = o->b > 0;
 		crate[i].contents = o->c;
 		crate[i].broken = 0;
 	}
@@ -835,8 +863,9 @@ static void walk(struct player *p, int dir, int speed)
 			p->push_t = 0;
 			continue;
 		}
-		/* blocked: an edge up to STEP_UP high with room above is climbed after a push */
-		if (p->on_ground) {
+		/* blocked: with the push rule, an edge up to STEP_UP high with room above is
+		   climbed after a push; else it must be jumped */
+		if (p->on_ground && (D->flags & WM_F_PUSH_CLIMB)) {
 			s32 top = fy;
 			while (fy - top < STEP_UP + 16 && is_solid(cell_at(front, top - 1)))
 				top = ((top - 1) >> 4) << 4;
@@ -1415,6 +1444,27 @@ static void lab_update(void)
 
 /* ------------------------------------------------------------- screens */
 
+static int exit_msg, soon_t, soon_k;
+
+/* Start on a port past the game's players: "nP COMING SOON" for 2 s, no credit taken */
+static void soon_update(void)
+{
+	int k;
+	if (D->flags & WM_F_SOON)
+		for (k = nplayers; k < MAX_PLAYERS; k++)
+			if (start_pressed(k)) {
+				soon_k = k;
+				soon_t = 120;
+			}
+	if (!soon_t)
+		return;
+	if (--soon_t) {
+		put_char(17, 23, (char)('1' + soon_k), INK_WHITE);
+		print(18, 23, "P COMING SOON", INK_WHITE);
+	} else
+		blank(17, 23, 14);
+}
+
 static void hud(void)
 {
 	struct line join, ammo, coin;
@@ -1457,6 +1507,11 @@ static void hud(void)
 	if (!free_play()) {
 		print(37, 26, "CREDITS", INK_WHITE);
 		print_num(45, 26, (u32)credits, 1, INK_WHITE);
+	}
+	/* what the exit still needs */
+	if (R->exit_needs_enemies && D->exit_w > 0) {
+		print(1, 26, "ENEMY", INK_WHITE);
+		print_num(7, 26, (u32)enemies_left(), 2, INK_WHITE);
 	}
 }
 
@@ -1504,6 +1559,7 @@ static int title(void)
 				draw_line(&prompt, on);
 		} else if (has_coin)
 			draw_line(&coin, on);
+		soon_update();
 		update_enemies(0);
 		draw_world();
 		lab_mode = LAB_MODE_TITLE;
@@ -1558,17 +1614,32 @@ static int play(int first)
 			hud();
 		for (k = 0; k < nplayers; k++)
 			alive += pl[k].active;
-		/* the exit: any player in it, with every enemy down when the rules say so */
-		if (outcome < 0 && D->exit_w > 0 && (!R->exit_needs_enemies || !enemies_left()))
+		if (outcome < 0)
+			soon_update();
+		/* the exit: any player in it, with every enemy down when the rules say so;
+		   too early, a message says why it does not open */
+		if (outcome < 0 && D->exit_w > 0)
 			for (k = 0; k < nplayers; k++) {
 				s32 fy = pl[k].y >> 4;
-				if (pl[k].active && pl[k].x >= D->exit_x && pl[k].x <= D->exit_x + D->exit_w && fy >= D->exit_y && fy <= D->exit_y + D->exit_h) {
-					outcome = END_CLEAR;
-					end_t = frame_count;
-					draw_screen(WM_SCR_CLEAR, 1);
-					break;
+				if (!pl[k].active || pl[k].x < D->exit_x || pl[k].x > D->exit_x + D->exit_w || fy < D->exit_y || fy > D->exit_y + D->exit_h)
+					continue;
+				if (R->exit_needs_enemies && enemies_left()) {
+					exit_msg = 90;
+					continue;
 				}
+				exit_msg = 0;
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				break;
 			}
+		if (exit_msg && outcome < 0) {
+			if (--exit_msg && ((frame_count >> 4) & 1))
+				print(15, 16, "DEFEAT EVERY ENEMY", INK_WHITE);
+			else
+				blank(15, 16, 18);
+		}
 		/* nobody left: continue with a credit, else game over */
 		if (outcome < 0 && !alive) {
 			if (credits || free_play()) {

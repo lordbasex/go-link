@@ -271,6 +271,8 @@ export const corePt: CoreMessages = {
     patrol: "Patrulha (px)",
     size: "Tamanho",
     hp: "Golpes",
+    breakable: "Quebrável",
+    breakableHelp: "Os tiros a quebram. Deixe desligado nas caixas que os jogadores sobem; uma caixa sem nada embaixo quebra mesmo assim.",
     contents: "Contém",
     item: "Item",
     damage: "Dano",

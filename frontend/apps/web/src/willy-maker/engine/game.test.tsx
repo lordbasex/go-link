@@ -74,13 +74,33 @@ describe("Willy Maker engine", () => {
     expect(g.players[0]!.running).toBe(false);
   });
 
-  it("climbs a 32 px crate by pushing against it", () => {
-    const g = new Game(flat((set) => {
-      for (const [c, r] of [[8, 23], [9, 23], [8, 24], [9, 24]] as const) set(c, r, Tag.Crate);
-    }));
+  const crate32 = (set: (c: number, r: number, t: number) => void) => {
+    for (const [c, r] of [[8, 23], [9, 23], [8, 24], [9, 24]] as const) set(c, r, Tag.Crate);
+  };
+
+  it("climbs a 32 px crate by pushing against it with the push rule", () => {
+    const g = new Game(flat(crate32), { rules: { crateClimb: "push" } });
     run(g, 80, Input.Right);
     expect(feet(g)).toBe(368);
     expect(g.players[0]!.x).toBeGreaterThan(128);
+  });
+
+  it("by default a 32 px crate is jumped onto, not climbed by walking into it", () => {
+    const g = new Game(flat(crate32));
+    expect(g.rules.crateClimb).toBe("jump");
+    run(g, 80, Input.Right);
+    expect(feet(g)).toBe(400);
+    expect(g.players[0]!.x).toBeLessThan(128);
+    run(g, 1, Input.Right | Input.B1);
+    run(g, 40, Input.Right);
+    expect(feet(g)).toBe(368);
+    expect(g.players[0]!.x).toBeGreaterThan(128);
+  });
+
+  it("opposite directions held together count as neither", () => {
+    const g = new Game(flat());
+    run(g, 30, Input.Left | Input.Right);
+    expect(g.players[0]!.x).toBe(64);
   });
 
   it("does not climb a wall taller than one crate", () => {
@@ -346,5 +366,41 @@ describe("the Rules card (Game Spec v1's numbers)", () => {
     const free = new Game(view, { rules: { ...SPEC_RULES, exitNeedsEnemies: false } });
     run(free, 30, Input.Right);
     expect(free.outcome).toBe("cleared");
+  });
+
+  it("says why the exit does not open while enemies are left", () => {
+    const g = new Game(flat(undefined, [trooper(900), { name: "exit", type: "exit", x: 70, y: 400, w: 64 }]), { rules: SPEC_RULES });
+    const seen: string[] = [];
+    for (let f = 0; f < 30; f++) {
+      run(g, 1, Input.Right);
+      seen.push(...g.events.map((e) => e.kind));
+    }
+    expect(seen.filter((k) => k === "exit_closed")).toHaveLength(1);
+    expect(g.snapshot().exitClosed).toBe(true);
+    expect(g.snapshot().enemiesLeft).toBe(1);
+  });
+});
+
+describe("crates (experiment 1's hanging crate, J-03)", () => {
+  // a stack of two 32 px crates at cells 8-9: rows 21-22 on top of rows 23-24
+  const stack = (breakable = true): LevelObject[] => [
+    { name: "low", type: "crate", x: 128, y: 368, size: 32, hp: 1, breakable },
+    { name: "top", type: "crate", x: 128, y: 336, size: 32, hp: 1 },
+  ];
+
+  it("a crate resting on a broken crate breaks too, so none hangs in the air", () => {
+    const g = new Game(flat(undefined, stack()), { rules: { crateClimb: "jump" } });
+    run(g, 20, (f) => (f % 2 ? 0 : Input.B2));
+    expect(g.crates.map((k) => k.broken)).toEqual([true, true]);
+    expect(g.cell(8, 22)).toBe(Tag.Air);
+    expect(g.cell(8, 24)).toBe(Tag.Air);
+  });
+
+  it("a crate that is not breakable stops shots and stays", () => {
+    const g = new Game(flat(undefined, stack(false)));
+    run(g, 40, (f) => (f % 2 ? 0 : Input.B2));
+    expect(g.crates[0]!.broken).toBe(false);
+    expect(g.crates[1]!.broken).toBe(false);
+    expect(g.cell(8, 24)).toBe(Tag.Crate);
   });
 });

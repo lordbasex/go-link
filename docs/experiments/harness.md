@@ -134,6 +134,8 @@ The MP4 runs at 60 fps from frame 1, so frame N is at N/60 s: the state of any m
 
 **Input timing (found while building the harness):** the board model raises the vblank (where our programs read the controls) at the start of its frame, while mame2003-plus polls the controls at the start of `retro_run`, so without care the simulator reacts one frame before the core: from the first press on, every simulator frame N matched core frame N + 1. The runner therefore delays inputs by one frame (`Machine.open(zip, { inputDelay: 1 })`, the default). It also draws sprites from the previous frame's sprite table, as the board shows them. With both, the prototype's 900-frame test script gave the **same pixels as the core on all 900 frames** (tolerance 0), and the 1300-frame clear script matches at all 7 checkpoints.
 
+**Opposite directions (experiment 1, J-17):** the core never delivers left with right, or up with down, held together; the board model passed both, so runs with those inputs diverged. Since the verdict, `@go-link/cps1-sim` (`Sim.inputs`) releases both directions of such a pair on every port, as the core does, and Willy Maker's engine and play mode cancel them too; the jury's `opposites` script on the spec level now matches the core at 0 %.
+
 ### The player protocol
 
 The runner starts the player with `/bin/sh -c COMMAND` and talks JSON lines on its stdin and stdout (its stderr goes to `player.log`). The emulation **waits** for every answer.

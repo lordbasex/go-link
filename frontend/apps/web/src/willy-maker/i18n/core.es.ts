@@ -271,6 +271,8 @@ export const coreEs: CoreMessages = {
     patrol: "Patrulla (px)",
     size: "Tamaño",
     hp: "Golpes",
+    breakable: "Rompible",
+    breakableHelp: "Los disparos la rompen. Déjalo apagado en las cajas que los jugadores suben; una caja sin nada debajo se rompe igual.",
     contents: "Contiene",
     item: "Objeto",
     damage: "Daño",

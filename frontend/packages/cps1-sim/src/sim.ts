@@ -90,9 +90,14 @@ export class BoardSim {
     this.x.board_reset();
   }
 
-  /** Inputs as the board reads them, active low: P1 low byte / P2 high byte, system byte, P3, P4. */
+  /**
+   * Inputs as the board reads them, active low: P1 low byte / P2 high byte,
+   * system byte, P3, P4. Opposite directions held together are released, as
+   * the mame2003-plus core delivers them, so a run gives the core's frames
+   * (experiment 1, J-17).
+   */
   inputs(p12: number, sys: number, p3 = 0xffff, p4 = 0xffff): void {
-    this.x.board_inputs(p12, sys, p3, p4);
+    this.x.board_inputs(cancelOpposites(cancelOpposites(p12, 0), 8), sys, cancelOpposites(p3, 0), cancelOpposites(p4, 0));
   }
 
   frame(): FrameStats {
@@ -119,4 +124,13 @@ export class BoardSim {
   wram(): Uint16Array {
     return this.u16(this.x.board_wram(), WRAM_WORDS).slice();
   }
+}
+
+/** One port's byte at `shift` of an active-low word with left+right and up+down released. */
+export function cancelOpposites(word: number, shift: number): number {
+  let v = word & 0xffff;
+  const held = ~(v >> shift) & 0x0f;
+  if ((held & 0x03) === 0x03) v |= 0x03 << shift;
+  if ((held & 0x0c) === 0x0c) v |= 0x0c << shift;
+  return v;
 }
