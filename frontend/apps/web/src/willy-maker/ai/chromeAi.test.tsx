@@ -121,6 +121,8 @@ describe("Chrome's built-in AI in the prompt dialog", () => {
     await waitFor(() => expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("a red bicycle"));
     expect(document.querySelector(".wm-prompt-out pre")!.textContent).not.toContain("bicicleta");
     expect(screen.getByText(/Escrito en español/)).toBeTruthy();
+    // what the field says in the prompt, under it
+    expect(screen.getByText("En el prompt: a red bicycle")).toBeTruthy();
     // what the user typed stays as typed
     expect((screen.getByLabelText("Descripción") as HTMLTextAreaElement).value).toBe("una bicicleta roja");
   });

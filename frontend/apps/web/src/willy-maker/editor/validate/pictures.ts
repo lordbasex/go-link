@@ -187,10 +187,12 @@ export function* pictureWork(p: Project, board: BoardProfile, pictures: Pictures
     let worst: { frame: string; n: number } | null = null;
     const feet = new Map<string, number>();
     for (const f of ch.frames) {
-      for (let y0 = 0; y0 < f.h; y0 += cell)
+      // cells as the ROM cuts them (rom/looks.ts): rows counted from the feet, so the top row may be partial
+      const top = f.h - Math.ceil(f.h / cell) * cell;
+      for (let y0 = top; y0 < f.h; y0 += cell)
         for (let x0 = 0; x0 < f.w; x0 += cell) {
           const seen = new Set<number>();
-          for (let y = y0; y < Math.min(f.h, y0 + cell); y++)
+          for (let y = Math.max(0, y0); y < Math.min(f.h, y0 + cell); y++)
             for (let x = x0; x < Math.min(f.w, x0 + cell); x++) {
               const sx = f.x + x;
               const sy = f.y + y;

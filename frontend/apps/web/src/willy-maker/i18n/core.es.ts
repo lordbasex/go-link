@@ -301,7 +301,7 @@ export const coreEs: CoreMessages = {
     button: "Imagen…",
     buttonTip: "Usa una imagen tuya como fondo de esta capa",
     title: (layer: string) => `Una imagen como capa ${layer}`,
-    help: "Cualquier imagen: una pantalla, varias o una tira larga. Se lleva a píxeles de la placa (el pixel art dibujado grande vuelve píxel por píxel), sus colores se ajustan a la placa (hasta 32 paletas de 15 colores, elegidas baldosa por baldosa) y se corta en baldosas. Después pinta con el lápiz, en la capa de colisión, qué es piso, cornisa, escalera o caja.",
+    help: "Cualquier imagen: una pantalla, varias o una tira larga. Se lleva a píxeles de la placa (el pixel art dibujado grande vuelve píxel por píxel), sus colores se ajustan a la placa (hasta 32 paletas de 15 colores, elegidas baldosa por baldosa) y se corta en baldosas. Después pinta con el lápiz, en la capa de colisión, qué es piso, cornisa, escalera o caja. O pega una imagen copiada (Ctrl/⌘ V).",
     choose: "Elegir una imagen",
     layers: { far: "lejana (cielo, lenta)", play: "de juego (adelante)" },
     farNote: "La capa lejana se mueve a la mitad de velocidad: una imagen de más o menos la mitad del ancho del nivel (más una pantalla) la cubre.",

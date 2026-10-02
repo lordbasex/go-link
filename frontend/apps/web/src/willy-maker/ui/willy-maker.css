@@ -411,3 +411,4 @@ input.wm-layer-name { cursor: text; }
 .wm-ref img, .wm-ref-empty { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; background: var(--color-surface-2); }
 .wm-ref-x { position: absolute; top: -6px; right: -6px; }
 .wm-ref-add { align-self: center; cursor: pointer; }
+.wm-inprompt { font-style: italic; }

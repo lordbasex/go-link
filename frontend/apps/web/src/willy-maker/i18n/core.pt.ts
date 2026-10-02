@@ -301,7 +301,7 @@ export const corePt: CoreMessages = {
     button: "Imagem…",
     buttonTip: "Use uma imagem sua como fundo desta camada",
     title: (layer: string) => `Uma imagem como camada ${layer}`,
-    help: "Qualquer imagem: uma tela, várias ou uma faixa longa. Ela é levada a pixels da placa (pixel art desenhado grande volta pixel por pixel), as cores são ajustadas à placa (até 32 paletas de 15 cores, escolhidas ladrilho por ladrilho) e é cortada em ladrilhos. Depois pinte com o lápis, na camada de colisão, o que é chão, beiral, escada ou caixa.",
+    help: "Qualquer imagem: uma tela, várias ou uma faixa longa. Ela é levada a pixels da placa (pixel art desenhado grande volta pixel por pixel), as cores são ajustadas à placa (até 32 paletas de 15 cores, escolhidas ladrilho por ladrilho) e é cortada em ladrilhos. Depois pinte com o lápis, na camada de colisão, o que é chão, beiral, escada ou caixa. Ou cole uma imagem copiada (Ctrl/⌘ V).",
     choose: "Escolher uma imagem",
     layers: { far: "distante (céu, lenta)", play: "de jogo (na frente)" },
     farNote: "A camada distante se move à metade da velocidade: uma imagem de mais ou menos metade da largura da fase (mais uma tela) a cobre.",

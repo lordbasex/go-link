@@ -58,6 +58,26 @@ describe("the image AI prompts", () => {
     expect(far[0]!.text).toContain("No floors, platforms or objects in front");
   });
 
+  it("leaves the sky and the distance to the far layer, and floors and platforms to the play layer", () => {
+    const p = project();
+    const all = { ...defaultChoices("background", p), description: "" };
+    const play = buildPrompts({ ...all, sub: "play" }, p).prompts[0]!.text;
+    expect(play).not.toMatch(/sky band|skyline|reflections|a moon/);
+    expect(play).toContain("walkable floor");
+    const far = buildPrompts({ ...all, sub: "far" }, p).prompts[0]!.text;
+    expect(far).toContain("skyline");
+    expect(far).not.toMatch(/walkable floor|platforms a short jump/);
+    const one = buildPrompts({ ...all, sub: "static" }, p).prompts[0]!.text;
+    expect(one).toContain("skyline");
+    expect(one).toContain("walkable floor");
+  });
+
+  it("asks for the shirt players 2 to 4 recolor only on a hero", () => {
+    const base = defaultChoices("character");
+    expect(buildPrompts(base).prompts[0]!.text).toContain("recolored for players 2 to 4");
+    expect(buildPrompts({ ...base, sub: "enemy" }).prompts[0]!.text).not.toContain("recolored for players");
+  });
+
   it("describes every chosen move and splits a big sheet into pictures of at most 6 animations", () => {
     const all = buildPrompts({ ...defaultChoices("character"), anims: ANIMS.hero.map((a) => a.name) }).prompts;
     expect(all).toHaveLength(sheetsOf(ANIMS.hero).length);
@@ -118,6 +138,13 @@ describe("the image AI prompts", () => {
     const text = buildPrompts(c).prompts[0]!.text;
     expect(text).toContain("1. Walk (Walking at normal speed): 8 frames, looping; 2. Bow: 5 frames");
     expect(text).not.toContain("Idle");
+  });
+
+  it("writes an before a vowel, and a free prompt asks for whatever was described", () => {
+    expect(buildPrompts({ ...defaultChoices("effect"), sub: "explosion" }).prompts[0]!.text).toContain("an explosion effect");
+    const free = buildPrompts({ ...defaultChoices("tiles"), sub: "free", description: "a sheet of coins and keys" }).prompts[0]!.text;
+    expect(free).toContain("a sheet of coins and keys");
+    expect(free).not.toContain("tile set");
   });
 
   it("keeps only well-typed saved choices (a project file is not trusted)", () => {

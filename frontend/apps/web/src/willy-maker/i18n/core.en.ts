@@ -301,7 +301,7 @@ export const coreEn = {
     button: "Picture…",
     buttonTip: "Use a picture of your own as this layer's background",
     title: (layer: string) => `A picture as the ${layer} layer`,
-    help: "Any picture: one screen, several, or a long strip. It is scaled to board pixels (pixel art drawn big comes back pixel for pixel), its colors are fitted to the board (up to 32 palettes of 15 colors, chosen tile by tile), and it is cut into tiles. Then paint with the pencil on the collision layer what is floor, a ledge, a ladder or a crate.",
+    help: "Any picture: one screen, several, or a long strip. It is scaled to board pixels (pixel art drawn big comes back pixel for pixel), its colors are fitted to the board (up to 32 palettes of 15 colors, chosen tile by tile), and it is cut into tiles. Then paint with the pencil on the collision layer what is floor, a ledge, a ladder or a crate. Or paste a copied picture (Ctrl/⌘ V).",
     choose: "Choose a picture",
     layers: { far: "far (sky, slow)", play: "play (in front)" },
     farNote: "The far layer moves at half speed: a picture about half the level's width (plus a screen) covers it.",

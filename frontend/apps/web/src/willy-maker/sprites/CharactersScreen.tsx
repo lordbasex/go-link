@@ -21,6 +21,8 @@ import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
 import { BoardPanel } from "./ui/BoardPanel";
 import "./sprites.css";
+import { characterSheetPlan } from "../prompts/imagePrompt";
+import { rowsOf } from "./rows";
 
 export interface CharactersScreenProps {
   project: Project;
@@ -568,6 +570,24 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             onAddSelected={addSelected}
             hidden={draft.hidden}
             onHidden={(hidden) => edit((d) => ({ ...d, hidden }))}
+            plan={draft.frames.length ? characterSheetPlan(project.settings.imagePrompts?.character, draft.role) : []}
+            onRows={(k) => {
+              const plan = characterSheetPlan(project.settings.imagePrompts?.character, draft.role)[k] ?? [];
+              const rows = rowsOf(draft.frames);
+              const n = Math.min(rows.length, plan.length);
+              edit((d) => {
+                const anims = { ...d.anims };
+                for (let i = 0; i < n; i++) {
+                  const a = plan[i]!;
+                  const preset = ANIMS[d.role].find((p) => p.name === a.name);
+                  anims[a.name] = { frames: rows[i]!.map((f) => f.id), fps: anims[a.name]?.fps ?? preset?.fps ?? 10, loop: a.loop };
+                }
+                return { ...d, anims, hidden: d.hidden.filter((h) => !plan.some((a) => a.name === h)) };
+              });
+              if (plan[0]) setActive(plan[0].name);
+              const done = fmt(t.byRowsDone, { list: plan.slice(0, n).map((a, i) => `${t.animNames[a.name] ?? a.name} ${rows[i]!.length}`).join(", ") });
+              return rows.length === plan.length ? done : `${done} ${fmt(t.byRowsMismatch, { rows: rows.length, anims: plan.length })}`;
+            }}
           />
 
           <BoardPanel

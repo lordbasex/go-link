@@ -91,6 +91,18 @@ export function PictureDialog({ store, level, layer, images, onClose }: { store:
     }
   };
 
+  // a picture pasted while the dialog is open (copied from an image AI's chat)
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith("image/"));
+      if (!f) return;
+      e.preventDefault();
+      void choose(f);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  });
+
   const apply = async () => {
     if (!prepared) return;
     setBusy(true);

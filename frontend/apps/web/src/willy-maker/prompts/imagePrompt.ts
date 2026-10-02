@@ -28,32 +28,35 @@ export const SUBTYPES: Record<PromptKind, readonly string[]> = {
   character: ["hero", "enemy", "civilian", "boss"],
   object: ["vehicle", "animal", "nature", "weapon", "item", "street", "other"],
   effect: ["muzzle", "explosion", "smoke", "sparks", "impact", "dust"],
-  tiles: ["set"],
+  tiles: ["set", "free"],
 };
 
 /** The checkboxes of each kind: an id and the words it adds to the prompt. */
-export const FLAGS: Record<PromptKind, readonly { id: string; words: string }[]> = {
+/** A background option belongs to the far layer (sky, distance) or to the play layer (what players walk on); others suit both. */
+export type FlagLayer = "far" | "play";
+
+export const FLAGS: Record<PromptKind, readonly { id: string; words: string; layer?: FlagLayer; sub?: readonly string[] }[]> = {
   background: [
     { id: "refs", words: "" },
-    { id: "sky", words: "a night or day sky band across the top" },
-    { id: "skyline", words: "a layered city skyline with lit windows" },
-    { id: "water", words: "water with reflections of the lights" },
+    { id: "sky", layer: "far", words: "a night or day sky band across the top" },
+    { id: "skyline", layer: "far", words: "a layered city skyline with lit windows" },
+    { id: "water", layer: "far", words: "water with reflections of the lights" },
     { id: "neon", words: "neon signs and glowing accents (made of solid pixel colors, no glow halos)" },
     { id: "rain", words: "rain as short pixel streaks" },
     { id: "fog", words: "low fog drawn as flat banded pixel layers" },
-    { id: "moon", words: "a moon" },
+    { id: "moon", layer: "far", words: "a moon" },
     { id: "bridges", words: "bridges" },
     { id: "cranes", words: "harbour cranes" },
-    { id: "floor", words: "a clearly walkable floor along the bottom, flat and readable" },
-    { id: "platforms", words: "flat platforms a short jump above each other" },
-    { id: "ladders", words: "ladders with clear rungs between floors" },
-    { id: "crates", words: "stacked crates that can be stood on" },
-    { id: "room", words: "open space above the floor to run and jump, no clutter in the walking lane" },
+    { id: "floor", layer: "play", words: "a clearly walkable floor along the bottom, flat and readable" },
+    { id: "platforms", layer: "play", words: "flat platforms a short jump above each other" },
+    { id: "ladders", layer: "play", words: "ladders with clear rungs between floors" },
+    { id: "crates", layer: "play", words: "stacked crates that can be stood on" },
+    { id: "room", layer: "play", words: "open space above the floor to run and jump, no clutter in the walking lane" },
   ],
   character: [
     { id: "refs", words: "" },
     { id: "facingRight", words: "every frame facing right (the game mirrors it)" },
-    { id: "shirt", words: "the shirt in one clear flat color zone, so it can be recolored for players 2 to 4" },
+    { id: "shirt", sub: ["hero"], words: "the shirt in one clear flat color zone, so it can be recolored for players 2 to 4" },
     { id: "weapon", words: "holding a weapon" },
     { id: "muzzle", words: "the gun's muzzle clearly at the same height in every shooting frame" },
   ],
@@ -69,11 +72,11 @@ export const FLAGS: Record<PromptKind, readonly { id: string; words: string }[]>
     { id: "loop", words: "a loop: the last frame leads back to the first" },
   ],
   tiles: [
-    { id: "floor", words: "floor tiles whose top edge is the walking surface" },
-    { id: "platform", words: "a thin one-way platform tile" },
-    { id: "ladder", words: "a ladder tile that repeats vertically" },
-    { id: "crate", words: "a crate made of 2 x 2 tiles" },
-    { id: "wall", words: "wall tiles that repeat in both directions" },
+    { id: "floor", sub: ["set"], words: "floor tiles whose top edge is the walking surface" },
+    { id: "platform", sub: ["set"], words: "a thin one-way platform tile" },
+    { id: "ladder", sub: ["set"], words: "a ladder tile that repeats vertically" },
+    { id: "crate", sub: ["set"], words: "a crate made of 2 x 2 tiles" },
+    { id: "wall", sub: ["set"], words: "wall tiles that repeat in both directions" },
   ],
 };
 
@@ -222,8 +225,18 @@ const sentence = (s: string) => {
  * a prompt: image AIs cannot count pixels or colors and only draw worse when
  * asked to; Willy Maker scales and fits the picture when it is brought in.
  */
+/** Whether an option applies to the chosen kind and layer (the play layer leaves the sky to the far layer, and the far layer has no floors). */
+export function flagApplies(kind: PromptKind, sub: string, f: { layer?: FlagLayer; sub?: readonly string[] }): boolean {
+  // the shirt players 2 to 4 recolor is a hero's
+  if (f.sub && !f.sub.includes(sub)) return false;
+  if (kind !== "background" || !f.layer) return true;
+  if (sub === "far") return f.layer === "far";
+  if (sub === "play") return f.layer === "play";
+  return true;
+}
+
 function body(c: PromptChoices): string[] {
-  const words = FLAGS[c.kind].filter((f) => c.flags.includes(f.id) && f.words).map((f) => f.words);
+  const words = FLAGS[c.kind].filter((f) => c.flags.includes(f.id) && f.words && flagApplies(c.kind, c.sub, f)).map((f) => f.words);
   const out: string[] = [];
   const uses = (f: CommonField) => FIELDS[c.kind].includes(f);
   if (c.description.trim()) out.push(sentence(c.kind === "character" ? `The character: ${c.description.trim()}` : c.description));
@@ -284,7 +297,7 @@ function negativeFor(c: PromptChoices): string {
 }
 
 /** The animations a character sheet shows, in order: the chosen built-in ones, then the user's own. */
-function pickedAnims(c: PromptChoices, role: CharacterRole): { name: string; frames: number; loop: boolean }[] {
+export function pickedAnims(c: PromptChoices, role: CharacterRole): { name: string; frames: number; loop: boolean }[] {
   const own = c.customAnims.map(parseCustomAnim).filter((a): a is { name: string; frames: number } => a !== null && !ANIMS[role].some((p) => p.name === a.name));
   return [...ANIMS[role].filter((a) => c.anims.includes(a.name)), ...own.filter((a) => c.anims.includes(a.name)).map((a) => ({ ...a, loop: false }))];
 }
@@ -346,7 +359,7 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
           board: { w: Math.min(SCREEN.w, lw - x0), h: lh },
           text: [
             view,
-            `The play layer: the floors, platforms and buildings the players walk on and stand in front of, with the sky and the distance left as ${BG} so the far layer shows through.${n > 1 ? ` Picture ${k + 1} of ${n} of one long level${k ? ": continue the previous picture seamlessly from its right edge, the floor at the same height" : ""}.` : ""}${sectionsIn(level, x0, x0 + SCREEN.w)}`,
+            `The play layer: the floors, platforms and buildings the players walk on and stand in front of, with the sky and the distance left as ${BG} so the far layer shows through; lamps and signs are solid, with no light beams, cones or glow drawn over that magenta.${n > 1 ? ` Picture ${k + 1} of ${n} of one long level${k ? ": continue the previous picture seamlessly from its right edge, the floor at the same height" : ""}.` : ""}${sectionsIn(level, x0, x0 + SCREEN.w)}`,
             ...refs(c, "the place and its look"),
             ...body(c),
             ...look(c),
@@ -409,7 +422,8 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
     const animated = c.flags.includes("animated");
     const frames = animated ? Math.max(1, c.frames) : 1;
     const rows = c.kind === "object" && c.flags.includes("breakable") ? 2 : 1;
-    const what = c.kind === "effect" ? `a ${c.sub === "muzzle" ? "muzzle flash" : c.sub === "dust" ? "landing dust" : c.sub} effect` : `a ${c.sub === "street" ? "piece of street furniture" : c.sub === "other" ? "game object" : c.sub}`;
+    const thing = c.kind === "effect" ? `${c.sub === "muzzle" ? "muzzle flash" : c.sub === "dust" ? "landing dust" : c.sub} effect` : c.sub === "street" ? "piece of street furniture" : c.sub === "other" ? "game object" : c.sub;
+    const what = `${/^[aeiou]/.test(thing) ? "an" : "a"} ${thing}`;
     prompts.push({
       title: c.kind === "effect" ? `effect: ${c.sub}` : `object: ${c.sub}`,
       aspect: aspectOf(c.cellsW * frames, c.cellsH * rows),
@@ -425,6 +439,20 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
       ]
         .filter(Boolean)
         .join(" "),
+    });
+  } else if (c.sub === "free") {
+    // anything else the game needs, as the user describes it
+    prompts.push({
+      title: "free",
+      aspect: "3:2",
+      board: { w: SCREEN.w, h: SCREEN.h },
+      text: [
+        "Create pixel art for a 1990s-style 2D side-scrolling arcade game.",
+        ...refs(c, "its look"),
+        ...body(c),
+        ...look(c),
+        `Everything on ${BG}, each piece apart from the others. No labels or text unless the description asks for it.`,
+      ].join(" "),
     });
   } else {
     prompts.push({
@@ -451,4 +479,15 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
  */
 export function chatMessages(r: PromptResult): string[] {
   return r.prompts.map((p) => [p.text, `Make it a ${p.aspect} image, as large as you can.`, `Avoid: ${r.negative}.`].join("\n\n"));
+}
+
+/**
+ * The rows each picture of a character's prompt asks for, by animation name:
+ * the saved choices when they are for this role, else every animation of
+ * the role (Characters assigns a pasted sheet's rows with it).
+ */
+export function characterSheetPlan(saved: unknown, role: CharacterRole): { name: string; frames: number; loop: boolean }[][] {
+  const c = mergeChoices(defaultChoices("character"), saved);
+  const anims = c.sub === role ? pickedAnims(c, role) : ANIMS[role].map((a) => ({ name: a.name, frames: a.frames, loop: a.loop }));
+  return sheetsOf(anims.length ? anims : ANIMS[role]);
 }

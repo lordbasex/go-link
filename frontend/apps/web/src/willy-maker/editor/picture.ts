@@ -9,6 +9,7 @@
 // and numbers out.
 
 import { toLab } from "@go-link/cps1";
+import { cleanImageAiMagenta } from "../sprites/detect";
 
 export interface Rgba {
   w: number;
@@ -64,12 +65,27 @@ export function isMagenta(r: number, g: number, b: number): boolean {
   return r >= 200 && b >= 200 && g <= 72;
 }
 
-export function scalePicture(src: Rgba, height: number, keyMagenta = false): KeyImage {
+/** A copy of a picture with its magenta background (and what an image AI leaves around it) made transparent. */
+function withoutAiMagenta(src: Rgba): Rgba {
+  const data = new Uint8ClampedArray(src.data);
+  const n = src.w * src.h;
+  const isBg = new Uint8Array(n);
+  for (let k = 0; k < n; k++) if (data[k * 4 + 3]! < 128 || isMagenta(data[k * 4]!, data[k * 4 + 1]!, data[k * 4 + 2]!)) isBg[k] = 1;
+  cleanImageAiMagenta(data, isBg, src.w, src.h);
+  for (let k = 0; k < n; k++) if (isBg[k]) data[k * 4 + 3] = 0;
+  return { w: src.w, h: src.h, data };
+}
+
+export function scalePicture(input: Rgba, height: number, keyMagenta = false): KeyImage {
+  // an image AI's magenta is never flat and its soft edges are pink: clean a copy first
+  const src = keyMagenta ? withoutAiMagenta(input) : input;
   const f = src.h / height;
   const w = Math.max(1, Math.round(src.w / f));
   const h = height;
   const keys = new Int16Array(w * h);
   const counts = new Map<number, number>();
+  // pixel art drawn at a whole size (2x, 3x…) keeps each pixel's own color; anything else is averaged
+  const exact = f < 1.01 || (Math.abs(f - Math.round(f)) < 0.01 && pixelSize(src) === Math.round(f));
   for (let y = 0; y < h; y++) {
     const y0 = Math.floor(y * f);
     const y1 = Math.min(src.h, Math.max(y0 + 1, Math.floor((y + 1) * f)));
@@ -93,8 +109,33 @@ export function scalePicture(src: Rgba, height: number, keyMagenta = false): Key
           const k = key(src.data[o]!, src.data[o + 1]!, src.data[o + 2]!);
           counts.set(k, (counts.get(k) ?? 0) + 1);
         }
+      if (clear * 2 > n) {
+        keys[y * w + x] = -1;
+        continue;
+      }
+      if (!exact) {
+        // a picture that is not pixel art on an exact grid (an image AI's): the block's average color,
+        // as the dominant one turns its fine detail into noise
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let m = 0;
+        for (let yy = y0; yy < y1; yy++)
+          for (let xx = x0; xx < x1; xx++) {
+            const o = (yy * src.w + xx) * 4;
+            if (src.data[o + 3]! < 128 || (keyMagenta && isMagenta(src.data[o]!, src.data[o + 1]!, src.data[o + 2]!))) continue;
+            r += src.data[o]!;
+            g += src.data[o + 1]!;
+            b += src.data[o + 2]!;
+            m++;
+          }
+        if (m) {
+          keys[y * w + x] = key(Math.round(r / m), Math.round(g / m), Math.round(b / m));
+          continue;
+        }
+      }
       let best = -1;
-      let bc = clear * 2 > n ? Infinity : 0;
+      let bc = 0;
       for (const [k, c] of counts) if (c > bc) (best = k), (bc = c);
       keys[y * w + x] = best;
     }

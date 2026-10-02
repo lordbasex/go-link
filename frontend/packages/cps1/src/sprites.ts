@@ -150,6 +150,60 @@ export function downscaleDominant(img: Image, f: FrameBox, s: number): ScaledFra
   return { w, h, rgba: out, px: Math.round(f.px * s), py: Math.round(f.py * s) };
 }
 
+/**
+ * Like downscaleDominant, for art that is not drawn on an exact pixel grid
+ * (an image AI's): each block takes the color of its own closest to the
+ * block's average. The most present color turns such art's fine detail into
+ * noise, a plain average blurs its outlines away; this keeps real colors and
+ * reads smooth.
+ */
+export function downscaleRepresentative(img: Image, f: FrameBox, s: number): ScaledFrame {
+  const w = Math.max(1, Math.round(f.w * s));
+  const h = Math.max(1, Math.round(f.h * s));
+  const out = new Uint8Array(w * h * 4);
+  const a = img.rgba;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.floor(f.x + x / s);
+      const x1 = Math.max(x0 + 1, Math.floor(f.x + (x + 1) / s));
+      const y0 = Math.floor(f.y + y / s);
+      const y1 = Math.max(y0 + 1, Math.floor(f.y + (y + 1) / s));
+      let n = 0;
+      let opaque = 0;
+      let sr = 0;
+      let sg = 0;
+      let sb = 0;
+      for (let sy = y0; sy < y1 && sy < f.y + f.h; sy++)
+        for (let sx = x0; sx < x1 && sx < f.x + f.w; sx++) {
+          n++;
+          const o = (sy * img.w + sx) * 4;
+          if (a[o + 3]! < 128) continue;
+          opaque++;
+          sr += a[o]!;
+          sg += a[o + 1]!;
+          sb += a[o + 2]!;
+        }
+      if (!n || opaque * 2 < n) continue;
+      const avg = [sr / opaque, sg / opaque, sb / opaque] as const;
+      let best = -1;
+      let bestD = Infinity;
+      for (let sy = y0; sy < y1 && sy < f.y + f.h; sy++)
+        for (let sx = x0; sx < x1 && sx < f.x + f.w; sx++) {
+          const o = (sy * img.w + sx) * 4;
+          if (a[o + 3]! < 128) continue;
+          const d = (a[o]! - avg[0]) ** 2 + (a[o + 1]! - avg[1]) ** 2 + (a[o + 2]! - avg[2]) ** 2;
+          if (d < bestD) (bestD = d), (best = o);
+        }
+      if (best < 0) continue;
+      const o = (y * w + x) * 4;
+      out[o] = a[best]!;
+      out[o + 1] = a[best + 1]!;
+      out[o + 2] = a[best + 2]!;
+      out[o + 3] = 255;
+    }
+  return { w, h, rgba: out, px: Math.round(f.px * s), py: Math.round(f.py * s) };
+}
+
 /** Cuts a frame into 16x16 tiles, feet on the bottom row; empty tiles dropped. */
 function cutTiles(fr: ScaledFrame): CutFrame {
   const nx = Math.ceil(fr.w / 16);

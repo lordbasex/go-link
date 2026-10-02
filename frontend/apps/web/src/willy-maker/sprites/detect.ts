@@ -127,23 +127,7 @@ export function keyBackground(img: Rgba, { tolerance }: KeyOptions): KeyResult {
           if (isBg[k - 1] || isBg[k + 1] || isBg[k - w] || isBg[k + w]) isBg[k] = 1;
         }
   }
-  if (magenta) {
-    // image AIs never paint a flat magenta: its darker or lighter parts touching the background are background too
-    // (a pink drawn inside the figure is not reached and stays)
-    const stack: number[] = [];
-    for (let k = 0; k < n; k++) if (isBg[k]) stack.push(k);
-    while (stack.length) {
-      const k = stack.pop()!;
-      const kx = k % w;
-      const next = [kx > 0 ? k - 1 : -1, kx < w - 1 ? k + 1 : -1, k >= w ? k - w : -1, k < n - w ? k + w : -1];
-      for (const j of next)
-        if (j >= 0 && !isBg[j] && plainMagenta(data, j * 4)) {
-          isBg[j] = 1;
-          stack.push(j);
-        }
-    }
-    cleanMagentaFringe(data, isBg, w, h);
-  }
+  if (magenta) cleanImageAiMagenta(data, isBg, w, h);
   const mask = new Uint8Array(n);
   for (let k = 0; k < n; k++) mask[k] = isBg[k] ? 0 : 1;
   removeStrokes(mask, w, h);
@@ -231,6 +215,29 @@ export function cleanMagentaFringe(data: Uint8ClampedArray | Uint8Array, isBg: U
       else for (let c = 0; c < 3; c++) data[k * 4 + c] = data[from * 4 + c]!;
     }
   }
+}
+
+/**
+ * What an image AI leaves on a magenta background, cleaned in place: its
+ * darker or lighter parts touching the background become background (a pink
+ * inside the figure is not reached and stays), then the soft edges lose
+ * their pink fringe. `isBg` starts with the keyed background and grows.
+ */
+export function cleanImageAiMagenta(data: Uint8ClampedArray | Uint8Array, isBg: Uint8Array, w: number, h: number): void {
+  const n = w * h;
+  const stack: number[] = [];
+  for (let k = 0; k < n; k++) if (isBg[k]) stack.push(k);
+  while (stack.length) {
+    const k = stack.pop()!;
+    const kx = k % w;
+    const next = [kx > 0 ? k - 1 : -1, kx < w - 1 ? k + 1 : -1, k >= w ? k - w : -1, k < n - w ? k + w : -1];
+    for (const j of next)
+      if (j >= 0 && !isBg[j] && plainMagenta(data, j * 4)) {
+        isBg[j] = 1;
+        stack.push(j);
+      }
+  }
+  cleanMagentaFringe(data, isBg, w, h);
 }
 
 /**

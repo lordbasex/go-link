@@ -591,3 +591,8 @@
   font-size: 12px;
   color: var(--color-text-2);
 }
+
+.wms-byrows {
+  align-items: flex-end;
+  margin-bottom: 8px;
+}

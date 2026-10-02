@@ -31,6 +31,9 @@ export interface AnimationPanelProps {
   /** Built-in animations deleted from the list. */
   hidden?: string[];
   onHidden?(hidden: string[]): void;
+  /** The animations of each picture of the image AI prompt, to give a pasted sheet's rows their animations. */
+  plan?: { name: string }[][];
+  onRows?(sheet: number): string;
 }
 
 /** A name compared loosely: no accents, no case, no spaces or underscores. */
@@ -58,8 +61,10 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected, hidden = [], onHidden }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
+  const [sheet, setSheet] = useState(0);
+  const [rowsNote, setRowsNote] = useState("");
   const [peek, setPeek] = useState<string | null>(null);
   const [sameAs, setSameAs] = useState<string | null>(null);
   const tp = usePromptMessages();
@@ -102,6 +107,28 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
       <h3 className="wms-h" id="wms-anims-title">
         {t.animations}
       </h3>
+      {onRows && plan.length > 0 && (
+        <div className="wms-row wms-byrows">
+          <label className="wms-field wms-grow">
+            <span>{t.byRowsSheet}</span>
+            <select value={Math.min(sheet, plan.length - 1)} onChange={(e) => setSheet(Number(e.target.value))}>
+              {plan.map((s, i) => (
+                <option key={i} value={i}>
+                  {fmt(t.byRowsOption, { i: i + 1, n: plan.length, names: s.map((a) => label(a.name)).join(", ") })}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="wms-cap" data-tip={t.byRowsTip} onClick={() => setRowsNote(onRows(Math.min(sheet, plan.length - 1)))}>
+            {t.byRows}
+          </button>
+        </div>
+      )}
+      {rowsNote && (
+        <p className="wms-note" role="status">
+          {rowsNote}
+        </p>
+      )}
       <div className="wms-anims">
         {list.map((p) => {
           const a = anims[p.name];

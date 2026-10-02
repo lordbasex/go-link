@@ -10,7 +10,7 @@
 //  - the result rendered for the preview and packed into a 1:1 atlas, the
 //    picture the project keeps (play mode and the ROM read it as it is).
 
-import { deltaE, downscaleDominant, fromLab, hexOf, kmeans, toBoardColor, toLab, type Lab, type Rgb, type ScaledFrame } from "@go-link/cps1";
+import { deltaE, downscaleDominant, downscaleRepresentative, fromLab, hexOf, kmeans, toBoardColor, toLab, type Lab, type Rgb, type ScaledFrame } from "@go-link/cps1";
 import type { Box, Rgba } from "./detect";
 
 /** A frame of the source sheet: its box and pivot (from the box's top left), in sheet pixels. */
@@ -54,7 +54,10 @@ export function scaleFor(frames: readonly SourceFrame[], anims: Record<string, D
 
 /** Every frame at board size, by the dominant color of each footprint. */
 export function scaleFrames(keyed: { w: number; h: number; rgba: Uint8Array }, frames: readonly SourceFrame[], s: number): ScaledFrame[] {
-  return frames.map((f) => downscaleDominant(keyed, f, s));
+  // art drawn at a whole size (1x, 2x, 3x…) keeps each pixel's own color; anything else (an image AI's) is
+  // sampled smooth, as the most present color turns its fine detail into noise
+  const whole = Math.abs(1 / s - Math.round(1 / s)) < 0.01;
+  return frames.map((f) => (whole ? downscaleDominant(keyed, f, s) : downscaleRepresentative(keyed, f, s)));
 }
 
 export type ZoneLevel = "ok" | "warn" | "over";

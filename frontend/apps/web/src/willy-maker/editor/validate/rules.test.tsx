@@ -261,7 +261,7 @@ describe("level 1: the pictures", () => {
     const p = base();
     p.palettes.push({ id: "pal-a", group: "sprite", colors: ["#000000"] });
     const ch = hero({ sheet: "sha256:atlas" });
-    // frame idle_0 at x 0: 16 colors in its top-left cell; walk_0 at x 32 stands 5 px higher
+    // frame idle_0 at x 0: 16 colors in its top 16 rows; walk_0 at x 32 stands 5 px higher
     ch.frames = [
       { ...ch.frames[0]!, x: 0, w: 32, h: 44, py: 43 },
       { ...ch.frames[1]!, x: 32, w: 32, h: 44, py: 43 },
@@ -275,8 +275,20 @@ describe("level 1: the pictures", () => {
       return [0, 0, 0, 255];
     });
     const checks = pictureChecks(p, CPS1, new Map([["sha256:atlas", atlas]]));
-    expect(checks.find((c) => c.msg === "gfx.sprite-colors")).toMatchObject({ params: { frame: "idle_0", n: 16 }, target: { tab: "characters", character: "willy" } });
+    // cells from the feet: rows 12-27 hold the colored rows 12-15 (16 colors) and black
+    expect(checks.find((c) => c.msg === "gfx.sprite-colors")).toMatchObject({ params: { frame: "idle_0", n: 17 }, target: { tab: "characters", character: "willy" } });
     expect(checks.find((c) => c.msg === "anim.pivot")).toMatchObject({ severity: "warning", params: { anim: "walk", d: 5 } });
+  });
+  it("counts sprite cells from the feet, as the ROM cuts them", () => {
+    const p = base();
+    const ch = hero({ sheet: "sha256:atlas" });
+    ch.frames = [{ ...ch.frames[0]!, x: 0, w: 16, h: 44, py: 43 }];
+    ch.anims = { idle: { frames: [ch.frames[0]!.id], fps: 6, loop: true } };
+    p.characters.push(ch);
+    // 12 colors in rows 0-11 and 12 others in rows 12-27: a cell from the top would hold 16 (12 + 4 rows of the next 12)
+    const atlas = picture(16, 44, (x, y) => (y < 12 ? [x < 12 ? x * 17 : 0, 0, 0, 255] : y < 28 ? [0, x < 12 ? x * 17 + 17 : 0, 0, 255] : [0, 0, 0, 255]));
+    const checks = pictureChecks(p, CPS1, new Map([["sha256:atlas", atlas]]));
+    expect(checks.find((c) => c.msg === "gfx.sprite-colors")).toBeUndefined();
   });
   it("joins the picture checks to the review: a failure replaces the rule's ok line", () => {
     const { p, pics } = tiled(picture(20, 16, () => [0, 0, 0, 255]));

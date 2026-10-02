@@ -47,8 +47,10 @@ export function preparePicture(level: Level, src: Rgba, options: PictureOptions,
   const tile = gridOf(options.layer);
   const layer = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === options.layer);
   if (!layer) throw new Error(`the level has no ${options.layer} layer`);
-  const px = pixelSize(src);
   const height = Math.max(tile, Math.min(level.size.h, Math.round(options.height)));
+  // pixel art only when it comes back on its own grid (the size fits the height exactly); an image AI's picture is scaled
+  const f = src.h / height;
+  const px = Math.abs(f - Math.round(f)) < 0.01 && pixelSize(src) === Math.round(f) ? Math.round(f) : 1;
   const pic = scalePicture(src, height, options.keyMagenta === true);
   const x = Math.max(0, Math.round(options.x / tile) * tile);
   // the level grows to the picture's end (on the 32 px grid both layers share)

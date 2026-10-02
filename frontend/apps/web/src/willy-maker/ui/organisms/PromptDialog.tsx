@@ -15,7 +15,7 @@ import { promptPt } from "../../i18n/prompt.pt";
 import type { CharacterRole, Project } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { ANIMS, DEFAULT_HEIGHT } from "../../sprites/presets";
-import { buildPrompts, chatMessages, defaultChoices, EXAMPLE, FIELDS, FLAGS, mergeChoices, parseCustomAnim, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
+import { buildPrompts, chatMessages, defaultChoices, EXAMPLE, FIELDS, flagApplies, FLAGS, mergeChoices, parseCustomAnim, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
 import { Capsule, Field, Segmented } from "../atoms";
 import { IconCopy } from "../icons";
 import { AnimPreview } from "./AnimPreview";
@@ -132,6 +132,11 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
     palette: `${what}, ${(kind === "background" || kind === "tiles" ? t.palette : t.colors).toLowerCase()}`,
   });
   const result = useMemo(() => buildPrompts({ ...c, ...english.values }, project), [c, english.values, project]);
+  // what a translated field says in the prompt, so a wrong word ("sirena" as "mermaid") is seen in time
+  const inPrompt = (k: "description" | "location" | "weather" | "palette" | "style") => {
+    const en = english.values[k];
+    return en && en.trim() && en.trim() !== c[k].trim() ? t.ai.inPrompt(en) : undefined;
+  };
   const langNames = new Intl.DisplayNames([lang], { type: "language" });
   const subs = t.subs[kind] as Record<string, string>;
   const flags = t.flags[kind] as Record<string, string[]>;
@@ -224,13 +229,14 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
             {t.description}
           </label>
           <AiTextArea id={`${peekId}-desc`} value={c.description} onChange={(description) => set({ description })} lang={lang} what={whatEnglish(c)} placeholder={t.descriptionPh} t={t.ai} />
+          {inPrompt("description") && <span className="wm-field-hint wm-inprompt">{inPrompt("description")}</span>}
         </div>
 
         <RefPictures refs={c.refImages} onChange={(refImages) => set({ refImages })} t={t} />
 
         <fieldset className="wm-prompt-flags">
           <legend className="wm-field-label">{t.options}</legend>
-          {FLAGS[kind].map((f) => (
+          {FLAGS[kind].filter((f) => flagApplies(kind, c.sub, f)).map((f) => (
             <span key={f.id} className="wm-prompt-flag">
               <label className="wm-small">
                 <input type="checkbox" checked={c.flags.includes(f.id)} onChange={(e) => set({ flags: toggle(c.flags, f.id, e.target.checked) })} /> {flags[f.id]?.[0] ?? f.id}
@@ -321,7 +327,7 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
         {FIELDS[kind].some((f) => f !== "style") && (
           <div className="wm-prompt-grid">
             {FIELDS[kind].includes("location") && (
-              <Field label={t.location}>
+              <Field label={t.location} hint={inPrompt("location")}>
                 <input className="wm-input" placeholder={t.locationPh} value={c.location} onChange={(e) => set({ location: e.target.value })} />
               </Field>
             )}
@@ -337,18 +343,18 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
               </Field>
             )}
             {FIELDS[kind].includes("weather") && (
-              <Field label={t.weather}>
+              <Field label={t.weather} hint={inPrompt("weather")}>
                 <input className="wm-input" placeholder={t.weatherPh} value={c.weather} onChange={(e) => set({ weather: e.target.value })} />
               </Field>
             )}
             {FIELDS[kind].includes("palette") && (
-              <Field label={kind === "background" || kind === "tiles" ? t.palette : t.colors}>
+              <Field label={kind === "background" || kind === "tiles" ? t.palette : t.colors} hint={inPrompt("palette")}>
                 <input className="wm-input" placeholder={t.palettePhs[kind]} value={c.palette} onChange={(e) => set({ palette: e.target.value })} />
               </Field>
             )}
           </div>
         )}
-        <Field label={t.style} hint={t.styleNote}>
+        <Field label={t.style} hint={inPrompt("style") ?? t.styleNote}>
           <input className="wm-input" placeholder={t.stylePh} value={c.style} onChange={(e) => set({ style: e.target.value })} />
         </Field>
         <Field label={t.quality}>
