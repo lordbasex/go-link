@@ -308,6 +308,20 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     newCharacter();
   };
 
+  // a picture pasted anywhere on the tab (copied from an image AI's chat), unless a text field takes the paste
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable)) return;
+      const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+      e.preventDefault();
+      void openFile(file);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  });
+
   const onDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];

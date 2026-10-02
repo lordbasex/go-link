@@ -403,3 +403,11 @@ input.wm-layer-name { cursor: text; }
 .wm-prompt-anim-new .wm-grow { flex: 1; min-width: 0; }
 .wm-prompt-num { width: 80px; }
 .wm-anim-chip { align-items: center; gap: 4px; }
+.wm-prompt-parts { display: flex; flex-direction: column; gap: 8px; }
+.wm-prompt-parts > summary { cursor: pointer; color: var(--color-text-muted); padding: 6px 0; }
+.wm-refs { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px dashed var(--color-border-strong); border-radius: 12px; }
+.wm-refs p { margin: 0; }
+.wm-ref { position: relative; display: inline-flex; }
+.wm-ref img, .wm-ref-empty { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; background: var(--color-surface-2); }
+.wm-ref-x { position: absolute; top: -6px; right: -6px; }
+.wm-ref-add { align-self: center; cursor: pointer; }

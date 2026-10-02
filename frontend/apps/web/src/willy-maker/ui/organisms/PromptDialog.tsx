@@ -15,10 +15,11 @@ import { promptPt } from "../../i18n/prompt.pt";
 import type { CharacterRole, Project } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { ANIMS, DEFAULT_HEIGHT } from "../../sprites/presets";
-import { buildPrompts, chatMessage, defaultChoices, EXAMPLE, FIELDS, FLAGS, mergeChoices, parseCustomAnim, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
+import { buildPrompts, chatMessages, defaultChoices, EXAMPLE, FIELDS, FLAGS, mergeChoices, parseCustomAnim, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
 import { Capsule, Field, Segmented } from "../atoms";
 import { IconCopy } from "../icons";
 import { AnimPreview } from "./AnimPreview";
+import { RefPictures, refPng } from "./RefPictures";
 import { useSpritesText } from "../../sprites/text";
 
 export const PROMPT = { en: promptEn, es: promptEs, pt: promptPt };
@@ -58,33 +59,55 @@ function Help({ text, label }: { text: string; label: string }) {
   );
 }
 
-function CopyBox({ label, text, t, hint, primary }: { label: string; text: string; t: PromptMessages; hint?: string; primary?: boolean }) {
+function CopyBox({ label, text, t, hint, primary, images = [] }: { label: string; text: string; t: PromptMessages; hint?: string; primary?: boolean; images?: string[] }) {
+  // with reference pictures, each click copies the next one, then the text (a chat AI takes one pasted thing at a time)
+  const [step, setStep] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   const pre = useRef<HTMLPreElement>(null);
+  const select = () => {
+    const sel = window.getSelection();
+    if (sel && pre.current) {
+      sel.removeAllRanges();
+      const r = document.createRange();
+      r.selectNodeContents(pre.current);
+      sel.addRange(r);
+    }
+  };
   const copy = async () => {
+    setFailed(false);
     try {
+      if (step < images.length) {
+        const png = await refPng(images[step]!);
+        if (!png) throw new Error("no picture");
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+        setStep(step + 1);
+        return;
+      }
       await navigator.clipboard.writeText(text);
+      setStep(0);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // no clipboard: select the text so the user copies it
-      const sel = window.getSelection();
-      if (sel && pre.current) {
-        sel.removeAllRanges();
-        const r = document.createRange();
-        r.selectNodeContents(pre.current);
-        sel.addRange(r);
-      }
+      setFailed(true);
+      if (step >= images.length) select();
     }
   };
+  const action = step < images.length ? t.copyImage(step + 1, images.length) : images.length ? t.copyText : copied ? t.copied : t.copy;
   return (
     <div className="wm-prompt-out">
       <div className="wm-row">
         <span className="wm-field-label">{label}</span>
-        <Capsule size="sm" tone={primary ? "primary" : undefined} onClick={() => void copy()} aria-label={`${t.copy}: ${label}`}>
-          <IconCopy /> {copied ? t.copied : t.copy}
+        <Capsule size="sm" tone={primary ? "primary" : undefined} onClick={() => void copy()} aria-label={`${action}: ${label}`}>
+          <IconCopy /> {copied && !images.length ? t.copied : action}
         </Capsule>
       </div>
+      {images.length > 0 && (
+        <p className="wm-dim wm-small" role="status">
+          {copied ? t.copiedAll : step > 0 ? t.pasteNow(step, images.length) : t.copySteps(images.length)}
+        </p>
+      )}
+      {failed && <p className="wm-note is-warn wm-small">{t.copyFailed}</p>}
       {hint && <p className="wm-dim wm-small">{hint}</p>}
       <pre ref={pre} className={`wm-tree-pre wm-mono wm-prompt${primary ? " is-all" : ""}`} aria-label={label}>
         {text}
@@ -101,7 +124,13 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
   const set = (patch: Partial<PromptChoices>) => setAll((a) => ({ ...a, [kind]: { ...c, ...patch } }));
   // the free text in English, translated on this computer when Chrome can (ai/useEnglish.ts)
   const lang = useWmLang();
-  const english = useEnglish({ description: c.description, location: c.location, weather: c.weather, palette: c.palette, style: c.style }, lang);
+  const what = t.kinds[kind];
+  const english = useEnglish({ description: c.description, location: c.location, weather: c.weather, palette: c.palette, style: c.style }, lang, {
+    description: what,
+    location: `${what}, ${t.location.toLowerCase()}`,
+    weather: `${what}, ${t.weather.toLowerCase()}`,
+    palette: `${what}, ${(kind === "background" || kind === "tiles" ? t.palette : t.colors).toLowerCase()}`,
+  });
   const result = useMemo(() => buildPrompts({ ...c, ...english.values }, project), [c, english.values, project]);
   const langNames = new Intl.DisplayNames([lang], { type: "language" });
   const subs = t.subs[kind] as Record<string, string>;
@@ -173,11 +202,6 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
               </select>
             </Field>
           )}
-          {kind === "character" && (
-            <Field label={t.height} hint={t.heightHelp}>
-              <input className="wm-input" type="number" min={16} max={224} value={c.height} onChange={(e) => set({ height: Math.max(16, Math.min(224, Number(e.target.value) || DEFAULT_HEIGHT[role])) })} />
-            </Field>
-          )}
           {(kind === "object" || kind === "effect") && (
             <>
               <Field label={`${t.cells} (↔)`}>
@@ -201,6 +225,8 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
           </label>
           <AiTextArea id={`${peekId}-desc`} value={c.description} onChange={(description) => set({ description })} lang={lang} what={whatEnglish(c)} placeholder={t.descriptionPh} t={t.ai} />
         </div>
+
+        <RefPictures refs={c.refImages} onChange={(refImages) => set({ refImages })} t={t} />
 
         <fieldset className="wm-prompt-flags">
           <legend className="wm-field-label">{t.options}</legend>
@@ -358,11 +384,18 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
             {t.ai.untranslated}
           </p>
         )}
-        <CopyBox label={t.all} hint={t.allHelp} text={chatMessage(result)} t={t} primary />
-        {result.prompts.map((p, i) => (
-          <CopyBox key={i} label={`${subs[c.sub] ?? p.title}${result.prompts.length > 1 ? ` ${i + 1}/${result.prompts.length}` : ""} · ${t.size(p.size.w, p.size.h)}`} text={p.text} t={t} />
+        <p className="wm-dim wm-small">{result.prompts.length > 1 ? t.messagesHelp(result.prompts.length) : t.allHelp}</p>
+        {chatMessages(result).map((m, i) => (
+          <CopyBox key={i} label={`${result.prompts.length > 1 ? t.message(i + 1, result.prompts.length) : t.all} · ${t.aspect(result.prompts[i]!.aspect)}`} text={m} t={t} primary images={i === 0 ? c.refImages : []} />
         ))}
-        <CopyBox label={t.negative} text={result.negative} t={t} />
+        <details className="wm-prompt-parts">
+          <summary className="wm-small">{t.parts}</summary>
+          {result.prompts.map((p, i) => (
+            <CopyBox key={i} label={`${subs[c.sub] ?? p.title}${result.prompts.length > 1 ? ` ${i + 1}/${result.prompts.length}` : ""} · ${t.aspect(p.aspect)}`} text={p.text} t={t} />
+          ))}
+          <CopyBox label={t.negative} text={result.negative} t={t} />
+        </details>
+        <p className="wm-dim wm-small">{t.boardNote}</p>
         <p className="wm-note wm-small">{t.howTo[kind]}</p>
         <p className="wm-dim wm-small">{t.saved}</p>
 

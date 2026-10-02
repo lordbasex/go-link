@@ -9,7 +9,7 @@ import { newProject } from "../model";
 import { EditorStore } from "../editor/store";
 import { ANIMS } from "../sprites/presets";
 import { PromptDialog } from "../ui/organisms/PromptDialog";
-import { buildPrompts, chatMessage, defaultChoices, FLAGS, mergeChoices, SCALE, SUBTYPES, type PromptKind } from "./imagePrompt";
+import { buildPrompts, chatMessages, defaultChoices, FLAGS, mergeChoices, sheetsOf, SUBTYPES, type PromptKind } from "./imagePrompt";
 
 afterEach(cleanup);
 
@@ -28,81 +28,77 @@ function project() {
 }
 
 describe("the image AI prompts", () => {
-  it("sizes every picture at exactly 4 times the board's pixels", () => {
-    const p = project();
-    const h = p.levels[0]!.size.h;
-    const far = buildPrompts({ ...defaultChoices("background", p), sub: "far" }, p).prompts;
-    expect(far).toHaveLength(1);
-    // half the level plus one screen, as the far layer moves at half speed
-    expect(far[0]!.size).toEqual({ w: (1600 / 2 + 384) * SCALE, h: h * SCALE });
-    expect(far[0]!.text).toContain("fully opaque");
-    const one = buildPrompts({ ...defaultChoices("background", p), sub: "static" }, p).prompts[0]!;
-    expect(one.size).toEqual({ w: 1536, h: 896 });
-  });
-
-  it("splits the play layer into 4-screen stretches on magenta, naming the sections each one shows", () => {
-    const p = project();
-    const play = buildPrompts({ ...defaultChoices("background", p), sub: "play" }, p).prompts;
-    expect(play.map((x) => x.size.w)).toEqual([6144, (1600 - 1536) * SCALE]);
-    expect(play[0]!.text).toContain("#FF00FF");
-    expect(play[0]!.text).toContain('"Pier"');
-    expect(play[0]!.text).toContain('"Tower"');
-    expect(play[1]!.text).not.toContain('"Pier"');
-    expect(play[1]!.text).toContain("stretch 2 of 2");
-    // a panorama is one strip as long as the level
-    expect(buildPrompts({ ...defaultChoices("background", p), sub: "panorama" }, p).prompts.map((x) => x.size.w)).toEqual([6400]);
-  });
-
-  it("asks for a character sheet with one row per chosen animation and its preset frames", () => {
-    const c = { ...defaultChoices("character"), anims: ["idle", "run", "jump"] };
-    const [sheet] = buildPrompts(c).prompts;
-    const rows = ANIMS.hero.filter((a) => c.anims.includes(a.name));
-    for (const a of rows) expect(sheet!.text).toContain(`${a.name} (${a.frames}`);
-    expect(sheet!.text).toContain("176 pixels tall (44 board pixels)");
-    expect(sheet!.text).toContain("#FF00FF");
-    expect(sheet!.size.h % (16 * SCALE)).toBe(0);
-    expect(sheet!.size.h / SCALE / rows.length).toBe(64);
-  });
-
-  it("puts the board's color limits and the style rule in every prompt, and a negative prompt for each kind", () => {
+  it("asks image AIs for what they draw well: no pixel counts, no color counts, a shape instead of a size", () => {
     for (const kind of KINDS) {
       const r = buildPrompts(defaultChoices(kind));
       expect(r.prompts.length).toBeGreaterThan(0);
       for (const x of r.prompts) {
-        expect(x.text).toContain("multiple of 17");
-        expect(x.text).toContain("at most 15 colors in any 16 x 16");
-        expect(x.text).toContain("no existing characters, logos, names or text");
+        // the board's limits are Willy Maker's job when the picture comes in
+        expect(x.text).not.toMatch(/4 x 4|multiple of 17|12-bit|15 colors|exactly \d+ x \d+|board pixels/);
+        expect(x.text).toContain("1990s arcade");
+        expect(x.aspect).toMatch(/^\d+:\d+$/);
       }
-      expect(r.negative).toContain("anti-aliasing");
       expect(r.negative).toContain("logos");
+      expect(r.negative).toContain("text, labels");
     }
   });
 
-  it("turns objects and effects into rows of frames in 16 px cells", () => {
-    const o = buildPrompts({ ...defaultChoices("object"), sub: "vehicle", cellsW: 4, cellsH: 2, flags: ["side", "animated", "breakable"], frames: 3 }).prompts[0]!;
-    expect(o.size).toEqual({ w: 64 * 3 * SCALE, h: 32 * 2 * SCALE });
-    expect(o.text).toContain("3 frames in one row");
-    expect(o.text).toContain("broken one in the second");
-  });
-
-  it("puts every prompt, its exact size and what to avoid in one chat message", () => {
+  it("splits a background into one screen per picture, each continuing the last and naming its sections", () => {
     const p = project();
-    const one = buildPrompts(defaultChoices("character"));
-    const msg = chatMessage(one);
-    expect(msg).toContain(one.prompts[0]!.text);
-    expect(msg).toContain(`exactly ${one.prompts[0]!.size.w} x ${one.prompts[0]!.size.h} pixels`);
-    expect(msg).toContain(`Avoid: ${one.negative}.`);
-    const play = buildPrompts({ ...defaultChoices("background", p), sub: "play" }, p);
-    const all = chatMessage(play);
-    expect(all).toContain("Create 2 separate images");
-    expect(all).toContain("Image 2 of 2");
-    for (const x of play.prompts) expect(all).toContain(x.text);
+    const play = buildPrompts({ ...defaultChoices("background", p), sub: "play" }, p).prompts;
+    expect(play).toHaveLength(Math.ceil(1600 / 384));
+    expect(play.every((x) => x.aspect === "16:9")).toBe(true);
+    expect(play[0]!.text).toContain("#FF00FF");
+    expect(play[0]!.text).toContain('"Pier"');
+    expect(play[0]!.text).not.toContain("continue the previous");
+    expect(play[1]!.text).toContain("continue the previous picture seamlessly");
+    expect(play.at(-1)!.text).toContain('"Tower"');
+    const far = buildPrompts({ ...defaultChoices("background", p), sub: "far" }, p).prompts;
+    expect(far).toHaveLength(Math.ceil((1600 / 2 + 384) / 384));
+    expect(far[0]!.text).toContain("No floors, platforms or objects in front");
   });
 
+  it("describes every chosen move and splits a big sheet into pictures of at most 6 animations", () => {
+    const all = buildPrompts({ ...defaultChoices("character"), anims: ANIMS.hero.map((a) => a.name) }).prompts;
+    expect(all).toHaveLength(sheetsOf(ANIMS.hero).length);
+    expect(all.length).toBeGreaterThanOrEqual(4);
+    expect(all[0]!.text).toContain("1. Idle (Standing still, breathing: the loop players see most): 4 frames, looping");
+    expect(all[0]!.text).toContain("anticipation, impact and follow-through");
+    expect(all[1]!.text).toContain("The same character as in the sprite sheet you made before");
+    for (const sheet of sheetsOf(ANIMS.hero)) {
+      expect(sheet.length).toBeLessThanOrEqual(6);
+      expect(sheet.reduce((n, a) => n + a.frames, 0)).toBeLessThanOrEqual(32);
+    }
+  });
+
+  it("asks to follow the attached pictures only when the user says they will attach them", () => {
+    const base = defaultChoices("character");
+    expect(buildPrompts(base).prompts[0]!.text).not.toContain("attached images");
+    expect(buildPrompts({ ...base, flags: [...base.flags, "refs"] }).prompts[0]!.text).toContain("Use the attached images as the reference for the character's face, hair, build and clothes.");
+  });
+
+  it("turns objects and effects into a row of frames on magenta", () => {
+    const o = buildPrompts({ ...defaultChoices("object"), sub: "vehicle", cellsW: 4, cellsH: 2, flags: ["side", "animated", "breakable"], frames: 3 }).prompts[0]!;
+    expect(o.board).toEqual({ w: 64 * 3, h: 32 * 2 });
+    expect(o.text).toContain("3 frames in one row");
+    expect(o.text).toContain("broken in the second");
+  });
+
+  it("writes one chat message per picture, each with its shape and what to avoid", () => {
+    const r = buildPrompts({ ...defaultChoices("character"), anims: ANIMS.hero.map((a) => a.name) });
+    const msgs = chatMessages(r);
+    expect(msgs).toHaveLength(r.prompts.length);
+    msgs.forEach((m, i) => {
+      expect(m).toContain(r.prompts[i]!.text);
+      expect(m).toContain(`Make it a ${r.prompts[i]!.aspect} image`);
+      expect(m).toContain(`Avoid: ${r.negative}.`);
+    });
+  });
   it("keeps each kind to its own fields: a character knows nothing about the place behind it", () => {
     const place = { location: "Puerto Madero", time: "night" as const, weather: "rain", palette: "white uniform", style: "1990s arcade" };
     const hero = buildPrompts({ ...defaultChoices("character"), ...place }).prompts[0]!.text;
     expect(hero).not.toMatch(/Puerto Madero|night|rain|Place and time/);
+    expect(hero).toContain("Style: 1990s arcade");
     expect(hero).toContain("Colors: white uniform");
     const bg = buildPrompts({ ...defaultChoices("background"), ...place }).prompts[0]!.text;
     expect(bg).toContain("Place and time period: Puerto Madero");
@@ -112,16 +108,16 @@ describe("the image AI prompts", () => {
 
   it("asks for the character reference when no animation is chosen", () => {
     const [ref] = buildPrompts({ ...defaultChoices("character"), anims: [] }).prompts;
-    expect(ref!.text).toContain("Three standing poses");
+    expect(ref!.text).toContain("Three large standing poses");
     expect(ref!.text).not.toContain("Rows, top to bottom");
-    expect(ref!.size.w).toBeLessThanOrEqual(1536);
+    expect(ref!.aspect).toBe("16:9");
   });
 
   it("adds the user's own animations as rows, after the chosen built-in ones", () => {
     const c = { ...defaultChoices("character"), anims: ["walk", "bow"], customAnims: ["bow:5", "bad name:3"] };
     const text = buildPrompts(c).prompts[0]!.text;
-    expect(text).toContain("1. walk (8 frames, a loop); 2. bow (5 frames)");
-    expect(text).not.toContain("idle (");
+    expect(text).toContain("1. Walk (Walking at normal speed): 8 frames, looping; 2. Bow: 5 frames");
+    expect(text).not.toContain("Idle");
   });
 
   it("keeps only well-typed saved choices (a project file is not trusted)", () => {
@@ -182,7 +178,7 @@ describe("the prompt dialog", () => {
     fireEvent.change(screen.getByLabelText("Frames"), { target: { value: "5" } });
     fireEvent.click(screen.getByRole("button", { name: "+ Add" }));
     expect((screen.getByRole("checkbox", { name: /bow/ }) as HTMLInputElement).checked).toBe(true);
-    expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("1. bow (5 frames)");
+    expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("1. Bow: 5 frames");
     fireEvent.click(screen.getByRole("button", { name: "All" }));
     expect(screen.getByText(`${ANIMS.hero.length + 1} chosen`)).toBeTruthy();
   });

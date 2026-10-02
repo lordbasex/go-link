@@ -28,12 +28,26 @@ export function resetEnglish(): void {
   tried.clear();
 }
 
-export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: string) {
+/**
+ * Each field is translated with what it is about in front ("Character, colors: piel bronceada"), which a
+ * translator needs: alone, "piel bronceada" came out as "tanned leather". The front part is taken off after.
+ */
+function withContext(text: string, context: string | undefined): string {
+  return context ? `${context}: ${text}` : text;
+}
+function withoutContext(en: string, context: string | undefined): string {
+  if (!context) return en;
+  const at = en.indexOf(":");
+  return at >= 0 && at < context.length + 24 ? en.slice(at + 1).trim() : en;
+}
+
+export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: string, contexts: Partial<Record<K, string>> = {}) {
   const [state, setState] = useState<EnglishState>("idle");
   const [from, setFrom] = useState<string[]>([]);
   const [progress, setProgress] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
-  const key = JSON.stringify(fields);
+  const key = JSON.stringify([fields, contexts]);
+  const keyOf = (k: K, text: string) => `${contexts[k] ?? ""}\u0000${text}`;
   const latest = useRef(key);
   latest.current = key;
 
@@ -46,7 +60,7 @@ export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: 
       for (const k of Object.keys(fields) as K[]) {
         const text = fields[k].trim();
         if (!text) continue;
-        const hit = done.get(text);
+        const hit = done.get(keyOf(k, text));
         if (hit) {
           if (hit.from !== "en") langs.add(hit.from);
           continue;
@@ -55,10 +69,16 @@ export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: 
         let lang = detector === "available" ? await detectLanguage(text).catch(() => "und") : uiLang;
         if (lang === "und") lang = uiLang;
         if (lang === "en") {
-          done.set(text, { text: fields[k], from: "en" });
+          done.set(keyOf(k, text), { text: fields[k], from: "en" });
           continue;
         }
         let can = await chromeAi.translator(lang);
+        // a short text can look like a close language Chrome cannot translate ("piel bronceada" reads as Galician):
+        // then it is taken as the interface's language
+        if (can === "unavailable" && uiLang !== "en" && lang !== uiLang) {
+          lang = uiLang;
+          can = await chromeAi.translator(lang);
+        }
         if (can === "downloadable" && !tried.has(lang)) {
           // typing in the dialog is the user's gesture Chrome asks for to download it: try once
           tried.add(lang);
@@ -66,11 +86,11 @@ export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: 
           can = await chromeAi.translator(lang);
         }
         let en: string | null = null;
-        if (can === "available") en = await translate(text, lang).catch(() => null);
+        if (can === "available") en = await translate(withContext(text, contexts[k]), lang).catch(() => null);
         // not downloaded yet: Chrome's language model, when it is ready, translates meanwhile
-        if (en === null && (await chromeAi.modelToEnglish(lang)) === "available") en = await translateWithModel(text, lang).catch(() => null);
+        if (en === null && (await chromeAi.modelToEnglish(lang)) === "available") en = await translateWithModel(withContext(text, contexts[k]), lang).catch(() => null);
         if (en !== null) {
-          done.set(text, { text: en, from: lang });
+          done.set(keyOf(k, text), { text: withoutContext(en, contexts[k]), from: lang });
           langs.add(lang);
         } else if (can === "unavailable") need ??= "unavailable";
         else need = "needs-download";
@@ -105,7 +125,7 @@ export function useEnglish<K extends string>(fields: Record<K, string>, uiLang: 
   }, [uiLang]);
 
   // each field in English as soon as it is known, else as typed
-  const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, done.get((v as string).trim())?.text ?? v])) as Record<K, string>;
+  const values = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, done.get(keyOf(k as K, (v as string).trim()))?.text ?? v])) as Record<K, string>;
   const ready = state !== "working";
   return { values, state, from, progress, prepare, ready };
 }

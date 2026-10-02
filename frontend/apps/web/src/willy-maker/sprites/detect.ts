@@ -127,10 +127,110 @@ export function keyBackground(img: Rgba, { tolerance }: KeyOptions): KeyResult {
           if (isBg[k - 1] || isBg[k + 1] || isBg[k - w] || isBg[k + w]) isBg[k] = 1;
         }
   }
+  if (magenta) {
+    // image AIs never paint a flat magenta: its darker or lighter parts touching the background are background too
+    // (a pink drawn inside the figure is not reached and stays)
+    const stack: number[] = [];
+    for (let k = 0; k < n; k++) if (isBg[k]) stack.push(k);
+    while (stack.length) {
+      const k = stack.pop()!;
+      const kx = k % w;
+      const next = [kx > 0 ? k - 1 : -1, kx < w - 1 ? k + 1 : -1, k >= w ? k - w : -1, k < n - w ? k + w : -1];
+      for (const j of next)
+        if (j >= 0 && !isBg[j] && plainMagenta(data, j * 4)) {
+          isBg[j] = 1;
+          stack.push(j);
+        }
+    }
+    cleanMagentaFringe(data, isBg, w, h);
+  }
   const mask = new Uint8Array(n);
   for (let k = 0; k < n; k++) mask[k] = isBg[k] ? 0 : 1;
   removeStrokes(mask, w, h);
   return { mask, background: bg, magenta };
+}
+
+/** A pixel with a magenta cast: red and blue well over green. */
+function magentaCast(data: Uint8ClampedArray | Uint8Array, o: number): boolean {
+  return data[o]! - data[o + 1]! > 40 && data[o + 2]! - data[o + 1]! > 40;
+}
+
+/** A darker or lighter magenta with no other color mixed in (red and blue alike, little green). */
+function plainMagenta(data: Uint8ClampedArray | Uint8Array, o: number): boolean {
+  return data[o]! > 140 && data[o + 2]! > 140 && data[o + 1]! < 70 && Math.abs(data[o]! - data[o + 2]!) < 50;
+}
+
+/** Nearly the background itself (a lighter or darker magenta): no figure is drawn in it. */
+function nearMagenta(data: Uint8ClampedArray | Uint8Array, o: number): boolean {
+  return data[o]! > 140 && data[o + 2]! > 140 && data[o + 1]! < 100;
+}
+
+/**
+ * How much of the background a pixel holds, as a mix of a clean color and the
+ * background (0 none, 1 all), or -1 when it is not such a mix.
+ */
+function mixOf(data: Uint8ClampedArray | Uint8Array, o: number, clean: number, bg: readonly number[]): number {
+  let num = 0;
+  let den = 0;
+  for (let c = 0; c < 3; c++) {
+    const d = bg[c]! - data[clean + c]!;
+    num += (data[o + c]! - data[clean + c]!) * d;
+    den += d * d;
+  }
+  if (den < 900) return -1;
+  const t = num / den;
+  let err = 0;
+  for (let c = 0; c < 3; c++) {
+    const e = data[o + c]! - (data[clean + c]! + t * (bg[c]! - data[clean + c]!));
+    err += e * e;
+  }
+  return err < 40 * 40 ? t : -1;
+}
+
+/**
+ * Image AIs draw on magenta with soft edges: the pixels next to the
+ * background are mixed with it (pink over skin, purple over a dark outline),
+ * which the board would keep as colors of their own. A fringe pixel that is
+ * a mix of a clean neighbor and the background takes that neighbor's color;
+ * a nearly magenta one with no clean neighbor becomes background (a purple
+ * of the figure's own is neither, and stays). Twice,
+ * so a two-pixel soft edge goes too. The picture's pixels change in place.
+ */
+export function cleanMagentaFringe(data: Uint8ClampedArray | Uint8Array, isBg: Uint8Array, w: number, h: number): void {
+  const bg = [255, 0, 255];
+  for (let pass = 0; pass < 2; pass++) {
+    const out: [number, number][] = [];
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const k = y * w + x;
+        if (isBg[k]) continue;
+        const edge = (x > 0 && isBg[k - 1]) || (x < w - 1 && isBg[k + 1]) || (y > 0 && isBg[k - w]) || (y < h - 1 && isBg[k + w]);
+        if (!edge) continue;
+        // the clean neighbor this pixel is the likeliest mix of
+        let best = -1;
+        let bestT = 0.15;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const j = ny * w + nx;
+            if (isBg[j] || magentaCast(data, j * 4)) continue;
+            const t = mixOf(data, k * 4, j * 4, bg);
+            if (t > bestT && t < 1) {
+              bestT = t;
+              best = j;
+            }
+          }
+        if (best >= 0) out.push([k, best]);
+        else if (nearMagenta(data, k * 4)) out.push([k, -1]);
+      }
+    if (!out.length) break;
+    for (const [k, from] of out) {
+      if (from < 0) isBg[k] = 1;
+      else for (let c = 0; c < 3; c++) data[k * 4 + c] = data[from * 4 + c]!;
+    }
+  }
 }
 
 /**

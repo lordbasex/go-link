@@ -23,6 +23,13 @@ afterEach(() => {
 function fakeChrome(opts: { translator?: "available" | "downloadable"; model?: boolean } = {}) {
   const dict: Record<string, string> = { "una bicicleta roja": "a red bicycle", "una bisicleta roja": "a red bicycle" };
   const created = { translator: 0 };
+  // "Objeto: una bicicleta roja" (the field's context in front, as the dialog sends it) -> "Object: a red bicycle"
+  const en = (text: string, tag = "") => {
+    const m = /^([^:]+): (.*)$/.exec(text);
+    const body = m ? m[2]! : text;
+    const out = dict[body] ? `${dict[body]}${tag}` : body;
+    return m ? `Object: ${out}` : out;
+  };
   g.LanguageDetector = {
     availability: async () => "available",
     create: async () => ({ detect: async (text: string) => [{ detectedLanguage: /bi[sc]icleta|hola/.test(text) ? "es" : "en", confidence: 0.9 }] }),
@@ -36,7 +43,7 @@ function fakeChrome(opts: { translator?: "available" | "downloadable"; model?: b
       if (translator === "downloadable" && refused++ === 0) throw new DOMException("needs a gesture", "NotAllowedError");
       created.translator++;
       translator = "available";
-      return { translate: async (text: string) => dict[text] ?? text };
+      return { translate: async (text: string) => en(text) };
     },
   };
   g.Proofreader = {
@@ -46,7 +53,7 @@ function fakeChrome(opts: { translator?: "available" | "downloadable"; model?: b
   if (opts.model)
     g.LanguageModel = {
       availability: async () => "available",
-      create: async () => ({ prompt: async (text: string) => (text === "una bicicleta roja" ? "a red bicycle (model)" : text) }),
+      create: async () => ({ prompt: async (text: string) => en(text, " (model)") }),
     };
   class Rec {
     lang = "";
@@ -118,6 +125,18 @@ describe("Chrome's built-in AI in the prompt dialog", () => {
     expect((screen.getByLabelText("Descripción") as HTMLTextAreaElement).value).toBe("una bicicleta roja");
   });
 
+  it("takes a text detected as a close language Chrome cannot translate as the interface's language", async () => {
+    fakeChrome();
+    const T = g.Translator as { availability: (o: { sourceLanguage: string }) => Promise<string> };
+    const real = T.availability;
+    T.availability = async (o) => (o.sourceLanguage === "gl" ? "unavailable" : real(o));
+    (g.LanguageDetector as { create: () => Promise<unknown> }).create = async () => ({ detect: async () => [{ detectedLanguage: "gl", confidence: 0.92 }] });
+    open();
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "una bicicleta roja" } });
+    await waitFor(() => expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("a red bicycle"));
+    expect(screen.queryByText(promptEs.ai.untranslated)).toBeNull();
+  });
+
   it("downloads the translator only from a click", async () => {
     const { created } = fakeChrome({ translator: "downloadable" });
     open();
@@ -136,6 +155,22 @@ describe("Chrome's built-in AI in the prompt dialog", () => {
     await waitFor(() => expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("a red bicycle (model)"));
     expect(created.translator).toBe(0);
     expect(screen.queryByText(promptEs.ai.notYet)).toBeNull();
+  });
+
+  it("gives the translator what each field is about, and keeps only the translation", async () => {
+    fakeChrome();
+    const seen: string[] = [];
+    const T = g.Translator as { create: () => Promise<{ translate: (t: string) => Promise<string> }> };
+    const make = T.create;
+    T.create = async () => {
+      const real = await make();
+      return { translate: async (t: string) => (seen.push(t), real.translate(t)) };
+    };
+    open();
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "una bicicleta roja" } });
+    await waitFor(() => expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain(" a red bicycle."));
+    expect(seen).toContain("Objeto: una bicicleta roja");
+    expect(document.querySelector(".wm-prompt-out pre")!.textContent).not.toContain("Object:");
   });
 
   it("suggests the spelling fix and applies it only when chosen", async () => {

@@ -12,7 +12,7 @@ export const spritesEn = {
   drop: {
     title: "Drop a sprite sheet here",
     pick: "Choose a picture",
-    hint: "PNG or WebP. Best: drawn at the final size (1 pixel = 1 pixel) on a magenta #FF00FF background. Any plain background works: only the background touching the border is removed.",
+    hint: "PNG or WebP. Best: drawn at the final size (1 pixel = 1 pixel) on a magenta #FF00FF background. Any plain background works: only the background touching the border is removed. You can also paste a copied picture (Ctrl/⌘ V).",
     loading: "Reading the sheet…",
     error: "That picture could not be opened.",
   },

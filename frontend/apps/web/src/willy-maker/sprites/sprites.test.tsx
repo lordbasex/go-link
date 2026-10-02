@@ -32,6 +32,56 @@ function figure(set: (x: number, y: number, c: C) => void, x0: number, y0: numbe
 const count = (mask: Uint8Array) => mask.reduce((s, v) => s + v, 0);
 
 describe("keyBackground", () => {
+  it("turns the pink fringe an image AI leaves around a figure on magenta into the figure's own color", () => {
+    // a 6 x 6 black square with a 1 px half-magenta ring, on a 12 x 12 off-magenta picture (as image AIs draw it)
+    const w = 12;
+    const data = new Uint8ClampedArray(w * w * 4);
+    for (let y = 0; y < w; y++)
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        const inner = x >= 4 && x < 8 && y >= 4 && y < 8;
+        const ring = !inner && x >= 3 && x < 9 && y >= 3 && y < 9;
+        data.set(inner ? [10, 10, 20, 255] : ring ? [128, 12, 130, 255] : [239, 12, 240, 255], o);
+      }
+    const img: Rgba = { w, h: w, data };
+    const { mask, magenta } = keyBackground(img, { tolerance: 18 });
+    expect(magenta).toBe(true);
+    // the ring stays part of the figure, recolored from its dark inside
+    expect(mask[3 * w + 3]).toBe(1);
+    expect([...data.slice((5 * w + 3) * 4, (5 * w + 3) * 4 + 3)]).toEqual([10, 10, 20]);
+    expect(mask[0]).toBe(0);
+  });
+
+  it("takes the uneven magenta an image AI paints, as far as it touches the background, and keeps a pink inside the figure", () => {
+    const w = 9;
+    const data = new Uint8ClampedArray(w * w * 4);
+    for (let y = 0; y < w; y++)
+      for (let x = 0; x < w; x++) {
+        const figure = x >= 2 && x < 7 && y >= 2 && y < 7;
+        const pinkInside = x === 4 && y === 4;
+        // the bottom rows are a darker magenta, well past the tolerance
+        data.set(pinkInside ? [210, 60, 190, 255] : figure ? [20, 20, 30, 255] : y >= 7 ? [180, 30, 175, 255] : [239, 12, 240, 255], (y * w + x) * 4);
+      }
+    const { mask } = keyBackground({ w, h: w, data }, { tolerance: 18 });
+    expect(mask[8 * w + 4]).toBe(0);
+    expect(mask[4 * w + 4]).toBe(1);
+    expect(mask.reduce((a, b) => a + b, 0)).toBe(25);
+  });
+
+  it("recolors a skin pixel mixed with magenta, and leaves a purple of the figure's own alone", () => {
+    // three rows: magenta, then magenta, a skin and magenta mix, skin, skin, a purple of the figure, skin, magenta
+    const w = 7;
+    const data = new Uint8ClampedArray(w * 3 * 4);
+    const mid = [[239, 12, 240], [236, 90, 168], [230, 150, 100], [230, 150, 100], [120, 40, 170], [230, 150, 100], [239, 12, 240]];
+    for (let y = 0; y < 3; y++) for (let x = 0; x < w; x++) data.set([...(y === 1 ? mid[x]! : [239, 12, 240]), 255], (y * w + x) * 4);
+    const img: Rgba = { w, h: 3, data };
+    const { mask } = keyBackground(img, { tolerance: 18 });
+    const at = (x: number) => [...data.slice((w + x) * 4, (w + x) * 4 + 3)];
+    expect(at(1)).toEqual([230, 150, 100]);
+    expect(at(4)).toEqual([120, 40, 170]);
+    expect(mask[w + 4]).toBe(1);
+  });
+
   it("keys only the background connected to the border, so a dark shirt stays", () => {
     const img = sheet(40, 40, [22, 22, 28], (set) => figure(set, 10, 5));
     const { mask, background, magenta } = keyBackground(img, { tolerance: 18 });

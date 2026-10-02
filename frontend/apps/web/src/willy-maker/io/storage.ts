@@ -97,6 +97,11 @@ export function assetRefs(p: Project): Set<string> {
     if (typeof source?.sheet === "string" && source.sheet.startsWith("sha256:")) refs.add(source.sheet);
   }
   for (const t of p.tilesets) if (t.image) refs.add(t.image);
+  // the image AI prompt helper's reference pictures
+  for (const c of Object.values(p.settings.imagePrompts ?? {})) {
+    const imgs = (c as { refImages?: unknown }).refImages;
+    if (Array.isArray(imgs)) for (const r of imgs) if (typeof r === "string" && r.startsWith("sha256:")) refs.add(r);
+  }
   return refs;
 }
 

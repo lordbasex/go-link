@@ -12,7 +12,7 @@ export const spritesPt: SpritesMessages = {
   drop: {
     title: "Solte aqui uma folha de sprites",
     pick: "Escolher uma imagem",
-    hint: "PNG ou WebP. O ideal: desenhada no tamanho final (1 pixel = 1 pixel) sobre fundo magenta #FF00FF. Qualquer fundo liso serve: só sai o fundo que toca a borda.",
+    hint: "PNG ou WebP. O ideal: desenhada no tamanho final (1 pixel = 1 pixel) sobre fundo magenta #FF00FF. Qualquer fundo liso serve: só sai o fundo que toca a borda. Também pode colar uma imagem copiada (Ctrl/⌘ V).",
     loading: "Lendo a folha…",
     error: "Não foi possível abrir essa imagem.",
   },
