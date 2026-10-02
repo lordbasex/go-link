@@ -99,6 +99,31 @@ describe("the image AI prompts", () => {
     for (const x of play.prompts) expect(all).toContain(x.text);
   });
 
+  it("keeps each kind to its own fields: a character knows nothing about the place behind it", () => {
+    const place = { location: "Puerto Madero", time: "night" as const, weather: "rain", palette: "white uniform", style: "1990s arcade" };
+    const hero = buildPrompts({ ...defaultChoices("character"), ...place }).prompts[0]!.text;
+    expect(hero).not.toMatch(/Puerto Madero|night|rain|Place and time/);
+    expect(hero).toContain("Colors: white uniform");
+    const bg = buildPrompts({ ...defaultChoices("background"), ...place }).prompts[0]!.text;
+    expect(bg).toContain("Place and time period: Puerto Madero");
+    expect(bg).toContain("night, rain");
+    for (const kind of ["object", "effect"] as const) expect(buildPrompts({ ...defaultChoices(kind), ...place }).prompts[0]!.text).not.toContain("Puerto Madero");
+  });
+
+  it("asks for the character reference when no animation is chosen", () => {
+    const [ref] = buildPrompts({ ...defaultChoices("character"), anims: [] }).prompts;
+    expect(ref!.text).toContain("Three standing poses");
+    expect(ref!.text).not.toContain("Rows, top to bottom");
+    expect(ref!.size.w).toBeLessThanOrEqual(1536);
+  });
+
+  it("adds the user's own animations as rows, after the chosen built-in ones", () => {
+    const c = { ...defaultChoices("character"), anims: ["walk", "bow"], customAnims: ["bow:5", "bad name:3"] };
+    const text = buildPrompts(c).prompts[0]!.text;
+    expect(text).toContain("1. walk (8 frames, a loop); 2. bow (5 frames)");
+    expect(text).not.toContain("idle (");
+  });
+
   it("keeps only well-typed saved choices (a project file is not trusted)", () => {
     const base = defaultChoices("background");
     const m = mergeChoices(base, { description: "Harbour", flags: ["sky", 3, null], frames: "lots", time: "noon", quality: "ultra", kind: "tiles", extra: 1 });
@@ -145,6 +170,21 @@ describe("the prompt dialog", () => {
     // one undo step takes them away
     store.undo();
     expect(store.project.settings.imagePrompts?.object).toBeUndefined();
+  });
+
+  it("chooses all or none of the animations, and takes the user's own", () => {
+    const p = newProject({ title: "Docks" });
+    render(<PromptDialog store={new EditorStore(p)} project={p} kind="character" onClose={() => {}} />);
+    expect(screen.queryByLabelText("Place and time period")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "None" }));
+    expect(screen.getByText("0 chosen")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Your own animation"), { target: { value: "Bow" } });
+    fireEvent.change(screen.getByLabelText("Frames"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "+ Add" }));
+    expect((screen.getByRole("checkbox", { name: /bow/ }) as HTMLInputElement).checked).toBe(true);
+    expect(document.querySelector(".wm-prompt-out pre")!.textContent).toContain("1. bow (5 frames)");
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByText(`${ANIMS.hero.length + 1} chosen`)).toBeTruthy();
   });
 
   it("opens on the kind and layer it was called from, and switches kinds", () => {

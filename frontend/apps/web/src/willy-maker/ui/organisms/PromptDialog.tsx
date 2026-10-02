@@ -15,10 +15,11 @@ import { promptPt } from "../../i18n/prompt.pt";
 import type { CharacterRole, Project } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { ANIMS, DEFAULT_HEIGHT } from "../../sprites/presets";
-import { buildPrompts, chatMessage, defaultChoices, EXAMPLE, FLAGS, mergeChoices, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
+import { buildPrompts, chatMessage, defaultChoices, EXAMPLE, FIELDS, FLAGS, mergeChoices, parseCustomAnim, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
 import { Capsule, Field, Segmented } from "../atoms";
 import { IconCopy } from "../icons";
 import { AnimPreview } from "./AnimPreview";
+import { useSpritesText } from "../../sprites/text";
 
 export const PROMPT = { en: promptEn, es: promptEs, pt: promptPt };
 
@@ -102,13 +103,16 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
   const lang = useWmLang();
   const english = useEnglish({ description: c.description, location: c.location, weather: c.weather, palette: c.palette, style: c.style }, lang);
   const result = useMemo(() => buildPrompts({ ...c, ...english.values }, project), [c, english.values, project]);
-  const names = new Intl.DisplayNames([lang], { type: "language" });
+  const langNames = new Intl.DisplayNames([lang], { type: "language" });
   const subs = t.subs[kind] as Record<string, string>;
   const flags = t.flags[kind] as Record<string, string[]>;
   const role = (kind === "character" ? c.sub : "hero") as CharacterRole;
   // the animation whose example is showing (hover or keyboard focus)
   const [peek, setPeek] = useState<string | null>(null);
   const peekId = useId();
+  const names = useSpritesText().animNames;
+  const [newAnim, setNewAnim] = useState({ name: "", frames: 4 });
+  const own = c.customAnims.map(parseCustomAnim).filter((a): a is { name: string; frames: number } => a !== null && !ANIMS[role].some((p) => p.name === a.name));
 
   const close = () => {
     // keep the choices with the game (one undo step, only when something changed)
@@ -215,9 +219,19 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
             <legend className="wm-field-label">
               {t.anims} <Help text={t.animsHelp} label={`${t.help}: ${t.anims}`} />
             </legend>
-            {ANIMS[role].map((a) => (
+            <div className="wm-row wm-prompt-anim-all">
+              <Capsule size="sm" onClick={() => set({ anims: [...ANIMS[role].map((a) => a.name), ...own.map((a) => a.name)] })}>
+                {t.allAnims}
+              </Capsule>
+              <Capsule size="sm" onClick={() => set({ anims: [] })}>
+                {t.noAnims}
+              </Capsule>
+              <span className="wm-dim wm-small">{t.animsChosen(c.anims.filter((n) => ANIMS[role].some((a) => a.name === n) || own.some((a) => a.name === n)).length)}</span>
+            </div>
+            {!c.anims.some((n) => ANIMS[role].some((a) => a.name === n) || own.some((a) => a.name === n)) && <p className="wm-note wm-small wm-prompt-anim-all">{t.noAnimsNote}</p>}
+            {[...ANIMS[role].map((a) => ({ name: a.name, frames: a.frames, own: false })), ...own.map((a) => ({ ...a, own: true }))].map((a) => (
               <span key={a.name} className="wm-anim-chip" onMouseEnter={() => setPeek(a.name)} onMouseLeave={() => setPeek((x) => (x === a.name ? null : x))}>
-                <label className="wm-small wm-mono">
+                <label className="wm-small">
                   <input
                     type="checkbox"
                     checked={c.anims.includes(a.name)}
@@ -226,38 +240,88 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
                     onBlur={() => setPeek((x) => (x === a.name ? null : x))}
                     onChange={(e) => set({ anims: toggle(c.anims, a.name, e.target.checked) })}
                   />{" "}
-                  {a.name} ({a.frames})
+                  {names[a.name] ?? a.name} <span className="wm-mono wm-dim">{names[a.name] ? `${a.name} · ` : ""}{a.frames}</span>
                 </label>
+                {a.own && (
+                  <button type="button" className="wm-help" aria-label={t.removeAnim(a.name)} data-tip={t.removeAnim(a.name)} onClick={() => set({ customAnims: c.customAnims.filter((x) => parseCustomAnim(x)?.name !== a.name), anims: c.anims.filter((n) => n !== a.name) })}>
+                    ×
+                  </button>
+                )}
                 {peek === a.name && (
                   <span id={`${peekId}-${a.name}`}>
-                    <AnimPreview name={a.name} frames={a.frames} text={t.animDesc[a.name] ?? ""} labels={{ example: t.animExample, shownWith: t.animShownWith, none: t.animNoExample, frames: t.animFrames }} />
+                    <AnimPreview name={a.name} frames={a.frames} text={t.animDesc[a.name] ?? t.ownAnim} labels={{ example: t.animExample, shownWith: t.animShownWith, none: t.animNoExample, frames: t.animFrames }} />
                   </span>
                 )}
               </span>
             ))}
+            <form
+              className="wm-row wm-prompt-anim-new"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newAnim.name
+                  .trim()
+                  .toLowerCase()
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .replace(/[^a-z0-9_]+/g, "_")
+                  .replace(/^_+|_+$/g, "")
+                  .slice(0, 24);
+                if (!name || c.customAnims.length >= 16) return;
+                const known = ANIMS[role].find((a) => a.name === name || (names[a.name] ?? "").toLowerCase() === newAnim.name.trim().toLowerCase());
+                if (known) set({ anims: [...new Set([...c.anims, known.name])] });
+                else
+                  set({
+                    customAnims: [...c.customAnims.filter((x) => parseCustomAnim(x)?.name !== name), `${name}:${Math.max(1, Math.min(16, newAnim.frames))}`],
+                    anims: [...new Set([...c.anims, name])],
+                  });
+                setNewAnim({ name: "", frames: 4 });
+              }}
+            >
+              <label className="wm-field wm-grow">
+                <span className="wm-field-label">{t.newAnim}</span>
+                <input className="wm-input" value={newAnim.name} placeholder={t.newAnimPh} onChange={(e) => setNewAnim({ ...newAnim, name: e.target.value })} />
+              </label>
+              <label className="wm-field">
+                <span className="wm-field-label">{t.frames}</span>
+                <input className="wm-input wm-prompt-num" type="number" min={1} max={16} value={newAnim.frames} onChange={(e) => setNewAnim({ ...newAnim, frames: Number(e.target.value) || 1 })} />
+              </label>
+              <Capsule type="submit" size="sm" disabled={!newAnim.name.trim()}>
+                + {t.addAnim}
+              </Capsule>
+            </form>
           </fieldset>
         )}
 
-        <div className="wm-prompt-grid">
-          <Field label={t.location}>
-            <input className="wm-input" placeholder={t.locationPh} value={c.location} onChange={(e) => set({ location: e.target.value })} />
-          </Field>
-          <Field label={t.time}>
-            <select className="wm-input" value={c.time} onChange={(e) => set({ time: e.target.value as PromptChoices["time"] })}>
-              {(Object.keys(t.times) as (keyof PromptMessages["times"])[]).map((k) => (
-                <option key={k} value={k}>
-                  {t.times[k]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t.weather}>
-            <input className="wm-input" placeholder={t.weatherPh} value={c.weather} onChange={(e) => set({ weather: e.target.value })} />
-          </Field>
-          <Field label={t.palette}>
-            <input className="wm-input" placeholder={t.palettePh} value={c.palette} onChange={(e) => set({ palette: e.target.value })} />
-          </Field>
-        </div>
+        {FIELDS[kind].some((f) => f !== "style") && (
+          <div className="wm-prompt-grid">
+            {FIELDS[kind].includes("location") && (
+              <Field label={t.location}>
+                <input className="wm-input" placeholder={t.locationPh} value={c.location} onChange={(e) => set({ location: e.target.value })} />
+              </Field>
+            )}
+            {FIELDS[kind].includes("time") && (
+              <Field label={t.time}>
+                <select className="wm-input" value={c.time} onChange={(e) => set({ time: e.target.value as PromptChoices["time"] })}>
+                  {(Object.keys(t.times) as (keyof PromptMessages["times"])[]).map((k) => (
+                    <option key={k} value={k}>
+                      {t.times[k]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {FIELDS[kind].includes("weather") && (
+              <Field label={t.weather}>
+                <input className="wm-input" placeholder={t.weatherPh} value={c.weather} onChange={(e) => set({ weather: e.target.value })} />
+              </Field>
+            )}
+            {FIELDS[kind].includes("palette") && (
+              <Field label={kind === "background" || kind === "tiles" ? t.palette : t.colors}>
+                <input className="wm-input" placeholder={t.palettePhs[kind]} value={c.palette} onChange={(e) => set({ palette: e.target.value })} />
+              </Field>
+            )}
+          </div>
+        )}
         <Field label={t.style} hint={t.styleNote}>
           <input className="wm-input" placeholder={t.stylePh} value={c.style} onChange={(e) => set({ style: e.target.value })} />
         </Field>
@@ -279,7 +343,7 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
             {t.ai.translating}
           </p>
         )}
-        {english.state === "done" && <p className="wm-note is-ok wm-small">{t.ai.translated(english.from.map((x) => names.of(x) ?? x).join(", "))}</p>}
+        {english.state === "done" && <p className="wm-note is-ok wm-small">{t.ai.translated(english.from.map((x) => langNames.of(x) ?? x).join(", "))}</p>}
         {english.state === "needs-download" && (
           <div className="wm-note is-warn wm-small" role="note">
             <p>{t.ai.notYet}</p>

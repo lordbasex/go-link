@@ -398,3 +398,8 @@ input.wm-layer-name { cursor: text; }
 .wm-aitext-sug { display: flex; flex-direction: column; gap: 6px; }
 .wm-aitext-sug p { margin: 0; white-space: pre-wrap; }
 .wm-prompt-out pre.is-all { max-height: 160px; border: 1px solid var(--tint-accent-border); }
+.wm-prompt-anim-all { width: 100%; align-items: center; gap: 8px; }
+.wm-prompt-anim-new { width: 100%; align-items: flex-end; gap: 8px; }
+.wm-prompt-anim-new .wm-grow { flex: 1; min-width: 0; }
+.wm-prompt-num { width: 80px; }
+.wm-anim-chip { align-items: center; gap: 4px; }

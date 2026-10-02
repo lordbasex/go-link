@@ -70,6 +70,22 @@ export const FLAGS: Record<PromptKind, readonly { id: string; words: string }[]>
   ],
 };
 
+/** The common fields each kind uses: a character, an object or an effect knows nothing about the place behind it. */
+export type CommonField = "location" | "time" | "weather" | "palette" | "style";
+export const FIELDS: Record<PromptKind, readonly CommonField[]> = {
+  background: ["location", "time", "weather", "palette", "style"],
+  tiles: ["location", "palette", "style"],
+  character: ["palette", "style"],
+  object: ["palette", "style"],
+  effect: ["palette", "style"],
+};
+
+/** Up to 16 own animations of a character sheet: "name:frames" (a name of letters, digits and _). */
+export function parseCustomAnim(s: string): { name: string; frames: number } | null {
+  const m = /^([a-z0-9_]{1,24}):(\d{1,2})$/.exec(s);
+  return m ? { name: m[1]!, frames: Math.max(1, Math.min(16, Number(m[2]))) } : null;
+}
+
 export interface PromptChoices {
   kind: PromptKind;
   sub: string;
@@ -77,6 +93,8 @@ export interface PromptChoices {
   flags: string[];
   /** Character animations, by the Characters tab's names. */
   anims: string[];
+  /** Own animations, "name:frames"; a row each when ticked in `anims`. */
+  customAnims: string[];
   location: string;
   time: "" | "night" | "dusk" | "day" | "dawn";
   weather: string;
@@ -113,6 +131,7 @@ export function defaultChoices(kind: PromptKind, project?: Project): PromptChoic
     description: kind === "background" ? EXAMPLE.description : "",
     flags: kind === "background" ? [...EXAMPLE.flags] : kind === "character" ? ["facingRight", "shirt"] : kind === "object" ? ["side"] : kind === "effect" ? ["animated"] : ["floor", "platform", "ladder", "crate", "wall"],
     anims: ANIMS[role].map((a) => a.name),
+    customAnims: [],
     location: kind === "background" ? EXAMPLE.location : "",
     time: kind === "background" ? EXAMPLE.time : "",
     weather: kind === "background" ? EXAMPLE.weather : "",
@@ -172,10 +191,13 @@ function body(c: PromptChoices): string[] {
   const out: string[] = [];
   if (c.description.trim()) out.push(sentence(c.description));
   if (words.length) out.push(sentence(`Requirements: ${words.join("; ")}`));
-  if (c.location.trim()) out.push(sentence(`Place and time period: ${c.location.trim()}`));
-  if (c.time || c.weather.trim()) out.push(sentence(`Time of day and weather: ${[c.time, c.weather.trim()].filter(Boolean).join(", ")}`));
-  if (c.palette.trim()) out.push(sentence(`Color mood: ${c.palette.trim()}`));
-  if (c.style.trim()) out.push(sentence(`Style reference: ${c.style.trim()}, used only as a style: no existing characters, logos, names or text from any game`));
+  const uses = (f: CommonField) => FIELDS[c.kind].includes(f);
+  if (uses("location") && c.location.trim()) out.push(sentence(`Place and time period: ${c.location.trim()}`));
+  const time = uses("time") ? c.time : "";
+  const weather = uses("weather") ? c.weather.trim() : "";
+  if (time || weather) out.push(sentence(`Time of day and weather: ${[time, weather].filter(Boolean).join(", ")}`));
+  if (uses("palette") && c.palette.trim()) out.push(sentence(`${c.kind === "background" || c.kind === "tiles" ? "Color mood" : "Colors"}: ${c.palette.trim()}`));
+  if (uses("style") && c.style.trim()) out.push(sentence(`Style reference: ${c.style.trim()}, used only as a style: no existing characters, logos, names or text from any game`));
   return out;
 }
 
@@ -201,6 +223,31 @@ function levelOf(project: Project | undefined, id: string): Level | undefined {
 function sectionsIn(level: Level | undefined, x0: number, x1: number): string {
   const s = (level?.sections ?? []).filter((x) => x.x1 > x0 && x.x0 < x1);
   return s.length ? ` It shows ${s.map((x) => `"${x.name}" (board x ${x.x0}-${x.x1})`).join(", ")}.` : "";
+}
+
+function negativeFor(c: PromptChoices): string {
+  return [
+    "gradients",
+    "anti-aliasing",
+    "blur",
+    "soft shadows",
+    "glow halos",
+    "semi-transparent pixels",
+    "noise or film grain",
+    "heavy dithering",
+    "photorealism",
+    "3D render",
+    "perspective or tilted camera",
+    "text, letters or numbers",
+    "logos or brand names",
+    "watermark or signature",
+    "user interface or HUD",
+    "existing game characters",
+    "mixed pixel sizes",
+    ...(c.kind === "background" ? ["characters or people", "cut-off floor"] : []),
+    ...(c.kind === "character" ? ["background scenery", "cropped limbs", "frames of different sizes", "different proportions between frames"] : []),
+    ...(c.kind === "object" || c.kind === "effect" || c.kind === "tiles" ? ["scenery behind it", "frames of different sizes"] : []),
+  ].join(", ");
 }
 
 export function buildPrompts(c: PromptChoices, project?: Project): PromptResult {
@@ -250,9 +297,26 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
     }
   } else if (c.kind === "character") {
     const role = (SUBTYPES.character.includes(c.sub) ? c.sub : "hero") as CharacterRole;
-    const presets = ANIMS[role].filter((a) => c.anims.includes(a.name));
-    const anims = presets.length ? presets : ANIMS[role].slice(0, 1);
+    const own = c.customAnims.map(parseCustomAnim).filter((a): a is { name: string; frames: number } => a !== null && !ANIMS[role].some((p) => p.name === a.name));
+    const picked = [...ANIMS[role].filter((a) => c.anims.includes(a.name)), ...own.filter((a) => c.anims.includes(a.name)).map((a) => ({ ...a, fps: 10, loop: false }))];
     const h = Math.max(16, Math.round(c.height || DEFAULT_HEIGHT[role]));
+    if (!picked.length) {
+      // no animation chosen: the character's reference, the model every animation is then drawn from
+      const cellH = Math.ceil((h + 8) / 16) * 16;
+      const cellW = Math.ceil(h / 16) * 16 + 16;
+      prompts.push({
+        title: `${role} reference`,
+        size: { w: x4(cellW * 3), h: x4(cellH) },
+        text: [
+          `The character reference of one ${role} for a 2D side-scrolling arcade game: the model its animations are drawn from later.`,
+          `Three standing poses side by side, facing right, front three-quarter and from behind, each ${x4(h)} pixels tall (${h} board pixels) in a ${x4(cellW)} x ${x4(cellH)} pixel cell, on a plain flat #FF00FF magenta background, the feet on the same line.`,
+          "A strong, readable silhouette, clear proportions, light from the top left, each material in a few flat shades from dark to light, and a dark outline tinted by the color it surrounds instead of plain black.",
+          ...common,
+        ].join(" "),
+      });
+      return { prompts, negative: negativeFor(c) };
+    }
+    const anims = picked;
     const cellH = Math.ceil((h + 8) / 16) * 16;
     const cellW = Math.ceil((h * 1.5) / 16) * 16;
     const cols = Math.max(...anims.map((a) => a.frames));
@@ -295,29 +359,7 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
     });
   }
 
-  const negative = [
-    "gradients",
-    "anti-aliasing",
-    "blur",
-    "soft shadows",
-    "glow halos",
-    "semi-transparent pixels",
-    "noise or film grain",
-    "heavy dithering",
-    "photorealism",
-    "3D render",
-    "perspective or tilted camera",
-    "text, letters or numbers",
-    "logos or brand names",
-    "watermark or signature",
-    "user interface or HUD",
-    "existing game characters",
-    "mixed pixel sizes",
-    ...(c.kind === "background" ? ["characters or people", "cut-off floor"] : []),
-    ...(c.kind === "character" ? ["background scenery", "cropped limbs", "frames of different sizes", "different proportions between frames"] : []),
-    ...(c.kind === "object" || c.kind === "effect" || c.kind === "tiles" ? ["scenery behind it", "frames of different sizes"] : []),
-  ].join(", ");
-  return { prompts, negative };
+  return { prompts, negative: negativeFor(c) };
 }
 
 /**
