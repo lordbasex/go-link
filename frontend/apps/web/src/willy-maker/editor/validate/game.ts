@@ -3,12 +3,13 @@
 // Level 1 live rules for the Game and Menus tabs (docs/willy-maker/validation.md):
 // players within the board's count, a character for every active player,
 // a title on the title screen, the continue and game over screens not empty,
-// and every menu line fitting the board's text layer with the font's glyphs.
+// every menu line fitting the board's text layer with the font's glyphs,
+// and no line covering another on the screen the ROM draws (menus.overlap).
 // Pure: (project) => ValidationIssue[]; the messages are in i18n/game.*.ts.
 
 import { layoutOf } from "../../board/cps1";
 import type { Project, ValidationIssue } from "../../model";
-import { MENU_SCREENS, menuText, screenProblems } from "../../game/menus";
+import { MENU_SCREENS, menuText, screenProblems, textOverlaps } from "../../game/menus";
 import { playerSlots, slotResolves } from "../../game/settings";
 
 export function gameIssues(project: Project): ValidationIssue[] {
@@ -34,5 +35,7 @@ export function gameIssues(project: Project): ValidationIssue[] {
       else if (p.kind === "safe") out.push({ id: "menus.safe", severity: "info", key: "safe", params: { screen, field: p.field }, target });
       else out.push({ id: "menus.glyphs", severity: "warning", key: "glyphs", params: { screen, field: p.field, chars: p.chars.join(" ") }, target });
     }
+  // the screen as the ROM shows it: no line covers another, the engine's own lines included (T-11)
+  for (const o of textOverlaps(project)) out.push({ id: "menus.overlap", severity: "warning", key: "overlap", params: { screen: o.screen, a: o.a, b: o.b, row: o.row }, target: { tab: "menus", screen: o.screen, field: o.a } });
   return out;
 }

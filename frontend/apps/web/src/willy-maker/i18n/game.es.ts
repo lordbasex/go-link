@@ -115,6 +115,8 @@ export const gameEs: GameMessages = {
     overflow: "{screen}: la línea {field} no entra en la pantalla.",
     safe: "{screen}: la línea {field} se sale del área segura.",
     glyphs: "{screen}: la línea {field} usa letras que la fuente de la placa no tiene: {chars}",
+    overlap: "{screen}: las líneas {a} y {b} se tapan en la fila {row}. Mueve una.",
   },
+  engineLines: { "credit-count": "contador de créditos", soon: "próximamente", "enemy-count": "contador de enemigos", defeat: "derrota a todos", "rescued-count": "cuenta de rescatados", coin: "aviso de insertar moneda", start: "aviso de start" },
   undo: { players: "Jugadores", action: "Nombre de acción", run: "Ventana de carrera", character: "Personaje del jugador", dip: "DIP switches", rules: "Reglas" },
 };

@@ -208,6 +208,19 @@ static void draw_screen(int scr, int blink_on)
 		draw_line(&l, !(l.attr & WM_TXT_BLINK) || blink_on);
 }
 
+/* a screen's blinking line (its prompt), or 0 */
+static int blink_line(int scr, struct line *out)
+{
+	int pos = 0, found = 0;
+	struct line l;
+	while (next_line(scr, &pos, &l))
+		if (l.attr & WM_TXT_BLINK) {
+			*out = l;
+			found = 1;
+		}
+	return found;
+}
+
 /* the first line of a screen, for the texts the engine places itself */
 static int first_line(int scr, struct line *l)
 {
@@ -1835,6 +1848,27 @@ static int title(void)
 /* how a game ended */
 enum { END_CLEAR, END_OVER };
 
+/* the Continue screen's prompt follows the credits (J-10): the title's
+   prompt (PUSH START) with a credit or free play, else the continue
+   screen's own (INSERT COIN), both on the continue prompt's row */
+static void continue_prompt(int on)
+{
+	struct line coin, start;
+	if (!blink_line(WM_SCR_CONTINUE, &coin))
+		return;
+	draw_line(&coin, 0);
+	if (blink_line(WM_SCR_TITLE, &start)) {
+		start.row = coin.row;
+		start.col = (48 - start.len * ((start.attr & WM_TXT_BIG) ? 2 : 1)) / 2;
+		draw_line(&start, 0);
+		if (credits || free_play()) {
+			draw_line(&start, on);
+			return;
+		}
+	}
+	draw_line(&coin, on);
+}
+
 static int play(int first)
 {
 	u32 end_t = 0;
@@ -1905,20 +1939,19 @@ static int play(int first)
 			else
 				blank(15, 16, 18);
 		}
-		/* nobody left: continue with a credit, else game over */
+		/* nobody left: 10 s to continue (a coin, then Start), else game over */
 		if (outcome < 0 && !alive) {
-			if (credits || free_play()) {
-				if (!cont) {
-					cont = 1;
-					end_t = frame_count;
-					clear_text();
-					draw_screen(WM_SCR_CONTINUE, 1);
-				}
-				print_num(23, 12, (u32)(9 - (frame_count - end_t) / 60), 1, INK_WHITE);
-				if (frame_count - end_t >= 600)
-					cont = 0, outcome = END_OVER;
-			} else
-				outcome = END_OVER;
+			if (!cont) {
+				cont = 1;
+				end_t = frame_count;
+				clear_text();
+				draw_screen(WM_SCR_CONTINUE, 1);
+				draw_screen(WM_SCR_HUD, 1); /* the overlay keeps the HUD whole (J-10) */
+			}
+			print_num(23, 12, (u32)(9 - (frame_count - end_t) / 60), 1, INK_WHITE);
+			continue_prompt((frame_count / 20) & 1);
+			if (frame_count - end_t >= 600)
+				cont = 0, outcome = END_OVER;
 			if (outcome == END_OVER) {
 				end_t = frame_count;
 				clear_text();

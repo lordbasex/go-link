@@ -56,6 +56,7 @@ Rules added by the implementation, beyond the tables: `level.start` also warns w
 | `game.buttons` | error | every action has a button, the board has enough buttons (3 for `slammast`, 2 for `captcomm`), and no two actions share one unless they are a combination | "{action} has no button." / "{a} and {b} use the same button." |
 | `game.title` | error | the title is 1 to 24 characters in the 8×8 font's character set | "The title uses a letter the board's font does not have: {char}." |
 | `game.menus` | warning | the title, game over and continue screens exist | "The {screen} screen is empty." |
+| `menus.overlap` | warning | no menu line covers another on the screen the ROM draws, the engine's own lines included: the title's credit counter and "nP COMING SOON", the HUD's enemy and credit counters, rescued count, clear text and "DEFEAT EVERY ENEMY", and the HUD kept under the Continue screen with the title's prompt in place of INSERT COIN while there are credits (T-11) | "{screen}: the {a} and {b} lines cover each other on row {row}. Move one." |
 | `game.size` | error | the program and data fit in the set's program space (2 MB for `slammast`) | "The game needs {used} of {max} for its program and levels." |
 
 ### Levels

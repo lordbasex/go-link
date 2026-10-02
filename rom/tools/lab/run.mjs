@@ -206,7 +206,15 @@ class Video {
  * One expectation of a script: { frame, path: "players.0.x", equals | min | max }
  * on the lab state after that frame (path "" is the whole state).
  */
-export function checkExpect(x, lab) {
+export function checkExpect(x, lab, text = []) {
+  // {"text": "RESCUED"} or {"noText": "INSERT COIN"}, optionally on one "row": what the screen shows
+  if ("text" in x || "noText" in x) {
+    const shown = x.row !== undefined ? (text[x.row] ?? "") : text.join("\n");
+    // double-size text reads "C O N T I N U E", so a text also matches with the spaces left out
+    const has = (t) => shown.includes(t) || shown.replace(/ /g, "").includes(String(t).replace(/ /g, ""));
+    const ok = ("text" in x ? has(x.text) : true) && ("noText" in x ? !has(x.noText) : true);
+    return { ...x, ok, got: x.row !== undefined ? shown : text.filter(Boolean) };
+  }
   let v = lab;
   for (const k of String(x.path ?? "").split(".").filter(Boolean)) v = v?.[k];
   let ok = v !== undefined;
@@ -336,14 +344,15 @@ export async function run(o) {
           });
         prevPl = lab.players;
       }
-      for (const x of expects) if (x.frame === n) sum.expect.push(checkExpect(x, lab));
+      const textNow = expects.some((x) => x.frame === n && ("text" in x || "noText" in x)) || checkpoints.has(n) ? m.text() : null;
+      for (const x of expects) if (x.frame === n) sum.expect.push(checkExpect(x, lab, textNow ?? []));
       const wantPng = checkpoints.has(n) || (o.pngEvery && n % o.pngEvery === 0);
       if (wantPng || video) {
         const rgba = m.screen();
         if (wantPng) {
           const file = path.join(o.out, "frames", `f${String(n).padStart(6, "0")}.png`);
           writePng(file, SCREEN_W, SCREEN_H, rgba);
-          if (checkpoints.has(n)) sum.checkpoints.push({ frame: n, png: path.relative(o.out, file), lab: publicLab(lab) });
+          if (checkpoints.has(n)) sum.checkpoints.push({ frame: n, png: path.relative(o.out, file), lab: publicLab(lab), text: textNow });
         }
         if (video) await video.write(rgba);
       } else m.keepSprites();

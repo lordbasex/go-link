@@ -115,6 +115,8 @@ export const gamePt: GameMessages = {
     overflow: "{screen}: a linha {field} não cabe na tela.",
     safe: "{screen}: a linha {field} sai da área segura.",
     glyphs: "{screen}: a linha {field} usa letras que a fonte da placa não tem: {chars}",
+    overlap: "{screen}: as linhas {a} e {b} se cobrem na linha {row}. Mova uma.",
   },
+  engineLines: { "credit-count": "contador de créditos", soon: "em breve", "enemy-count": "contador de inimigos", defeat: "derrote todos", "rescued-count": "contagem de resgatados", coin: "aviso de inserir moeda", start: "aviso de start" },
   undo: { players: "Jogadores", action: "Nome da ação", run: "Janela de corrida", character: "Personagem do jogador", dip: "DIP switches", rules: "Regras" },
 };

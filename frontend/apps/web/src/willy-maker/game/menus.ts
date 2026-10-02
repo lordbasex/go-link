@@ -206,3 +206,82 @@ export function screenProblems(project: Project, screen: MenuScreenId): FitProbl
     }
   return out;
 }
+
+/**
+ * The lines the ROM engine draws on top of a screen's own (rom/engine/
+ * engine.c): the title's credit counter and the 2 s "nP COMING SOON", the
+ * HUD's clear text, enemy counter, "DEFEAT EVERY ENEMY" and credit counter,
+ * and the HUD kept under the Continue screen with its countdown and the
+ * title's prompt in place of INSERT COIN while there are credits (the
+ * countdown is the screen's own "slots" line).
+ */
+type EngineLine = TextLine & { alt?: string };
+
+function engineLines(project: Project, screen: MenuScreenId): EngineLine[] {
+  const s = project.settings;
+  const rules = (s.rules ?? {}) as { exitNeedsEnemies?: boolean };
+  const freePlay = !!s.dip?.freePlay;
+  const line = (field: string, text: string, row: number, col: number, scale: 1 | 2 = 1): EngineLine => ({ field, text, row, col, scale, ink: "white" });
+  const soon = s.players < 4 ? [line("soon", "3P COMING SOON", 23, 17)] : [];
+  const credits = freePlay ? [] : [line("credit-count", "CREDITS 9", 26, 37)];
+  if (screen === "title") {
+    const coin = menuText(project, "attract", "prompt").toUpperCase();
+    const prompt = MENU_FIELDS.title.find((f) => f.id === "prompt")!;
+    return [...(freePlay ? [] : [line("credit-count", "CREDITS 9", 22, 19)]), ...(coin ? [{ ...line("coin", coin, prompt.row, place(coin, prompt.row, 1).col), alt: "prompt" }] : []), ...soon];
+  }
+  if (screen === "hud") {
+    const out = [...credits, ...soon];
+    const clear = screenLines(project, "hud").find((l) => l.field === "cleared");
+    if (clear) out.push({ ...clear });
+    if (rules.exitNeedsEnemies) out.push(line("enemy-count", "ENEMY 00", 26, 1), line("defeat", "DEFEAT EVERY ENEMY", 16, 15));
+    const rescued = screenLines(project, "hud").find((l) => l.field === "rescued");
+    if (rescued) out.push(line("rescued-count", " 0/0", rescued.row, rescued.col + rescued.text.length));
+    return out;
+  }
+  if (screen === "continue") {
+    const hud = screenLines(project, "hud").filter((l) => l.field !== "cleared");
+    const out: EngineLine[] = [...hud, ...engineLines(project, "hud").filter((l) => l.field !== "cleared" && l.field !== "defeat" && l.field !== "soon")];
+    const coin = screenLines(project, "continue").find((l) => l.field === "prompt");
+    const start = menuText(project, "title", "prompt").toUpperCase();
+    if (coin && start) out.push({ ...line("start", start, coin.row, place(start, coin.row, 1).col), alt: "prompt" });
+    return out;
+  }
+  return [];
+}
+
+export interface TextOverlap {
+  screen: MenuScreenId;
+  /** The two lines that cover the same cells (field ids, or the engine's own lines). */
+  a: string;
+  b: string;
+  row: number;
+}
+
+/**
+ * Lines that cover the same text cells on a screen, the engine's own
+ * lines included (T-11: an overlay never erases the HUD or another text).
+ * The engine's alternatives for one prompt (INSERT COIN or PUSH START)
+ * share their place on purpose.
+ */
+export function textOverlaps(project: Project): TextOverlap[] {
+  const out: TextOverlap[] = [];
+  for (const screen of MENU_SCREENS) {
+    const own = screenLines(project, screen).filter((l) => !(screen === "hud" && l.field === "cleared"));
+    const lines: EngineLine[] = [...own, ...engineLines(project, screen)].filter((l) => l.text.trim());
+    const box = (l: TextLine) => {
+      const lead = l.text.length - l.text.trimStart().length;
+      return { c0: l.col + lead * l.scale, c1: l.col + l.text.trimEnd().length * l.scale, r0: l.row, r1: l.row + l.scale };
+    };
+    for (let i = 0; i < lines.length; i++)
+      for (let j = i + 1; j < lines.length; j++) {
+        const a = lines[i]!;
+        const b = lines[j]!;
+        if ((a.alt ?? a.field) === (b.alt ?? b.field)) continue;
+        if (a.field === "slots" && b.field === "slots") continue;
+        const p = box(a);
+        const q = box(b);
+        if (p.c0 < q.c1 && q.c0 < p.c1 && p.r0 < q.r1 && q.r0 < p.r1) out.push({ screen, a: a.field, b: b.field, row: Math.max(p.r0, q.r0) });
+      }
+  }
+  return out;
+}

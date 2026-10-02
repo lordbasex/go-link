@@ -1,0 +1,139 @@
+{
+ "name": "spec-continue",
+ "description": "Game Spec v1 made with Create ROM (WM_ROM_OUT of rom.test.tsx): case C's damage run until player 1 is out with no credit, then the Continue screen (T-11, J-10): INSERT COIN while there is no credit, the HUD kept whole, a coin turns the prompt to PUSH START and Start brings player 1 back.",
+ "frames": 1600,
+ "checkpoints": [
+  1320,
+  1440,
+  1520
+ ],
+ "expect": [
+  {
+   "frame": 1320,
+   "path": "players.0.active",
+   "equals": false
+  },
+  {
+   "frame": 1320,
+   "row": 17,
+   "text": "INSERT COIN"
+  },
+  {
+   "frame": 1320,
+   "row": 24,
+   "text": "RESCUED 0/2"
+  },
+  {
+   "frame": 1320,
+   "text": "CONTINUE?"
+  },
+  {
+   "frame": 1440,
+   "path": "credits",
+   "equals": 1
+  },
+  {
+   "frame": 1440,
+   "row": 17,
+   "text": "PUSH START"
+  },
+  {
+   "frame": 1440,
+   "row": 17,
+   "noText": "INSERT COIN"
+  },
+  {
+   "frame": 1440,
+   "row": 24,
+   "text": "RESCUED 0/2"
+  },
+  {
+   "frame": 1520,
+   "path": "players.0.active",
+   "equals": true
+  },
+  {
+   "frame": 1520,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 1520,
+   "noText": "CONTINUE?"
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 156,
+   "to": 407,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 366,
+   "to": 368,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 408,
+   "to": 413,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 409,
+   "to": 410,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 414,
+   "to": 791,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1400,
+   "to": 1405,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 1500,
+   "to": 1505,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  }
+ ]
+}

@@ -257,7 +257,8 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
     if (l.field === "rescued") add(SCR.hud, l, TXT_COUNT);
     else if (l.field === "cleared") add(SCR.clear, l);
   }
-  for (const l of screenLines(project, "continue")) if (l.field !== "slots") add(SCR.continue, l);
+  // the continue prompt blinks, and the engine swaps it for the title's prompt while there are credits (J-10)
+  for (const l of screenLines(project, "continue")) if (l.field !== "slots") add(SCR.continue, l, l.field === "prompt" ? TXT_BLINK : 0);
   for (const l of screenLines(project, "gameOver")) add(SCR.gameOver, l);
   const single = (scr: number, screen: MenuScreenId, field: string, row: number) => {
     const text = menuText(project, screen, field).toUpperCase();

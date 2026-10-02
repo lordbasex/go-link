@@ -812,7 +812,7 @@ export const docsEs: Docs = {
           ],
         },
         { t: "h2", id: "menus", text: "La pestaña Menús" },
-        { t: "p", text: "Diseña las pantallas **Título**, **Demo**, **Elegir jugador**, **HUD**, **Continuar**, **Fin del juego** y **Récords** con una vista previa en vivo de 384 × 224 en la fuente de 8 × 8 de la placa: sus textos, el fondo, la música y la línea de créditos. Cada línea indica si entra en la pantalla, si queda dentro del **Área segura** y si usa solo letras que tiene la fuente." },
+        { t: "p", text: "Diseña las pantallas **Título**, **Demo**, **Elegir jugador**, **HUD**, **Continuar**, **Fin del juego** y **Récords** con una vista previa en vivo de 384 × 224 en la fuente de 8 × 8 de la placa: sus textos, el fondo, la música y la línea de créditos. Cada línea indica si entra en la pantalla, si queda dentro del **Área segura** y si usa solo letras que tiene la fuente, y la revisión avisa cuando dos líneas se tapan, contando lo que agrega la ROM (contadores de créditos y enemigos, el HUD bajo Continuar). En Continuar el aviso sigue a los créditos: INSERT COIN sin crédito, el aviso del título con uno." },
         { t: "h2", id: "export", text: "Exportar" },
         {
           t: "list",

@@ -113,7 +113,9 @@ export const gameEn = {
     overflow: "{screen}: the {field} line does not fit the screen.",
     safe: "{screen}: the {field} line reaches outside the safe area.",
     glyphs: "{screen}: the {field} line uses letters the board's font does not have: {chars}",
+    overlap: "{screen}: the {a} and {b} lines cover each other on row {row}. Move one.",
   },
+  engineLines: { "credit-count": "credit counter", soon: "coming soon", "enemy-count": "enemy counter", defeat: "defeat every enemy", "rescued-count": "rescued count", coin: "insert coin prompt", start: "start prompt" },
   undo: { players: "Players", action: "Action label", run: "Run window", character: "Player character", dip: "DIP switches", rules: "Rules" },
 };
 

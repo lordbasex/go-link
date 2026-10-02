@@ -35,6 +35,13 @@ export function issueText(issue: ValidationIssue, g: GameMessages, m: MenusMessa
   if (screen && m.screens[screen]) params.screen = m.screens[screen];
   const field = params.field as keyof MenusMessages["fields"] | undefined;
   if (field && m.fields[field]) params.field = m.fields[field].toLowerCase();
+  // an overlap names two lines: the screen's own fields or the engine's
+  for (const k of ["a", "b"] as const) {
+    const id = params[k] as string | undefined;
+    if (id === undefined) continue;
+    const own = m.fields[id as keyof MenusMessages["fields"]];
+    params[k] = own ? own.toLowerCase() : ((g.engineLines as Record<string, string>)[id] ?? id);
+  }
   return fill(template, params);
 }
 

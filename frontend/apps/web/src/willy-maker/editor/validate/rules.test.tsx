@@ -356,6 +356,10 @@ describe("level 1: every rule of validation.md", () => {
     const d = base();
     objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
     broken.push(d, specProject());
+    const crowded = base();
+    crowded.settings.players = 3;
+    crowded.settings.menus.hud.texts = { join: "PLEASE PRESS START" };
+    broken.push(crowded);
     const high = base();
     objectLayer(high.levels[0]!).items.find((o) => o.type === "player_start")!.y = 48;
     broken.push(high);

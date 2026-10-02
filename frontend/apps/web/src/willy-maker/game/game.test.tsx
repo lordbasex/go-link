@@ -18,7 +18,7 @@ import { GameScreen } from "./GameScreen";
 import { MenusScreen } from "./MenusScreen";
 import { actionRows, playerSlots, runTapFrames, setDip, setMenuText, setPlayers, setPlayerSlot, setRunTap } from "./settings";
 import { CPS1 } from "../board/cps1";
-import { menuText, screenLines, screenProblems, textProblems, type MenuScreenId } from "./menus";
+import { menuText, screenLines, screenProblems, textOverlaps, textProblems, type MenuScreenId } from "./menus";
 import { issueTextIn } from "./texts";
 import { keyLabel, padButtonLabel } from "./ControllerPanel";
 import { buttonNames } from "../../controllers/controllerModels";
@@ -208,6 +208,15 @@ describe("Menus: text fits the board", () => {
     expect(menuText(newProject({ title: "G", players: 2 }), "hud", "join")).toBe("PRESS START");
     four.settings.menus.hud.texts = { join: "PRESS START" };
     expect(screenProblems(four, "hud")).toEqual([{ kind: "overflow", field: "join", width: 11 }]);
+  });
+
+  it("finds lines that cover each other on the screen the ROM draws, the engine's own included (T-11)", () => {
+    for (const players of [1, 2, 3, 4]) expect(textOverlaps(newProject({ title: "Dead Air", players }))).toEqual([]);
+    const three = newProject({ title: "G", players: 3 });
+    three.settings.menus.hud.texts = { join: "PLEASE PRESS START" };
+    expect(textOverlaps(three)).toContainEqual({ screen: "hud", a: "join", b: "slots", row: 0 });
+    // the continue screen keeps the HUD: a prompt on the rescued row would cover it
+    expect(textOverlaps(three).some((o) => o.screen === "continue")).toBe(true);
   });
 
   it("finds a title too wide for the screen", () => {

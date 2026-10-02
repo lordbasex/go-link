@@ -21,6 +21,10 @@ export const WASM = path.join(REPO, "frontend/packages/cps1-sim/wasm/cps1sim.was
 export const LAB_MAGIC = 0x4c414231;
 export const LAB_SIZE = 0xc8;
 export const WRAM_BASE = 0xff0000;
+/** The text layer the screen shows, in 8 px characters, and where our programs keep scroll1 in graphics RAM (0x900000). */
+export const TEXT_COLS = 48;
+export const TEXT_ROWS = 28;
+const SCROLL1_OFFSET = 0;
 const WRAM_BYTES = 0x10000;
 const PROGRAM_BYTES = 0x200000; // the board model's program space (cps1-sim PROGRAM_SIZE)
 export const MODES = ["boot", "title", "playing", "clear", "game_over"];
@@ -193,6 +197,32 @@ export class Machine {
     this.frame++;
     if (st.fault) throw new Error(`the 68000 faulted at frame ${this.frame}: ${JSON.stringify({ fault: st.fault, addr: st.faultAddr.toString(16), pc: st.faultPc.toString(16) })}`);
     return st;
+  }
+
+  /**
+   * The text layer (scroll1) as the screen shows it: 28 rows of 48
+   * characters, as our programs write it (tile code = ASCII from the
+   * screen's corner at 64, 16; a double-size glyph's top-left quarter is
+   * its character, the other three quarters spaces). Other codes are "?".
+   */
+  text() {
+    const g = this.sim.gfxram();
+    const rows = [];
+    for (let r = 0; r < TEXT_ROWS; r++) {
+      let s = "";
+      for (let c = 0; c < TEXT_COLS; c++) {
+        const col = c + 8;
+        const row = r + 2;
+        const off = (row & 0x1f) + ((col & 0x3f) << 5) + ((row & 0x20) << 6);
+        const code = g[(SCROLL1_OFFSET + off * 4) >> 1] ?? 0x20;
+        if (code === 0x20 || code === 0) s += " ";
+        else if (code > 0x20 && code < 0x60) s += String.fromCharCode(code);
+        else if (code >= 0x80 && code < 0x80 + 63 * 4) s += (code - 0x80) % 4 ? " " : String.fromCharCode(0x21 + ((code - 0x80) >> 2));
+        else s += "?";
+      }
+      rows.push(s.trimEnd());
+    }
+    return rows;
   }
 
   /** Work RAM as big-endian bytes (0xff0000 = index 0). */
