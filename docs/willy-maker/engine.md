@@ -159,6 +159,14 @@ Create ROM lists these as notes under its result; none of them stops it.
 - The ROM is always laid out as `slammast` (a `captcomm` game is noted).
 - **Play on my go-link** powers the set on with the real core of the linked device (validation level 4); opening a room with it needs the device to accept a user's own set under its own identity, which is not built yet.
 
+## Create ROM from the command line
+
+```sh
+node rom/tools/willy-rom.mjs GAME.willy.zip [--out DIR] [--force] [--no-power-on]
+```
+
+Task T-14 of [experiment 1's verdict](../experiments/verdict.md) (lesson L-12): one command, no browser, rebuilds a game's ROM from its project file (the Export tab's **Save project**, or **Project file** on the Create ROM card). It loads the website's own TypeScript through Vite's module loader (`rom/headless.ts` `romFromProjectFile`: the project file is read and checked as Willy Maker opens it, the review runs, and Create ROM's steps take the pictures from the file's own assets) with the committed engine, so the same project gives the same `.zip` as the browser, byte for byte (`rom/headless.test.tsx`). DIR (default: the project file's folder) gets `<set>.zip`, `<set>.symbols.json` and a copy of the project file, so a ROM is never apart from what makes it; the review's errors stop it unless `--force`, its warnings and the engine's notes are printed, and the ROM is powered on in the board model (validation level 3). Game Spec v1 takes about 1.2 s on the Intel Mac. It needs `npm install` in `frontend/`.
+
 ## Building and checking the engine
 
 ```sh

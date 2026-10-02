@@ -103,6 +103,8 @@ export const exportPt: ExportMessages = {
     download: "Baixar ROM",
     symbols: "Mapa de símbolos",
     symbolsTip: "symbols.json: onde o jogo guarda o estado na RAM (para ferramentas de teste)",
+    project: "Arquivo do projeto",
+    projectTip: "O .willy.zip do jogo: guarde-o junto da ROM. O Willy Maker o abre de novo, e node rom/tools/willy-rom.mjs reconstrói a mesma ROM com ele sem navegador",
     play: "Jogar no meu go-link",
     playText: "Envia a ROM ao seu go-link vinculado, que a liga com o core real.",
     notesTitle: "Ainda não está na ROM",

@@ -46,8 +46,11 @@ export function loadEngine(base = ENGINE_URL, fetcher: typeof fetch = fetch): Pr
   return p;
 }
 
-async function picture(ref: AssetRef): Promise<Picture | null> {
-  const asset = await getAsset(ref);
+/** Reads a stored picture: the browser's asset store, or a project file's assets (rom/headless.ts). */
+export type AssetLoader = (ref: AssetRef) => Promise<{ bytes: Uint8Array; type: string } | null>;
+
+async function picture(ref: AssetRef, load: AssetLoader): Promise<Picture | null> {
+  const asset = await load(ref);
   if (!asset) return null;
   try {
     const img = await decodePng(asset.bytes);
@@ -59,22 +62,22 @@ async function picture(ref: AssetRef): Promise<Picture | null> {
 }
 
 /** The decoded pictures of the project's tilesets, by tileset id. */
-export async function tilesetPictures(project: Project): Promise<Map<string, Picture>> {
+export async function tilesetPictures(project: Project, load: AssetLoader = getAsset): Promise<Map<string, Picture>> {
   const out = new Map<string, Picture>();
   for (const ts of project.tilesets) {
-    const pic = ts.image ? await picture(ts.image) : null;
+    const pic = ts.image ? await picture(ts.image, load) : null;
     if (pic) out.set(ts.id, pic);
   }
   return out;
 }
 
 /** The decoded pictures of the heroes the players use (not Willy), by character id. */
-export async function characterPictures(project: Project): Promise<Map<string, Picture>> {
+export async function characterPictures(project: Project, load: AssetLoader = getAsset): Promise<Map<string, Picture>> {
   const out = new Map<string, Picture>();
   const used = new Set(playerSlots(project).map((s) => s.character).filter((id) => id !== BUILTIN_HERO));
   for (const ch of project.characters) {
     if (!used.has(ch.id) || !ch.sheet) continue;
-    const pic = await picture(ch.sheet);
+    const pic = await picture(ch.sheet, load);
     if (pic) out.set(ch.id, pic);
   }
   return out;
@@ -95,12 +98,12 @@ export async function zipSet(files: Map<string, Uint8Array>): Promise<Uint8Array
   return writeZip(entries, { compress: true, date: ZIP_DATE });
 }
 
-export async function createRom(project: Project, onStep: (step: CreateStep) => void = () => {}, engineLoader: () => Promise<Engine> = () => loadEngine()): Promise<CreatedRom> {
+export async function createRom(project: Project, onStep: (step: CreateStep) => void = () => {}, engineLoader: () => Promise<Engine> = () => loadEngine(), load: AssetLoader = getAsset): Promise<CreatedRom> {
   onStep("engine");
   const engine = await engineLoader();
   onStep("pictures");
-  const pictures = await tilesetPictures(project);
-  const heroes = await characterPictures(project);
+  const pictures = await tilesetPictures(project, load);
+  const heroes = await characterPictures(project, load);
   onStep("pack");
   const pack = packGame(project, engine, (id) => pictures.get(id) ?? null, (id) => heroes.get(id) ?? null);
   onStep("zip");

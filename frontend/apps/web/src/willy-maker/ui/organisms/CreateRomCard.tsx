@@ -15,6 +15,7 @@ import { CREATE_STEPS, createRom, type CreatedRom, type CreateStep } from "../..
 import { Capsule, Card } from "../atoms";
 import { IconCheck, IconCircle, IconDownload, IconX } from "../icons";
 import { downloadBytes } from "../download";
+import { exportProjectZip, zipName } from "../../io/projectZip";
 import { DeviceRomTest } from "./PowerOnCard";
 
 type Step = CreateStep | "test";
@@ -146,6 +147,9 @@ export function CreateRomCard({ project, blocked }: { project: Project; blocked:
             </Capsule>
             <Capsule size="lg" onClick={() => setPlay(true)} data-testid="wm-rom-play">
               {t.play}
+            </Capsule>
+            <Capsule size="sm" title={t.projectTip} onClick={() => void exportProjectZip(project).then((zip) => downloadBytes(zip, zipName(project), "application/zip"))} data-testid="wm-rom-project">
+              <IconDownload /> {t.project}
             </Capsule>
             <Capsule size="sm" title={t.symbolsTip} onClick={() => downloadBytes(new TextEncoder().encode(state.rom.symbols), "symbols.json", "application/json")} data-testid="wm-rom-symbols">
               <IconDownload /> {t.symbols}

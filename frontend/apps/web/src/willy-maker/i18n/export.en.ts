@@ -89,6 +89,8 @@ export const exportEn = {
     download: "Download ROM",
     symbols: "Symbol map",
     symbolsTip: "symbols.json: where the game keeps its state in RAM (for test tools)",
+    project: "Project file",
+    projectTip: "The game's .willy.zip: keep it next to the ROM. Willy Maker opens it again, and node rom/tools/willy-rom.mjs rebuilds the same ROM from it without a browser",
     play: "Play on my go-link",
     playText: "Sends the ROM to your linked go-link, which powers it on with the real core.",
     notesTitle: "Not in the ROM yet",
