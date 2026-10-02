@@ -20,6 +20,8 @@ export interface CharacterSource {
   grid: { w: number; h: number };
   /** The boxes in sheet pixels, pivots from their top left. */
   frames: SourceFrame[];
+  /** Built-in animations the user deleted from the list. */
+  hiddenAnims?: string[];
 }
 
 /** A character as the importer stores it: the model's, plus where it came from. */
@@ -38,10 +40,12 @@ export interface Draft {
   frames: SourceFrame[];
   anims: Record<string, DraftAnim>;
   swapColors: string[];
+  /** Built-in animations deleted from the list (shown again on request). */
+  hidden: string[];
 }
 
 export function emptyDraft(): Draft {
-  return { id: null, name: "", role: "hero", height: 44, file: "", sheet: null, mode: "figures", tolerance: 18, grid: { w: 48, h: 48 }, frames: [], anims: {}, swapColors: [] };
+  return { id: null, name: "", role: "hero", height: 44, file: "", sheet: null, mode: "figures", tolerance: 18, grid: { w: 48, h: 48 }, frames: [], anims: {}, swapColors: [], hidden: [] };
 }
 
 /** The draft of a saved character (null when it was not made by the importer). */
@@ -62,6 +66,7 @@ export function draftOf(ch: ImportedCharacter): Draft | null {
     frames: src.frames.map((f) => ({ ...f })),
     anims: Object.fromEntries(Object.entries(ch.anims).map(([k, a]) => [k, { frames: [...a.frames], fps: a.fps, loop: a.loop }])),
     swapColors: [...ch.swapColors],
+    hidden: Array.isArray(src.hiddenAnims) ? src.hiddenAnims.filter((x) => typeof x === "string") : [],
   };
 }
 
@@ -118,7 +123,7 @@ export function saveCharacter(project: Project, { draft, atlas, rects, zones }: 
     anims,
     swapColors: draft.swapColors.filter((c) => zones.some((z) => z.palette.includes(c))),
     source: draft.sheet
-      ? { sheet: draft.sheet, file: draft.file, mode: draft.mode, tolerance: draft.tolerance, grid: { ...draft.grid }, frames: draft.frames.map((f) => ({ ...f })) }
+      ? { sheet: draft.sheet, file: draft.file, mode: draft.mode, tolerance: draft.tolerance, grid: { ...draft.grid }, frames: draft.frames.map((f) => ({ ...f })), ...(draft.hidden.length ? { hiddenAnims: [...draft.hidden] } : {}) }
       : undefined,
   };
   if (!character.source) delete character.source;

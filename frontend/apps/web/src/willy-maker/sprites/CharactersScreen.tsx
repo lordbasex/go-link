@@ -199,14 +199,14 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     return m;
   }, [zones, deferred.frames]);
 
-  const list = animList(draft.role, draft.anims);
+  const list = animList(draft.role, draft.anims, draft.hidden);
   const colorOf = useCallback((name: string) => Math.max(0, list.findIndex((p) => p.name === name)) % 8, [list]);
   const numberOf = useCallback((id: string) => draft.frames.findIndex((f) => f.id === id) + 1, [draft.frames]);
   const labels = useMemo(() => {
     const m = new Map<string, BoxLabel>();
-    for (const [name, a] of Object.entries(draft.anims)) a.frames.forEach((id, i) => m.has(id) || m.set(id, { text: `${name} ${i + 1}`, color: colorOf(name) }));
+    for (const [name, a] of Object.entries(draft.anims)) a.frames.forEach((id, i) => m.has(id) || m.set(id, { text: `${t.animNames[name] ?? name} ${i + 1}`, color: colorOf(name) }));
     return m;
-  }, [draft.anims, colorOf]);
+  }, [draft.anims, colorOf, t]);
 
   const select = (id: string | null, additive: boolean) => {
     setSelected((cur) => {
@@ -552,6 +552,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             onActive={setActive}
             onChange={(anims) => edit((d) => ({ ...d, anims }))}
             onAddSelected={addSelected}
+            hidden={draft.hidden}
+            onHidden={(hidden) => edit((d) => ({ ...d, hidden }))}
           />
 
           <BoardPanel

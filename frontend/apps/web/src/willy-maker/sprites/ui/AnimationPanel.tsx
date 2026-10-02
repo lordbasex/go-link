@@ -11,6 +11,8 @@ import type { SpritesMessages } from "../../i18n/sprites.en";
 import { fmt } from "../text";
 import { paint } from "../image";
 import type { ScaledFrame } from "@go-link/cps1";
+import { AnimPreview } from "../../ui/organisms/AnimPreview";
+import { usePromptMessages } from "../../ui/organisms/PromptDialog";
 
 export interface AnimationPanelProps {
   t: SpritesMessages;
@@ -26,13 +28,24 @@ export interface AnimationPanelProps {
   onActive(name: string): void;
   onChange(anims: Record<string, DraftAnim>): void;
   onAddSelected(name: string): void;
+  /** Built-in animations deleted from the list. */
+  hidden?: string[];
+  onHidden?(hidden: string[]): void;
 }
 
+/** A name compared loosely: no accents, no case, no spaces or underscores. */
+const loose = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
 /** The presets plus the animations the draft has that are not presets. */
-export function animList(role: CharacterRole, anims: Record<string, DraftAnim>): AnimPreset[] {
-  const presets = ANIMS[role];
+export function animList(role: CharacterRole, anims: Record<string, DraftAnim>, hidden: readonly string[] = []): AnimPreset[] {
+  const presets = ANIMS[role].filter((p) => !hidden.includes(p.name) || anims[p.name]?.frames.length);
   const extra = Object.keys(anims)
-    .filter((n) => !presets.some((p) => p.name === n))
+    .filter((n) => !ANIMS[role].some((p) => p.name === n))
     .map((name) => ({ name, frames: 0, fps: anims[name]!.fps, loop: anims[name]!.loop }));
   return [...presets, ...extra];
 }
@@ -45,9 +58,15 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected, hidden = [], onHidden }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
-  const list = animList(role, anims);
+  const [peek, setPeek] = useState<string | null>(null);
+  const [sameAs, setSameAs] = useState<string | null>(null);
+  const tp = usePromptMessages();
+  const list = animList(role, anims, hidden);
+  const builtIn = (name: string) => ANIMS[role].some((p) => p.name === name);
+  const label = (name: string) => t.animNames[name] ?? name;
+  const hiddenNow = hidden.filter((n) => builtIn(n) && !anims[n]?.frames.length);
   const current = active ? (anims[active] ?? null) : null;
   const preset = list.find((p) => p.name === active);
 
@@ -57,6 +76,16 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
   };
 
   const addNew = () => {
+    // a name the list already has in the user's language ("Correr") is that animation (run)
+    const known = ANIMS[role].find((p) => loose(p.name) === loose(newName) || loose(label(p.name)) === loose(newName));
+    if (known) {
+      if (hidden.includes(known.name)) onHidden?.(hidden.filter((n) => n !== known.name));
+      onActive(known.name);
+      setSameAs(fmt(t.sameAs, { name: label(known.name), id: known.name }));
+      setNewName("");
+      return;
+    }
+    setSameAs(null);
     const name = newName
       .trim()
       .toLowerCase()
@@ -79,13 +108,37 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
           const n = a?.frames.length ?? 0;
           const count = p.frames ? fmt(t.animFrames, { n, want: p.frames }) : fmt(t.animFramesFree, { n });
           return (
-            <button key={p.name} type="button" className={`wms-anim${active === p.name ? " is-on" : ""}${n === 0 ? " is-empty" : ""}`} aria-pressed={active === p.name} onClick={() => onActive(p.name)}>
+            <button
+              key={p.name}
+              type="button"
+              className={`wms-anim${active === p.name ? " is-on" : ""}${n === 0 ? " is-empty" : ""}`}
+              aria-pressed={active === p.name}
+              aria-describedby={peek === p.name ? `wms-peek-${p.name}` : undefined}
+              onClick={() => onActive(p.name)}
+              onMouseEnter={() => setPeek(p.name)}
+              onMouseLeave={() => setPeek((x) => (x === p.name ? null : x))}
+              onFocus={() => setPeek(p.name)}
+              onBlur={() => setPeek((x) => (x === p.name ? null : x))}
+            >
               <span className="wms-dot" data-c={n ? colorOf(p.name) : -1} aria-hidden="true" />
-              <span className="wms-anim-name">{p.name}</span>
+              <span className="wms-anim-name">
+                {label(p.name)}
+                {label(p.name) !== p.name && <span className="wms-anim-id">{p.name}</span>}
+              </span>
               <span className="wms-anim-count">
                 {count}
                 {n === 0 && p.frames ? ` · ${t.missing}` : n && a ? ` · ${a.fps} fps` : ""}
               </span>
+              {peek === p.name && (
+                <span id={`wms-peek-${p.name}`} className="wms-peek">
+                  <AnimPreview
+                    name={p.name}
+                    frames={p.frames || n}
+                    text={[tp.animDesc[p.name], fmt(t.internalName, { id: p.name })].filter(Boolean).join(" ")}
+                    labels={{ example: tp.animExample, shownWith: tp.animShownWith, none: tp.animNoExample, frames: tp.animFrames }}
+                  />
+                </span>
+              )}
             </button>
           );
         })}
@@ -93,7 +146,10 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
       {active ? (
         <div className="wms-anim-edit">
           <div className="wms-row">
-            <strong className="wms-anim-title">{active}</strong>
+            <strong className="wms-anim-title">
+              {label(active)}
+              {label(active) !== active && <span className="wms-anim-id">{active}</span>}
+            </strong>
             <span className="wms-spacer" />
             <label className="wms-field wms-field-num">
               <span>{t.fps}</span>
@@ -131,10 +187,38 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
                 {t.clearAnim}
               </button>
             ) : null}
+            <button
+              type="button"
+              className="wms-cap"
+              data-tip={t.deleteAnimTip}
+              onClick={() => {
+                const { [active]: _gone, ...rest } = anims;
+                onChange(rest);
+                if (builtIn(active) && !hidden.includes(active)) onHidden?.([...hidden, active]);
+                onActive("");
+              }}
+            >
+              {t.deleteAnim}
+            </button>
           </div>
         </div>
       ) : (
         <p className="wms-note">{t.noAnimHint}</p>
+      )}
+      {hiddenNow.length > 0 && (
+        <p className="wms-note wms-hidden">
+          {fmt(t.hidden, { n: hiddenNow.length })}{" "}
+          {hiddenNow.map((n) => (
+            <button key={n} type="button" className="wms-cap is-sm" aria-label={fmt(t.showAgain, { name: label(n) })} onClick={() => onHidden?.(hidden.filter((x) => x !== n))}>
+              + {label(n)}
+            </button>
+          ))}
+        </p>
+      )}
+      {sameAs && (
+        <p className="wms-note" role="status">
+          {sameAs}
+        </p>
       )}
       <form
         className="wms-row"

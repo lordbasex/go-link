@@ -70,6 +70,22 @@ async function drop() {
 }
 
 describe("CharactersScreen", () => {
+  it("deletes an animation, shows a built-in one again, and takes a known name in any language as that animation", async () => {
+    setup();
+    await drop();
+    const yawn = () => screen.queryByRole("button", { name: /^Yawnyawn/ });
+    fireEvent.click(yawn()!);
+    fireEvent.click(screen.getByRole("button", { name: "Delete animation" }));
+    expect(yawn()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show Yawn again" }));
+    expect(yawn()).not.toBeNull();
+    // "Run" typed as a new one is the existing run, not a copy of it
+    fireEvent.change(screen.getByRole("textbox", { name: "New animation" }), { target: { value: "Run" } });
+    fireEvent.click(screen.getByRole("button", { name: /^\+ Add$/ }));
+    expect(screen.getByText("That one already exists: Run (run).")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Run/ })).toHaveLength(1);
+  });
+
   it("starts with the drop zone", () => {
     setup();
     expect(screen.getByText("Drop a sprite sheet here")).toBeInTheDocument();
@@ -84,8 +100,9 @@ describe("CharactersScreen", () => {
     // select both boxes and add them to idle (the active animation)
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(screen.getByRole("button", { name: /Add the selected frames/ }));
-    expect(screen.getByRole("button", { name: "Frame 1 · idle 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^idle\s*2 of 4/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Frame 1 · Standing 1" })).toBeInTheDocument();
+    // the animation shows a plain name and, under it, the name the game uses
+    expect(screen.getByRole("button", { name: /^Standingidle\s*2 of 4/ })).toBeInTheDocument();
     // palette zones: 48 px tall at 44 px -> head, torso, legs
     await screen.findByText("Head");
     expect(screen.getByText("Torso")).toBeInTheDocument();

@@ -85,7 +85,8 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
       "source": {                      // optional: what the importer needs to edit it again
         "sheet": "sha256:51ab…", "file": "willy.png", "mode": "figures", "tolerance": 18,
         "grid": { "w": 48, "h": 48 },
-        "frames": [ { "id": "idle_0", "x": 412, "y": 63, "w": 69, "h": 115, "px": 35, "py": 114 } ]
+        "frames": [ { "id": "idle_0", "x": 412, "y": 63, "w": 69, "h": 115, "px": 35, "py": 114 } ],
+        "hiddenAnims": ["yawn"]       // optional: built-in animations deleted from the list
       }
     }
   ],
