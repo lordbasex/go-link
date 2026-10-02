@@ -34,3 +34,4 @@
 6. **Release 0.1.8** with Willy Maker, the ROM validator and go-link's own sets (the website already has them; the device app needs the release).
 7. **Willy Maker stage 2:** Create ROM in the browser from a data-driven engine, then play it on the linked go-link in one click.
 8. **The ROM's next stage:** ladder climbing animation, a camera for players on distant floors, QSound music and effects, and the remaining levels of the [game bible](rom/story.md).
+9. **Willy Maker's AI playtester:** a small player trained on each game in the browser (emulator in WebAssembly, network on WebGPU) that reports clear rates, deaths and stuck spots ([vision](willy-maker/vision.md#the-ai-playtester)).

@@ -27,9 +27,19 @@ Step 3 fits go-link as it is: the device already runs a libretro core and stream
 - The data-driven engine of stage 2 ("Create ROM", see [README.md](README.md#phase-2-create-rom-in-the-browser)) is the first genre engine on the first board: the pattern every later genre and board follows.
 - New parts get an entry in `editor/support.ts` per genre engine, so the editor never offers what a target cannot run without saying so.
 
+## The AI playtester
+
+Every game made in Willy Maker should be playable by an AI before anyone else plays it: "Test with AI" trains a small player on that game and reports, with videos, how often a level is cleared, where players die, which jumps are almost impossible and where they get stuck.
+
+- **Why it is cheap:** the pieces exist. The board simulator runs in WebAssembly (validation level 3), each ROM keeps an exact game state in RAM (experiment 1's `lab_state`), and a route bot already plays from it ([harness](../experiments/harness.md)).
+- **The player:** a small policy network (thousands to a million parameters, under a millisecond per decision) trained on the game itself, by imitation of the route bot first and then by reinforcement learning (rewards for progress, rescues and clears; penalties for deaths and getting stuck). A general decision model such as Laya, tried in experiment 1, is not a game player: asked "next action?" with no training it answered "fire" in every state.
+- **Where it runs:** in the browser, with the emulator in Web Workers on the CPU (one game per worker, many at once) and the network on WebGPU (many games' decisions in one step, faster training, and later players that read the screen instead of the game state), falling back to WebAssembly on the CPU where WebGPU is missing; or on the linked go-link device.
+- **First step:** a short experiment on one ROM comparing the route bot, Laya asked small yes/no questions, and a trained player; the winner becomes the playtester.
+
 ## Order of work
 
 1. Stage 2 on the CPS-1 (Create ROM), informed by [experiment 1](../experiments/README.md).
-2. More genres on the CPS-1, in the order of [genres.md](genres.md), each one as an experiment with a frozen spec and a jury.
-3. The first bigger board, chosen when a genre needs what the CPS-1 cannot do.
-4. go-link's own engine.
+2. The AI playtester.
+3. More genres on the CPS-1, in the order of [genres.md](genres.md), each one as an experiment with a frozen spec and a jury.
+4. The first bigger board, chosen when a genre needs what the CPS-1 cannot do.
+5. go-link's own engine.
