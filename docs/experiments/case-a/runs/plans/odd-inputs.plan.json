@@ -1,0 +1,339 @@
+{
+ "name": "case-a-odd-inputs",
+ "description": "Case A: inputs a player should not need. On the title: 3P Coin (a credit), 3P Start and 4P Start (COMING SOON, no crash), B3 and b4-b6 on every port. In the game: B3 alone and with every direction (nothing happens), 1P Start while playing (nothing), 2P Start with no credit (nothing), 4P Coin (a credit), 3P Start (COMING SOON), every button of port 1 at once, left and right together, then 2P Start with the credit (player 2 joins). The game must keep running, in the playing mode, with its state sane.",
+ "frames": 2400,
+ "checkpoints": [
+  200,
+  260,
+  500,
+  700,
+  900,
+  1100,
+  1300,
+  1500,
+  2400
+ ],
+ "expect": [
+  {
+   "frame": 140,
+   "path": "credits",
+   "equals": 1
+  },
+  {
+   "frame": 140,
+   "path": "mode",
+   "equals": "title"
+  },
+  {
+   "frame": 230,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 230,
+   "path": "credits",
+   "equals": 0
+  },
+  {
+   "frame": 700,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 700,
+   "path": "players.0.active",
+   "equals": true
+  },
+  {
+   "frame": 700,
+   "path": "players.1.active",
+   "equals": false
+  },
+  {
+   "frame": 900,
+   "path": "credits",
+   "equals": 1
+  },
+  {
+   "frame": 1500,
+   "path": "players.0.active",
+   "equals": true
+  },
+  {
+   "frame": 1700,
+   "path": "players.1.active",
+   "equals": true
+  },
+  {
+   "frame": 1700,
+   "path": "credits",
+   "equals": 0
+  },
+  {
+   "frame": 2400,
+   "path": "mode",
+   "equals": "playing"
+  }
+ ],
+ "start": 2400,
+ "prelude": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 3,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 140,
+   "to": 145,
+   "port": 3,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 160,
+   "to": 165,
+   "port": 4,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 200,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "b4",
+    "b5",
+    "b6"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 200,
+   "port": 2,
+   "buttons": [
+    "b3",
+    "b4",
+    "b5",
+    "b6"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 200,
+   "port": 3,
+   "buttons": [
+    "b3",
+    "b4",
+    "b5",
+    "b6",
+    "up",
+    "b1",
+    "b2"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 200,
+   "port": 4,
+   "buttons": [
+    "b3",
+    "b4",
+    "b5",
+    "b6",
+    "down",
+    "b1",
+    "b2"
+   ]
+  },
+  {
+   "from": 210,
+   "to": 215,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 240,
+   "to": 300,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 310,
+   "to": 340,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "right"
+   ]
+  },
+  {
+   "from": 350,
+   "to": 380,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "up"
+   ]
+  },
+  {
+   "from": 390,
+   "to": 420,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "down"
+   ]
+  },
+  {
+   "from": 430,
+   "to": 460,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "b1"
+   ]
+  },
+  {
+   "from": 470,
+   "to": 500,
+   "port": 1,
+   "buttons": [
+    "b3",
+    "b2"
+   ]
+  },
+  {
+   "from": 520,
+   "to": 525,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 540,
+   "to": 545,
+   "port": 2,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 560,
+   "to": 600,
+   "port": 2,
+   "buttons": [
+    "b1",
+    "b2",
+    "b3",
+    "right"
+   ]
+  },
+  {
+   "from": 800,
+   "to": 805,
+   "port": 4,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 820,
+   "to": 825,
+   "port": 3,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 900,
+   "to": 1100,
+   "port": 1,
+   "buttons": [
+    "up",
+    "down",
+    "left",
+    "right",
+    "b1",
+    "b2",
+    "b3",
+    "b4",
+    "b5",
+    "b6"
+   ]
+  },
+  {
+   "from": 1100,
+   "to": 1300,
+   "port": 1,
+   "buttons": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "from": 1300,
+   "to": 1500,
+   "port": 1,
+   "buttons": [
+    "left",
+    "b2",
+    "b1"
+   ]
+  },
+  {
+   "from": 1600,
+   "to": 1605,
+   "port": 2,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 1610,
+   "to": 2000,
+   "port": 2,
+   "buttons": [
+    "right",
+    "b2"
+   ]
+  },
+  {
+   "from": 1610,
+   "to": 2000,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2000,
+   "to": 2300,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 2000,
+   "to": 2300,
+   "port": 2,
+   "buttons": [
+    "up",
+    "b3"
+   ]
+  }
+ ],
+ "segments": []
+}

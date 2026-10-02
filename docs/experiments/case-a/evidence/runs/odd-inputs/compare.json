@@ -1,0 +1,81 @@
+{
+  "sim": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/sim/frames",
+  "core": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames",
+  "tolerance": 0,
+  "frames": 9,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 200,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000200.png",
+      "pairPng": "pair-000200.png"
+    },
+    {
+      "frame": 260,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000260.png",
+      "pairPng": "pair-000260.png"
+    },
+    {
+      "frame": 500,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000500.png",
+      "pairPng": "pair-000500.png"
+    },
+    {
+      "frame": 700,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000700.png",
+      "pairPng": "pair-000700.png"
+    },
+    {
+      "frame": 900,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000900.png",
+      "pairPng": "pair-000900.png"
+    },
+    {
+      "frame": 1100,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001100.png",
+      "pairPng": "pair-001100.png"
+    },
+    {
+      "frame": 1300,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001300.png",
+      "pairPng": "pair-001300.png"
+    },
+    {
+      "frame": 1500,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001500.png",
+      "pairPng": "pair-001500.png"
+    },
+    {
+      "frame": 2400,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-002400.png",
+      "pairPng": "pair-002400.png"
+    }
+  ]
+}

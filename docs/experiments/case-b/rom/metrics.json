@@ -1,0 +1,55 @@
+{
+ "case": "B",
+ "step": 2,
+ "what": "the ROM built blind from Willy Maker's AI pack",
+ "branch": "exp1/case-b-rom",
+ "pack": {"file": "ai-pack.zip", "sha256": "23cdc296bc8a61879d5efbb4fe8e5ce60fa192327f61660f4f7f93698ea5d0fa", "entries": 15},
+ "wall": {
+  "first_action": "2026-10-01T18:33:49-03:00",
+  "last_action": "2026-10-01T19:49:00-03:00",
+  "minutes": 75,
+  "of_which_waiting_for_laya_minutes": 54,
+  "to_first_clear_minutes": 15,
+  "note": "first clear of the scripted run at 18:48; the acceptance runs took 18:50-19:35 (stopped) and 19:35-19:47"
+ },
+ "tool_calls_estimate": 135,
+ "tokens": null,
+ "attempts": {
+  "builds_of_the_pack_set": 1,
+  "prototype_rebuilds_to_check_bytes": 2,
+  "clear_script_drafts": 4,
+  "expectation_runs": 2,
+  "acceptance_runs": 2
+ },
+ "build_failures": 0,
+ "compile_warnings": 0,
+ "validator": {
+  "level3": "pass (10 of 10 steps)",
+  "level4": "pass (every step; shows as the core's original game, not as a go-link set)",
+  "framelab_core_log": "28 WRONG CHECKSUMS lines (one per file), 0 NOT FOUND, 0 INCORRECT LENGTH",
+  "scripted_run": "cleared at frame 1856, 18 of 18 expectations",
+  "same_as_core": "11 checkpoints, worst difference 0 %",
+  "bot": "5 of 5 cleared, frames 1297-1727 (median 1414), 0 lives lost",
+  "laya": "0 of 3 (900 frames each) and 0 of 1 (3600 frames, run 1): nearly every decision fire",
+  "four_players": "6 of 6 expectations",
+  "room_test": "not run (D-115)"
+ },
+ "rom": {
+  "zip_bytes": 52527,
+  "files": 28,
+  "program_bytes": 31194,
+  "program_budget_bytes": 2097152,
+  "sprite_palettes": 27,
+  "sprite_palettes_max": 32,
+  "play_tiles_16px": 10,
+  "far_tiles_32px": 7,
+  "lab_state": {"address": "0xff0000", "size": 200, "from": "symbol"}
+ },
+ "code": {
+  "new_files": ["rom/tools/pack.mjs", "rom/src/game_pack.c"],
+  "changed_files": ["rom/tools/art.mjs", "rom/tools/build.mjs"],
+  "unchanged": ["rom/src/main.c", "rom/tools/level.mjs", "rom/src/lab_state.h", "rom/tools/lab/"]
+ },
+ "decisions": 16,
+ "pack_gaps": 26
+}

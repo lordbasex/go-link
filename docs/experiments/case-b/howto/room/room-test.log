@@ -1,0 +1,10 @@
+2-attract: 768x448
+3-credit: 768x448
+4-run: 768x448
+5-machine-gun: 768x448
+6-bazooka: 768x448
+7-jump: 768x448
+8-later: 768x448
+video frames { decoded: 930, dropped: 20 }
+pictures in rom/build/room/shots
+node rom/tools/room-test-5408.mjs slammast  158,39s user 12,22s system 519% cpu 32,834 total

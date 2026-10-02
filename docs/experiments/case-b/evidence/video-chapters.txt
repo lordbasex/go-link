@@ -1,0 +1,146 @@
+;FFMETADATA1
+title=Experiment 1, case B, step 1: Game Spec v1 built in Willy Maker
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=3877
+title=Willy Maker's home: no games yet, the New game wizard open
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=3877
+END=18917
+title=The IDE opened on the new level
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=18917
+END=25832
+title=View at 82 %
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=25832
+END=35807
+title=Starts at x 32-80 and the exit at x 1440
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=35807
+END=44655
+title=The crates: 32 px, then a 64 px stack
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=44655
+END=52974
+title=Terrain: crates, the one-way ledge, the ladder and the upper dock
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=52974
+END=93605
+title=Three Troopers, two civilians, the exit
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=93605
+END=96221
+title=The sky tileset
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=96221
+END=114992
+title=The level, done: night sky, dock, crates, ledge, ladder, upper dock, enemies, civilians, exit
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=114992
+END=118397
+title=Play mode: P1 x 32 y 416 · on the ground | P2 x 32 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=118397
+END=122378
+title=After pushing: P1 x 186 y 416 · on the ground | P2 x 32 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=122378
+END=125264
+title=On the stack: P1 x 260 y 352 · on the ground | P2 x 32 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=125264
+END=127961
+title=After the jump: P1 x 302 y 416 · on the ground | P2 x 69 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=127961
+END=130480
+title=After dropping: P1 x 302 y 416 · on the ground | P2 x 69 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=130480
+END=135168
+title=Firing: P1 x 410 y 416 · on the ground | P2 x 177 y 416 · on the ground
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=135168
+END=139240
+title=The Game tab: 4 players, B1 jump, B2 fire, B3 special, run 250 ms, P1 Willy, P2-P4 recruit shirts (all as the spec asks)
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=139240
+END=141469
+title=The Menus tab: the title screen
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=141469
+END=145125
+title=The title screen: WILLY GORKLINGO, THE LAG PROTOCOL, PUSH START, (C) 2026 GO-LINK. There is no field for CREDITS n.
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=145125
+END=147792
+title=The HUD screen
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=147792
+END=149289
+title=The Game over screen
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=149289
+END=151800
+title=The Export review: Ready to export
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=151800
+END=154449
+title=Where “Note: No hero of your own yet: the game uses the built-in Willy.” leads
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=154449
+END=156757
+title=The final review: Ready to export
+
+[CHAPTER]
+TIMEBASE=1/1000
+START=156757
+END=163160
+title=Both files downloaded

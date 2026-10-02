@@ -1,0 +1,52 @@
+{
+  "zip": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/slammast.zip",
+  "set": "slammast",
+  "kind": "player",
+  "script": null,
+  "player": "/Users/lordbasex/go-link-lab/venv/bin/python /Volumes/HD12TB/github/MAME-WEBRTC/rom/tools/lab/laya_player.py",
+  "labState": {
+    "from": "symbol",
+    "address": "0xff0000"
+  },
+  "frames": 3600,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOver": false,
+  "gameOverFrame": null,
+  "startFrame": 215,
+  "checkpoints": [],
+  "decisions": 565,
+  "thinkMs": {
+    "total": 2489261,
+    "max": 55991,
+    "mean": 4406
+  },
+  "actions": {
+    "fire": 565
+  },
+  "energyLost": 0,
+  "falls": 0,
+  "expect": [],
+  "error": null,
+  "final": {
+    "mode": "playing",
+    "scores": [
+      200,
+      0,
+      0,
+      0
+    ],
+    "rescued": 0,
+    "civilians": 2,
+    "enemiesDown": 0,
+    "enemies": 3,
+    "p1": {
+      "x": 32,
+      "y": 416,
+      "energy": 3
+    }
+  },
+  "expectOk": true,
+  "wallMs": 2544006,
+  "mp4": "run.mp4"
+}

@@ -1,0 +1,73 @@
+{
+  "sim": "/private/tmp/claude-501/exp1/case-a/runs/game-over/sim/frames",
+  "core": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames",
+  "tolerance": 0,
+  "frames": 8,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 608,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000608.png",
+      "pairPng": "pair-000608.png"
+    },
+    {
+      "frame": 700,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000700.png",
+      "pairPng": "pair-000700.png"
+    },
+    {
+      "frame": 762,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000762.png",
+      "pairPng": "pair-000762.png"
+    },
+    {
+      "frame": 830,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000830.png",
+      "pairPng": "pair-000830.png"
+    },
+    {
+      "frame": 902,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000902.png",
+      "pairPng": "pair-000902.png"
+    },
+    {
+      "frame": 1218,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001218.png",
+      "pairPng": "pair-001218.png"
+    },
+    {
+      "frame": 1300,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001300.png",
+      "pairPng": "pair-001300.png"
+    },
+    {
+      "frame": 1521,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001521.png",
+      "pairPng": "pair-001521.png"
+    }
+  ]
+}

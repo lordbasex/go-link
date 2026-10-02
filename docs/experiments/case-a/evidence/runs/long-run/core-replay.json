@@ -1,0 +1,39 @@
+{
+  "type": "rom_replay",
+  "set": "slammast",
+  "core": "MAME 2003-Plus  3141930",
+  "fps": 60,
+  "width": 384,
+  "height": 224,
+  "frames": 21600,
+  "seconds": 28.389960165,
+  "checkpoints": [
+    {
+      "frame": 1500,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames/f001500.png",
+      "hash": "c350cc3b"
+    },
+    {
+      "frame": 2900,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames/f002900.png",
+      "hash": "2c088b76"
+    },
+    {
+      "frame": 3100,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames/f003100.png",
+      "hash": "7e3c19d7"
+    },
+    {
+      "frame": 10000,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames/f010000.png",
+      "hash": "e1cdffb7"
+    },
+    {
+      "frame": 21600,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames/f021600.png",
+      "hash": "244791db"
+    }
+  ],
+  "pngs": 5,
+  "mp4": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/run.mp4"
+}

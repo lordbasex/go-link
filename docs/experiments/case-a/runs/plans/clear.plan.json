@@ -1,0 +1,43 @@
+{"name":"case-a-clear",
+"description":"Case A (exp1/case-a, rom/build/slammast.zip): Coin and 1P Start; push up the 32 px crate and the 64 px stack, jump to the one-way ledge and rescue the first civilian, drop through it (down + B1), shoot the lower dock's Trooper, run to the ladder and climb to the upper dock, shoot its Trooper, run and rescue the second civilian, drop off the deck's end, shoot the exit's guard while player 2 joins (Coin and 2P Start), then both walk right and player 1 reaches the exit: SECTION CLEAR at frame 1376 with every enemy down, no energy lost, 1300 points. Written by hand, frame by frame, from the lab state of trial runs (journal, 18:20-18:30).",
+"frames":1500,
+"checkpoints":[150,300,448,537,800,938,1118,1245,1376,1480],
+"expect":[
+ {"frame":150,"path":"mode","equals":"title"},
+ {"frame":150,"path":"credits","equals":1},
+ {"frame":300,"path":"mode","equals":"playing"},
+ {"frame":300,"path":"players.0.y","equals":368},
+ {"frame":448,"path":"civilians.0.rescued","equals":true},
+ {"frame":448,"path":"players.0.y","equals":336},
+ {"frame":537,"path":"enemies.0.alive","equals":false},
+ {"frame":800,"path":"players.0.y","equals":240},
+ {"frame":938,"path":"enemies.1.alive","equals":false},
+ {"frame":1118,"path":"civilians.1.rescued","equals":true},
+ {"frame":1245,"path":"enemies.2.alive","equals":false},
+ {"frame":1245,"path":"players.1.active","equals":true},
+ {"frame":1375,"path":"mode","equals":"playing"},
+ {"frame":1376,"path":"sectionClear","equals":true},
+ {"frame":1376,"path":"mode","equals":"clear"},
+ {"frame":1376,"path":"players.0.x","min":1440,"max":1504},
+ {"frame":1376,"path":"players.0.y","equals":400},
+ {"frame":1376,"path":"players.0.energy","equals":3},
+ {"frame":1480,"path":"players.0.score","equals":1300},
+ {"frame":1480,"path":"mode","equals":"clear"}
+],
+"start":160,
+"prelude":[{"from":120,"to":125,"port":1,"buttons":["coin"]},{"from":150,"to":155,"port":1,"buttons":["start"]}],
+"segments":[
+ [205,"right"],[3,"right","b1"],[90,"right"],[10],
+ [4,"down","b1"],[20],
+ [45,"b2"],
+ [2,"right"],[2],[150,"right"],[108,"up"],[4],
+ [100,"right"],[50,"b2"],
+ [2,"right"],[2],[210,"right"],[10],
+ [60,"b2"],
+ [2,"right"],[2],[150,"right"],[30]
+],
+"extra":[
+ {"from":1215,"to":1220,"port":2,"buttons":["coin"]},
+ {"from":1225,"to":1230,"port":2,"buttons":["start"]},
+ {"from":1240,"to":1400,"port":2,"buttons":["right"]}
+]}

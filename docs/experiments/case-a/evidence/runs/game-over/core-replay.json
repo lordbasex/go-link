@@ -1,0 +1,54 @@
+{
+  "type": "rom_replay",
+  "set": "slammast",
+  "core": "MAME 2003-Plus  3141930",
+  "fps": 60,
+  "width": 384,
+  "height": 224,
+  "frames": 1600,
+  "seconds": 2.208233931,
+  "checkpoints": [
+    {
+      "frame": 608,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f000608.png",
+      "hash": "43a012ac"
+    },
+    {
+      "frame": 700,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f000700.png",
+      "hash": "2adf0540"
+    },
+    {
+      "frame": 762,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f000762.png",
+      "hash": "65e2d283"
+    },
+    {
+      "frame": 830,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f000830.png",
+      "hash": "e643ed1b"
+    },
+    {
+      "frame": 902,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f000902.png",
+      "hash": "86359b11"
+    },
+    {
+      "frame": 1218,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f001218.png",
+      "hash": "c07ee0ac"
+    },
+    {
+      "frame": 1300,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f001300.png",
+      "hash": "acfc5af9"
+    },
+    {
+      "frame": 1521,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/frames/f001521.png",
+      "hash": "e48d9e1b"
+    }
+  ],
+  "pngs": 8,
+  "mp4": "/private/tmp/claude-501/exp1/case-a/runs/game-over/core/run.mp4"
+}

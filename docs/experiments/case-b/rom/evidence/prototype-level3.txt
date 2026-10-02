@@ -1,0 +1,12 @@
+Power-on test (level 3) of rom/build/slammast.zip (slammast)
+  ok    files     All 28 files of slammast are there, each with its size
+  ok    program   The program ROMs join into 24100 bytes of 68000 code and data
+  ok    vectors   Reset at 0x000400, stack at 0xfff000, vblank handler at 0x000440
+  ok    run       300 frames (5 s of game) with no crash
+  ok    vblank    The vblank interrupt ran on 291 of 300 frames
+  ok    palette   Palettes written from frame 9, 239 colors set
+  ok    layers    Layers on: scroll1, scroll2, scroll3; 18 sprites in the table
+  ok    picture   A picture on screen from frame 30
+  ok    alive     The game keeps drawing (last change on frame 300)
+  ok    inputs    Coin and Start change the game
+PASSED: 300 frames in 204 ms

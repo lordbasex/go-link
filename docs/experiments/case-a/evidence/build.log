@@ -1,0 +1,9 @@
+art: willy {"palettes":4,"tiles":147,"meanDeltaE":2.94,"maxDeltaE":13.5,"snapMeanDeltaE":0.62,"snapMaxDeltaE":1.56}
+art: woman {"palettes":2,"tiles":30,"meanDeltaE":2.71,"maxDeltaE":12.1,"snapMeanDeltaE":0.69,"snapMaxDeltaE":1.46}
+art: child {"palettes":2,"tiles":21,"meanDeltaE":3.53,"maxDeltaE":11.5,"snapMeanDeltaE":0.75,"snapMaxDeltaE":2.08}
+art: robot {"palettes":3,"tiles":90,"meanDeltaE":4.08,"maxDeltaE":19.6,"snapMeanDeltaE":0.64,"snapMaxDeltaE":1.5}
+art: sprites up to tile 0x1122, backdrop 268 tiles, level 24 tiles
+lab_state at 0xff0000 (200 bytes)
+68000 program: 28694 bytes
+built /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-2/rom/build/slammast.zip (28 files)
+own set list: slammast (28 files), updated -> backend-device/pkg/ownsets/sets.json

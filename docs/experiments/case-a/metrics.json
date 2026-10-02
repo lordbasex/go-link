@@ -1,0 +1,61 @@
+{
+ "case": "A",
+ "how": "by hand: C for the 68000 in rom/, built with node rom/tools/build.mjs",
+ "branch": "exp1/case-a",
+ "base": "23806b8",
+ "wall_time": {
+  "first_action": "2026-10-01T18:06:20-03:00",
+  "last_action": "2026-10-01T18:48:00-03:00",
+  "minutes": 42,
+  "note": "from the first `date` to the last commit; about 14 of these minutes were the acceptance run (mostly the 3 Laya games), and 4 more the replay of every script on both machines"
+ },
+ "tool_calls": {
+  "estimate": 140,
+  "note": "counted by hand from the session: reads, edits, builds, runs, commits and records"
+ },
+ "tokens": null,
+ "attempts": {
+  "builds": 6,
+  "build_failures": 0,
+  "clear_script_trial_runs": 4,
+  "other_script_trial_runs": 7,
+  "rework": [
+   "dock-themed tiles drawn, then reverted to the prototype's before any commit (D-011)",
+   "2UP moved from x 26 to x 20 after the first screenshot (D-010)",
+   "odd-input and game-over expectations corrected twice (my coin counts were wrong, not the game)",
+   "opposite directions cancel after the first sim/core replay of odd-inputs differed (D-013); the acceptance run on the older build was stopped and redone"
+  ],
+  "dead_ends": [
+   "the prototype's jump (gravity before moving) peaks at 61.9 px: the spec's 64 px ledge was unreachable until D-004"
+  ]
+ },
+ "rom": {
+  "zip": "rom/build/slammast.zip",
+  "zip_bytes": 61496,
+  "files": 28,
+  "unpacked_bytes": 12713984,
+  "program_bytes": 28694,
+  "prototype_program_bytes": 24100,
+  "lab_state": "0xff0000, 200 bytes",
+  "level_tiles": 24,
+  "source_lines_main_c": 1261
+ },
+ "validator": {
+  "level3": "pass (10 of 10 steps, 300 frames)",
+  "level4": "pass (device romtest, mame2003-plus)",
+  "scripted": "pass: SECTION CLEAR at frame 1376, 20 of 20 expectations",
+  "same_as_core": "pass: 10 of 10 checkpoints identical (tolerance 0); 41 of 41 over the five scripts",
+  "extra_scripts": {
+   "game-over": "pass, GAME OVER at frame 1218, 14 expectations",
+   "moves": "pass, 20 expectations (knife, ladder down, deck drop, locked exit)",
+   "odd-inputs": "pass, 12 expectations",
+   "long-run": "pass, 21600 frames, 9 expectations"
+  }
+ },
+ "players": {
+  "bot": {"games": 5, "clears": 5, "clear_frames": [1183, 1265, 1399, 1230, 1286], "median": 1265, "energy_lost": 0, "falls": 0, "civilians_rescued_per_game": [1, 1, 1, 0, 1]},
+  "laya": {"games": 3, "clears": 0, "decisions_per_game": 575, "fire_share": 0.9965, "max_x": 82, "mean_ms_per_decision": 345, "energy_lost": 0}
+ },
+ "spec": {"items_met": "all", "gaps": 0, "notes": ["D-004 jump order", "D-008 continue without a timer", "not played in a go-link room (same core)"]},
+ "commits": 9, "commits_note": "8 before this one, on main..exp1/case-a"
+}

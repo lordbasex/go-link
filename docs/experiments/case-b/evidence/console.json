@@ -1,0 +1,112 @@
+[
+  {
+    "t": 256,
+    "type": "debug",
+    "text": "[vite] connecting..."
+  },
+  {
+    "t": 287,
+    "type": "debug",
+    "text": "[vite] connected."
+  },
+  {
+    "t": 388,
+    "type": "info",
+    "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+    "t": 459,
+    "type": "warning",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: WebSocket is closed before the connection is established."
+  },
+  {
+    "t": 944,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 2026,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 3783,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 7335,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 14360,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 22338,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 39798,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 46275,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 47471,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 56403,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 70166,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 84827,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 87399,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 100566,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 130129,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 136921,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 146128,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  },
+  {
+    "t": 153362,
+    "type": "error",
+    "text": "WebSocket connection to 'wss://signal.go-link.org/ws?v=1' failed: Error during WebSocket handshake: Unexpected response code: 403"
+  }
+]

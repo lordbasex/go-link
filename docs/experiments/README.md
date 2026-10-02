@@ -111,4 +111,10 @@ One HTML page for the verdict, published as a private artifact, to look at toget
 
 ## Afterwards
 
-The verdict and the jury's notes become concrete Willy Maker changes (new checks, better exports, the stage 2 engine), each linked back to the evidence that asked for it, and the experiment is summarized in [docs/willy-maker](../willy-maker/README.md).
+**Closed on 2026-10-02. [The verdict](verdict.md):** the best ROM is Y, made by case A (by hand); the way forward is case C (Willy Maker's Create ROM), merged into `main`. The gap between C's ROM and A's became the task list T-01 to T-24 (the jury's lessons, an outside AI's run of the public site and the user's playtest notes), each linked to its evidence; the first seven are done right after the verdict and the rest are in [status.md](../status.md). The HOWTOs of the three cases were reproduced by a second agent in the first round, case C's to the same zip byte for byte.
+
+| Case | ROM | Records |
+|---|---|---|
+| A. By hand | Y | [case-a/](case-a/) (code on branch `exp1/case-a`) |
+| B. AI pack | Z | [case-b/](case-b/), step 2 in [case-b/rom/](case-b/rom/) (code on `exp1/case-b-rom`) |
+| C. Create ROM | X | [case-c/](case-c/) (merged) |

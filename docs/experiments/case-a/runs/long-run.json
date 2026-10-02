@@ -1,0 +1,21 @@
+{
+ "name": "case-a-long-run",
+ "description": "Case A: about 6 minutes of game with nobody playing. The title's attract camera tours the level for 50 s (its camera wraps from the right end back to x 0 four times, so the level columns are streamed again and again), then Coin and 1P Start, and player 1 stands at the start for over 5 minutes while the Troopers walk their patrols. The game must still be running and drawing at the end.",
+ "frames": 21600,
+ "checkpoints": [1500, 2900, 3100, 10000, 21600],
+ "expect": [
+  {"frame": 2900, "path": "mode", "equals": "title"},
+  {"frame": 3100, "path": "mode", "equals": "playing"},
+  {"frame": 21600, "path": "mode", "equals": "playing"},
+  {"frame": 21600, "path": "players.0.active", "equals": true},
+  {"frame": 21600, "path": "players.0.energy", "equals": 3},
+  {"frame": 21600, "path": "enemies.0.alive", "equals": true},
+  {"frame": 21600, "path": "enemies.0.x", "min": 496, "max": 592},
+  {"frame": 21600, "path": "enemies.1.x", "min": 848, "max": 944},
+  {"frame": 21600, "path": "enemies.2.x", "min": 1344, "max": 1440}
+ ],
+ "steps": [
+  {"from": 3000, "to": 3005, "port": 1, "buttons": ["coin"]},
+  {"from": 3030, "to": 3035, "port": 1, "buttons": ["start"]}
+ ]
+}

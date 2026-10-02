@@ -1,0 +1,105 @@
+{
+  "ok": true,
+  "set": "slammast",
+  "steps": [
+    {
+      "name": "files",
+      "ok": true,
+      "code": "files.ok",
+      "params": {
+        "n": 28,
+        "set": "slammast"
+      },
+      "detail": "All 28 files of slammast are there, each with its size"
+    },
+    {
+      "name": "program",
+      "ok": true,
+      "code": "program.ok",
+      "params": {
+        "bytes": 28694
+      },
+      "detail": "The program ROMs join into 28694 bytes of 68000 code and data"
+    },
+    {
+      "name": "vectors",
+      "ok": true,
+      "code": "vectors.ok",
+      "params": {
+        "pc": "0x000400",
+        "sp": "0xfff000",
+        "vblank": "0x000440"
+      },
+      "detail": "Reset at 0x000400, stack at 0xfff000, vblank handler at 0x000440"
+    },
+    {
+      "name": "run",
+      "ok": true,
+      "code": "run.ok",
+      "params": {
+        "frames": 300,
+        "seconds": 5,
+        "sound": 0
+      },
+      "detail": "300 frames (5 s of game) with no crash"
+    },
+    {
+      "name": "vblank",
+      "ok": true,
+      "code": "vblank.ok",
+      "params": {
+        "count": 291,
+        "frames": 300
+      },
+      "detail": "The vblank interrupt ran on 291 of 300 frames"
+    },
+    {
+      "name": "palette",
+      "ok": true,
+      "code": "palette.ok",
+      "params": {
+        "frame": 9,
+        "colors": 239
+      },
+      "detail": "Palettes written from frame 9, 239 colors set"
+    },
+    {
+      "name": "layers",
+      "ok": true,
+      "code": "layers.ok",
+      "params": {
+        "layers": "scroll1, scroll2, scroll3",
+        "sprites": 12
+      },
+      "detail": "Layers on: scroll1, scroll2, scroll3; 12 sprites in the table"
+    },
+    {
+      "name": "picture",
+      "ok": true,
+      "code": "picture.ok",
+      "params": {
+        "frame": 30
+      },
+      "detail": "A picture on screen from frame 30"
+    },
+    {
+      "name": "alive",
+      "ok": true,
+      "code": "alive.ok",
+      "params": {
+        "frame": 300
+      },
+      "detail": "The game keeps drawing (last change on frame 300)"
+    },
+    {
+      "name": "inputs",
+      "ok": true,
+      "code": "inputs.ok",
+      "params": {},
+      "detail": "Coin and Start change the game"
+    }
+  ],
+  "frames": 300,
+  "shot": "level3.png",
+  "ms": 199
+}

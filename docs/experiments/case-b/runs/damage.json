@@ -1,0 +1,82 @@
+{
+ "name": "case-b-damage",
+ "frames": 3000,
+ "checkpoints": [
+  700,
+  900,
+  1200,
+  1500,
+  1800,
+  2200,
+  2700,
+  3000
+ ],
+ "expect": [],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 216,
+   "to": 449,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 453,
+   "to": 453,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 455,
+   "to": 456,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 457,
+   "to": 459,
+   "port": 1,
+   "buttons": [
+    "right",
+    "b1"
+   ]
+  },
+  {
+   "from": 460,
+   "to": 560,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 576,
+   "to": 715,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

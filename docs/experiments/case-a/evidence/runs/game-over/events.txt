@@ -1,0 +1,11 @@
+122 credits 0 -> 1
+132 credits 1 -> 2
+154 mode title -> playing; credits 2 -> 1; P1 active false -> true at (64,400)
+608 P1 energy 3 -> 2
+702 P1 energy 2 -> 1
+762 P1 active true -> false at (546,400)
+902 credits 1 -> 0; P1 active false -> true at (482,400)
+943 P1 energy 3 -> 2
+1158 P1 energy 2 -> 1
+1218 mode playing -> game_over; P1 active true -> false at (582,400)
+1521 mode game_over -> title

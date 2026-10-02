@@ -1,0 +1,89 @@
+{
+  "sim": "/private/tmp/claude-501/exp1/case-a/runs/clear/sim/frames",
+  "core": "/private/tmp/claude-501/exp1/case-a/runs/clear/core/frames",
+  "tolerance": 0,
+  "frames": 10,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 150,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000150.png",
+      "pairPng": "pair-000150.png"
+    },
+    {
+      "frame": 300,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000300.png",
+      "pairPng": "pair-000300.png"
+    },
+    {
+      "frame": 448,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000448.png",
+      "pairPng": "pair-000448.png"
+    },
+    {
+      "frame": 537,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000537.png",
+      "pairPng": "pair-000537.png"
+    },
+    {
+      "frame": 800,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000800.png",
+      "pairPng": "pair-000800.png"
+    },
+    {
+      "frame": 938,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-000938.png",
+      "pairPng": "pair-000938.png"
+    },
+    {
+      "frame": 1118,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001118.png",
+      "pairPng": "pair-001118.png"
+    },
+    {
+      "frame": 1245,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001245.png",
+      "pairPng": "pair-001245.png"
+    },
+    {
+      "frame": 1376,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001376.png",
+      "pairPng": "pair-001376.png"
+    },
+    {
+      "frame": 1480,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001480.png",
+      "pairPng": "pair-001480.png"
+    }
+  ]
+}

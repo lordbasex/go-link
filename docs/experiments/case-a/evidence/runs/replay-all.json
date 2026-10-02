@@ -1,0 +1,72 @@
+[
+ {
+  "name": "clear",
+  "simExit": 0,
+  "coreExit": 0,
+  "expectOk": true,
+  "failed": [],
+  "error": null,
+  "cleared": true,
+  "clearFrame": 1376,
+  "gameOverFrame": null,
+  "checkpoints": 10,
+  "worstDifferPct": 0,
+  "seconds": 13.7
+ },
+ {
+  "name": "game-over",
+  "simExit": 0,
+  "coreExit": 0,
+  "expectOk": true,
+  "failed": [],
+  "error": null,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOverFrame": 1218,
+  "checkpoints": 8,
+  "worstDifferPct": 0,
+  "seconds": 14.373
+ },
+ {
+  "name": "long-run",
+  "simExit": 0,
+  "coreExit": 0,
+  "expectOk": true,
+  "failed": [],
+  "error": null,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOverFrame": null,
+  "checkpoints": 5,
+  "worstDifferPct": 0,
+  "seconds": 177.593
+ },
+ {
+  "name": "moves",
+  "simExit": 0,
+  "coreExit": 0,
+  "expectOk": true,
+  "failed": [],
+  "error": null,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOverFrame": null,
+  "checkpoints": 9,
+  "worstDifferPct": 0,
+  "seconds": 17.547
+ },
+ {
+  "name": "odd-inputs",
+  "simExit": 0,
+  "coreExit": 0,
+  "expectOk": true,
+  "failed": [],
+  "error": null,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOverFrame": null,
+  "checkpoints": 9,
+  "worstDifferPct": 0,
+  "seconds": 20.845
+ }
+]

@@ -1,0 +1,28 @@
+{
+ "name": "case-b-four-players",
+ "frames": 900,
+ "checkpoints": [200, 240, 400, 600, 900],
+ "expect": [
+  {"frame": 150, "path": "credits", "equals": 4},
+  {"frame": 240, "path": "players.0.active", "equals": true},
+  {"frame": 240, "path": "players.1.active", "equals": true},
+  {"frame": 240, "path": "players.2.active", "equals": true},
+  {"frame": 240, "path": "players.3.active", "equals": true},
+  {"frame": 240, "path": "credits", "equals": 0}
+ ],
+ "steps": [
+  {"from": 120, "to": 125, "port": 1, "buttons": ["coin"]},
+  {"from": 120, "to": 125, "port": 2, "buttons": ["coin"]},
+  {"from": 120, "to": 125, "port": 3, "buttons": ["coin"]},
+  {"from": 120, "to": 125, "port": 4, "buttons": ["coin"]},
+  {"from": 150, "to": 155, "port": 1, "buttons": ["start"]},
+  {"from": 160, "to": 165, "port": 2, "buttons": ["start"]},
+  {"from": 170, "to": 175, "port": 3, "buttons": ["start"]},
+  {"from": 180, "to": 185, "port": 4, "buttons": ["start"]},
+  {"from": 260, "to": 500, "port": 1, "buttons": ["right", "b2"]},
+  {"from": 270, "to": 500, "port": 2, "buttons": ["right"]},
+  {"from": 280, "to": 300, "port": 3, "buttons": ["b1", "right"]},
+  {"from": 290, "to": 300, "port": 4, "buttons": ["b3"]},
+  {"from": 301, "to": 500, "port": 4, "buttons": ["right"]}
+ ]
+}

@@ -1,0 +1,231 @@
+diff --git a/docs/experiments/case-b/build/.gitignore b/docs/experiments/case-b/build/.gitignore
+new file mode 100644
+index 0000000..b504394
+--- /dev/null
++++ b/docs/experiments/case-b/build/.gitignore
+@@ -0,0 +1,2 @@
++obj/
++gen/
+diff --git a/docs/experiments/case-b/rom/tools/colors.mjs b/docs/experiments/case-b/rom/tools/colors.mjs
+new file mode 100644
+index 0000000..970e6bb
+--- /dev/null
++++ b/docs/experiments/case-b/rom/tools/colors.mjs
+@@ -0,0 +1,24 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Case B step 2: the colors of the pack's pictures (node colors.mjs PACK_DIR), evidence for D-104
++import fs from "node:fs";
++import { readPng } from "../../../../../rom/tools/png.mjs";
++const dir = process.argv[2];
++for (const f of ["levels/level-1/play.png", "levels/level-1/far.png", "levels/level-1/collision.png", "tilesets/ts-city.png", "tilesets/ts-sky.png"]) {
++  const img = readPng(fs.readFileSync(dir + "/" + f));
++  const colors = new Map();
++  let transparent = 0;
++  for (let i = 0; i < img.w * img.h; i++) {
++    if (img.rgba[i * 4 + 3] === 0) { transparent++; continue; }
++    const k = [0, 1, 2, 3].map((c) => img.rgba[i * 4 + c].toString(16).padStart(2, "0")).join("");
++    colors.set(k, (colors.get(k) || 0) + 1);
++  }
++  console.log(f, img.w, img.h, "transparent", transparent, "colors", colors.size);
++  console.log("  ", [...colors.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, n]) => k + ":" + n).join(" "));
++}
++// far: per row band colors
++const far = readPng(fs.readFileSync(dir + "/levels/level-1/far.png"));
++for (let y = 0; y < far.h; y += 32) {
++  const s = new Set();
++  for (let yy = y; yy < y + 32; yy++) for (let x = 0; x < far.w; x++) { const o = (yy * far.w + x) * 4; s.add(far.rgba.slice(o, o + 4).toString("hex")); }
++  console.log("far row", y / 32, [...s].join(" "));
++}
+diff --git a/docs/experiments/case-b/rom/tools/trace.mjs b/docs/experiments/case-b/rom/tools/trace.mjs
+new file mode 100644
+index 0000000..d524051
+--- /dev/null
++++ b/docs/experiments/case-b/rom/tools/trace.mjs
+@@ -0,0 +1,15 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Case B step 2: prints P1, enemies and civilians from a runner's state.jsonl every N frames
++import fs from "node:fs";
++const [dir, every = "30", from = "0", to = "99999"] = process.argv.slice(2);
++for (const line of fs.readFileSync(dir + "/state.jsonl", "utf8").split("\n")) {
++  if (!line) continue;
++  const s = JSON.parse(line);
++  if (s.f < +from || s.f > +to || s.f % +every) continue;
++  const l = s.lab;
++  if (!l) continue;
++  const p = l.players[0];
++  const en = l.enemies.map((e) => `${e.alive ? "A" : "-"}${e.hp}@${e.x}`).join(" ");
++  const cv = l.civilians.map((c) => (c.rescued ? "R" : "_")).join("");
++  console.log(`${s.f} ${l.mode} in=[${s.in}] p1 x${p.x} y${p.y} st=${p.state} e${p.energy} hurt${p.hurt} sc${p.score} cam${l.cam.x},${l.cam.y} | ${en} | civ ${cv} clear=${l.sectionClear}`);
++}
+diff --git a/docs/experiments/case-b/runs/clear.json b/docs/experiments/case-b/runs/clear.json
+new file mode 100644
+index 0000000..5de5668
+--- /dev/null
++++ b/docs/experiments/case-b/runs/clear.json
+@@ -0,0 +1,43 @@
++{
++ "name": "case-b-clear",
++ "frames": 2100,
++ "checkpoints": [150, 300, 460, 530, 720, 870, 1060, 1440, 1600, 1856, 2100],
++ "expect": [
++  {"frame": 150, "path": "mode", "equals": "title"},
++  {"frame": 150, "path": "credits", "equals": 1},
++  {"frame": 300, "path": "mode", "equals": "playing"},
++  {"frame": 300, "path": "players.0.energy", "equals": 3},
++  {"frame": 460, "path": "players.0.y", "equals": 339},
++  {"frame": 530, "path": "civilians.0.rescued", "equals": true},
++  {"frame": 530, "path": "players.0.y", "equals": 352},
++  {"frame": 720, "path": "enemies.0.alive", "equals": false},
++  {"frame": 870, "path": "players.0.y", "equals": 256},
++  {"frame": 1060, "path": "enemies.1.alive", "equals": false},
++  {"frame": 1440, "path": "civilians.1.rescued", "equals": true},
++  {"frame": 1600, "path": "enemies.2.alive", "equals": false},
++  {"frame": 1855, "path": "sectionClear", "equals": false},
++  {"frame": 1856, "path": "sectionClear", "equals": true},
++  {"frame": 1856, "path": "mode", "equals": "clear"},
++  {"frame": 1856, "path": "players.0.x", "min": 1440, "max": 1471},
++  {"frame": 1856, "path": "players.0.energy", "equals": 3},
++  {"frame": 2100, "path": "players.0.score", "equals": 3500}
++ ],
++ "steps": [
++  {"from": 120, "to": 125, "port": 1, "buttons": ["coin"]},
++  {"from": 150, "to": 155, "port": 1, "buttons": ["start"]},
++  {"from": 216, "to": 449, "port": 1, "buttons": ["right"]},
++  {"from": 453, "to": 453, "port": 1, "buttons": ["right"]},
++  {"from": 455, "to": 456, "port": 1, "buttons": ["right"]},
++  {"from": 457, "to": 459, "port": 1, "buttons": ["right", "b1"]},
++  {"from": 460, "to": 560, "port": 1, "buttons": ["right"]},
++  {"from": 576, "to": 655, "port": 1, "buttons": ["right"]},
++  {"from": 656, "to": 715, "port": 1, "buttons": ["b2"]},
++  {"from": 716, "to": 750, "port": 1, "buttons": ["right"]},
++  {"from": 751, "to": 875, "port": 1, "buttons": ["up"]},
++  {"from": 876, "to": 992, "port": 1, "buttons": ["right"]},
++  {"from": 993, "to": 1055, "port": 1, "buttons": ["b2"]},
++  {"from": 1056, "to": 1515, "port": 1, "buttons": ["right"]},
++  {"from": 1516, "to": 1575, "port": 1, "buttons": ["b2"]},
++  {"from": 1576, "to": 1865, "port": 1, "buttons": ["right"]}
++ ]
++}
+diff --git a/docs/experiments/case-b/runs/damage.json b/docs/experiments/case-b/runs/damage.json
+new file mode 100644
+index 0000000..5d9d6fc
+--- /dev/null
++++ b/docs/experiments/case-b/runs/damage.json
+@@ -0,0 +1,82 @@
++{
++ "name": "case-b-damage",
++ "frames": 3000,
++ "checkpoints": [
++  700,
++  900,
++  1200,
++  1500,
++  1800,
++  2200,
++  2700,
++  3000
++ ],
++ "expect": [],
++ "steps": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 150,
++   "to": 155,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 216,
++   "to": 449,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 453,
++   "to": 453,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 455,
++   "to": 456,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 457,
++   "to": 459,
++   "port": 1,
++   "buttons": [
++    "right",
++    "b1"
++   ]
++  },
++  {
++   "from": 460,
++   "to": 560,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 576,
++   "to": 715,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/docs/experiments/case-b/runs/four-players.json b/docs/experiments/case-b/runs/four-players.json
+new file mode 100644
+index 0000000..d60da8b
+--- /dev/null
++++ b/docs/experiments/case-b/runs/four-players.json
+@@ -0,0 +1,28 @@
++{
++ "name": "case-b-four-players",
++ "frames": 900,
++ "checkpoints": [200, 240, 400, 600, 900],
++ "expect": [
++  {"frame": 150, "path": "credits", "equals": 4},
++  {"frame": 240, "path": "players.0.active", "equals": true},
++  {"frame": 240, "path": "players.1.active", "equals": true},
++  {"frame": 240, "path": "players.2.active", "equals": true},
++  {"frame": 240, "path": "players.3.active", "equals": true},
++  {"frame": 240, "path": "credits", "equals": 0}
++ ],
++ "steps": [
++  {"from": 120, "to": 125, "port": 1, "buttons": ["coin"]},
++  {"from": 120, "to": 125, "port": 2, "buttons": ["coin"]},
++  {"from": 120, "to": 125, "port": 3, "buttons": ["coin"]},
++  {"from": 120, "to": 125, "port": 4, "buttons": ["coin"]},
++  {"from": 150, "to": 155, "port": 1, "buttons": ["start"]},
++  {"from": 160, "to": 165, "port": 2, "buttons": ["start"]},
++  {"from": 170, "to": 175, "port": 3, "buttons": ["start"]},
++  {"from": 180, "to": 185, "port": 4, "buttons": ["start"]},
++  {"from": 260, "to": 500, "port": 1, "buttons": ["right", "b2"]},
++  {"from": 270, "to": 500, "port": 2, "buttons": ["right"]},
++  {"from": 280, "to": 300, "port": 3, "buttons": ["b1", "right"]},
++  {"from": 290, "to": 300, "port": 4, "buttons": ["b3"]},
++  {"from": 301, "to": 500, "port": 4, "buttons": ["right"]}
++ ]
++}

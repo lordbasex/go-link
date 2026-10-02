@@ -1,0 +1,13 @@
+540 playing in=[right@1] p1 x337 y416 st=walk e3 hurt0 sc0 cam209,224 | A4@679 A4@824 A4@1303 | civ __ clear=false
+545 playing in=[right@1] p1 x342 y416 st=walk e3 hurt0 sc0 cam214,224 | A4@677 A4@821 A4@1301 | civ __ clear=false
+550 playing in=[] p1 x344 y416 st=idle e3 hurt0 sc0 cam216,224 | A4@674 A4@819 A4@1298 | civ __ clear=false
+555 playing in=[] p1 x344 y391 st=air e3 hurt0 sc0 cam216,224 | A4@672 A4@816 A4@1296 | civ __ clear=false
+560 playing in=[] p1 x344 y369 st=air e3 hurt0 sc0 cam216,222 | A4@675 A4@818 A4@1299 | civ __ clear=false
+565 playing in=[] p1 x344 y357 st=air e3 hurt0 sc0 cam216,212 | A4@677 A4@821 A4@1301 | civ __ clear=false
+570 playing in=[] p1 x344 y354 st=air e3 hurt0 sc0 cam216,206 | A4@680 A4@823 A4@1304 | civ __ clear=false
+575 playing in=[] p1 x344 y360 st=air e3 hurt0 sc0 cam216,208 | A4@682 A4@826 A4@1306 | civ __ clear=false
+580 playing in=[] p1 x344 y376 st=air e3 hurt0 sc0 cam216,217 | A4@685 A4@828 A4@1309 | civ __ clear=false
+585 playing in=[] p1 x344 y401 st=air e3 hurt0 sc0 cam216,223 | A4@687 A4@831 A4@1311 | civ __ clear=false
+590 playing in=[] p1 x344 y416 st=idle e3 hurt0 sc0 cam216,224 | A4@690 A4@833 A4@1314 | civ __ clear=false
+595 playing in=[] p1 x344 y416 st=idle e3 hurt0 sc0 cam216,224 | A4@692 A4@836 A4@1316 | civ __ clear=false
+600 playing in=[right@1] p1 x348 y416 st=walk e3 hurt0 sc0 cam220,224 | A4@695 A4@838 A4@1319 | civ __ clear=false

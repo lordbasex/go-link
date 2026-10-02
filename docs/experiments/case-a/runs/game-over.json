@@ -1,0 +1,137 @@
+{
+ "name": "case-a-game-over",
+ "description": "Case A: two coins, 1P Start, walk into the first Trooper's patrol and stand there: three touches (frames 608, 702, 762) take the 3 energy, player 1 is out and the game waits with a credit (CONTINUE? PUSH START); 1P Start continues with 3 energy (frame 902), walks back into the patrol, loses it all again with no credit left: GAME OVER at frame 1218, the title again at frame 1521.",
+ "frames": 1600,
+ "checkpoints": [
+  608,
+  700,
+  762,
+  830,
+  902,
+  1218,
+  1300,
+  1521
+ ],
+ "expect": [
+  {
+   "frame": 607,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 608,
+   "path": "players.0.energy",
+   "equals": 2
+  },
+  {
+   "frame": 608,
+   "path": "players.0.hurt",
+   "min": 50
+  },
+  {
+   "frame": 702,
+   "path": "players.0.energy",
+   "equals": 1
+  },
+  {
+   "frame": 762,
+   "path": "players.0.active",
+   "equals": false
+  },
+  {
+   "frame": 762,
+   "path": "players.0.state",
+   "equals": "dead"
+  },
+  {
+   "frame": 830,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 830,
+   "path": "credits",
+   "equals": 1
+  },
+  {
+   "frame": 902,
+   "path": "players.0.active",
+   "equals": true
+  },
+  {
+   "frame": 902,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 902,
+   "path": "credits",
+   "equals": 0
+  },
+  {
+   "frame": 1218,
+   "path": "mode",
+   "equals": "game_over"
+  },
+  {
+   "frame": 1300,
+   "path": "mode",
+   "equals": "game_over"
+  },
+  {
+   "frame": 1521,
+   "path": "mode",
+   "equals": "title"
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 130,
+   "to": 135,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 160,
+   "to": 659,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 900,
+   "to": 905,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 906,
+   "to": 1005,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

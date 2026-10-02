@@ -1,0 +1,380 @@
+{
+  "zip": "/private/tmp/claude-501/exp1/case-a/build/slammast.zip",
+  "script": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-2/docs/experiments/case-a/runs/clear.json",
+  "started": "2026-10-01T21:32:55.034Z",
+  "tests": {
+    "level3": {
+      "ok": true,
+      "failed": []
+    },
+    "level4": {
+      "ok": true,
+      "failed": [],
+      "error": null
+    },
+    "scripted": {
+      "ok": true,
+      "cleared": true,
+      "clearFrame": 1376,
+      "expectOk": true,
+      "expect": [
+        {
+          "frame": 150,
+          "path": "mode",
+          "equals": "title",
+          "ok": true,
+          "got": "title"
+        },
+        {
+          "frame": 150,
+          "path": "credits",
+          "equals": 1,
+          "ok": true,
+          "got": 1
+        },
+        {
+          "frame": 300,
+          "path": "mode",
+          "equals": "playing",
+          "ok": true,
+          "got": "playing"
+        },
+        {
+          "frame": 300,
+          "path": "players.0.y",
+          "equals": 368,
+          "ok": true,
+          "got": 368
+        },
+        {
+          "frame": 448,
+          "path": "civilians.0.rescued",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 448,
+          "path": "players.0.y",
+          "equals": 336,
+          "ok": true,
+          "got": 336
+        },
+        {
+          "frame": 537,
+          "path": "enemies.0.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 800,
+          "path": "players.0.y",
+          "equals": 240,
+          "ok": true,
+          "got": 240
+        },
+        {
+          "frame": 938,
+          "path": "enemies.1.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 1118,
+          "path": "civilians.1.rescued",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 1245,
+          "path": "enemies.2.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 1245,
+          "path": "players.1.active",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 1375,
+          "path": "mode",
+          "equals": "playing",
+          "ok": true,
+          "got": "playing"
+        },
+        {
+          "frame": 1376,
+          "path": "sectionClear",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 1376,
+          "path": "mode",
+          "equals": "clear",
+          "ok": true,
+          "got": "clear"
+        },
+        {
+          "frame": 1376,
+          "path": "players.0.x",
+          "min": 1440,
+          "max": 1504,
+          "ok": true,
+          "got": 1440
+        },
+        {
+          "frame": 1376,
+          "path": "players.0.y",
+          "equals": 400,
+          "ok": true,
+          "got": 400
+        },
+        {
+          "frame": 1376,
+          "path": "players.0.energy",
+          "equals": 3,
+          "ok": true,
+          "got": 3
+        },
+        {
+          "frame": 1480,
+          "path": "players.0.score",
+          "equals": 1300,
+          "ok": true,
+          "got": 1300
+        },
+        {
+          "frame": 1480,
+          "path": "mode",
+          "equals": "clear",
+          "ok": true,
+          "got": "clear"
+        }
+      ],
+      "error": null,
+      "labState": {
+        "from": "symbol",
+        "address": "0xff0000"
+      }
+    },
+    "sameAsCore": {
+      "ok": true,
+      "frames": 10,
+      "worstDifferPct": 0,
+      "perFrame": [
+        {
+          "frame": 150,
+          "differPct": 0
+        },
+        {
+          "frame": 300,
+          "differPct": 0
+        },
+        {
+          "frame": 448,
+          "differPct": 0
+        },
+        {
+          "frame": 537,
+          "differPct": 0
+        },
+        {
+          "frame": 800,
+          "differPct": 0
+        },
+        {
+          "frame": 938,
+          "differPct": 0
+        },
+        {
+          "frame": 1118,
+          "differPct": 0
+        },
+        {
+          "frame": 1245,
+          "differPct": 0
+        },
+        {
+          "frame": 1376,
+          "differPct": 0
+        },
+        {
+          "frame": 1480,
+          "differPct": 0
+        }
+      ]
+    },
+    "bot": {
+      "games": 5,
+      "clears": 5,
+      "clearRate": 1,
+      "clearFrame": {
+        "best": 1183,
+        "worst": 1399,
+        "median": 1265
+      },
+      "energyLost": 0,
+      "falls": 0,
+      "errors": [],
+      "list": [
+        {
+          "game": 1,
+          "dir": "bot/game-01",
+          "seed": null,
+          "cleared": true,
+          "clearFrame": 1183,
+          "frames": 1303,
+          "decisions": 172,
+          "thinkMsMean": 1,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 2,
+          "dir": "bot/game-02",
+          "seed": 1,
+          "cleared": true,
+          "clearFrame": 1265,
+          "frames": 1385,
+          "decisions": 186,
+          "thinkMsMean": 0,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 3,
+          "dir": "bot/game-03",
+          "seed": 2,
+          "cleared": true,
+          "clearFrame": 1399,
+          "frames": 1519,
+          "decisions": 208,
+          "thinkMsMean": 0,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 4,
+          "dir": "bot/game-04",
+          "seed": 3,
+          "cleared": true,
+          "clearFrame": 1230,
+          "frames": 1350,
+          "decisions": 180,
+          "thinkMsMean": 0,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 3,
+          "score": 300,
+          "error": null
+        },
+        {
+          "game": 5,
+          "dir": "bot/game-05",
+          "seed": 4,
+          "cleared": true,
+          "clearFrame": 1286,
+          "frames": 1406,
+          "decisions": 189,
+          "thinkMsMean": 1,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        }
+      ]
+    },
+    "laya": {
+      "games": 3,
+      "clears": 0,
+      "clearRate": 0,
+      "clearFrame": null,
+      "energyLost": 0,
+      "falls": 0,
+      "errors": [],
+      "list": [
+        {
+          "game": 1,
+          "dir": "laya/game-01",
+          "seed": null,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 575,
+          "thinkMsMean": 347,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 0,
+          "error": null
+        },
+        {
+          "game": 2,
+          "dir": "laya/game-02",
+          "seed": 1,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 575,
+          "thinkMsMean": 323,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 0,
+          "error": null
+        },
+        {
+          "game": 3,
+          "dir": "laya/game-03",
+          "seed": 2,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 575,
+          "thinkMsMean": 364,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 0,
+          "error": null
+        }
+      ]
+    }
+  },
+  "seconds": 752,
+  "summary": {
+    "level3": true,
+    "level4": true,
+    "scripted": true,
+    "sameAsCore": true,
+    "bot": "5/5 cleared",
+    "laya": "0/3 cleared"
+  }
+}

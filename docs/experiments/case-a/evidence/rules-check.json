@@ -1,0 +1,57 @@
+{
+ "camBackMax": 48,
+ "jumpPeak": 69,
+ "climbPxPerFrame": {
+  "frames": 420,
+  "mean": 1.498
+ },
+ "patrol": {
+  "0": {
+   "min": 496,
+   "max": 592,
+   "range": 96
+  },
+  "1": {
+   "min": 848,
+   "max": 944,
+   "range": 96
+  },
+  "2": {
+   "min": 1344,
+   "max": 1440,
+   "range": 96
+  }
+ },
+ "blink": [
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/moves/sim",
+   "f": 1554,
+   "hurt": 60
+  },
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/moves/sim",
+   "f": 1966,
+   "hurt": 60
+  },
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/game-over/sim",
+   "f": 608,
+   "hurt": 60
+  },
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/game-over/sim",
+   "f": 702,
+   "hurt": 60
+  },
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/game-over/sim",
+   "f": 943,
+   "hurt": 60
+  },
+  {
+   "dir": "/private/tmp/claude-501/exp1/case-a/runs/game-over/sim",
+   "f": 1158,
+   "hurt": 60
+  }
+ ]
+}

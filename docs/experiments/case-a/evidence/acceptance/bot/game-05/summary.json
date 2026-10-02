@@ -1,0 +1,59 @@
+{
+  "zip": "/private/tmp/claude-501/exp1/case-a/build/slammast.zip",
+  "set": "slammast",
+  "kind": "player",
+  "script": null,
+  "player": "/Users/lordbasex/.nvm/versions/node/v22.23.2/bin/node /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-2/rom/tools/lab/bot.mjs --seed 4",
+  "labState": {
+    "from": "symbol",
+    "address": "0xff0000"
+  },
+  "frames": 1406,
+  "cleared": true,
+  "clearFrame": 1286,
+  "gameOver": false,
+  "gameOverFrame": null,
+  "startFrame": 154,
+  "checkpoints": [],
+  "decisions": 189,
+  "thinkMs": {
+    "total": 96,
+    "max": 4,
+    "mean": 1
+  },
+  "actions": {
+    "run_right": 100,
+    "right": 32,
+    "wait": 13,
+    "fire": 19,
+    "jump": 1,
+    "left": 4,
+    "climb_up": 18,
+    "climb_down": 2
+  },
+  "energyLost": 0,
+  "falls": 0,
+  "expect": [],
+  "error": null,
+  "final": {
+    "mode": "clear",
+    "scores": [
+      800,
+      0,
+      0,
+      0
+    ],
+    "rescued": 1,
+    "civilians": 2,
+    "enemiesDown": 3,
+    "enemies": 3,
+    "p1": {
+      "x": 1441,
+      "y": 400,
+      "energy": 3
+    }
+  },
+  "expectOk": true,
+  "wallMs": 10120,
+  "mp4": "run.mp4"
+}

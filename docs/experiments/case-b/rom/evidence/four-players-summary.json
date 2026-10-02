@@ -1,0 +1,734 @@
+{
+  "zip": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/slammast.zip",
+  "set": "slammast",
+  "kind": "script",
+  "script": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/runs/four-players.json",
+  "player": null,
+  "labState": {
+    "from": "symbol",
+    "address": "0xff0000"
+  },
+  "frames": 900,
+  "cleared": false,
+  "clearFrame": null,
+  "gameOver": false,
+  "gameOverFrame": null,
+  "startFrame": 215,
+  "checkpoints": [
+    {
+      "frame": 200,
+      "png": "frames/f000200.png",
+      "lab": {
+        "frame": 190,
+        "mode": "title",
+        "credits": 0,
+        "sectionClear": false,
+        "flags": {
+          "exit": true,
+          "rescueAll": false,
+          "damage": true
+        },
+        "cam": {
+          "x": 0,
+          "y": 224
+        },
+        "level": {
+          "w": 1536,
+          "h": 448
+        },
+        "exit": {
+          "x0": 1440,
+          "x1": 1471,
+          "y": 416
+        },
+        "players": [
+          {
+            "active": false,
+            "state": "off",
+            "facing": 0,
+            "energy": 0,
+            "x": 0,
+            "y": 0,
+            "score": 0,
+            "hurt": 0,
+            "ground": false,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": false,
+            "state": "off",
+            "facing": 0,
+            "energy": 0,
+            "x": 0,
+            "y": 0,
+            "score": 0,
+            "hurt": 0,
+            "ground": false,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": false,
+            "state": "off",
+            "facing": 0,
+            "energy": 0,
+            "x": 0,
+            "y": 0,
+            "score": 0,
+            "hurt": 0,
+            "ground": false,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": false,
+            "state": "off",
+            "facing": 0,
+            "energy": 0,
+            "x": 0,
+            "y": 0,
+            "score": 0,
+            "hurt": 0,
+            "ground": false,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          }
+        ],
+        "enemies": [
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 694,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 837,
+            "y": 256,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 1318,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          }
+        ],
+        "civilians": [
+          {
+            "rescued": false,
+            "x": 400,
+            "y": 352
+          },
+          {
+            "rescued": false,
+            "x": 1088,
+            "y": 256
+          }
+        ]
+      }
+    },
+    {
+      "frame": 240,
+      "png": "frames/f000240.png",
+      "lab": {
+        "frame": 230,
+        "mode": "playing",
+        "credits": 0,
+        "sectionClear": false,
+        "flags": {
+          "exit": true,
+          "rescueAll": false,
+          "damage": true
+        },
+        "cam": {
+          "x": 0,
+          "y": 224
+        },
+        "level": {
+          "w": 1536,
+          "h": 448
+        },
+        "exit": {
+          "x0": 1440,
+          "x1": 1471,
+          "y": 416
+        },
+        "players": [
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 32,
+            "y": 416,
+            "score": 0,
+            "hurt": 94,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 48,
+            "y": 416,
+            "score": 0,
+            "hurt": 94,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 64,
+            "y": 416,
+            "score": 0,
+            "hurt": 94,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 80,
+            "y": 416,
+            "score": 0,
+            "hurt": 94,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          }
+        ],
+        "enemies": [
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 707,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 850,
+            "y": 256,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 1331,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          }
+        ],
+        "civilians": [
+          {
+            "rescued": false,
+            "x": 400,
+            "y": 352
+          },
+          {
+            "rescued": false,
+            "x": 1088,
+            "y": 256
+          }
+        ]
+      }
+    },
+    {
+      "frame": 400,
+      "png": "frames/f000400.png",
+      "lab": {
+        "frame": 390,
+        "mode": "playing",
+        "credits": 0,
+        "sectionClear": false,
+        "flags": {
+          "exit": true,
+          "rescueAll": false,
+          "damage": true
+        },
+        "cam": {
+          "x": 24,
+          "y": 224
+        },
+        "level": {
+          "w": 1536,
+          "h": 448
+        },
+        "exit": {
+          "x0": 1440,
+          "x1": 1471,
+          "y": 416
+        },
+        "players": [
+          {
+            "active": true,
+            "state": "attack",
+            "facing": 1,
+            "energy": 3,
+            "x": 171,
+            "y": 416,
+            "score": 200,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": true,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "walk",
+            "facing": 1,
+            "energy": 3,
+            "x": 177,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 85,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "walk",
+            "facing": 1,
+            "energy": 3,
+            "x": 178,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          }
+        ],
+        "enemies": [
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 749,
+            "y": 416,
+            "facing": -1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 894,
+            "y": 256,
+            "facing": -1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 1373,
+            "y": 416,
+            "facing": -1,
+            "state": "walk"
+          }
+        ],
+        "civilians": [
+          {
+            "rescued": false,
+            "x": 400,
+            "y": 352
+          },
+          {
+            "rescued": false,
+            "x": 1088,
+            "y": 256
+          }
+        ]
+      }
+    },
+    {
+      "frame": 600,
+      "png": "frames/f000600.png",
+      "lab": {
+        "frame": 590,
+        "mode": "playing",
+        "credits": 0,
+        "sectionClear": false,
+        "flags": {
+          "exit": true,
+          "rescueAll": false,
+          "damage": true
+        },
+        "cam": {
+          "x": 56,
+          "y": 224
+        },
+        "level": {
+          "w": 1536,
+          "h": 448
+        },
+        "exit": {
+          "x0": 1440,
+          "x1": 1471,
+          "y": 416
+        },
+        "players": [
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 200,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 85,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          }
+        ],
+        "enemies": [
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 695,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 838,
+            "y": 256,
+            "facing": 1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 1319,
+            "y": 416,
+            "facing": 1,
+            "state": "walk"
+          }
+        ],
+        "civilians": [
+          {
+            "rescued": false,
+            "x": 400,
+            "y": 352
+          },
+          {
+            "rescued": false,
+            "x": 1088,
+            "y": 256
+          }
+        ]
+      }
+    },
+    {
+      "frame": 900,
+      "png": "frames/f000900.png",
+      "lab": {
+        "frame": 890,
+        "mode": "playing",
+        "credits": 0,
+        "sectionClear": false,
+        "flags": {
+          "exit": true,
+          "rescueAll": false,
+          "damage": true
+        },
+        "cam": {
+          "x": 56,
+          "y": 224
+        },
+        "level": {
+          "w": 1536,
+          "h": 448
+        },
+        "exit": {
+          "x0": 1440,
+          "x1": 1471,
+          "y": 416
+        },
+        "players": [
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 200,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 85,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          },
+          {
+            "active": true,
+            "state": "idle",
+            "facing": 1,
+            "energy": 3,
+            "x": 218,
+            "y": 416,
+            "score": 0,
+            "hurt": 0,
+            "ground": true,
+            "climbing": false,
+            "running": false,
+            "firing": false,
+            "vy": 0
+          }
+        ],
+        "enemies": [
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 691,
+            "y": 416,
+            "facing": -1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 836,
+            "y": 256,
+            "facing": -1,
+            "state": "walk"
+          },
+          {
+            "alive": true,
+            "hp": 4,
+            "x": 1315,
+            "y": 416,
+            "facing": -1,
+            "state": "walk"
+          }
+        ],
+        "civilians": [
+          {
+            "rescued": false,
+            "x": 400,
+            "y": 352
+          },
+          {
+            "rescued": false,
+            "x": 1088,
+            "y": 256
+          }
+        ]
+      }
+    }
+  ],
+  "decisions": 0,
+  "thinkMs": {
+    "total": 0,
+    "max": 0,
+    "mean": 0
+  },
+  "actions": {},
+  "energyLost": 0,
+  "falls": 0,
+  "expect": [
+    {
+      "frame": 150,
+      "path": "credits",
+      "equals": 4,
+      "ok": true,
+      "got": 4
+    },
+    {
+      "frame": 240,
+      "path": "players.0.active",
+      "equals": true,
+      "ok": true,
+      "got": true
+    },
+    {
+      "frame": 240,
+      "path": "players.1.active",
+      "equals": true,
+      "ok": true,
+      "got": true
+    },
+    {
+      "frame": 240,
+      "path": "players.2.active",
+      "equals": true,
+      "ok": true,
+      "got": true
+    },
+    {
+      "frame": 240,
+      "path": "players.3.active",
+      "equals": true,
+      "ok": true,
+      "got": true
+    },
+    {
+      "frame": 240,
+      "path": "credits",
+      "equals": 0,
+      "ok": true,
+      "got": 0
+    }
+  ],
+  "error": null,
+  "final": {
+    "mode": "playing",
+    "scores": [
+      200,
+      0,
+      0,
+      0
+    ],
+    "rescued": 0,
+    "civilians": 2,
+    "enemiesDown": 0,
+    "enemies": 3,
+    "p1": {
+      "x": 218,
+      "y": 416,
+      "energy": 3
+    }
+  },
+  "expectOk": true,
+  "wallMs": 18046,
+  "mp4": "run.mp4"
+}

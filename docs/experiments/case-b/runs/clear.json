@@ -1,0 +1,43 @@
+{
+ "name": "case-b-clear",
+ "frames": 2100,
+ "checkpoints": [150, 300, 460, 530, 720, 870, 1060, 1440, 1600, 1856, 2100],
+ "expect": [
+  {"frame": 150, "path": "mode", "equals": "title"},
+  {"frame": 150, "path": "credits", "equals": 1},
+  {"frame": 300, "path": "mode", "equals": "playing"},
+  {"frame": 300, "path": "players.0.energy", "equals": 3},
+  {"frame": 460, "path": "players.0.y", "equals": 339},
+  {"frame": 530, "path": "civilians.0.rescued", "equals": true},
+  {"frame": 530, "path": "players.0.y", "equals": 352},
+  {"frame": 720, "path": "enemies.0.alive", "equals": false},
+  {"frame": 870, "path": "players.0.y", "equals": 256},
+  {"frame": 1060, "path": "enemies.1.alive", "equals": false},
+  {"frame": 1440, "path": "civilians.1.rescued", "equals": true},
+  {"frame": 1600, "path": "enemies.2.alive", "equals": false},
+  {"frame": 1855, "path": "sectionClear", "equals": false},
+  {"frame": 1856, "path": "sectionClear", "equals": true},
+  {"frame": 1856, "path": "mode", "equals": "clear"},
+  {"frame": 1856, "path": "players.0.x", "min": 1440, "max": 1471},
+  {"frame": 1856, "path": "players.0.energy", "equals": 3},
+  {"frame": 2100, "path": "players.0.score", "equals": 3500}
+ ],
+ "steps": [
+  {"from": 120, "to": 125, "port": 1, "buttons": ["coin"]},
+  {"from": 150, "to": 155, "port": 1, "buttons": ["start"]},
+  {"from": 216, "to": 449, "port": 1, "buttons": ["right"]},
+  {"from": 453, "to": 453, "port": 1, "buttons": ["right"]},
+  {"from": 455, "to": 456, "port": 1, "buttons": ["right"]},
+  {"from": 457, "to": 459, "port": 1, "buttons": ["right", "b1"]},
+  {"from": 460, "to": 560, "port": 1, "buttons": ["right"]},
+  {"from": 576, "to": 655, "port": 1, "buttons": ["right"]},
+  {"from": 656, "to": 715, "port": 1, "buttons": ["b2"]},
+  {"from": 716, "to": 750, "port": 1, "buttons": ["right"]},
+  {"from": 751, "to": 875, "port": 1, "buttons": ["up"]},
+  {"from": 876, "to": 992, "port": 1, "buttons": ["right"]},
+  {"from": 993, "to": 1055, "port": 1, "buttons": ["b2"]},
+  {"from": 1056, "to": 1515, "port": 1, "buttons": ["right"]},
+  {"from": 1516, "to": 1575, "port": 1, "buttons": ["b2"]},
+  {"from": 1576, "to": 1865, "port": 1, "buttons": ["right"]}
+ ]
+}

@@ -1,0 +1,1992 @@
+diff --git a/docs/experiments/case-a/runs/clear.json b/docs/experiments/case-a/runs/clear.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..c3b000505e6d4f7b0ebe649c61190fe4c7223643
+--- /dev/null
++++ b/docs/experiments/case-a/runs/clear.json
+@@ -0,0 +1,284 @@
++{
++ "name": "case-a-clear",
++ "description": "Case A (exp1/case-a, rom/build/slammast.zip): Coin and 1P Start; push up the 32 px crate and the 64 px stack, jump to the one-way ledge and rescue the first civilian, drop through it (down + B1), shoot the lower dock's Trooper, run to the ladder and climb to the upper dock, shoot its Trooper, run and rescue the second civilian, drop off the deck's end, shoot the exit's guard while player 2 joins (Coin and 2P Start), then both walk right and player 1 reaches the exit: SECTION CLEAR at frame 1376 with every enemy down, no energy lost, 1300 points. Written by hand, frame by frame, from the lab state of trial runs (journal, 18:20-18:30).",
++ "frames": 1500,
++ "checkpoints": [
++  150,
++  300,
++  448,
++  537,
++  800,
++  938,
++  1118,
++  1245,
++  1376,
++  1480
++ ],
++ "expect": [
++  {
++   "frame": 150,
++   "path": "mode",
++   "equals": "title"
++  },
++  {
++   "frame": 150,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 300,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 300,
++   "path": "players.0.y",
++   "equals": 368
++  },
++  {
++   "frame": 448,
++   "path": "civilians.0.rescued",
++   "equals": true
++  },
++  {
++   "frame": 448,
++   "path": "players.0.y",
++   "equals": 336
++  },
++  {
++   "frame": 537,
++   "path": "enemies.0.alive",
++   "equals": false
++  },
++  {
++   "frame": 800,
++   "path": "players.0.y",
++   "equals": 240
++  },
++  {
++   "frame": 938,
++   "path": "enemies.1.alive",
++   "equals": false
++  },
++  {
++   "frame": 1118,
++   "path": "civilians.1.rescued",
++   "equals": true
++  },
++  {
++   "frame": 1245,
++   "path": "enemies.2.alive",
++   "equals": false
++  },
++  {
++   "frame": 1245,
++   "path": "players.1.active",
++   "equals": true
++  },
++  {
++   "frame": 1375,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 1376,
++   "path": "sectionClear",
++   "equals": true
++  },
++  {
++   "frame": 1376,
++   "path": "mode",
++   "equals": "clear"
++  },
++  {
++   "frame": 1376,
++   "path": "players.0.x",
++   "min": 1440,
++   "max": 1504
++  },
++  {
++   "frame": 1376,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1376,
++   "path": "players.0.energy",
++   "equals": 3
++  },
++  {
++   "frame": 1480,
++   "path": "players.0.score",
++   "equals": 1300
++  },
++  {
++   "frame": 1480,
++   "path": "mode",
++   "equals": "clear"
++  }
++ ],
++ "steps": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 150,
++   "to": 155,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 160,
++   "to": 364,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 365,
++   "to": 367,
++   "port": 1,
++   "buttons": [
++    "right",
++    "b1"
++   ]
++  },
++  {
++   "from": 368,
++   "to": 457,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 468,
++   "to": 471,
++   "port": 1,
++   "buttons": [
++    "down",
++    "b1"
++   ]
++  },
++  {
++   "from": 492,
++   "to": 536,
++   "port": 1,
++   "buttons": [
++    "b2"
++   ]
++  },
++  {
++   "from": 537,
++   "to": 538,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 541,
++   "to": 690,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 691,
++   "to": 798,
++   "port": 1,
++   "buttons": [
++    "up"
++   ]
++  },
++  {
++   "from": 803,
++   "to": 902,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 903,
++   "to": 952,
++   "port": 1,
++   "buttons": [
++    "b2"
++   ]
++  },
++  {
++   "from": 953,
++   "to": 954,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 957,
++   "to": 1166,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 1177,
++   "to": 1236,
++   "port": 1,
++   "buttons": [
++    "b2"
++   ]
++  },
++  {
++   "from": 1237,
++   "to": 1238,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 1241,
++   "to": 1390,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 1215,
++   "to": 1220,
++   "port": 2,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 1225,
++   "to": 1230,
++   "port": 2,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 1240,
++   "to": 1400,
++   "port": 2,
++   "buttons": [
++    "right"
++   ]
++  }
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/game-over.json b/docs/experiments/case-a/runs/game-over.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..c2e2c20dd485a3ee77cd129adad64528c88c29b7
+--- /dev/null
++++ b/docs/experiments/case-a/runs/game-over.json
+@@ -0,0 +1,137 @@
++{
++ "name": "case-a-game-over",
++ "description": "Case A: two coins, 1P Start, walk into the first Trooper's patrol and stand there: three touches (frames 608, 702, 762) take the 3 energy, player 1 is out and the game waits with a credit (CONTINUE? PUSH START); 1P Start continues with 3 energy (frame 902), walks back into the patrol, loses it all again with no credit left: GAME OVER at frame 1218, the title again at frame 1521.",
++ "frames": 1600,
++ "checkpoints": [
++  608,
++  700,
++  762,
++  830,
++  902,
++  1218,
++  1300,
++  1521
++ ],
++ "expect": [
++  {
++   "frame": 607,
++   "path": "players.0.energy",
++   "equals": 3
++  },
++  {
++   "frame": 608,
++   "path": "players.0.energy",
++   "equals": 2
++  },
++  {
++   "frame": 608,
++   "path": "players.0.hurt",
++   "min": 50
++  },
++  {
++   "frame": 702,
++   "path": "players.0.energy",
++   "equals": 1
++  },
++  {
++   "frame": 762,
++   "path": "players.0.active",
++   "equals": false
++  },
++  {
++   "frame": 762,
++   "path": "players.0.state",
++   "equals": "dead"
++  },
++  {
++   "frame": 830,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 830,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 902,
++   "path": "players.0.active",
++   "equals": true
++  },
++  {
++   "frame": 902,
++   "path": "players.0.energy",
++   "equals": 3
++  },
++  {
++   "frame": 902,
++   "path": "credits",
++   "equals": 0
++  },
++  {
++   "frame": 1218,
++   "path": "mode",
++   "equals": "game_over"
++  },
++  {
++   "frame": 1300,
++   "path": "mode",
++   "equals": "game_over"
++  },
++  {
++   "frame": 1521,
++   "path": "mode",
++   "equals": "title"
++  }
++ ],
++ "steps": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 130,
++   "to": 135,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 150,
++   "to": 155,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 160,
++   "to": 659,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 900,
++   "to": 905,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 906,
++   "to": 1005,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  }
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/long-run.json b/docs/experiments/case-a/runs/long-run.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e823f6b8b99c0f0fa6247e5f073029bc18115dcc
+--- /dev/null
++++ b/docs/experiments/case-a/runs/long-run.json
+@@ -0,0 +1,21 @@
++{
++ "name": "case-a-long-run",
++ "description": "Case A: about 6 minutes of game with nobody playing. The title's attract camera tours the level for 50 s (its camera wraps from the right end back to x 0 four times, so the level columns are streamed again and again), then Coin and 1P Start, and player 1 stands at the start for over 5 minutes while the Troopers walk their patrols. The game must still be running and drawing at the end.",
++ "frames": 21600,
++ "checkpoints": [1500, 2900, 3100, 10000, 21600],
++ "expect": [
++  {"frame": 2900, "path": "mode", "equals": "title"},
++  {"frame": 3100, "path": "mode", "equals": "playing"},
++  {"frame": 21600, "path": "mode", "equals": "playing"},
++  {"frame": 21600, "path": "players.0.active", "equals": true},
++  {"frame": 21600, "path": "players.0.energy", "equals": 3},
++  {"frame": 21600, "path": "enemies.0.alive", "equals": true},
++  {"frame": 21600, "path": "enemies.0.x", "min": 496, "max": 592},
++  {"frame": 21600, "path": "enemies.1.x", "min": 848, "max": 944},
++  {"frame": 21600, "path": "enemies.2.x", "min": 1344, "max": 1440}
++ ],
++ "steps": [
++  {"from": 3000, "to": 3005, "port": 1, "buttons": ["coin"]},
++  {"from": 3030, "to": 3035, "port": 1, "buttons": ["start"]}
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/moves.json b/docs/experiments/case-a/runs/moves.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..778accede82bae494abce2a56cc7bd572212e7bb
+--- /dev/null
++++ b/docs/experiments/case-a/runs/moves.json
+@@ -0,0 +1,226 @@
++{
++ "name": "case-a-moves",
++ "description": "Case A: the moves the clear script does not show. Walk to x 466 and wait facing right; the first Trooper turns at its patrol's end (x 496) and one B2 press there is the knife (frame 632, a 16-frame attack with B2 released); hold B2 to finish it with the gun; double-tap right and run to the ladder; climb up, climb down to the dock, climb up again; down + B1 drops through the upper deck; run right through the exit's guard (touched: energy 3 -> 2 at frame 1554, 1 s of blinking) into the exit zone with two Troopers still up: the section does not clear and DEFEAT EVERY TROOPER shows.",
++ "frames": 2000,
++ "checkpoints": [
++  640,
++  700,
++  860,
++  960,
++  1150,
++  1560,
++  1600,
++  1620,
++  2000
++ ],
++ "expect": [
++  {
++   "frame": 631,
++   "path": "enemies.0.hp",
++   "equals": 3
++  },
++  {
++   "frame": 632,
++   "path": "enemies.0.hp",
++   "equals": 2
++  },
++  {
++   "frame": 640,
++   "path": "players.0.state",
++   "equals": "attack"
++  },
++  {
++   "frame": 671,
++   "path": "enemies.0.alive",
++   "equals": false
++  },
++  {
++   "frame": 700,
++   "path": "players.0.state",
++   "equals": "run"
++  },
++  {
++   "frame": 860,
++   "path": "players.0.state",
++   "equals": "climb"
++  },
++  {
++   "frame": 900,
++   "path": "players.0.y",
++   "equals": 240
++  },
++  {
++   "frame": 960,
++   "path": "players.0.state",
++   "equals": "climb"
++  },
++  {
++   "frame": 1020,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1130,
++   "path": "players.0.y",
++   "equals": 240
++  },
++  {
++   "frame": 1150,
++   "path": "players.0.state",
++   "equals": "air"
++  },
++  {
++   "frame": 1180,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1553,
++   "path": "players.0.energy",
++   "equals": 3
++  },
++  {
++   "frame": 1554,
++   "path": "players.0.energy",
++   "equals": 2
++  },
++  {
++   "frame": 1554,
++   "path": "players.0.hurt",
++   "min": 55
++  },
++  {
++   "frame": 1600,
++   "path": "players.0.x",
++   "min": 1440,
++   "max": 1504
++  },
++  {
++   "frame": 1600,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1600,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 1600,
++   "path": "sectionClear",
++   "equals": false
++  },
++  {
++   "frame": 2000,
++   "path": "mode",
++   "equals": "playing"
++  }
++ ],
++ "steps": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 150,
++   "to": 155,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 160,
++   "to": 579,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 630,
++   "to": 631,
++   "port": 1,
++   "buttons": [
++    "b2"
++   ]
++  },
++  {
++   "from": 652,
++   "to": 691,
++   "port": 1,
++   "buttons": [
++    "b2"
++   ]
++  },
++  {
++   "from": 692,
++   "to": 693,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 696,
++   "to": 780,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 781,
++   "to": 888,
++   "port": 1,
++   "buttons": [
++    "up"
++   ]
++  },
++  {
++   "from": 899,
++   "to": 1008,
++   "port": 1,
++   "buttons": [
++    "down"
++   ]
++  },
++  {
++   "from": 1019,
++   "to": 1126,
++   "port": 1,
++   "buttons": [
++    "up"
++   ]
++  },
++  {
++   "from": 1137,
++   "to": 1140,
++   "port": 1,
++   "buttons": [
++    "down",
++    "b1"
++   ]
++  },
++  {
++   "from": 1171,
++   "to": 1172,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 1175,
++   "to": 1574,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  }
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/odd-inputs.json b/docs/experiments/case-a/runs/odd-inputs.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e828aa75a858ad1400480c7fee089a157836186c
+--- /dev/null
++++ b/docs/experiments/case-a/runs/odd-inputs.json
+@@ -0,0 +1,337 @@
++{
++ "name": "case-a-odd-inputs",
++ "description": "Case A: inputs a player should not need. On the title: 3P Coin (a credit), 3P Start and 4P Start (COMING SOON, no crash), B3 and b4-b6 on every port. In the game: B3 alone and with every direction (nothing happens), 1P Start while playing (nothing), 2P Start with no credit (nothing), 4P Coin (a credit), 3P Start (COMING SOON), every button of port 1 at once, left and right together, then 2P Start with the credit (player 2 joins). The game must keep running, in the playing mode, with its state sane.",
++ "frames": 2400,
++ "checkpoints": [
++  200,
++  260,
++  500,
++  700,
++  900,
++  1100,
++  1300,
++  1500,
++  2400
++ ],
++ "expect": [
++  {
++   "frame": 140,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 140,
++   "path": "mode",
++   "equals": "title"
++  },
++  {
++   "frame": 230,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 230,
++   "path": "credits",
++   "equals": 0
++  },
++  {
++   "frame": 700,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 700,
++   "path": "players.0.active",
++   "equals": true
++  },
++  {
++   "frame": 700,
++   "path": "players.1.active",
++   "equals": false
++  },
++  {
++   "frame": 900,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 1500,
++   "path": "players.0.active",
++   "equals": true
++  },
++  {
++   "frame": 1700,
++   "path": "players.1.active",
++   "equals": true
++  },
++  {
++   "frame": 1700,
++   "path": "credits",
++   "equals": 0
++  },
++  {
++   "frame": 2400,
++   "path": "mode",
++   "equals": "playing"
++  }
++ ],
++ "steps": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 3,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 140,
++   "to": 145,
++   "port": 3,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 160,
++   "to": 165,
++   "port": 4,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 2,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 3,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6",
++    "up",
++    "b1",
++    "b2"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 4,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6",
++    "down",
++    "b1",
++    "b2"
++   ]
++  },
++  {
++   "from": 210,
++   "to": 215,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 240,
++   "to": 300,
++   "port": 1,
++   "buttons": [
++    "b3"
++   ]
++  },
++  {
++   "from": 310,
++   "to": 340,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "right"
++   ]
++  },
++  {
++   "from": 350,
++   "to": 380,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "up"
++   ]
++  },
++  {
++   "from": 390,
++   "to": 420,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "down"
++   ]
++  },
++  {
++   "from": 430,
++   "to": 460,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b1"
++   ]
++  },
++  {
++   "from": 470,
++   "to": 500,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b2"
++   ]
++  },
++  {
++   "from": 520,
++   "to": 525,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 540,
++   "to": 545,
++   "port": 2,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 560,
++   "to": 600,
++   "port": 2,
++   "buttons": [
++    "b1",
++    "b2",
++    "b3",
++    "right"
++   ]
++  },
++  {
++   "from": 800,
++   "to": 805,
++   "port": 4,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 820,
++   "to": 825,
++   "port": 3,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 900,
++   "to": 1100,
++   "port": 1,
++   "buttons": [
++    "up",
++    "down",
++    "left",
++    "right",
++    "b1",
++    "b2",
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 1100,
++   "to": 1300,
++   "port": 1,
++   "buttons": [
++    "left",
++    "right"
++   ]
++  },
++  {
++   "from": 1300,
++   "to": 1500,
++   "port": 1,
++   "buttons": [
++    "left",
++    "b2",
++    "b1"
++   ]
++  },
++  {
++   "from": 1600,
++   "to": 1605,
++   "port": 2,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 1610,
++   "to": 2000,
++   "port": 2,
++   "buttons": [
++    "right",
++    "b2"
++   ]
++  },
++  {
++   "from": 1610,
++   "to": 2000,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 2000,
++   "to": 2300,
++   "port": 1,
++   "buttons": [
++    "down",
++    "b1"
++   ]
++  },
++  {
++   "from": 2000,
++   "to": 2300,
++   "port": 2,
++   "buttons": [
++    "up",
++    "b3"
++   ]
++  }
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/plans/clear.plan.json b/docs/experiments/case-a/runs/plans/clear.plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee00b53c8658b7b841b66ed5253b10f8e0dade55
+--- /dev/null
++++ b/docs/experiments/case-a/runs/plans/clear.plan.json
+@@ -0,0 +1,43 @@
++{"name":"case-a-clear",
++"description":"Case A (exp1/case-a, rom/build/slammast.zip): Coin and 1P Start; push up the 32 px crate and the 64 px stack, jump to the one-way ledge and rescue the first civilian, drop through it (down + B1), shoot the lower dock's Trooper, run to the ladder and climb to the upper dock, shoot its Trooper, run and rescue the second civilian, drop off the deck's end, shoot the exit's guard while player 2 joins (Coin and 2P Start), then both walk right and player 1 reaches the exit: SECTION CLEAR at frame 1376 with every enemy down, no energy lost, 1300 points. Written by hand, frame by frame, from the lab state of trial runs (journal, 18:20-18:30).",
++"frames":1500,
++"checkpoints":[150,300,448,537,800,938,1118,1245,1376,1480],
++"expect":[
++ {"frame":150,"path":"mode","equals":"title"},
++ {"frame":150,"path":"credits","equals":1},
++ {"frame":300,"path":"mode","equals":"playing"},
++ {"frame":300,"path":"players.0.y","equals":368},
++ {"frame":448,"path":"civilians.0.rescued","equals":true},
++ {"frame":448,"path":"players.0.y","equals":336},
++ {"frame":537,"path":"enemies.0.alive","equals":false},
++ {"frame":800,"path":"players.0.y","equals":240},
++ {"frame":938,"path":"enemies.1.alive","equals":false},
++ {"frame":1118,"path":"civilians.1.rescued","equals":true},
++ {"frame":1245,"path":"enemies.2.alive","equals":false},
++ {"frame":1245,"path":"players.1.active","equals":true},
++ {"frame":1375,"path":"mode","equals":"playing"},
++ {"frame":1376,"path":"sectionClear","equals":true},
++ {"frame":1376,"path":"mode","equals":"clear"},
++ {"frame":1376,"path":"players.0.x","min":1440,"max":1504},
++ {"frame":1376,"path":"players.0.y","equals":400},
++ {"frame":1376,"path":"players.0.energy","equals":3},
++ {"frame":1480,"path":"players.0.score","equals":1300},
++ {"frame":1480,"path":"mode","equals":"clear"}
++],
++"start":160,
++"prelude":[{"from":120,"to":125,"port":1,"buttons":["coin"]},{"from":150,"to":155,"port":1,"buttons":["start"]}],
++"segments":[
++ [205,"right"],[3,"right","b1"],[90,"right"],[10],
++ [4,"down","b1"],[20],
++ [45,"b2"],
++ [2,"right"],[2],[150,"right"],[108,"up"],[4],
++ [100,"right"],[50,"b2"],
++ [2,"right"],[2],[210,"right"],[10],
++ [60,"b2"],
++ [2,"right"],[2],[150,"right"],[30]
++],
++"extra":[
++ {"from":1215,"to":1220,"port":2,"buttons":["coin"]},
++ {"from":1225,"to":1230,"port":2,"buttons":["start"]},
++ {"from":1240,"to":1400,"port":2,"buttons":["right"]}
++]}
+diff --git a/docs/experiments/case-a/runs/plans/game-over.plan.json b/docs/experiments/case-a/runs/plans/game-over.plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..dca283f037e20fe882501b02aac55d1f43e87022
+--- /dev/null
++++ b/docs/experiments/case-a/runs/plans/game-over.plan.json
+@@ -0,0 +1,23 @@
++{"name":"case-a-game-over",
++"description":"Case A: two coins, 1P Start, walk into the first Trooper's patrol and stand there: three touches (frames 608, 702, 762) take the 3 energy, player 1 is out and the game waits with a credit (CONTINUE? PUSH START); 1P Start continues with 3 energy (frame 902), walks back into the patrol, loses it all again with no credit left: GAME OVER at frame 1218, the title again at frame 1521.",
++"frames":1600,
++"checkpoints":[608,700,762,830,902,1218,1300,1521],
++"expect":[
++ {"frame":607,"path":"players.0.energy","equals":3},
++ {"frame":608,"path":"players.0.energy","equals":2},
++ {"frame":608,"path":"players.0.hurt","min":50},
++ {"frame":702,"path":"players.0.energy","equals":1},
++ {"frame":762,"path":"players.0.active","equals":false},
++ {"frame":762,"path":"players.0.state","equals":"dead"},
++ {"frame":830,"path":"mode","equals":"playing"},
++ {"frame":830,"path":"credits","equals":1},
++ {"frame":902,"path":"players.0.active","equals":true},
++ {"frame":902,"path":"players.0.energy","equals":3},
++ {"frame":902,"path":"credits","equals":0},
++ {"frame":1218,"path":"mode","equals":"game_over"},
++ {"frame":1300,"path":"mode","equals":"game_over"},
++ {"frame":1521,"path":"mode","equals":"title"}
++],
++"start":160,
++"prelude":[{"from":120,"to":125,"port":1,"buttons":["coin"]},{"from":130,"to":135,"port":1,"buttons":["coin"]},{"from":150,"to":155,"port":1,"buttons":["start"]}],
++"segments":[[500,"right"],[240],[6,"start"],[100,"right"]]}
+diff --git a/docs/experiments/case-a/runs/plans/moves.plan.json b/docs/experiments/case-a/runs/plans/moves.plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..4800d9e61bca19bf10bc49c0678913e19e4b6d20
+--- /dev/null
++++ b/docs/experiments/case-a/runs/plans/moves.plan.json
+@@ -0,0 +1,209 @@
++{
++ "name": "case-a-moves",
++ "description": "Case A: the moves the clear script does not show. Walk to x 466 and wait facing right; the first Trooper turns at its patrol's end (x 496) and one B2 press there is the knife (frame 632, a 16-frame attack with B2 released); hold B2 to finish it with the gun; double-tap right and run to the ladder; climb up, climb down to the dock, climb up again; down + B1 drops through the upper deck; run right through the exit's guard (touched: energy 3 -> 2 at frame 1554, 1 s of blinking) into the exit zone with two Troopers still up: the section does not clear and DEFEAT EVERY TROOPER shows.",
++ "frames": 2000,
++ "checkpoints": [
++  640,
++  700,
++  860,
++  960,
++  1150,
++  1560,
++  1600,
++  1620,
++  2000
++ ],
++ "expect": [
++  {
++   "frame": 631,
++   "path": "enemies.0.hp",
++   "equals": 3
++  },
++  {
++   "frame": 632,
++   "path": "enemies.0.hp",
++   "equals": 2
++  },
++  {
++   "frame": 640,
++   "path": "players.0.state",
++   "equals": "attack"
++  },
++  {
++   "frame": 671,
++   "path": "enemies.0.alive",
++   "equals": false
++  },
++  {
++   "frame": 700,
++   "path": "players.0.state",
++   "equals": "run"
++  },
++  {
++   "frame": 860,
++   "path": "players.0.state",
++   "equals": "climb"
++  },
++  {
++   "frame": 900,
++   "path": "players.0.y",
++   "equals": 240
++  },
++  {
++   "frame": 960,
++   "path": "players.0.state",
++   "equals": "climb"
++  },
++  {
++   "frame": 1020,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1130,
++   "path": "players.0.y",
++   "equals": 240
++  },
++  {
++   "frame": 1150,
++   "path": "players.0.state",
++   "equals": "air"
++  },
++  {
++   "frame": 1180,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1553,
++   "path": "players.0.energy",
++   "equals": 3
++  },
++  {
++   "frame": 1554,
++   "path": "players.0.energy",
++   "equals": 2
++  },
++  {
++   "frame": 1554,
++   "path": "players.0.hurt",
++   "min": 55
++  },
++  {
++   "frame": 1600,
++   "path": "players.0.x",
++   "min": 1440,
++   "max": 1504
++  },
++  {
++   "frame": 1600,
++   "path": "players.0.y",
++   "equals": 400
++  },
++  {
++   "frame": 1600,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 1600,
++   "path": "sectionClear",
++   "equals": false
++  },
++  {
++   "frame": 2000,
++   "path": "mode",
++   "equals": "playing"
++  }
++ ],
++ "start": 160,
++ "prelude": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 1,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 150,
++   "to": 155,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  }
++ ],
++ "segments": [
++  [
++   420,
++   "right"
++  ],
++  [
++   50
++  ],
++  [
++   2,
++   "b2"
++  ],
++  [
++   20
++  ],
++  [
++   40,
++   "b2"
++  ],
++  [
++   2,
++   "right"
++  ],
++  [
++   2
++  ],
++  [
++   85,
++   "right"
++  ],
++  [
++   108,
++   "up"
++  ],
++  [
++   10
++  ],
++  [
++   110,
++   "down"
++  ],
++  [
++   10
++  ],
++  [
++   108,
++   "up"
++  ],
++  [
++   10
++  ],
++  [
++   4,
++   "down",
++   "b1"
++  ],
++  [
++   30
++  ],
++  [
++   2,
++   "right"
++  ],
++  [
++   2
++  ],
++  [
++   400,
++   "right"
++  ]
++ ]
++}
+diff --git a/docs/experiments/case-a/runs/plans/odd-inputs.plan.json b/docs/experiments/case-a/runs/plans/odd-inputs.plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..7e2e6b8099aab43528f08e0cd3d9c6b3f818c3d7
+--- /dev/null
++++ b/docs/experiments/case-a/runs/plans/odd-inputs.plan.json
+@@ -0,0 +1,339 @@
++{
++ "name": "case-a-odd-inputs",
++ "description": "Case A: inputs a player should not need. On the title: 3P Coin (a credit), 3P Start and 4P Start (COMING SOON, no crash), B3 and b4-b6 on every port. In the game: B3 alone and with every direction (nothing happens), 1P Start while playing (nothing), 2P Start with no credit (nothing), 4P Coin (a credit), 3P Start (COMING SOON), every button of port 1 at once, left and right together, then 2P Start with the credit (player 2 joins). The game must keep running, in the playing mode, with its state sane.",
++ "frames": 2400,
++ "checkpoints": [
++  200,
++  260,
++  500,
++  700,
++  900,
++  1100,
++  1300,
++  1500,
++  2400
++ ],
++ "expect": [
++  {
++   "frame": 140,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 140,
++   "path": "mode",
++   "equals": "title"
++  },
++  {
++   "frame": 230,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 230,
++   "path": "credits",
++   "equals": 0
++  },
++  {
++   "frame": 700,
++   "path": "mode",
++   "equals": "playing"
++  },
++  {
++   "frame": 700,
++   "path": "players.0.active",
++   "equals": true
++  },
++  {
++   "frame": 700,
++   "path": "players.1.active",
++   "equals": false
++  },
++  {
++   "frame": 900,
++   "path": "credits",
++   "equals": 1
++  },
++  {
++   "frame": 1500,
++   "path": "players.0.active",
++   "equals": true
++  },
++  {
++   "frame": 1700,
++   "path": "players.1.active",
++   "equals": true
++  },
++  {
++   "frame": 1700,
++   "path": "credits",
++   "equals": 0
++  },
++  {
++   "frame": 2400,
++   "path": "mode",
++   "equals": "playing"
++  }
++ ],
++ "start": 2400,
++ "prelude": [
++  {
++   "from": 120,
++   "to": 125,
++   "port": 3,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 140,
++   "to": 145,
++   "port": 3,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 160,
++   "to": 165,
++   "port": 4,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 2,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 3,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6",
++    "up",
++    "b1",
++    "b2"
++   ]
++  },
++  {
++   "from": 170,
++   "to": 200,
++   "port": 4,
++   "buttons": [
++    "b3",
++    "b4",
++    "b5",
++    "b6",
++    "down",
++    "b1",
++    "b2"
++   ]
++  },
++  {
++   "from": 210,
++   "to": 215,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 240,
++   "to": 300,
++   "port": 1,
++   "buttons": [
++    "b3"
++   ]
++  },
++  {
++   "from": 310,
++   "to": 340,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "right"
++   ]
++  },
++  {
++   "from": 350,
++   "to": 380,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "up"
++   ]
++  },
++  {
++   "from": 390,
++   "to": 420,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "down"
++   ]
++  },
++  {
++   "from": 430,
++   "to": 460,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b1"
++   ]
++  },
++  {
++   "from": 470,
++   "to": 500,
++   "port": 1,
++   "buttons": [
++    "b3",
++    "b2"
++   ]
++  },
++  {
++   "from": 520,
++   "to": 525,
++   "port": 1,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 540,
++   "to": 545,
++   "port": 2,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 560,
++   "to": 600,
++   "port": 2,
++   "buttons": [
++    "b1",
++    "b2",
++    "b3",
++    "right"
++   ]
++  },
++  {
++   "from": 800,
++   "to": 805,
++   "port": 4,
++   "buttons": [
++    "coin"
++   ]
++  },
++  {
++   "from": 820,
++   "to": 825,
++   "port": 3,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 900,
++   "to": 1100,
++   "port": 1,
++   "buttons": [
++    "up",
++    "down",
++    "left",
++    "right",
++    "b1",
++    "b2",
++    "b3",
++    "b4",
++    "b5",
++    "b6"
++   ]
++  },
++  {
++   "from": 1100,
++   "to": 1300,
++   "port": 1,
++   "buttons": [
++    "left",
++    "right"
++   ]
++  },
++  {
++   "from": 1300,
++   "to": 1500,
++   "port": 1,
++   "buttons": [
++    "left",
++    "b2",
++    "b1"
++   ]
++  },
++  {
++   "from": 1600,
++   "to": 1605,
++   "port": 2,
++   "buttons": [
++    "start"
++   ]
++  },
++  {
++   "from": 1610,
++   "to": 2000,
++   "port": 2,
++   "buttons": [
++    "right",
++    "b2"
++   ]
++  },
++  {
++   "from": 1610,
++   "to": 2000,
++   "port": 1,
++   "buttons": [
++    "right"
++   ]
++  },
++  {
++   "from": 2000,
++   "to": 2300,
++   "port": 1,
++   "buttons": [
++    "down",
++    "b1"
++   ]
++  },
++  {
++   "from": 2000,
++   "to": 2300,
++   "port": 2,
++   "buttons": [
++    "up",
++    "b3"
++   ]
++  }
++ ],
++ "segments": []
++}
+\ No newline at end of file
+diff --git a/docs/experiments/case-a/tools/collect-evidence.mjs b/docs/experiments/case-a/tools/collect-evidence.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..65b9e10c35029566858a65b836b452064e82c2db
+--- /dev/null
++++ b/docs/experiments/case-a/tools/collect-evidence.mjs
+@@ -0,0 +1,46 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Copies what replay-all.mjs and acceptance.mjs left in the shared folder
++// into docs/experiments/case-a/evidence/ (small files only: the sim | core |
++// difference pictures, the comparisons, the summaries and the event lists).
++//
++//   node docs/experiments/case-a/tools/collect-evidence.mjs SHARED_CASE_DIR
++
++import { execFileSync } from "node:child_process";
++import fs from "node:fs";
++import path from "node:path";
++
++const src = process.argv[2];
++if (!src) {
++  console.error("usage: node collect-evidence.mjs SHARED_CASE_DIR");
++  process.exit(2);
++}
++const ev = "docs/experiments/case-a/evidence";
++const copy = (from, to) => fs.existsSync(from) && fs.copyFileSync(from, to);
++const runs = path.join(src, "runs");
++for (const name of fs.readdirSync(runs)) {
++  const r = path.join(runs, name);
++  if (!fs.statSync(r).isDirectory()) continue;
++  const d = path.join(ev, "runs", name);
++  fs.mkdirSync(d, { recursive: true });
++  for (const f of fs.readdirSync(path.join(r, "compare"))) if (/^pair-.*\.png$|^compare\.json$/.test(f)) copy(path.join(r, "compare", f), path.join(d, f));
++  copy(path.join(r, "sim", "summary.json"), path.join(d, "sim-summary.json"));
++  copy(path.join(r, "core", "replay.json"), path.join(d, "core-replay.json"));
++  fs.writeFileSync(path.join(d, "events.txt"), execFileSync("node", ["docs/experiments/case-a/tools/events.mjs", path.join(r, "sim")], { encoding: "utf8" }));
++}
++copy(path.join(runs, "replay-all.json"), path.join(ev, "runs", "replay-all.json"));
++const acc = path.join(src, "acceptance");
++if (fs.existsSync(acc)) {
++  const d = path.join(ev, "acceptance");
++  fs.mkdirSync(d, { recursive: true });
++  for (const f of ["acceptance.json", "level3.json", "level3.png", "level4.json"]) copy(path.join(acc, f), path.join(d, f));
++  for (const kind of ["bot", "laya"]) {
++    const k = path.join(acc, kind);
++    if (!fs.existsSync(k)) continue;
++    for (const g of fs.readdirSync(k)) {
++      fs.mkdirSync(path.join(d, kind, g), { recursive: true });
++      copy(path.join(k, g, "summary.json"), path.join(d, kind, g, "summary.json"));
++      copy(path.join(k, g, "inputs.json"), path.join(d, kind, g, "inputs.json"));
++    }
++  }
++}
++console.log("evidence collected into", ev);
+diff --git a/docs/experiments/case-a/tools/dump.mjs b/docs/experiments/case-a/tools/dump.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..637c36917cc602ab598cd6319e6463ea1974eff1
+--- /dev/null
++++ b/docs/experiments/case-a/tools/dump.mjs
+@@ -0,0 +1,28 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Prints a harness run's state every N frames, one line per frame: mode,
++// camera, players 1-2 (state, position, energy, score), each enemy's x and
++// hits left (x when down), the civilians rescued and the inputs held.
++//
++//   node docs/experiments/case-a/tools/dump.mjs RUN_DIR [every=50]
++
++import fs from "node:fs";
++
++const dir = process.argv[2];
++const every = +(process.argv[3] || 50);
++if (!dir) {
++  console.error("usage: node dump.mjs RUN_DIR [every]");
++  process.exit(2);
++}
++const lines = fs.readFileSync(`${dir}/state.jsonl`, "utf8").trim().split("\n");
++for (const line of lines) {
++  const s = JSON.parse(line);
++  const a = s.lab;
++  if (!a || (s.f % every && s.f !== lines.length)) continue;
++  const ps = a.players
++    .slice(0, 2)
++    .map((p) => `${p.active ? "A" : "-"}${p.state}(${p.x},${p.y}) e${p.energy} s${p.score}`)
++    .join(" | ");
++  const en = a.enemies.map((e) => `${e.x}:${e.alive ? e.hp : "x"}`).join(" ");
++  const civ = a.civilians.map((c) => (c.rescued ? 1 : 0)).join("");
++  console.log(s.f, a.mode, `cam(${a.cam.x},${a.cam.y})`, ps, "en", en, "civ", civ, "in", s.in);
++}
+diff --git a/docs/experiments/case-a/tools/events.mjs b/docs/experiments/case-a/tools/events.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d33099eb64313849268a87967c7297213433ca3
+--- /dev/null
++++ b/docs/experiments/case-a/tools/events.mjs
+@@ -0,0 +1,40 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Lists the frames of a harness run where the game state changes in a way
++// that matters (mode, credits, players in or out, energy, enemy hits,
++// rescues), from its state.jsonl. Case A wrote its scripts with it.
++//
++//   node docs/experiments/case-a/tools/events.mjs RUN_DIR
++
++import fs from "node:fs";
++
++const dir = process.argv[2];
++if (!dir) {
++  console.error("usage: node events.mjs RUN_DIR");
++  process.exit(2);
++}
++const lines = fs.readFileSync(`${dir}/state.jsonl`, "utf8").trim().split("\n");
++let prev = null;
++for (const line of lines) {
++  const s = JSON.parse(line);
++  const a = s.lab;
++  if (!a) continue;
++  if (prev) {
++    const ev = [];
++    if (a.mode !== prev.mode) ev.push(`mode ${prev.mode} -> ${a.mode}`);
++    if (a.credits !== prev.credits) ev.push(`credits ${prev.credits} -> ${a.credits}`);
++    a.players.forEach((p, i) => {
++      const q = prev.players[i];
++      if (p.active !== q.active) ev.push(`P${i + 1} active ${q.active} -> ${p.active} at (${p.x},${p.y})`);
++      if (p.energy !== q.energy && p.active && q.active) ev.push(`P${i + 1} energy ${q.energy} -> ${p.energy}`);
++    });
++    a.enemies.forEach((e, i) => {
++      const q = prev.enemies[i];
++      if (e.hp !== q.hp) ev.push(`enemy ${i} hp ${q.hp} -> ${e.hp}${e.alive ? "" : " (down)"}`);
++    });
++    a.civilians.forEach((c, i) => {
++      if (c.rescued && !prev.civilians[i].rescued) ev.push(`civilian ${i} rescued`);
++    });
++    if (ev.length) console.log(s.f, ev.join("; "));
++  }
++  prev = a;
++}
+diff --git a/docs/experiments/case-a/tools/gen.mjs b/docs/experiments/case-a/tools/gen.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..4383be7fc6fa9303f853c1e4abcb7bfa646a8d22
+--- /dev/null
++++ b/docs/experiments/case-a/tools/gen.mjs
+@@ -0,0 +1,37 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Case A's script writer: turns a plan (sequential segments on port 1,
++// plus fixed steps) into a harness input script (docs/experiments/harness.md).
++//
++//   node docs/experiments/case-a/tools/gen.mjs OUT.json PLAN.json
++//
++// A plan: { name, description, frames, checkpoints, expect, start,
++// prelude: [steps], segments: [[n, ...buttons]], extra: [steps] }.
++// Segments run one after another from frame `start`: [205, "right"] holds
++// right for 205 frames, [10] waits 10 frames. `prelude` and `extra` are
++// steps copied as they are (other ports, overlapping presses).
++
++import fs from "node:fs";
++
++const [out, planFile] = process.argv.slice(2);
++if (!out || !planFile) {
++  console.error("usage: node gen.mjs OUT.json PLAN.json");
++  process.exit(2);
++}
++const plan = JSON.parse(fs.readFileSync(planFile, "utf8"));
++let f = plan.start;
++const steps = [...(plan.prelude || [])];
++for (const [n, ...buttons] of plan.segments || []) {
++  if (buttons.length) steps.push({ from: f, to: f + n - 1, port: 1, buttons });
++  f += n;
++}
++steps.push(...(plan.extra || []));
++const script = {
++  name: plan.name,
++  description: plan.description,
++  frames: plan.frames || f + 60,
++  checkpoints: plan.checkpoints || [],
++  expect: plan.expect || [],
++  steps,
++};
++fs.writeFileSync(out, JSON.stringify(script, null, 1) + "\n");
++console.log(`${out}: ${steps.length} steps, segments end at frame ${f}`);
+diff --git a/docs/experiments/case-a/tools/levelmap.mjs b/docs/experiments/case-a/tools/levelmap.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c9b2db88e26dcc5e546feeae63ab7defb378671
+--- /dev/null
++++ b/docs/experiments/case-a/tools/levelmap.mjs
+@@ -0,0 +1,30 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Prints case A's level as text: the collision map with its objects.
++//
++//   node docs/experiments/case-a/tools/levelmap.mjs > docs/experiments/case-a/evidence/level-map.txt
++
++import { buildLevel, COLS, ROWS, OBJECTS } from "../../../../rom/tools/level.mjs";
++const gfx = { tile16() {} };
++const lv = buildLevel(gfx, 0x4000);
++const ch = [".", "#", "=", "H", "C"];
++const g = [];
++for (let r = 0; r < ROWS; r++) g.push(Array.from({ length: COLS }, (_, c) => ch[lv.col[r * COLS + c]]));
++const put = (x, y, s) => {
++  const c = Math.floor(x / 16);
++  const r = Math.floor((y - 1) / 16);
++  if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = s;
++};
++OBJECTS.civilians.forEach((o) => put(o.x, o.y, "V"));
++OBJECTS.robots.forEach((o) => {
++  for (let x = o.min; x <= o.max; x += 16) if (g[Math.floor((o.y - 1) / 16)][Math.floor(x / 16)] === ".") put(x, o.y, "-");
++  put(o.x, o.y, "T");
++});
++put(OBJECTS.start.x, OBJECTS.start.y, "1");
++put(OBJECTS.start.x - 24, OBJECTS.start.y, "2");
++for (let x = OBJECTS.exit.x0; x < OBJECTS.exit.x1; x += 16) put(x, OBJECTS.exit.y, "E");
++const ruler = (d) => Array.from({ length: COLS }, (_, c) => (d === 10 ? Math.floor(c / 10) % 10 : c % 10)).join("");
++console.log(`Case A level: ${COLS} x ${ROWS} cells of 16 px (${COLS * 16} x ${ROWS * 16} px). Each line: row, its top y in px, the cells.`);
++console.log("Legend: . empty  # solid  = one-way  H ladder  C crate  1/2 player starts  T Trooper (- its patrol)  V civilian  E exit zone (feet row)");
++console.log("         " + ruler(10));
++console.log("         " + ruler(1));
++g.forEach((row, r) => console.log(`${String(r).padStart(2)} ${String(r * 16).padStart(4)}  ${row.join("")}`));
+diff --git a/docs/experiments/case-a/tools/replay-all.mjs b/docs/experiments/case-a/tools/replay-all.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..e274a449c79338d767fc62d1dc4db0ea4cc8c0e1
+--- /dev/null
++++ b/docs/experiments/case-a/tools/replay-all.mjs
+@@ -0,0 +1,53 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Case A's extra runs: every script in docs/experiments/case-a/runs/ in the
++// simulator (state, checkpoints, MP4) and on the real core (checkpoints,
++// MP4), then the pixel comparison at the checkpoints (tolerance 0).
++//
++//   node docs/experiments/case-a/tools/replay-all.mjs ZIP OUT_DIR DEVICE [name...]
++//
++// OUT_DIR/<name>/{sim,core,compare}; OUT_DIR/replay-all.json sums it up.
++
++import { execFileSync, spawnSync } from "node:child_process";
++import fs from "node:fs";
++import path from "node:path";
++
++const [zip, out, device, ...only] = process.argv.slice(2);
++if (!zip || !out || !device) {
++  console.error("usage: node replay-all.mjs ZIP OUT_DIR DEVICE [name...]");
++  process.exit(2);
++}
++const runs = "docs/experiments/case-a/runs";
++const names = only.length ? only : fs.readdirSync(runs).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
++const summary = [];
++for (const name of names) {
++  const script = path.join(runs, `${name}.json`);
++  const dir = path.join(out, name);
++  fs.rmSync(dir, { recursive: true, force: true });
++  fs.mkdirSync(dir, { recursive: true });
++  const t0 = Date.now();
++  const sim = spawnSync("node", ["rom/tools/lab/run.mjs", zip, "--out", path.join(dir, "sim"), "--script", script, "--mp4"], { encoding: "utf8" });
++  const s = JSON.parse(fs.readFileSync(path.join(dir, "sim", "summary.json"), "utf8"));
++  const core = spawnSync(device, ["romtest", "--json", "--input", script, "--frames-dir", path.join(dir, "core", "frames"), "--mp4", path.join(dir, "core", "run.mp4"), zip], { encoding: "utf8" });
++  fs.writeFileSync(path.join(dir, "core", "replay.json"), core.stdout);
++  execFileSync("node", ["rom/tools/lab/compare.mjs", path.join(dir, "sim", "frames"), path.join(dir, "core", "frames"), "--out", path.join(dir, "compare"), "--tolerance", "0"], { encoding: "utf8" });
++  const cmp = JSON.parse(fs.readFileSync(path.join(dir, "compare", "compare.json"), "utf8"));
++  const frames = cmp.results;
++  const worst = cmp.worstDifferPct;
++  const row = {
++    name,
++    simExit: sim.status,
++    coreExit: core.status,
++    expectOk: s.expectOk,
++    failed: (s.expect || []).filter((e) => !e.ok),
++    error: s.error,
++    cleared: s.cleared,
++    clearFrame: s.clearFrame,
++    gameOverFrame: s.gameOverFrame,
++    checkpoints: frames.length,
++    worstDifferPct: worst,
++    seconds: (Date.now() - t0) / 1000,
++  };
++  summary.push(row);
++  console.log(JSON.stringify(row));
++}
++fs.writeFileSync(path.join(out, "replay-all.json"), JSON.stringify(summary, null, 1) + "\n");
+diff --git a/docs/experiments/case-a/tools/rules-check.mjs b/docs/experiments/case-a/tools/rules-check.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..1e4f0411c5613483f2e434eb371ff75da0cf5154
+--- /dev/null
++++ b/docs/experiments/case-a/tools/rules-check.mjs
+@@ -0,0 +1,42 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Measures the spec's rules on recorded runs (state.jsonl of the harness):
++// how far the camera ever went back from its farthest x while playing, the
++// highest jump (feet rise from the floor it left), the climbing speed, the
++// Troopers' patrol range, and the frames of blinking after each hit.
++//
++//   node docs/experiments/case-a/tools/rules-check.mjs RUN_DIR...
++
++import fs from "node:fs";
++
++const out = { camBackMax: 0, jumpPeak: 0, climbPxPerFrame: [], patrol: {}, blink: [] };
++for (const dir of process.argv.slice(2)) {
++  const lines = fs.readFileSync(`${dir}/state.jsonl`, "utf8").trim().split("\n").map((l) => JSON.parse(l));
++  let far = 0, jumpFrom = null, prev = null, play = false;
++  for (const { f, lab } of lines) {
++    if (!lab) continue;
++    if (lab.mode === "playing" && !play) far = lab.cam.x;
++    play = lab.mode === "playing";
++    if (play) {
++      far = Math.max(far, lab.cam.x);
++      out.camBackMax = Math.max(out.camBackMax, far - lab.cam.x);
++      const p = lab.players[0];
++      const q = prev && prev.players[0];
++      if (q && p.active && q.active) {
++        if (p.state === "air" && q.state !== "air" && q.state !== "climb" && p.y < q.y) jumpFrom = q.y;
++        if (jumpFrom !== null && p.state === "air") out.jumpPeak = Math.max(out.jumpPeak, jumpFrom - p.y);
++        if (p.state !== "air") jumpFrom = null;
++        if (p.state === "climb" && q.state === "climb" && p.y !== q.y) out.climbPxPerFrame.push(Math.abs(p.y - q.y));
++        if (p.energy < q.energy) out.blink.push({ dir, f, hurt: p.hurt });
++      }
++      lab.enemies.forEach((e, i) => {
++        const r = (out.patrol[i] ||= { min: Infinity, max: -Infinity });
++        if (e.alive) [r.min, r.max] = [Math.min(r.min, e.x), Math.max(r.max, e.x)];
++      });
++    }
++    prev = lab;
++  }
++}
++const c = out.climbPxPerFrame;
++out.climbPxPerFrame = c.length ? { frames: c.length, mean: +(c.reduce((a, b) => a + b, 0) / c.length).toFixed(3) } : null;
++for (const r of Object.values(out.patrol)) r.range = r.max - r.min;
++console.log(JSON.stringify(out, null, 1));

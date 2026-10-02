@@ -1,0 +1,1804 @@
+{
+  "started": "2026-10-01T21:23:29.603Z",
+  "view": {
+    "width": 1920,
+    "height": 1080
+  },
+  "result": {
+    "ok": true,
+    "error": null
+  },
+  "steps": [
+    {
+      "n": null,
+      "t": 3877,
+      "at": "2026-10-01T21:23:33.480Z",
+      "text": "Willy Maker's home: no games yet, the New game wizard open",
+      "screenshot": "shots/000-home.png"
+    },
+    {
+      "n": 1,
+      "t": 4877,
+      "at": "2026-10-01T21:23:34.480Z",
+      "text": "New game, step 1: the board is CPS-1 (the only one offered)",
+      "selector": ".wm-wizard .wm-choice.is-on >> nth=0",
+      "box": {
+        "x": 773,
+        "y": 203.9375,
+        "width": 269.328125,
+        "height": 170.34375
+      },
+      "screenshot": "shots/001.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/001.png"
+    },
+    {
+      "n": 2,
+      "t": 6010,
+      "at": "2026-10-01T21:23:35.613Z",
+      "text": "Layout: 4 players × 3 buttons (slammast), as Game Spec v1 asks",
+      "selector": "getByRole('radio', { name: /4 players · 3 buttons/ })",
+      "box": {
+        "x": 773,
+        "y": 422.21875,
+        "width": 410,
+        "height": 75.140625
+      },
+      "screenshot": "shots/002.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/002.png"
+    },
+    {
+      "n": 3,
+      "t": 7277,
+      "at": "2026-10-01T21:23:36.880Z",
+      "text": "Start from Empty: the spec's level is 1536 × 448, not the 8192 × 672 template",
+      "selector": "getByRole('radio', { name: /^Empty/ })",
+      "box": {
+        "x": 1054.328125,
+        "y": 545.296875,
+        "width": 269.328125,
+        "height": 234.796875
+      },
+      "screenshot": "shots/003.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/003.png"
+    },
+    {
+      "n": 4,
+      "t": 8442,
+      "at": "2026-10-01T21:23:38.045Z",
+      "text": "Next: name and players",
+      "selector": "getByRole('button', { name: 'Next: name and players →', exact: true })",
+      "box": {
+        "x": 1397.375,
+        "y": 802.09375,
+        "width": 207.625,
+        "height": 40
+      },
+      "screenshot": "shots/004.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/004.png"
+    },
+    {
+      "n": 5,
+      "t": 9643,
+      "at": "2026-10-01T21:23:39.246Z",
+      "text": "Game title: WILLY GORKLINGO (the spec's title line)",
+      "selector": "getByLabel('Game title')",
+      "box": {
+        "x": 773,
+        "y": 228.78125,
+        "width": 832,
+        "height": 40
+      },
+      "screenshot": "shots/005.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/005.png"
+    },
+    {
+      "n": 6,
+      "t": 10804,
+      "at": "2026-10-01T21:23:40.407Z",
+      "text": "Author: go-link (the spec's (C) 2026 GO-LINK)",
+      "selector": "getByLabel('Author (optional)')",
+      "box": {
+        "x": 773,
+        "y": 309.625,
+        "width": 832,
+        "height": 40
+      },
+      "screenshot": "shots/006.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/006.png"
+    },
+    {
+      "n": 7,
+      "t": 11956,
+      "at": "2026-10-01T21:23:41.559Z",
+      "text": "Players: 4, so P3 and P4 can join later on the 4-port board",
+      "selector": "getByRole('radio', { name: '4 players' })",
+      "box": {
+        "x": 1032.21875,
+        "y": 394.46875,
+        "width": 83.234375,
+        "height": 32
+      },
+      "screenshot": "shots/007.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/007.png"
+    },
+    {
+      "n": 8,
+      "t": 13141,
+      "at": "2026-10-01T21:23:42.744Z",
+      "text": "Next: the first level",
+      "selector": "getByRole('button', { name: 'Next: the first level →', exact: true })",
+      "box": {
+        "x": 1427.34375,
+        "y": 452.46875,
+        "width": 177.65625,
+        "height": 40
+      },
+      "screenshot": "shots/008.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/008.png"
+    },
+    {
+      "n": 9,
+      "t": 14316,
+      "at": "2026-10-01T21:23:43.919Z",
+      "text": "Level name: Puerto Madero docks (Section 1 of Mission 1)",
+      "selector": "getByLabel('Level name')",
+      "box": {
+        "x": 773,
+        "y": 228.78125,
+        "width": 832,
+        "height": 40
+      },
+      "screenshot": "shots/009.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/009.png"
+    },
+    {
+      "n": 10,
+      "t": 15472,
+      "at": "2026-10-01T21:23:45.075Z",
+      "text": "Length: 4 screens = 1536 px wide",
+      "selector": "getByRole('radio', { name: '4 screens' })",
+      "box": {
+        "x": 866.71875,
+        "y": 313.625,
+        "width": 85.71875,
+        "height": 32
+      },
+      "screenshot": "shots/010.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/010.png"
+    },
+    {
+      "n": 11,
+      "t": 16646,
+      "at": "2026-10-01T21:23:46.249Z",
+      "text": "Height: 448 px = 2 screens tall",
+      "selector": "getByRole('radio', { name: /^448 px/ })",
+      "box": {
+        "x": 912.046875,
+        "y": 394.46875,
+        "width": 137.53125,
+        "height": 32
+      },
+      "screenshot": "shots/011.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/011.png"
+    },
+    {
+      "n": 12,
+      "t": 17827,
+      "at": "2026-10-01T21:23:47.430Z",
+      "text": "Create the game",
+      "selector": "getByRole('button', { name: 'Create the game', exact: true })",
+      "box": {
+        "x": 1460.4375,
+        "y": 452.46875,
+        "width": 144.5625,
+        "height": 40
+      },
+      "screenshot": "shots/012.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/012.png"
+    },
+    {
+      "n": null,
+      "t": 18917,
+      "at": "2026-10-01T21:23:48.520Z",
+      "text": "The IDE opened on the new level",
+      "screenshot": "shots/010-ide.png"
+    },
+    {
+      "n": 13,
+      "t": 19946,
+      "at": "2026-10-01T21:23:49.549Z",
+      "text": "Zoom out (1/4) until the whole 1536 px level fits the canvas",
+      "selector": "getByRole('button', { name: 'Zoom out (−)' })",
+      "box": {
+        "x": 1538,
+        "y": 139,
+        "width": 30,
+        "height": 30
+      },
+      "screenshot": "shots/013.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/013.png"
+    },
+    {
+      "n": 14,
+      "t": 21187,
+      "at": "2026-10-01T21:23:50.790Z",
+      "text": "Zoom out (2/4) until the whole 1536 px level fits the canvas",
+      "selector": "getByRole('button', { name: 'Zoom out (−)' })",
+      "box": {
+        "x": 1538,
+        "y": 139,
+        "width": 30,
+        "height": 30
+      },
+      "screenshot": "shots/014.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/014.png"
+    },
+    {
+      "n": 15,
+      "t": 22438,
+      "at": "2026-10-01T21:23:52.041Z",
+      "text": "Zoom out (3/4) until the whole 1536 px level fits the canvas",
+      "selector": "getByRole('button', { name: 'Zoom out (−)' })",
+      "box": {
+        "x": 1538,
+        "y": 139,
+        "width": 30,
+        "height": 30
+      },
+      "screenshot": "shots/015.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/015.png"
+    },
+    {
+      "n": 16,
+      "t": 23693,
+      "at": "2026-10-01T21:23:53.296Z",
+      "text": "Zoom out (4/4) until the whole 1536 px level fits the canvas",
+      "selector": "getByRole('button', { name: 'Zoom out (−)' })",
+      "box": {
+        "x": 1538,
+        "y": 139,
+        "width": 30,
+        "height": 30
+      },
+      "screenshot": "shots/016.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/016.png"
+    },
+    {
+      "n": 17,
+      "t": 24903,
+      "at": "2026-10-01T21:23:54.506Z",
+      "text": "Line the grid up: click empty cells with the select tool and read the cell the Inspector names",
+      "selector": "locator('.wm-inspector').first()",
+      "box": {
+        "x": 1581,
+        "y": 128,
+        "width": 339,
+        "height": 263.015625
+      },
+      "screenshot": "shots/017.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/017.png"
+    },
+    {
+      "n": null,
+      "t": 25832,
+      "at": "2026-10-01T21:23:55.435Z",
+      "text": "View at 82 %",
+      "screenshot": "shots/020-calibrated.png"
+    },
+    {
+      "n": 18,
+      "t": 26853,
+      "at": "2026-10-01T21:23:56.456Z",
+      "text": "Select player 2's start",
+      "selector": null,
+      "box": {
+        "x": 351.84000000000003,
+        "y": 587,
+        "width": 20,
+        "height": 20
+      },
+      "screenshot": "shots/018.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/018.png"
+    },
+    {
+      "n": 19,
+      "t": 28096,
+      "at": "2026-10-01T21:23:57.699Z",
+      "text": "Player 2's start: X = 48 so every start is inside x 32-96",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/019.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/019.png"
+    },
+    {
+      "n": 20,
+      "t": 29316,
+      "at": "2026-10-01T21:23:58.919Z",
+      "text": "Select player 3's start",
+      "selector": null,
+      "box": {
+        "x": 371.52,
+        "y": 587,
+        "width": 20,
+        "height": 20
+      },
+      "screenshot": "shots/020.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/020.png"
+    },
+    {
+      "n": 21,
+      "t": 30555,
+      "at": "2026-10-01T21:24:00.158Z",
+      "text": "Player 3's start: X = 64 so every start is inside x 32-96",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/021.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/021.png"
+    },
+    {
+      "n": 22,
+      "t": 31765,
+      "at": "2026-10-01T21:24:01.368Z",
+      "text": "Select player 4's start",
+      "selector": null,
+      "box": {
+        "x": 391.2,
+        "y": 587,
+        "width": 20,
+        "height": 20
+      },
+      "screenshot": "shots/022.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/022.png"
+    },
+    {
+      "n": 23,
+      "t": 33029,
+      "at": "2026-10-01T21:24:02.632Z",
+      "text": "Player 4's start: X = 80 so every start is inside x 32-96",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/023.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/023.png"
+    },
+    {
+      "n": 24,
+      "t": 34268,
+      "at": "2026-10-01T21:24:03.871Z",
+      "text": "Select the exit (the wizard put it at x 1488)",
+      "selector": null,
+      "box": {
+        "x": 1526.08,
+        "y": 587,
+        "width": 20,
+        "height": 20
+      },
+      "screenshot": "shots/024.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/024.png"
+    },
+    {
+      "n": 25,
+      "t": 35519,
+      "at": "2026-10-01T21:24:05.122Z",
+      "text": "Exit: X = 1440, the left end of the spec's exit zone x 1440-1504",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/025.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/025.png"
+    },
+    {
+      "n": null,
+      "t": 35807,
+      "at": "2026-10-01T21:24:05.410Z",
+      "text": "Starts at x 32-80 and the exit at x 1440",
+      "screenshot": "shots/030-starts-exit.png"
+    },
+    {
+      "n": 26,
+      "t": 36871,
+      "at": "2026-10-01T21:24:06.474Z",
+      "text": "Parts › Terrain › Crate: a 32 px crate, climbed by pushing",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Terrain' })",
+      "box": {
+        "x": 14,
+        "y": 371.859375,
+        "width": 63.25,
+        "height": 30
+      },
+      "screenshot": "shots/026.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/026.png"
+    },
+    {
+      "n": 27,
+      "t": 38178,
+      "at": "2026-10-01T21:24:07.781Z",
+      "text": "Click to place the first 32 px crate (x 192)",
+      "selector": null,
+      "box": {
+        "x": 470.08,
+        "y": 587.16,
+        "width": 26.24000000000001,
+        "height": 26.24000000000001
+      },
+      "screenshot": "shots/027.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/027.png"
+    },
+    {
+      "n": 28,
+      "t": 39450,
+      "at": "2026-10-01T21:24:09.053Z",
+      "text": "Name it crate_single, so the AI pack says what each crate is for",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/028.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/028.png"
+    },
+    {
+      "n": 29,
+      "t": 40671,
+      "at": "2026-10-01T21:24:10.274Z",
+      "text": "Click to place the stack's lower crate (x 224)",
+      "selector": null,
+      "box": {
+        "x": 496.32,
+        "y": 587.16,
+        "width": 26.239999999999952,
+        "height": 26.24000000000001
+      },
+      "screenshot": "shots/029.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/029.png"
+    },
+    {
+      "n": 30,
+      "t": 41925,
+      "at": "2026-10-01T21:24:11.528Z",
+      "text": "Name it crate_stack_low, so the AI pack says what each crate is for",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/030.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/030.png"
+    },
+    {
+      "n": 31,
+      "t": 43121,
+      "at": "2026-10-01T21:24:12.724Z",
+      "text": "Click to place the stack's upper crate: 64 px in all",
+      "selector": null,
+      "box": {
+        "x": 496.32,
+        "y": 560.9200000000001,
+        "width": 26.239999999999952,
+        "height": 26.239999999999895
+      },
+      "screenshot": "shots/031.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/031.png"
+    },
+    {
+      "n": 32,
+      "t": 44367,
+      "at": "2026-10-01T21:24:13.970Z",
+      "text": "Name it crate_stack_top, so the AI pack says what each crate is for",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/032.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/032.png"
+    },
+    {
+      "n": null,
+      "t": 44655,
+      "at": "2026-10-01T21:24:14.258Z",
+      "text": "The crates: 32 px, then a 64 px stack",
+      "screenshot": "shots/040-crates.png"
+    },
+    {
+      "n": 33,
+      "t": 45718,
+      "at": "2026-10-01T21:24:15.321Z",
+      "text": "Toolbar: the Platform tag (one-way: stand on it, jump through from below, down + jump drops)",
+      "selector": "locator('.wm-toolbar .wm-chips button').filter({ hasText: 'Platform' })",
+      "box": {
+        "x": 695.984375,
+        "y": 139,
+        "width": 90.625,
+        "height": 30
+      },
+      "screenshot": "shots/033.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/033.png"
+    },
+    {
+      "n": 34,
+      "t": 46963,
+      "at": "2026-10-01T21:24:16.566Z",
+      "text": "Fill tool (G): drag a rectangle",
+      "selector": "locator('button[aria-label=\"Fill a rectangle (G)\"]')",
+      "box": {
+        "x": 404,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/034.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/034.png"
+    },
+    {
+      "n": 35,
+      "t": 48200,
+      "at": "2026-10-01T21:24:17.803Z",
+      "text": "Drag the one-way ledge: 64 px above the dock, x 320-447",
+      "selector": null,
+      "box": {
+        "x": 575.04,
+        "y": 560.9200000000001,
+        "width": 104.96000000000004,
+        "height": 13.11999999999989
+      },
+      "screenshot": "shots/035.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/035.png"
+    },
+    {
+      "n": 36,
+      "t": 49651,
+      "at": "2026-10-01T21:24:19.254Z",
+      "text": "Drag the upper dock (the second floor): a one-way floor 160 px up, x 592-1151",
+      "selector": null,
+      "box": {
+        "x": 798.08,
+        "y": 482.2,
+        "width": 459.19999999999993,
+        "height": 13.120000000000005
+      },
+      "screenshot": "shots/036.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/036.png"
+    },
+    {
+      "n": 37,
+      "t": 51166,
+      "at": "2026-10-01T21:24:20.769Z",
+      "text": "Toolbar: the Ladder tag",
+      "selector": "locator('.wm-toolbar .wm-chips button').filter({ hasText: 'Ladder' })",
+      "box": {
+        "x": 792.609375,
+        "y": 139,
+        "width": 80.8125,
+        "height": 30
+      },
+      "screenshot": "shots/037.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/037.png"
+    },
+    {
+      "n": 38,
+      "t": 52406,
+      "at": "2026-10-01T21:24:22.009Z",
+      "text": "Drag the ladder from the dock floor up to the upper dock (x 576)",
+      "selector": null,
+      "box": {
+        "x": 784.96,
+        "y": 482.2,
+        "width": 13.120000000000005,
+        "height": 131.2
+      },
+      "screenshot": "shots/038.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/038.png"
+    },
+    {
+      "n": null,
+      "t": 52974,
+      "at": "2026-10-01T21:24:22.577Z",
+      "text": "Terrain: crates, the one-way ledge, the ladder and the upper dock",
+      "screenshot": "shots/050-terrain.png"
+    },
+    {
+      "n": 39,
+      "t": 54026,
+      "at": "2026-10-01T21:24:23.629Z",
+      "text": "Parts › Enemies › Trooper: pick the stamp",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Enemies' })",
+      "box": {
+        "x": 159.625,
+        "y": 371.859375,
+        "width": 71.59375,
+        "height": 30
+      },
+      "screenshot": "shots/039.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/039.png"
+    },
+    {
+      "n": 40,
+      "t": 55312,
+      "at": "2026-10-01T21:24:24.915Z",
+      "text": "Pencil tool (B): stamps are placed with the pencil",
+      "selector": "locator('button[aria-label=\"Pencil: paint the part (B)\"]')",
+      "box": {
+        "x": 316,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/040.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/040.png"
+    },
+    {
+      "n": 41,
+      "t": 56551,
+      "at": "2026-10-01T21:24:26.154Z",
+      "text": "Place the Trooper the lower dock, under the upper one (x 720, feet y 416)",
+      "selector": null,
+      "box": {
+        "x": 891.04,
+        "y": 580.12,
+        "width": 24,
+        "height": 30
+      },
+      "screenshot": "shots/041.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/041.png"
+    },
+    {
+      "n": 42,
+      "t": 57805,
+      "at": "2026-10-01T21:24:27.408Z",
+      "text": "Name it trooper_lower (the AI pack and the warnings use the reference name)",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/042.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/042.png"
+    },
+    {
+      "n": 43,
+      "t": 59031,
+      "at": "2026-10-01T21:24:28.634Z",
+      "text": "X = 720",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/043.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/043.png"
+    },
+    {
+      "n": 44,
+      "t": 60236,
+      "at": "2026-10-01T21:24:29.839Z",
+      "text": "Y = 416 (feet on the floor)",
+      "selector": "locator('.wm-inspector input[aria-label=\"Y\"]')",
+      "box": {
+        "x": 1822,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/044.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/044.png"
+    },
+    {
+      "n": 45,
+      "t": 61425,
+      "at": "2026-10-01T21:24:31.028Z",
+      "text": "Patrol: 96 px, as the spec asks",
+      "selector": "locator('.wm-inspector input[aria-label=\"Patrol (px)\"]')",
+      "box": {
+        "x": 1822,
+        "y": 355.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/045.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/045.png"
+    },
+    {
+      "n": 46,
+      "t": 62630,
+      "at": "2026-10-01T21:24:32.233Z",
+      "text": "Parts › Enemies › Trooper: pick the stamp",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Enemies' })",
+      "box": {
+        "x": 159.625,
+        "y": 371.859375,
+        "width": 71.59375,
+        "height": 30
+      },
+      "screenshot": "shots/046.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/046.png"
+    },
+    {
+      "n": 47,
+      "t": 63908,
+      "at": "2026-10-01T21:24:33.511Z",
+      "text": "Pencil tool (B): stamps are placed with the pencil",
+      "selector": "locator('button[aria-label=\"Pencil: paint the part (B)\"]')",
+      "box": {
+        "x": 316,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/047.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/047.png"
+    },
+    {
+      "n": 48,
+      "t": 65132,
+      "at": "2026-10-01T21:24:34.735Z",
+      "text": "Place the Trooper the upper dock (x 864, feet y 256)",
+      "selector": null,
+      "box": {
+        "x": 1009.12,
+        "y": 448.92,
+        "width": 24,
+        "height": 30
+      },
+      "screenshot": "shots/048.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/048.png"
+    },
+    {
+      "n": 49,
+      "t": 66382,
+      "at": "2026-10-01T21:24:35.985Z",
+      "text": "Name it trooper_upper (the AI pack and the warnings use the reference name)",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/049.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/049.png"
+    },
+    {
+      "n": 50,
+      "t": 67613,
+      "at": "2026-10-01T21:24:37.216Z",
+      "text": "X = 864",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/050.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/050.png"
+    },
+    {
+      "n": 51,
+      "t": 68789,
+      "at": "2026-10-01T21:24:38.392Z",
+      "text": "Y = 256 (feet on the floor)",
+      "selector": "locator('.wm-inspector input[aria-label=\"Y\"]')",
+      "box": {
+        "x": 1822,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/051.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/051.png"
+    },
+    {
+      "n": 52,
+      "t": 69987,
+      "at": "2026-10-01T21:24:39.590Z",
+      "text": "Patrol: 96 px, as the spec asks",
+      "selector": "locator('.wm-inspector input[aria-label=\"Patrol (px)\"]')",
+      "box": {
+        "x": 1822,
+        "y": 355.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/052.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/052.png"
+    },
+    {
+      "n": 53,
+      "t": 71178,
+      "at": "2026-10-01T21:24:40.781Z",
+      "text": "Parts › Enemies › Trooper: pick the stamp",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Enemies' })",
+      "box": {
+        "x": 159.625,
+        "y": 371.859375,
+        "width": 71.59375,
+        "height": 30
+      },
+      "screenshot": "shots/053.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/053.png"
+    },
+    {
+      "n": 54,
+      "t": 72457,
+      "at": "2026-10-01T21:24:42.060Z",
+      "text": "Pencil tool (B): stamps are placed with the pencil",
+      "selector": "locator('button[aria-label=\"Pencil: paint the part (B)\"]')",
+      "box": {
+        "x": 316,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/054.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/054.png"
+    },
+    {
+      "n": 55,
+      "t": 73691,
+      "at": "2026-10-01T21:24:43.294Z",
+      "text": "Place the Trooper guarding the exit (x 1344, feet y 416)",
+      "selector": null,
+      "box": {
+        "x": 1402.72,
+        "y": 580.12,
+        "width": 24,
+        "height": 30
+      },
+      "screenshot": "shots/055.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/055.png"
+    },
+    {
+      "n": 56,
+      "t": 74961,
+      "at": "2026-10-01T21:24:44.564Z",
+      "text": "Name it trooper_exit (the AI pack and the warnings use the reference name)",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/056.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/056.png"
+    },
+    {
+      "n": 57,
+      "t": 76167,
+      "at": "2026-10-01T21:24:45.770Z",
+      "text": "X = 1344",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/057.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/057.png"
+    },
+    {
+      "n": 58,
+      "t": 77343,
+      "at": "2026-10-01T21:24:46.946Z",
+      "text": "Y = 416 (feet on the floor)",
+      "selector": "locator('.wm-inspector input[aria-label=\"Y\"]')",
+      "box": {
+        "x": 1822,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/058.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/058.png"
+    },
+    {
+      "n": 59,
+      "t": 78528,
+      "at": "2026-10-01T21:24:48.131Z",
+      "text": "Patrol: 96 px, as the spec asks",
+      "selector": "locator('.wm-inspector input[aria-label=\"Patrol (px)\"]')",
+      "box": {
+        "x": 1822,
+        "y": 355.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/059.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/059.png"
+    },
+    {
+      "n": 60,
+      "t": 79713,
+      "at": "2026-10-01T21:24:49.316Z",
+      "text": "Parts › Civilians › Woman: pick the stamp",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Civilians' })",
+      "box": {
+        "x": 14,
+        "y": 409.859375,
+        "width": 71.1875,
+        "height": 30
+      },
+      "screenshot": "shots/060.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/060.png"
+    },
+    {
+      "n": 61,
+      "t": 80995,
+      "at": "2026-10-01T21:24:50.598Z",
+      "text": "Pencil tool (B): stamps are placed with the pencil",
+      "selector": "locator('button[aria-label=\"Pencil: paint the part (B)\"]')",
+      "box": {
+        "x": 316,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/061.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/061.png"
+    },
+    {
+      "n": 62,
+      "t": 82214,
+      "at": "2026-10-01T21:24:51.817Z",
+      "text": "Place the Woman on the one-way ledge (x 400, feet y 352)",
+      "selector": null,
+      "box": {
+        "x": 628.64,
+        "y": 527.64,
+        "width": 24,
+        "height": 30
+      },
+      "screenshot": "shots/062.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/062.png"
+    },
+    {
+      "n": 63,
+      "t": 83482,
+      "at": "2026-10-01T21:24:53.085Z",
+      "text": "Name it civ_ledge",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/063.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/063.png"
+    },
+    {
+      "n": 64,
+      "t": 84692,
+      "at": "2026-10-01T21:24:54.295Z",
+      "text": "X = 400",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/064.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/064.png"
+    },
+    {
+      "n": 65,
+      "t": 85872,
+      "at": "2026-10-01T21:24:55.475Z",
+      "text": "Y = 352",
+      "selector": "locator('.wm-inspector input[aria-label=\"Y\"]')",
+      "box": {
+        "x": 1822,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/065.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/065.png"
+    },
+    {
+      "n": 66,
+      "t": 87089,
+      "at": "2026-10-01T21:24:56.692Z",
+      "text": "Parts › Civilians › Child: pick the stamp",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Civilians' })",
+      "box": {
+        "x": 14,
+        "y": 409.859375,
+        "width": 71.1875,
+        "height": 30
+      },
+      "screenshot": "shots/066.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/066.png"
+    },
+    {
+      "n": 67,
+      "t": 88415,
+      "at": "2026-10-01T21:24:58.018Z",
+      "text": "Pencil tool (B): stamps are placed with the pencil",
+      "selector": "locator('button[aria-label=\"Pencil: paint the part (B)\"]')",
+      "box": {
+        "x": 316,
+        "y": 136,
+        "width": 36,
+        "height": 36
+      },
+      "screenshot": "shots/067.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/067.png"
+    },
+    {
+      "n": 68,
+      "t": 89639,
+      "at": "2026-10-01T21:24:59.242Z",
+      "text": "Place the Child at the end of the upper dock (x 1088, feet y 256)",
+      "selector": null,
+      "box": {
+        "x": 1192.8,
+        "y": 448.92,
+        "width": 24,
+        "height": 30
+      },
+      "screenshot": "shots/068.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/068.png"
+    },
+    {
+      "n": 69,
+      "t": 90876,
+      "at": "2026-10-01T21:25:00.479Z",
+      "text": "Name it civ_upper",
+      "selector": "locator('.wm-inspector input.wm-mono').first()",
+      "box": {
+        "x": 1756,
+        "y": 167.9375,
+        "width": 150,
+        "height": 30
+      },
+      "screenshot": "shots/069.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/069.png"
+    },
+    {
+      "n": 70,
+      "t": 92106,
+      "at": "2026-10-01T21:25:01.709Z",
+      "text": "X = 1088",
+      "selector": "locator('.wm-inspector input[aria-label=\"X\"]')",
+      "box": {
+        "x": 1662.5,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/070.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/070.png"
+    },
+    {
+      "n": 71,
+      "t": 93287,
+      "at": "2026-10-01T21:25:02.890Z",
+      "text": "Y = 256",
+      "selector": "locator('.wm-inspector input[aria-label=\"Y\"]')",
+      "box": {
+        "x": 1822,
+        "y": 235.328125,
+        "width": 84,
+        "height": 30
+      },
+      "screenshot": "shots/071.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/071.png"
+    },
+    {
+      "n": null,
+      "t": 93605,
+      "at": "2026-10-01T21:25:03.208Z",
+      "text": "Three Troopers, two civilians, the exit",
+      "screenshot": "shots/060-objects.png"
+    },
+    {
+      "n": 72,
+      "t": 94648,
+      "at": "2026-10-01T21:25:04.251Z",
+      "text": "Layers: make Far background the active layer, to paint the night sky",
+      "selector": "locator('.wm-layers li').filter({ hasText: 'Far background' })",
+      "box": {
+        "x": 1595,
+        "y": 590.265625,
+        "width": 311,
+        "height": 34
+      },
+      "screenshot": "shots/072.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/072.png"
+    },
+    {
+      "n": 73,
+      "t": 95901,
+      "at": "2026-10-01T21:25:05.504Z",
+      "text": "Parts › Tiles: the sky tileset's tiles",
+      "selector": "locator('.wm-parts [role=tab]').filter({ hasText: 'Tiles' })",
+      "box": {
+        "x": 168.640625,
+        "y": 409.859375,
+        "width": 50.484375,
+        "height": 30
+      },
+      "screenshot": "shots/073.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/073.png"
+    },
+    {
+      "n": null,
+      "t": 96221,
+      "at": "2026-10-01T21:25:05.824Z",
+      "text": "The sky tileset",
+      "screenshot": "shots/070-sky-tiles.png"
+    },
+    {
+      "n": 74,
+      "t": 97269,
+      "at": "2026-10-01T21:25:06.872Z",
+      "text": "Tile 1: the darkest sky at the top",
+      "selector": "getByRole('button', { name: 'Tile 1', exact: true })",
+      "box": {
+        "x": 14,
+        "y": 449.859375,
+        "width": 41.390625,
+        "height": 41.390625
+      },
+      "screenshot": "shots/074.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/074.png"
+    },
+    {
+      "n": 75,
+      "t": 98561,
+      "at": "2026-10-01T21:25:08.164Z",
+      "text": "Fill rows 0-63 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 272.28000000000003,
+        "width": 1259.52,
+        "height": 52.47999999999996
+      },
+      "screenshot": "shots/075.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/075.png"
+    },
+    {
+      "n": 76,
+      "t": 100065,
+      "at": "2026-10-01T21:25:09.668Z",
+      "text": "Tile 2: night sky",
+      "selector": "getByRole('button', { name: 'Tile 2', exact: true })",
+      "box": {
+        "x": 61.390625,
+        "y": 449.859375,
+        "width": 41.40625,
+        "height": 41.40625
+      },
+      "screenshot": "shots/076.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/076.png"
+    },
+    {
+      "n": 77,
+      "t": 101377,
+      "at": "2026-10-01T21:25:10.980Z",
+      "text": "Fill rows 64-127 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 324.76,
+        "width": 1259.52,
+        "height": 52.48000000000002
+      },
+      "screenshot": "shots/077.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/077.png"
+    },
+    {
+      "n": 78,
+      "t": 102903,
+      "at": "2026-10-01T21:25:12.506Z",
+      "text": "Tile 3: night sky, lower",
+      "selector": "getByRole('button', { name: 'Tile 3', exact: true })",
+      "box": {
+        "x": 108.796875,
+        "y": 449.859375,
+        "width": 41.390625,
+        "height": 41.390625
+      },
+      "screenshot": "shots/078.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/078.png"
+    },
+    {
+      "n": 79,
+      "t": 104185,
+      "at": "2026-10-01T21:25:13.788Z",
+      "text": "Fill rows 128-191 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 377.24,
+        "width": 1259.52,
+        "height": 52.48000000000002
+      },
+      "screenshot": "shots/079.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/079.png"
+    },
+    {
+      "n": 80,
+      "t": 105673,
+      "at": "2026-10-01T21:25:15.276Z",
+      "text": "Tile 4: the haze over the city",
+      "selector": "getByRole('button', { name: 'Tile 4', exact: true })",
+      "box": {
+        "x": 156.1875,
+        "y": 449.859375,
+        "width": 41.40625,
+        "height": 41.40625
+      },
+      "screenshot": "shots/080.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/080.png"
+    },
+    {
+      "n": 81,
+      "t": 106985,
+      "at": "2026-10-01T21:25:16.588Z",
+      "text": "Fill rows 192-255 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 429.72,
+        "width": 1259.52,
+        "height": 52.47999999999996
+      },
+      "screenshot": "shots/081.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/081.png"
+    },
+    {
+      "n": 82,
+      "t": 108501,
+      "at": "2026-10-01T21:25:18.104Z",
+      "text": "Tile 10: the skyline's roofs",
+      "selector": "getByRole('button', { name: 'Tile 10', exact: true })",
+      "box": {
+        "x": 203.59375,
+        "y": 497.265625,
+        "width": 41.40625,
+        "height": 41.40625
+      },
+      "screenshot": "shots/082.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/082.png"
+    },
+    {
+      "n": 83,
+      "t": 109820,
+      "at": "2026-10-01T21:25:19.423Z",
+      "text": "Fill rows 256-287 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 482.2,
+        "width": 1259.52,
+        "height": 26.24000000000001
+      },
+      "screenshot": "shots/083.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/083.png"
+    },
+    {
+      "n": 84,
+      "t": 111322,
+      "at": "2026-10-01T21:25:20.925Z",
+      "text": "Tile 12: dark buildings behind the docks",
+      "selector": "getByRole('button', { name: 'Tile 12', exact: true })",
+      "box": {
+        "x": 61.390625,
+        "y": 544.671875,
+        "width": 41.40625,
+        "height": 41.40625
+      },
+      "screenshot": "shots/084.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/084.png"
+    },
+    {
+      "n": 85,
+      "t": 112614,
+      "at": "2026-10-01T21:25:22.217Z",
+      "text": "Fill rows 288-447 px across the level",
+      "selector": null,
+      "box": {
+        "x": 312.64,
+        "y": 508.44,
+        "width": 1259.52,
+        "height": 131.2
+      },
+      "screenshot": "shots/085.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/085.png"
+    },
+    {
+      "n": 86,
+      "t": 114088,
+      "at": "2026-10-01T21:25:23.691Z",
+      "text": "Layers: back to Collision",
+      "selector": "locator('.wm-layers li').filter({ hasText: 'Collision' })",
+      "box": {
+        "x": 1595,
+        "y": 476.265625,
+        "width": 311,
+        "height": 34
+      },
+      "screenshot": "shots/086.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/086.png"
+    },
+    {
+      "n": null,
+      "t": 114992,
+      "at": "2026-10-01T21:25:24.595Z",
+      "text": "The level, done: night sky, dock, crates, ledge, ladder, upper dock, enemies, civilians, exit",
+      "screenshot": "shots/080-level.png"
+    },
+    {
+      "n": 87,
+      "t": 116041,
+      "at": "2026-10-01T21:25:25.644Z",
+      "text": "Play (P): test the level with the ROM's rules while building",
+      "selector": "locator('.wm-top button.is-play')",
+      "box": {
+        "x": 1817.859375,
+        "y": 79.5,
+        "width": 90.140625,
+        "height": 40
+      },
+      "screenshot": "shots/087.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/087.png"
+    },
+    {
+      "n": null,
+      "t": 118397,
+      "at": "2026-10-01T21:25:28.000Z",
+      "text": "Play mode: P1 x 32 y 416 · on the ground | P2 x 32 y 416 · on the ground",
+      "screenshot": "shots/090-play-start.png"
+    },
+    {
+      "n": 88,
+      "t": 119490,
+      "at": "2026-10-01T21:25:29.093Z",
+      "text": "Walk right to the first crate and push against it (a 32 px crate is climbed by pushing)",
+      "selector": "locator('.wm-play-layer canvas').first()",
+      "box": {
+        "x": 206,
+        "y": 132,
+        "width": 1152,
+        "height": 672
+      },
+      "screenshot": "shots/088.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/088.png"
+    },
+    {
+      "n": null,
+      "t": 122378,
+      "at": "2026-10-01T21:25:31.981Z",
+      "text": "After pushing: P1 x 186 y 416 · on the ground | P2 x 32 y 416 · on the ground",
+      "screenshot": "shots/091-play-crate.png"
+    },
+    {
+      "n": 89,
+      "t": 123487,
+      "at": "2026-10-01T21:25:33.090Z",
+      "text": "Keep pushing right: up onto the 64 px stack",
+      "selector": "locator('.wm-play-layer canvas').first()",
+      "box": {
+        "x": 206,
+        "y": 132,
+        "width": 1152,
+        "height": 672
+      },
+      "screenshot": "shots/089.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/089.png"
+    },
+    {
+      "n": null,
+      "t": 125264,
+      "at": "2026-10-01T21:25:34.867Z",
+      "text": "On the stack: P1 x 260 y 352 · on the ground | P2 x 32 y 416 · on the ground",
+      "screenshot": "shots/092-play-stack.png"
+    },
+    {
+      "n": 90,
+      "t": 126370,
+      "at": "2026-10-01T21:25:35.973Z",
+      "text": "Jump right (Z) from the stack toward the one-way ledge",
+      "selector": "locator('.wm-play-layer canvas').first()",
+      "box": {
+        "x": 206,
+        "y": 132,
+        "width": 1152,
+        "height": 672
+      },
+      "screenshot": "shots/090.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/090.png"
+    },
+    {
+      "n": null,
+      "t": 127961,
+      "at": "2026-10-01T21:25:37.564Z",
+      "text": "After the jump: P1 x 302 y 416 · on the ground | P2 x 69 y 416 · on the ground",
+      "screenshot": "shots/093-play-ledge.png"
+    },
+    {
+      "n": 91,
+      "t": 129076,
+      "at": "2026-10-01T21:25:38.679Z",
+      "text": "Down + jump: drop through the one-way ledge",
+      "selector": "locator('.wm-play-layer canvas').first()",
+      "box": {
+        "x": 206,
+        "y": 132,
+        "width": 1152,
+        "height": 672
+      },
+      "screenshot": "shots/091.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/091.png"
+    },
+    {
+      "n": null,
+      "t": 130480,
+      "at": "2026-10-01T21:25:40.083Z",
+      "text": "After dropping: P1 x 302 y 416 · on the ground | P2 x 69 y 416 · on the ground",
+      "screenshot": "shots/094-play-drop.png"
+    },
+    {
+      "n": 92,
+      "t": 131573,
+      "at": "2026-10-01T21:25:41.176Z",
+      "text": "Walk right to the ladder and fire (X) at the lower Trooper",
+      "selector": "locator('.wm-play-layer canvas').first()",
+      "box": {
+        "x": 206,
+        "y": 132,
+        "width": 1152,
+        "height": 672
+      },
+      "screenshot": "shots/092.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/092.png"
+    },
+    {
+      "n": null,
+      "t": 135168,
+      "at": "2026-10-01T21:25:44.771Z",
+      "text": "Firing: P1 x 410 y 416 · on the ground | P2 x 177 y 416 · on the ground",
+      "screenshot": "shots/095-play-fire.png"
+    },
+    {
+      "n": 93,
+      "t": 136262,
+      "at": "2026-10-01T21:25:45.865Z",
+      "text": "Back to building",
+      "selector": "getByRole('button', { name: 'Back to building' }).first()",
+      "box": {
+        "x": 1776.921875,
+        "y": 84,
+        "width": 127.078125,
+        "height": 36
+      },
+      "screenshot": "shots/093.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/093.png"
+    },
+    {
+      "n": 94,
+      "t": 138124,
+      "at": "2026-10-01T21:25:47.727Z",
+      "text": "Game tab: players, actions, each player's character and the DIP switches",
+      "selector": "locator('.wm-tabs button').filter({ hasText: 'Game' })",
+      "box": {
+        "x": 1498.859375,
+        "y": 81.5,
+        "width": 65.328125,
+        "height": 36
+      },
+      "screenshot": "shots/094.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/094.png"
+    },
+    {
+      "n": null,
+      "t": 139240,
+      "at": "2026-10-01T21:25:48.843Z",
+      "text": "The Game tab: 4 players, B1 jump, B2 fire, B3 special, run 250 ms, P1 Willy, P2-P4 recruit shirts (all as the spec asks)",
+      "screenshot": "shots/100-game.png"
+    },
+    {
+      "n": 95,
+      "t": 140376,
+      "at": "2026-10-01T21:25:49.979Z",
+      "text": "Menus tab: the title and the other screens",
+      "selector": "locator('.wm-tabs button').filter({ hasText: 'Menus' })",
+      "box": {
+        "x": 1570.1875,
+        "y": 81.5,
+        "width": 69.65625,
+        "height": 36
+      },
+      "screenshot": "shots/095.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/095.png"
+    },
+    {
+      "n": null,
+      "t": 141469,
+      "at": "2026-10-01T21:25:51.072Z",
+      "text": "The Menus tab: the title screen",
+      "screenshot": "shots/110-menus.png"
+    },
+    {
+      "n": 96,
+      "t": 142509,
+      "at": "2026-10-01T21:25:52.112Z",
+      "text": "Title screen subtitle: THE LAG PROTOCOL",
+      "selector": "locator('#wm-menu-field-subtitle')",
+      "box": {
+        "x": 1140.984375,
+        "y": 298.015625,
+        "width": 621.90625,
+        "height": 30
+      },
+      "screenshot": "shots/096.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/096.png"
+    },
+    {
+      "n": 97,
+      "t": 143678,
+      "at": "2026-10-01T21:25:53.281Z",
+      "text": "Title screen prompt: PUSH START",
+      "selector": "locator('#wm-menu-field-prompt')",
+      "box": {
+        "x": 1140.984375,
+        "y": 384.25,
+        "width": 614.703125,
+        "height": 30
+      },
+      "screenshot": "shots/097.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/097.png"
+    },
+    {
+      "n": 98,
+      "t": 144868,
+      "at": "2026-10-01T21:25:54.471Z",
+      "text": "Credits line: (C) 2026 GO-LINK (every screen)",
+      "selector": "locator('#wm-menu-field-credits')",
+      "box": {
+        "x": 1140.984375,
+        "y": 809.4375,
+        "width": 746,
+        "height": 30
+      },
+      "screenshot": "shots/098.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/098.png"
+    },
+    {
+      "n": null,
+      "t": 145125,
+      "at": "2026-10-01T21:25:54.728Z",
+      "text": "The title screen: WILLY GORKLINGO, THE LAG PROTOCOL, PUSH START, (C) 2026 GO-LINK. There is no field for CREDITS n.",
+      "screenshot": "shots/111-title.png"
+    },
+    {
+      "n": 99,
+      "t": 146244,
+      "at": "2026-10-01T21:25:55.847Z",
+      "text": "HUD screen",
+      "selector": "getByRole('tab', { name: 'HUD' })",
+      "box": {
+        "x": 258.21875,
+        "y": 188.9375,
+        "width": 49.171875,
+        "height": 30
+      },
+      "screenshot": "shots/099.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/099.png"
+    },
+    {
+      "n": 100,
+      "t": 147465,
+      "at": "2026-10-01T21:25:57.068Z",
+      "text": "HUD › Level clear: SECTION CLEAR, as the spec asks",
+      "selector": "locator('#wm-menu-field-cleared')",
+      "box": {
+        "x": 1140.984375,
+        "y": 470.484375,
+        "width": 614.703125,
+        "height": 30
+      },
+      "screenshot": "shots/100.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/100.png"
+    },
+    {
+      "n": null,
+      "t": 147792,
+      "at": "2026-10-01T21:25:57.395Z",
+      "text": "The HUD screen",
+      "screenshot": "shots/112-hud.png"
+    },
+    {
+      "n": 101,
+      "t": 148980,
+      "at": "2026-10-01T21:25:58.583Z",
+      "text": "Game over screen: the heading stays GAME OVER",
+      "selector": "getByRole('tab', { name: 'Game over' })",
+      "box": {
+        "x": 397.515625,
+        "y": 188.9375,
+        "width": 83.703125,
+        "height": 30
+      },
+      "screenshot": "shots/101.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/101.png"
+    },
+    {
+      "n": null,
+      "t": 149289,
+      "at": "2026-10-01T21:25:58.892Z",
+      "text": "The Game over screen",
+      "screenshot": "shots/113-gameover.png"
+    },
+    {
+      "n": 102,
+      "t": 150336,
+      "at": "2026-10-01T21:25:59.939Z",
+      "text": "Export tab: the review before exporting",
+      "selector": "locator('.wm-tabs button').filter({ hasText: 'Export' })",
+      "box": {
+        "x": 1645.84375,
+        "y": 81.5,
+        "width": 70.015625,
+        "height": 36
+      },
+      "screenshot": "shots/102.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/102.png"
+    },
+    {
+      "n": null,
+      "t": 151800,
+      "at": "2026-10-01T21:26:01.403Z",
+      "text": "The Export review: Ready to export",
+      "screenshot": "shots/200-export.png"
+    },
+    {
+      "n": 103,
+      "t": 152933,
+      "at": "2026-10-01T21:26:02.536Z",
+      "text": "Review: “Note: No hero of your own yet: the game uses the built-in Willy.” → Go, to see what it points at",
+      "selector": "locator('.wm-checks li:not(.is-ok)').filter({ hasText: 'Note: No hero of your own yet:' }).first()",
+      "box": {
+        "x": 33,
+        "y": 193,
+        "width": 584.65625,
+        "height": 44
+      },
+      "screenshot": "shots/103.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/103.png"
+    },
+    {
+      "n": null,
+      "t": 154449,
+      "at": "2026-10-01T21:26:04.052Z",
+      "text": "Where “Note: No hero of your own yet: the game uses the built-in Willy.” leads",
+      "screenshot": "shots/210-go-0.png"
+    },
+    {
+      "n": 104,
+      "t": 155505,
+      "at": "2026-10-01T21:26:05.108Z",
+      "text": "Back to Export",
+      "selector": "locator('.wm-tabs button').filter({ hasText: 'Export' })",
+      "box": {
+        "x": 1645.84375,
+        "y": 81.5,
+        "width": 70.015625,
+        "height": 36
+      },
+      "screenshot": "shots/104.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/104.png"
+    },
+    {
+      "n": null,
+      "t": 156757,
+      "at": "2026-10-01T21:26:06.360Z",
+      "text": "The final review: Ready to export",
+      "screenshot": "shots/220-export-final.png"
+    },
+    {
+      "n": 105,
+      "t": 157784,
+      "at": "2026-10-01T21:26:07.387Z",
+      "text": "Download project (.zip)",
+      "selector": "getByRole('button', { name: 'Download project (.zip)' })",
+      "box": {
+        "x": 667.65625,
+        "y": 363.46875,
+        "width": 584.671875,
+        "height": 40
+      },
+      "screenshot": "shots/105.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/105.png"
+    },
+    {
+      "n": null,
+      "t": 157869,
+      "at": "2026-10-01T21:26:07.472Z",
+      "text": "downloaded willy-gorklingo.willy.zip (project)",
+      "download": "downloads/willy-gorklingo.willy.zip"
+    },
+    {
+      "n": 106,
+      "t": 159826,
+      "at": "2026-10-01T21:26:09.429Z",
+      "text": "Download AI pack",
+      "selector": "getByRole('button', { name: 'Download AI pack' })",
+      "box": {
+        "x": 667.65625,
+        "y": 618.5,
+        "width": 180.546875,
+        "height": 40
+      },
+      "screenshot": "shots/106.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/106.png"
+    },
+    {
+      "n": null,
+      "t": 160259,
+      "at": "2026-10-01T21:26:09.862Z",
+      "text": "downloaded willy-gorklingo.ai-pack.zip (ai-pack)",
+      "download": "downloads/willy-gorklingo.ai-pack.zip"
+    },
+    {
+      "n": null,
+      "t": 161298,
+      "at": "2026-10-01T21:26:10.901Z",
+      "text": "Both files downloaded",
+      "screenshot": "shots/230-downloaded.png"
+    },
+    {
+      "n": 107,
+      "t": 162341,
+      "at": "2026-10-01T21:26:11.944Z",
+      "text": "Copy prompt (the pack's PROMPT.md)",
+      "selector": "getByRole('button', { name: 'Copy prompt' })",
+      "box": {
+        "x": 856.203125,
+        "y": 618.5,
+        "width": 145.484375,
+        "height": 40
+      },
+      "screenshot": "shots/107.jpg",
+      "fullSize": "scratchpad exp1/case-b/evidence/shots/107.png"
+    }
+  ],
+  "video": {
+    "file": "builder.mp4 (shared folder exp1/case-b/)",
+    "note": "t is ms from the start of the run; the video starts with the browser context, within about 0.5 s of t = 0"
+  }
+}

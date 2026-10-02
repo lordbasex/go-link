@@ -1,0 +1,202 @@
+Archive member included to satisfy reference by file (symbol)
+
+/usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+                              /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o (__mulsi3)
+/usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+                              /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o (__udivsi3)
+/usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+                              /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o (__divsi3)
+/usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+                              /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o (__umodsi3)
+/usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+                              /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o (__modsi3)
+
+Merging object attributes
+
+
+Discarded input sections
+
+ .comment       0x00000000       0x13 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+ .comment       0x00000000       0x13 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+rom              0x00000000         0x00100000         xr
+ram              0x00ff0000         0x0000f000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/crt0.o
+LOAD /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+LOAD /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+LOAD /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a
+
+.text           0x00000000     0x79b2
+ *(.vectors)
+ .vectors       0x00000000      0x400 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/crt0.o
+ *(.text .text.*)
+ .text          0x00000400       0x4a /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/crt0.o
+                0x00000400                _start
+                0x00000440                vblank_handler
+                0x00000448                default_handler
+ *fill*         0x0000044a        0x2 
+ .text          0x0000044c     0x199a /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+                0x00001da8                memset
+                0x00001dc8                memcpy
+ .text.startup  0x00001de6     0x27e0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+                0x00001de6                main
+ *fill*         0x000045c6        0x2 
+ .text          0x000045c8        0x0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+ .text          0x000045c8       0x22 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+                0x000045c8                __mulsi3_internal
+                0x000045c8                __mulsi3
+ *fill*         0x000045ea        0x2 
+ .text          0x000045ec       0x5c /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+                0x000045ec                __udivsi3_internal
+                0x000045ec                __udivsi3
+ .text          0x00004648       0x2e /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+                0x00004648                __divsi3_internal
+                0x00004648                __divsi3
+ *fill*         0x00004676        0x2 
+ .text          0x00004678       0x2e /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+                0x00004678                __umodsi3
+ *fill*         0x000046a6        0x2 
+ .text          0x000046a8       0x2e /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+                0x000046a8                __modsi3
+ *(.rodata .rodata.*)
+ .rodata.str1.1
+                0x000046d6       0xf9 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+                                0x10d (size before relaxing)
+ *fill*         0x000047cf        0x1 
+ .rodata        0x000047d0       0x10 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+ .rodata        0x000047e0     0x31d2 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+                0x000047e0                start_pos
+                0x000047f0                robot_spawn
+                0x0000480e                civ_spawn
+                0x0000481a                crate_cells
+                0x0000482c                pal_level
+                0x0000484c                level_col
+                0x000052cc                level_map
+                0x000067cc                pal_sky
+                0x000067ec                sky_map
+                0x00006d2c                obj_palettes
+                0x0000708c                anim_robot_defeated
+                0x0000717a                anim_robot_hit
+                0x00007272                anim_robot_walk
+                0x00007360                anim_child_happy
+                0x000073ce                anim_child_worried
+                0x0000742a                anim_woman_happy
+                0x000074aa                anim_woman_worried
+                0x0000752a                anim_willy_knife
+                0x00007608                anim_willy_bazooka
+                0x0000763e                anim_willy_machine_gun
+                0x00007728                anim_willy_jump
+                0x0000780a                anim_willy_run
+                0x000078f2                anim_willy_idle
+                0x000079b2                        . = ALIGN (0x2)
+
+.lab_state      0x00ff0000       0xc8
+ *(.lab_state)
+ .lab_state     0x00ff0000       0xc8 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+                0x00ff0000                lab_state
+                0x00ff00c8                        . = ALIGN (0x2)
+
+.data           0x00ff00c8       0x28 load address 0x000079b2
+                0x00ff00c8                        _data_start = .
+ *(.data .data.*)
+ .data          0x00ff00c8        0x0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/crt0.o
+ .data          0x00ff00c8       0x28 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+ .data          0x00ff00f0        0x0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+ .data          0x00ff00f0        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .data          0x00ff00f0        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .data          0x00ff00f0        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .data          0x00ff00f0        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .data          0x00ff00f0        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+                0x00ff00f0                        . = ALIGN (0x2)
+                0x00ff00f0                        _data_end = .
+                0x000079b2                        _data_load = LOADADDR (.data)
+
+.bss            0x00ff00f0     0x23a8 load address 0x000079da
+                0x00ff00f0                        _bss_start = .
+ *(.bss .bss.*)
+ .bss           0x00ff00f0        0x0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/crt0.o
+ .bss           0x00ff00f0     0x23a8 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/game_pack.o
+                0x00ff00f0                frame_count
+ .bss           0x00ff2498        0x0 /Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/art_data.o
+ .bss           0x00ff2498        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .bss           0x00ff2498        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .bss           0x00ff2498        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .bss           0x00ff2498        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .bss           0x00ff2498        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+ *(COMMON)
+                0x00ff2498                        . = ALIGN (0x2)
+                0x00ff2498                        _bss_end = .
+
+/DISCARD/
+ *(.comment)
+ *(.note*)
+ *(.eh_frame*)
+OUTPUT(/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-5/docs/experiments/case-b/build/obj/program.elf elf32-m68k)
+
+.debug_line     0x00000000      0x1cd
+ .debug_line    0x00000000       0x54 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_line    0x00000054       0x6d /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .debug_line    0x000000c1       0x5c /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .debug_line    0x0000011d       0x58 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .debug_line    0x00000175       0x58 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+
+.debug_line_str
+                0x00000000       0x8a
+ .debug_line_str
+                0x00000000       0x8a /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_line_str
+                0x0000008a        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+                                 0x8a (size before relaxing)
+ .debug_line_str
+                0x0000008a        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+                                 0x8a (size before relaxing)
+ .debug_line_str
+                0x0000008a        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+                                 0x8a (size before relaxing)
+ .debug_line_str
+                0x0000008a        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+                                 0x8a (size before relaxing)
+
+.debug_info     0x00000000       0xb4
+ .debug_info    0x00000000       0x24 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_info    0x00000024       0x24 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .debug_info    0x00000048       0x24 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .debug_info    0x0000006c       0x24 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .debug_info    0x00000090       0x24 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+
+.debug_abbrev   0x00000000       0x64
+ .debug_abbrev  0x00000000       0x14 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_abbrev  0x00000014       0x14 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .debug_abbrev  0x00000028       0x14 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .debug_abbrev  0x0000003c       0x14 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .debug_abbrev  0x00000050       0x14 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+
+.debug_aranges  0x00000000       0xa0
+ .debug_aranges
+                0x00000000       0x20 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_aranges
+                0x00000020       0x20 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+ .debug_aranges
+                0x00000040       0x20 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+ .debug_aranges
+                0x00000060       0x20 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+ .debug_aranges
+                0x00000080       0x20 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+
+.debug_str      0x00000000       0x96
+ .debug_str     0x00000000       0x96 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_mulsi3.o)
+ .debug_str     0x00000096        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_udivsi3.o)
+                                 0x96 (size before relaxing)
+ .debug_str     0x00000096        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_divsi3.o)
+                                 0x96 (size before relaxing)
+ .debug_str     0x00000096        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_umodsi3.o)
+                                 0x96 (size before relaxing)
+ .debug_str     0x00000096        0x0 /usr/local/Cellar/m68k-elf-gcc/16.2.0/lib/gcc/m68k-elf/16.2.0/m68000/libgcc.a(_modsi3.o)
+                                 0x96 (size before relaxing)

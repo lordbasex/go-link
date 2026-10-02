@@ -1,0 +1,209 @@
+{
+ "name": "case-a-moves",
+ "description": "Case A: the moves the clear script does not show. Walk to x 466 and wait facing right; the first Trooper turns at its patrol's end (x 496) and one B2 press there is the knife (frame 632, a 16-frame attack with B2 released); hold B2 to finish it with the gun; double-tap right and run to the ladder; climb up, climb down to the dock, climb up again; down + B1 drops through the upper deck; run right through the exit's guard (touched: energy 3 -> 2 at frame 1554, 1 s of blinking) into the exit zone with two Troopers still up: the section does not clear and DEFEAT EVERY TROOPER shows.",
+ "frames": 2000,
+ "checkpoints": [
+  640,
+  700,
+  860,
+  960,
+  1150,
+  1560,
+  1600,
+  1620,
+  2000
+ ],
+ "expect": [
+  {
+   "frame": 631,
+   "path": "enemies.0.hp",
+   "equals": 3
+  },
+  {
+   "frame": 632,
+   "path": "enemies.0.hp",
+   "equals": 2
+  },
+  {
+   "frame": 640,
+   "path": "players.0.state",
+   "equals": "attack"
+  },
+  {
+   "frame": 671,
+   "path": "enemies.0.alive",
+   "equals": false
+  },
+  {
+   "frame": 700,
+   "path": "players.0.state",
+   "equals": "run"
+  },
+  {
+   "frame": 860,
+   "path": "players.0.state",
+   "equals": "climb"
+  },
+  {
+   "frame": 900,
+   "path": "players.0.y",
+   "equals": 240
+  },
+  {
+   "frame": 960,
+   "path": "players.0.state",
+   "equals": "climb"
+  },
+  {
+   "frame": 1020,
+   "path": "players.0.y",
+   "equals": 400
+  },
+  {
+   "frame": 1130,
+   "path": "players.0.y",
+   "equals": 240
+  },
+  {
+   "frame": 1150,
+   "path": "players.0.state",
+   "equals": "air"
+  },
+  {
+   "frame": 1180,
+   "path": "players.0.y",
+   "equals": 400
+  },
+  {
+   "frame": 1553,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 1554,
+   "path": "players.0.energy",
+   "equals": 2
+  },
+  {
+   "frame": 1554,
+   "path": "players.0.hurt",
+   "min": 55
+  },
+  {
+   "frame": 1600,
+   "path": "players.0.x",
+   "min": 1440,
+   "max": 1504
+  },
+  {
+   "frame": 1600,
+   "path": "players.0.y",
+   "equals": 400
+  },
+  {
+   "frame": 1600,
+   "path": "mode",
+   "equals": "playing"
+  },
+  {
+   "frame": 1600,
+   "path": "sectionClear",
+   "equals": false
+  },
+  {
+   "frame": 2000,
+   "path": "mode",
+   "equals": "playing"
+  }
+ ],
+ "start": 160,
+ "prelude": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  }
+ ],
+ "segments": [
+  [
+   420,
+   "right"
+  ],
+  [
+   50
+  ],
+  [
+   2,
+   "b2"
+  ],
+  [
+   20
+  ],
+  [
+   40,
+   "b2"
+  ],
+  [
+   2,
+   "right"
+  ],
+  [
+   2
+  ],
+  [
+   85,
+   "right"
+  ],
+  [
+   108,
+   "up"
+  ],
+  [
+   10
+  ],
+  [
+   110,
+   "down"
+  ],
+  [
+   10
+  ],
+  [
+   108,
+   "up"
+  ],
+  [
+   10
+  ],
+  [
+   4,
+   "down",
+   "b1"
+  ],
+  [
+   30
+  ],
+  [
+   2,
+   "right"
+  ],
+  [
+   2
+  ],
+  [
+   400,
+   "right"
+  ]
+ ]
+}

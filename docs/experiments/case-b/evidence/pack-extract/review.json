@@ -1,0 +1,168 @@
+{
+  "format": 1,
+  "project": "eed47366-1b2e-4bfb-90c4-4fafcf135d19",
+  "board": "cps1",
+  "layout": "slammast",
+  "ready": true,
+  "errors": 0,
+  "warnings": 0,
+  "checks": [
+    {
+      "id": "game.hero",
+      "severity": "info",
+      "message": "No hero of your own yet: the game uses the built-in Willy.",
+      "params": {},
+      "target": {
+        "tab": "characters"
+      }
+    },
+    {
+      "id": "level.start",
+      "severity": "ok",
+      "message": "There is a player 1 start and an exit",
+      "params": {}
+    },
+    {
+      "id": "level.reachable",
+      "severity": "ok",
+      "message": "The whole path can be walked with jumps, crates and ladders",
+      "params": {}
+    },
+    {
+      "id": "level.trap",
+      "severity": "ok",
+      "message": "No place where a player gets stuck",
+      "params": {}
+    },
+    {
+      "id": "level.camera",
+      "severity": "ok",
+      "message": "The camera can follow the way to every exit",
+      "params": {}
+    },
+    {
+      "id": "level.width",
+      "severity": "ok",
+      "message": "Every level fits the board's map (up to 16384 × 2048 px)",
+      "params": {
+        "maxW": 16384,
+        "maxH": 2048
+      }
+    },
+    {
+      "id": "level.objects",
+      "severity": "ok",
+      "message": "Every object has its properties",
+      "params": {}
+    },
+    {
+      "id": "names.objects",
+      "severity": "ok",
+      "message": "Every reference name is unique and valid",
+      "params": {}
+    },
+    {
+      "id": "game.title",
+      "severity": "ok",
+      "message": "The title “Willy Gorklingo” fits the board's font",
+      "params": {
+        "title": "Willy Gorklingo"
+      }
+    },
+    {
+      "id": "game.buttons",
+      "severity": "ok",
+      "message": "4 players · 3 buttons assigned",
+      "params": {
+        "players": 4,
+        "buttons": 3
+      }
+    },
+    {
+      "id": "gfx.palettes",
+      "severity": "ok",
+      "message": "Sprite palettes: 0 of 32",
+      "params": {
+        "n": 0,
+        "max": 32
+      }
+    },
+    {
+      "id": "gfx.colors-per-zone",
+      "severity": "ok",
+      "message": "Every tile and sprite zone has 15 colors or fewer",
+      "params": {
+        "max": 15
+      }
+    },
+    {
+      "id": "gfx.board-colors",
+      "severity": "ok",
+      "message": "Every color exists on the board",
+      "params": {}
+    },
+    {
+      "id": "gfx.rom-space",
+      "severity": "ok",
+      "message": "Graphics: 0.01 of 6 MB",
+      "params": {
+        "used": 0.01,
+        "max": 6
+      }
+    },
+    {
+      "id": "level.enemies-per-screen",
+      "severity": "ok",
+      "message": "Sprites on one screen: 42 of 256",
+      "params": {
+        "n": 42,
+        "max": 256
+      }
+    },
+    {
+      "id": "gfx.tile-grid",
+      "severity": "ok",
+      "message": "Every background is on its layer's grid",
+      "params": {}
+    },
+    {
+      "id": "game.size",
+      "severity": "ok",
+      "message": "Program and levels: 0.09 of 2 MB",
+      "params": {
+        "used": 0.09,
+        "max": 2
+      }
+    },
+    {
+      "id": "gfx.unique-tiles",
+      "severity": "ok",
+      "message": "scroll2: 9 different 16 px tiles of 49152",
+      "params": {
+        "layer": "scroll2",
+        "n": 9,
+        "max": 49152,
+        "size": 16
+      }
+    },
+    {
+      "id": "gfx.unique-tiles",
+      "severity": "ok",
+      "message": "scroll3: 6 different 32 px tiles of 12288",
+      "params": {
+        "layer": "scroll3",
+        "n": 6,
+        "max": 12288,
+        "size": 32
+      }
+    },
+    {
+      "id": "gfx.colors-per-zone",
+      "severity": "ok",
+      "message": "Every background tile and sprite part has 15 colors or fewer",
+      "params": {
+        "max": 15
+      }
+    }
+  ]
+}

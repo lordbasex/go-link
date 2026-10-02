@@ -1,0 +1,1327 @@
+diff --git a/backend-device/pkg/ownsets/sets.json b/backend-device/pkg/ownsets/sets.json
+index 1ca41536bab41f65ca0ce4f6b1dbb016a7bfe0ad..2a46d63b806c6ceeb599404226b0e58ad1adb966 100644
+--- a/backend-device/pkg/ownsets/sets.json
++++ b/backend-device/pkg/ownsets/sets.json
+@@ -21,22 +21,22 @@
+         {
+           "name": "mb_05.bin",
+           "size": 524288,
+-          "sha256": "92410268705b091005fd75ff5d6199cdd9dc80da3d8bf637ae0c5affcb76933d"
++          "sha256": "da499a8b6a8831c12c611c99cf8f73490220604108707fb804c39ea4a71a75b1"
+         },
+         {
+           "name": "mb_06.bin",
+           "size": 524288,
+-          "sha256": "de09e716821648da3b1ac3ca5f962084d4f17d88a364a32d6b648c5dc8d280d5"
++          "sha256": "6dae84a71a707ce6240b70010645e4932576abf4c5be6db2c18066207df98f9f"
+         },
+         {
+           "name": "mb_07.bin",
+           "size": 524288,
+-          "sha256": "e28f57b0c5b9631c269424bdd061dfec29ed2112a6e3d69863a4c703d7b5cb89"
++          "sha256": "023b96de5e001bd313dec95470b18fca1eecd579479a72dfc162810c403f0b63"
+         },
+         {
+           "name": "mb_08.bin",
+           "size": 524288,
+-          "sha256": "d2bf7ba3255431d3abbf07aa9feabdd83ef941bc079201b4f99ca00844bdbd4e"
++          "sha256": "b82f2b44c55723a1c4981c296c45fbd34d305888040d1c82004af4739ce84f97"
+         },
+         {
+           "name": "mb_10.bin",
+@@ -136,7 +136,7 @@
+         {
+           "name": "mbe_23e.rom",
+           "size": 524288,
+-          "sha256": "ed49771956392530262b4b113cb90dcb52eba223904e52ebdfd40277acdb3c0a"
++          "sha256": "ce33a1166cebf3fbb978dcaad47f93e3b51b64bd0f61057261b180d3d597775b"
+         },
+         {
+           "name": "mbe_24b.rom",
+diff --git a/rom/src/main.c b/rom/src/main.c
+index 2489b68e7abe5d6b57f6bfaf1d55522aa3abff4c..cbbd475a834b720bda2acff7ada482bac12c7da2 100644
+--- a/rom/src/main.c
++++ b/rom/src/main.c
+@@ -1,16 +1,24 @@
+ /* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+ /*
+- * go-link's CPS-1 prototype (docs/rom/journal.md, step 4):
+- *  - attract screen over the level, INSERT COIN, credits;
+- *  - Coin adds a credit, 1P Start begins, 2P Start joins player 2 (an
+- *    Uplink recruit: Willy's tiles with a green-shirt palette);
+- *  - a two-tier level in the style of Metal Slug: a 1024x448 world on
+- *    scroll2 (street, buildings, one-way platforms, ladders, crates to
+- *    climb and break), the backdrop on scroll3 at half speed, a camera
+- *    that follows both players horizontally and vertically.
++ * Willy Gorklingo: The Lag Protocol, Mission 1 section 1, "Dead Air":
++ * the Puerto Madero docks at night (Game Spec v1 of experiment 1,
++ * docs/experiments/README.md; made by hand as case A, every decision in
++ * docs/experiments/case-a/decisions.md). It grew from go-link's CPS-1
++ * prototype (docs/rom/journal.md, step 4) and keeps its engine:
++ *  - a title screen over the level, INSERT COIN / PUSH START, credits;
++ *  - Coin adds a credit, 1P or 2P Start begins or joins (player 2 is an
++ *    Uplink recruit: Willy's tiles with a green-shirt palette); 3P and 4P
++ *    Start show "coming soon";
++ *  - a 1536x448 level on scroll2, streamed column by column into the
++ *    board's 1024 px tilemap (D-003), the night city on scroll3 at half
++ *    speed, a camera that only moves forward (48 px back margin);
++ *  - three Troopers on 96 px patrols (3 hits, 100 points, they hurt on
++ *    touch), two civilians (500 points), 3 energy per player, a 1 s
++ *    blink after a hit, the exit that clears the section once every
++ *    enemy is down, GAME OVER when nobody has energy or a credit.
+  * Controls: stick walks (double tap runs), up/down climb ladders, button
+- * 1 jumps (down + jump drops through a platform), button 2 fires the
+- * machine gun or the knife up close, button 3 the picked-up special.
++ * 1 jumps (down + jump drops through a one-way ledge), button 2 fires
++ * (the knife when a Trooper is adjacent), button 3 does nothing here.
+  */
+ #include "hw.h"
+ #include "gfx.h"
+@@ -89,6 +97,14 @@ static void print_num(int x, int y, u32 v, int digits, int pal)
+ 	print(x, y, buf, pal);
+ }
+ 
++/* A whole text row blanked (screen cells). */
++static void clear_row(int y)
++{
++	int x;
++	for (x = 0; x < SCREEN_W / 8; x++)
++		scroll1_cell(x + SCREEN_X0 / 8, y + SCREEN_Y0 / 8)[0] = 0x0020;
++}
++
+ static void clear_text(void)
+ {
+ 	int c, r;
+@@ -119,6 +135,30 @@ static void load_palette(int index, const u16 *colors)
+ 	copy_words(PALETTE + index * 16, colors, 16);
+ }
+ 
++/*
++ * The level is 96 columns (1536 px) but the scroll2 tilemap holds 64
++ * (1024 px, it wraps). Each tilemap column remembers which level column
++ * it shows; every frame the columns the screen can see (plus 2 on each
++ * side) are written if they are not there yet (decision D-003).
++ */
++static s16 slot_col[64];
++
++static void load_column(int c)
++{
++	int r, slot = c & 63;
++	for (r = 0; r < LEVEL_ROWS; r++)
++		scroll2_cell(slot, r)[0] = level_map[r * LEVEL_COLS + c];
++	slot_col[slot] = (s16)c;
++}
++
++static void stream_level(int cam)
++{
++	int c, c0 = (cam >> 4) - 2;
++	for (c = c0; c <= c0 + SCREEN_W / 16 + 4; c++)
++		if (c >= 0 && c < LEVEL_COLS && slot_col[c & 63] != c)
++			load_column(c);
++}
++
+ static void video_init(void)
+ {
+ 	int c, r;
+@@ -137,18 +177,21 @@ static void video_init(void)
+ 	/* back to front: backdrop (scroll3), level (scroll2), sprites, text (scroll1) */
+ 	CPSB_LAYER_CTRL = LAYER_ORDER(3, 2, 0, 1) | LAYER_EN_SCROLL1 | LAYER_EN_SCROLL23;
+ 
+-	for (c = 0; c < 64; c++)
++	for (c = 0; c < 64; c++) {
++		slot_col[c] = -1;
+ 		for (r = 0; r < 64; r++) {
+ 			volatile u16 *p = scroll1_cell(c, r);
+ 			p[0] = 0x0020;
+ 			p[1] = 0;
+ 			p = scroll2_cell(c, r);
+-			p[0] = r < LEVEL_ROWS ? level_map[r * LEVEL_COLS + c] : TILE16_LEVEL_EMPTY;
++			p[0] = TILE16_LEVEL_EMPTY;
+ 			p[1] = 0;
+ 			p = scroll3_cell(c, r);
+ 			p[0] = r < SKY_ROWS ? sky_map[r * SKY_COLS + c % SKY_COLS] : TILE32_EMPTY;
+ 			p[1] = 0;
+ 		}
++	}
++	stream_level(0);
+ 	((volatile u16 *)GFX_OBJ)[3] = 0xff00;
+ 
+ 	PALETTE[PAL_BACKGROUND] = 0xf102;
+@@ -170,11 +213,8 @@ static void video_init(void)
+ #define MAX_SPRITES 200 /* the table holds 256 */
+ /*
+  * Sprites go straight into the table in graphics RAM (the board copies it
+- * at the end of each frame). A RAM buffer copied in a loop broke: gcc
+- * turned the copy into "move.w (a0)+,(0,a0,d5.l)", which assumes the
+- * destination is computed before the source's increment; the emulated
+- * 68000 computes it after, so the table landed one word late and the
+- * hardware never found our sprites (journal, step 2).
++ * at the end of each frame); see the prototype's journal, step 2, for why
++ * a RAM buffer copied in a loop broke.
+  */
+ #define OBJ ((volatile u16 *)GFX_OBJ)
+ static int nobj;
+@@ -195,8 +235,8 @@ static void put_sprite(int x, int y, u16 code, u16 attr)
+ 
+ /*
+  * A frame with its feet at screen (x, y), facing left when flip: one
+- * sprite entry per 16x16 tile, each with its own palette (step 2b).
+- * The palette argument is an offset added to the tiles' own (0 here).
++ * sprite entry per 16x16 tile, each with its own palette. The palette
++ * argument is an offset added to the tiles' own (0, or the recruit's).
+  */
+ static void draw_frame(const Frame *f, int x, int y, int pal, int flip)
+ {
+@@ -238,8 +278,18 @@ static void flush_sprites(void)
+ #define CLIMB_SPEED 24 /* 1.5 px per frame */
+ #define STEP_UP 32    /* the highest edge a push climbs (one crate) */
+ #define PUSH_FRAMES 10
+-
+-static u16 sys_now, sys_last;
++#define RUN_TAP 15    /* double tap window: 250 ms */
++#define ENERGY 3
++#define HURT_FRAMES 60 /* 1 s of blinking after a hit */
++#define TROOPER_HP 3
++#define TROOPER_POINTS 100
++#define CIVILIAN_POINTS 500
++#define TROOPER_H 43  /* the robot sprite's height */
++#define CLEAR_FRAMES 360
++#define GAME_OVER_FRAMES 300
++#define SOON_FRAMES 120
++
++static u16 sys_now, sys_last, p34_now, p34_last;
+ static int credits;
+ static int cam_x, cam_y;
+ static int cam_far; /* the farthest the camera has been: the stage only goes forward */
+@@ -249,14 +299,10 @@ struct bullet {
+ 	s16 x, y, dir, live;
+ };
+ 
+-struct rocket {
+-	s16 x, y, dir, live, speed;
+-};
+-
+-enum { SPECIAL_NONE, SPECIAL_BAZOOKA };
+-
+ struct player {
+-	int active, palofs;
++	int active;  /* in the game with energy left */
++	int joined;  /* has played this game (for GAME OVER and the HUD) */
++	int palofs;
+ 	u16 pad, last;
+ 	s32 x;  /* world px */
+ 	s32 y;  /* world y of the feet, 1/16 px */
+@@ -264,15 +310,14 @@ struct player {
+ 	int flip, on_ground, climbing, drop_t, push_t;
+ 	int running, tap_dir;
+ 	u32 tap_time;
+-	int firing, fire_wait, knife_t, bazooka_t, special, ammo;
++	int firing, fire_wait, knife_t;
++	int energy, hurt;
+ 	u32 t, score;
+ 	struct bullet shots[6];
+-	struct rocket rocket;
+ };
+ static struct player pl[PLAYERS];
+ 
+-static u8 col_map[LEVEL_ROWS * LEVEL_COLS]; /* RAM copy: crates can break */
+-static s8 crate_hp[CRATES];
++static const u8 *col_map = level_col; /* crates never break: the map is fixed (D-006) */
+ 
+ enum { ROBOT_OFF, ROBOT_WALK, ROBOT_HIT, ROBOT_DOWN };
+ static struct {
+@@ -287,29 +332,54 @@ static struct {
+ 	u32 t;
+ } civ[CIVILIANS];
+ 
+-static struct {
+-	s32 x, fy;
+-	int live;
+-} pickup;
+-
+ static int rescued;
++static u32 soon_t;  /* frames left of the "coming soon" message */
++static int soon_who; /* 3 or 4 */
+ 
+ #define PRESSED(p, bit) (((p)->pad & (bit)) && !((p)->last & (bit)))
+ #define SYS_PRESSED(bit) ((sys_now & (bit)) && !(sys_last & (bit)))
++#define P34_PRESSED(bit) ((p34_now & (bit)) && !(p34_last & (bit)))
+ #define SYS_COIN2  0x02
+ #define SYS_START2 0x20
++/* P3 and P4's coin and start, as read into p34_now (low byte P3, high P4) */
++#define P3_COIN  0x0040
++#define P3_START 0x0080
++#define P4_COIN  0x4000
++#define P4_START 0x8000
+ 
+ static void read_inputs(void)
+ {
+ 	u16 both = (u16)~IN_P12;
++	u16 v3 = (u16)~IN_P3, v4 = (u16)~IN_P4;
++	int i;
+ 	pl[0].last = pl[0].pad;
+ 	pl[1].last = pl[1].pad;
+-	pl[0].pad = both & 0xff;
+-	pl[1].pad = (both >> 8) & 0xff;
++	/* bit 7 of each byte is P3/P4's button 3 on slammast: not ours */
++	pl[0].pad = both & 0x7f;
++	pl[1].pad = (both >> 8) & 0x7f;
++	/*
++	 * Opposite directions held together cancel out (D-013): the real core
++	 * delivers neither, the board model both, and the game must not
++	 * depend on which.
++	 */
++	for (i = 0; i < PLAYERS; i++) {
++		if ((pl[i].pad & (BTN_LEFT | BTN_RIGHT)) == (BTN_LEFT | BTN_RIGHT))
++			pl[i].pad &= (u16)~(BTN_LEFT | BTN_RIGHT);
++		if ((pl[i].pad & (BTN_UP | BTN_DOWN)) == (BTN_UP | BTN_DOWN))
++			pl[i].pad &= (u16)~(BTN_UP | BTN_DOWN);
++	}
+ 	sys_last = sys_now;
+ 	sys_now = (u16)(~IN_SYSTEM & 0xff);
+-	if ((SYS_PRESSED(SYS_COIN1) || SYS_PRESSED(SYS_COIN2)) && credits < 9)
++	/* P3/P4: coin 0x40, start 0x80, in either byte of their port */
++	p34_last = p34_now;
++	p34_now = (u16)(((v3 | (v3 >> 8)) & 0xc0) | ((((v4 | (v4 >> 8)) & 0xc0)) << 8));
++	if ((SYS_PRESSED(SYS_COIN1) || SYS_PRESSED(SYS_COIN2) || P34_PRESSED(P3_COIN) || P34_PRESSED(P4_COIN)) && credits < 9)
+ 		credits++;
++	/* 3P and 4P Start: those players come later (spec: "coming soon") */
++	if (P34_PRESSED(P3_START) || P34_PRESSED(P4_START)) {
++		soon_who = P34_PRESSED(P3_START) ? 3 : 4;
++		soon_t = SOON_FRAMES;
++	}
+ }
+ 
+ /* ---------------------------------------------------------- the level */
+@@ -333,7 +403,7 @@ static int is_solid(int t)
+ 	return t == CELL_SOLID || t == CELL_CRATE;
+ }
+ 
+-/* the top of a one-way platform, or of a ladder (a ladder's top cell) */
++/* the top of a one-way ledge, or of a ladder (a ladder's top cell) */
+ static int is_ledge(int c, int r)
+ {
+ 	int t = cell(c, r);
+@@ -367,43 +437,6 @@ static int body_blocked(s32 x, s32 fy)
+ 	return is_solid(cell_at(x, fy - BODY_H));
+ }
+ 
+-static void set_cell_tile(int c, int r, u16 code)
+-{
+-	scroll2_cell(c, r)[0] = code;
+-}
+-
+-static void level_reset(void)
+-{
+-	int i;
+-	for (i = 0; i < LEVEL_ROWS * LEVEL_COLS; i++) {
+-		col_map[i] = level_col[i];
+-		set_cell_tile(i % LEVEL_COLS, i / LEVEL_COLS, level_map[i]);
+-	}
+-	for (i = 0; i < CRATES; i++)
+-		crate_hp[i] = 3;
+-}
+-
+-/* a hit on the crate that holds cell (c, r); returns 1 if it was a crate */
+-static int hit_crate(int c, int r, int damage, struct player *by)
+-{
+-	int i, q;
+-	for (i = 0; i < CRATES; i++) {
+-		int cc = crate_cells[i * 2], rr = crate_cells[i * 2 + 1];
+-		if (crate_hp[i] <= 0 || c < cc || c > cc + 1 || r < rr || r > rr + 1)
+-			continue;
+-		crate_hp[i] -= damage;
+-		if (crate_hp[i] <= 0) {
+-			for (q = 0; q < 4; q++) {
+-				col_map[(rr + (q >> 1)) * LEVEL_COLS + cc + (q & 1)] = CELL_EMPTY;
+-				set_cell_tile(cc + (q & 1), rr + (q >> 1), TILE16_LEVEL_EMPTY);
+-			}
+-			by->score += 100;
+-		}
+-		return 1;
+-	}
+-	return 0;
+-}
+-
+ /* -------------------------------------------------------------- actors */
+ 
+ static void robot_spawn_all(void)
+@@ -415,7 +448,7 @@ static void robot_spawn_all(void)
+ 		robot[i].min = robot_spawn[i * 4 + 2];
+ 		robot[i].max = robot_spawn[i * 4 + 3];
+ 		robot[i].state = ROBOT_WALK;
+-		robot[i].hp = 4;
++		robot[i].hp = TROOPER_HP;
+ 		robot[i].dir = -1;
+ 		robot[i].t = (u32)i * 11;
+ 	}
+@@ -426,15 +459,24 @@ static int robot_alive(int i)
+ 	return robot[i].state == ROBOT_WALK || robot[i].state == ROBOT_HIT;
+ }
+ 
+-static void robot_damage(int i, int n, struct player *by)
++static int robots_left(void)
++{
++	int i, n = 0;
++	for (i = 0; i < ROBOTS; i++)
++		n += robot_alive(i);
++	return n;
++}
++
++/* a shot or a knife: one hit each (D-007) */
++static void robot_damage(int i, struct player *by)
+ {
+ 	if (!robot_alive(i))
+ 		return;
+-	robot[i].hp -= n;
++	robot[i].hp--;
+ 	robot[i].t = 0;
+ 	if (robot[i].hp <= 0) {
+ 		robot[i].state = ROBOT_DOWN;
+-		by->score += 500;
++		by->score += TROOPER_POINTS;
+ 	} else
+ 		robot[i].state = ROBOT_HIT;
+ }
+@@ -445,7 +487,7 @@ static int robot_at(s32 x, s32 y, int reach)
+ 	int i;
+ 	for (i = 0; i < ROBOTS; i++) {
+ 		s32 dx = robot[i].x - x;
+-		if (robot_alive(i) && dx > -reach && dx < reach && y <= robot[i].fy && y > robot[i].fy - 40)
++		if (robot_alive(i) && dx > -reach && dx < reach && y <= robot[i].fy && y > robot[i].fy - TROOPER_H)
+ 			return i;
+ 	}
+ 	return -1;
+@@ -455,31 +497,46 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
+ {
+ 	int i;
+ 	p->active = 1;
++	p->joined = 1;
+ 	p->x = x;
+ 	p->y = fy * 16;
+ 	p->vy = 0;
+ 	p->flip = 0;
+-	p->on_ground = 1;
++	p->on_ground = 0; /* lands on the next frame if the feet are on a floor */
+ 	p->climbing = p->drop_t = p->push_t = 0;
+ 	p->running = p->tap_dir = 0;
+-	p->special = SPECIAL_NONE;
+-	p->ammo = p->knife_t = p->bazooka_t = p->fire_wait = 0;
++	p->knife_t = p->fire_wait = p->firing = 0;
++	p->energy = ENERGY;
++	p->hurt = 0;
+ 	p->t = 0;
+ 	for (i = 0; i < 6; i++)
+ 		p->shots[i].live = 0;
+-	p->rocket.live = 0;
++}
++
++/* where a player who joins or continues appears: next to the partner, or on the dock in view */
++static void player_enter(int k)
++{
++	struct player *o = &pl[k ^ 1];
++	if (o->active && !o->climbing && o->on_ground) {
++		s32 x = o->x - 24;
++		if (x < cam_x + 12 || body_blocked(x, o->y >> 4) || !support(x, o->y >> 4, 0))
++			x = o->x;
++		player_spawn(&pl[k], x, o->y >> 4);
++	} else {
++		s32 x = cam_x + 64;
++		while (body_blocked(x, START_Y) && x < LEVEL_W - 16)
++			x += 16;
++		player_spawn(&pl[k], x, START_Y);
++	}
+ }
+ 
+ static void game_reset(void)
+ {
+ 	int i;
+-	level_reset();
+-	pl[0].active = pl[1].active = 0;
+-	pl[0].score = pl[1].score = 0;
+-	pl[0].palofs = 0;
+-	pl[1].palofs = RECRUIT_PAL_OFFSET;
+-	player_spawn(&pl[0], 64, 400);
+-	pl[0].active = 0;
++	for (i = 0; i < PLAYERS; i++) {
++		memset(&pl[i], 0, sizeof pl[i]);
++		pl[i].palofs = i ? RECRUIT_PAL_OFFSET : 0;
++	}
+ 	robot_spawn_all();
+ 	for (i = 0; i < CIVILIANS; i++) {
+ 		civ[i].x = civ_spawn[i * 3];
+@@ -488,19 +545,8 @@ static void game_reset(void)
+ 		civ[i].rescued = 0;
+ 		civ[i].t = (u32)i * 17;
+ 	}
+-	pickup.x = PICKUP_X;
+-	pickup.fy = PICKUP_Y;
+-	pickup.live = 1;
+ 	rescued = 0;
+-}
+-
+-static int special_pressed(struct player *p)
+-{
+-#if defined(SET_CAPTCOMM)
+-	return (p->pad & (BTN_1 | BTN_2)) == (BTN_1 | BTN_2) && (PRESSED(p, BTN_1) || PRESSED(p, BTN_2));
+-#else
+-	return PRESSED(p, BTN_3);
+-#endif
++	cam_x = cam_y = cam_far = 0;
+ }
+ 
+ /* horizontal motion, one pixel at a time, with the push-to-climb step */
+@@ -533,22 +579,39 @@ static void walk(struct player *p, int dir, int speed)
+ 	}
+ }
+ 
+-static void update_player(struct player *p, int pi)
++static void player_hit(struct player *p)
++{
++	int i;
++	if (!p->active || p->hurt)
++		return;
++	p->hurt = HURT_FRAMES;
++	if (--p->energy > 0)
++		return;
++	/* no energy left: out until a credit continues */
++	p->active = 0;
++	p->climbing = 0;
++	for (i = 0; i < 6; i++)
++		p->shots[i].live = 0;
++}
++
++static void update_player(struct player *p)
+ {
+ 	int i, dir = 0;
+-	s32 fy, d;
++	s32 fy;
+ 	if (!p->active)
+ 		return;
+ 	p->t++;
+ 	if (p->drop_t)
+ 		p->drop_t--;
++	if (p->hurt)
++		p->hurt--;
+ 	if (p->pad & BTN_LEFT)
+ 		dir = -1;
+ 	else if (p->pad & BTN_RIGHT)
+ 		dir = 1;
+-	/* double tap: a second press toward the same side within 15 frames runs */
++	/* double tap: a second press toward the same side within 250 ms runs */
+ 	if (PRESSED(p, BTN_LEFT) || PRESSED(p, BTN_RIGHT)) {
+-		if (dir == p->tap_dir && frame_count - p->tap_time <= 15)
++		if (dir == p->tap_dir && frame_count - p->tap_time <= RUN_TAP)
+ 			p->running = 1;
+ 		p->tap_dir = dir;
+ 		p->tap_time = frame_count;
+@@ -597,14 +660,14 @@ static void update_player(struct player *p, int pi)
+ 			p->vy = JUMP_VY / 2;
+ 		}
+ 	} else {
+-		if (dir && !p->knife_t && !p->bazooka_t) {
++		if (dir && !p->knife_t) {
+ 			p->flip = dir < 0;
+ 			walk(p, dir, p->running ? 2 : 1);
+ 		} else
+ 			p->push_t = 0;
+ 		fy = p->y >> 4;
+ 		/* down + jump drops through a ledge; jump otherwise */
+-		if (p->on_ground && PRESSED(p, BTN_1) && !special_pressed(p)) {
++		if (p->on_ground && PRESSED(p, BTN_1)) {
+ 			if ((p->pad & BTN_DOWN) && support(p->x, fy, 0) == 1) {
+ 				p->drop_t = 12;
+ 				p->on_ground = 0;
+@@ -621,10 +684,13 @@ static void update_player(struct player *p, int pi)
+ 			p->vy = 0;
+ 		}
+ 		if (!p->on_ground) {
++			/*
++			 * Move by the current speed, then apply gravity (D-004): the
++			 * first frame of a jump rises the full 7 px, so a jump peaks at
++			 * 68.9 px and reaches a ledge 64 px up. The prototype added
++			 * gravity first and peaked at 61.9 px.
++			 */
+ 			s32 from = p->y >> 4, to, py;
+-			p->vy += GRAVITY;
+-			if (p->vy > MAX_FALL)
+-				p->vy = MAX_FALL;
+ 			to = (p->y + p->vy) >> 4;
+ 			if (p->vy > 0) {
+ 				for (py = from + 1; py <= to; py++)
+@@ -636,69 +702,38 @@ static void update_player(struct player *p, int pi)
+ 					}
+ 				if (!p->on_ground)
+ 					p->y += p->vy;
+-			} else {
+-				/* the head hits only solid cells: one-way platforms let it through */
++			} else if (p->vy < 0) {
++				/* the head hits only solid cells: one-way ledges let it through */
+ 				if (is_solid(cell_at(p->x, to - BODY_H)))
+ 					p->vy = 0;
+ 				else
+ 					p->y += p->vy;
++			} else if (support(p->x, from, p->drop_t != 0))
++				p->on_ground = 1; /* standing still on a floor (a fresh spawn) */
++			if (!p->on_ground) {
++				p->vy += GRAVITY;
++				if (p->vy > MAX_FALL)
++					p->vy = MAX_FALL;
+ 			}
+ 		}
+ 	}
+ 	fy = p->y >> 4;
+-	if (fy > LEVEL_H + 64)
+-		player_spawn(p, cam_x + 64, 400); /* fell out: back on the street */
+-
+-	/* the crate pickup */
+-	d = pickup.x - p->x;
+-	if (pickup.live && d > -14 && d < 14 && fy - pickup.fy > -8 && fy - pickup.fy < 8) {
+-		pickup.live = 0;
+-		p->special = SPECIAL_BAZOOKA;
+-		p->ammo = 3;
+-	}
+-
+-	/* special: the picked-up weapon while it has ammo */
+-	if (p->bazooka_t)
+-		p->bazooka_t--;
+-	if (special_pressed(p) && p->special == SPECIAL_BAZOOKA && p->ammo > 0 && !p->rocket.live && p->on_ground) {
+-		p->rocket.live = 1;
+-		p->rocket.dir = p->flip ? -1 : 1;
+-		p->rocket.x = (s16)(p->x + (p->flip ? -30 : 10));
+-		p->rocket.y = (s16)(fy - 30);
+-		p->rocket.speed = 2;
+-		p->bazooka_t = 24;
+-		if (--p->ammo == 0)
+-			p->special = SPECIAL_NONE;
+-	}
+-	if (p->rocket.live) {
+-		s32 tip;
+-		int ri;
+-		if (p->rocket.speed < 8)
+-			p->rocket.speed++;
+-		p->rocket.x += p->rocket.dir * p->rocket.speed;
+-		tip = p->rocket.x + 16 + p->rocket.dir * 14;
+-		ri = robot_at(tip, p->rocket.y + 8, 16);
+-		if (ri >= 0) {
+-			robot_damage(ri, 9, p);
+-			p->rocket.live = 0;
+-		} else if (cell_at(tip, p->rocket.y + 8) == CELL_CRATE) {
+-			hit_crate((int)(tip >> 4), (p->rocket.y + 8) >> 4, 9, p);
+-			p->rocket.live = 0;
+-		} else if (cell_at(tip, p->rocket.y + 8) == CELL_SOLID || p->rocket.x < cam_x - 48 || p->rocket.x > cam_x + SCREEN_W + 48)
+-			p->rocket.live = 0;
++	if (fy > LEVEL_H + 64) {
++		/* fell out of the map (the level has no pit; kept as a guard) */
++		player_spawn(p, cam_x + 64, START_Y);
+ 	}
+ 
+-	/* fire: the knife if a robot stands right in front, else the machine gun */
++	/* fire: the knife if a Trooper stands right in front, else the gun */
+ 	if (p->knife_t)
+ 		p->knife_t--;
+-	if (PRESSED(p, BTN_2) && !special_pressed(p) && p->on_ground && !p->climbing) {
++	if (PRESSED(p, BTN_2) && p->on_ground && !p->climbing) {
+ 		int ri = robot_at(p->x + (p->flip ? -18 : 18), fy - 20, 16);
+ 		if (ri >= 0) {
+ 			p->knife_t = 16;
+-			robot_damage(ri, 2, p);
++			robot_damage(ri, p);
+ 		}
+ 	}
+-	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->bazooka_t && !p->climbing;
++	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->climbing;
+ 	if (p->fire_wait)
+ 		p->fire_wait--;
+ 	if (p->firing && !p->fire_wait)
+@@ -720,53 +755,34 @@ static void update_player(struct player *p, int pi)
+ 		ri = robot_at(b->x, b->y, 8);
+ 		t = cell_at(b->x, b->y);
+ 		if (ri >= 0) {
+-			robot_damage(ri, 1, p);
+-			b->live = 0;
+-		} else if (t == CELL_CRATE) {
+-			hit_crate(b->x >> 4, b->y >> 4, 1, p);
+-			b->live = 0;
+-		} else if (t == CELL_SOLID || b->x < cam_x - 32 || b->x > cam_x + SCREEN_W + 32)
++			robot_damage(ri, p);
+ 			b->live = 0;
++		} else if (is_solid(t) || b->x < cam_x - 32 || b->x > cam_x + SCREEN_W + 32)
++			b->live = 0; /* crates stop shots, they do not break (D-006) */
+ 	}
+-	(void)pi;
++	/* B3: the special, unused in this section: nothing happens (spec) */
+ }
+ 
++/* Troopers walk their 96 px patrol and turn at its ends (D-005). */
+ static void update_robots(void)
+ {
+-	int i, k;
++	int i;
+ 	for (i = 0; i < ROBOTS; i++) {
+ 		robot[i].t++;
+ 		switch (robot[i].state) {
+-		case ROBOT_WALK: {
+-			/* chase a player on the same floor, else patrol */
+-			int target = -1;
+-			s32 best = 170;
+-			for (k = 0; k < PLAYERS; k++) {
+-				s32 dx = pl[k].x - robot[i].x, dy = (pl[k].y >> 4) - robot[i].fy;
+-				if (dx < 0)
+-					dx = -dx;
+-				if (pl[k].active && dy > -16 && dy < 16 && dx < best) {
+-					best = dx;
+-					target = k;
+-				}
+-			}
+-			if (target >= 0) {
+-				s32 dx = pl[target].x - robot[i].x;
+-				robot[i].dir = dx > 0 ? 1 : -1;
+-				if ((dx > 22 || dx < -22) && (robot[i].t & 1))
+-					robot[i].x += robot[i].dir;
+-			} else if (robot[i].t & 1) {
++		case ROBOT_WALK:
++			if (robot[i].t & 1) {
+ 				robot[i].x += robot[i].dir;
+-				if (robot[i].x <= robot[i].min || robot[i].x >= robot[i].max)
+-					robot[i].dir = -robot[i].dir;
++				if (robot[i].x <= robot[i].min) {
++					robot[i].x = robot[i].min;
++					robot[i].dir = 1;
++				} else if (robot[i].x >= robot[i].max) {
++					robot[i].x = robot[i].max;
++					robot[i].dir = -1;
++				}
+ 			}
+-			if (robot[i].x < robot[i].min)
+-				robot[i].x = robot[i].min;
+-			if (robot[i].x > robot[i].max)
+-				robot[i].x = robot[i].max;
+ 			robot[i].flip = robot[i].dir < 0; /* the sheet faces right */
+ 			break;
+-		}
+ 		case ROBOT_HIT:
+ 			if (robot[i].t > 14) {
+ 				robot[i].state = ROBOT_WALK;
+@@ -781,6 +797,21 @@ static void update_robots(void)
+ 	}
+ }
+ 
++/* A Trooper's touch costs a player 1 energy, then 1 s of blinking. */
++static void touch_damage(void)
++{
++	int i, k;
++	for (i = 0; i < ROBOTS; i++) {
++		if (!robot_alive(i))
++			continue;
++		for (k = 0; k < PLAYERS; k++) {
++			s32 dx = pl[k].x - robot[i].x, dy = (pl[k].y >> 4) - robot[i].fy;
++			if (pl[k].active && !pl[k].hurt && dx > -16 && dx < 16 && dy > -TROOPER_H && dy <= 4)
++				player_hit(&pl[k]);
++		}
++	}
++}
++
+ static void update_civilians(void)
+ {
+ 	int i, k;
+@@ -794,23 +825,31 @@ static void update_civilians(void)
+ 				civ[i].rescued = 1;
+ 				civ[i].t = 0;
+ 				rescued++;
+-				pl[k].score += 1000;
++				pl[k].score += CIVILIAN_POINTS;
+ 				break;
+ 			}
+ 		}
+ 	}
+ }
+ 
++/* a player standing in the exit zone on the lower dock */
++static int at_exit(void)
++{
++	int k;
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].active && pl[k].on_ground && (pl[k].y >> 4) == EXIT_Y && pl[k].x >= EXIT_X0 && pl[k].x <= EXIT_X1)
++			return 1;
++	return 0;
++}
++
+ /* ------------------------------------------------------------- camera */
+ 
+ /*
+  * The camera keeps every player in view and only moves forward: it aims
+  * a third of a screen ahead of the players' middle, never goes back more
+  * than BACKTRACK pixels from the farthest point reached, and players
+- * cannot walk past the screen's sides (like Metal Slug in co-op: the
+- * leader waits for the other at the edge). Vertically it follows their
+- * middle; when they stand more than a screen apart, the lower one may
+- * leave the bottom until they meet again.
++ * cannot walk past the screen's sides (the leader waits for the other at
++ * the edge). Vertically it follows their middle.
+  */
+ static void update_camera(int snap)
+ {
+@@ -824,7 +863,6 @@ static void update_camera(int snap)
+ 		}
+ 	if (!n)
+ 		return;
+-	/* the leading edge: aim a third into the screen, like Metal Slug */
+ 	tx = sx / n - SCREEN_W / 3;
+ 	if (tx < cam_far - BACKTRACK)
+ 		tx = cam_far - BACKTRACK;
+@@ -857,6 +895,7 @@ static void update_camera(int snap)
+ 
+ static void set_scroll(void)
+ {
++	stream_level(cam_x);
+ 	/* the tilemap pixel at the screen's left edge is scroll + 64 (and + 16 down) */
+ 	CPSA_SCROLL2_X = (u16)(cam_x - SCREEN_X0);
+ 	CPSA_SCROLL2_Y = (u16)(cam_y - SCREEN_Y0);
+@@ -873,6 +912,8 @@ static void draw_player(struct player *p)
+ 	int moving = (p->pad & (BTN_LEFT | BTN_RIGHT)) != 0;
+ 	if (!p->active)
+ 		return;
++	if (p->hurt && (p->hurt & 4))
++		return; /* blinking after a hit */
+ 	if (p->climbing) {
+ 		/* no climbing frames yet: a jump pose that flips while moving */
+ 		int f = (p->pad & (BTN_UP | BTN_DOWN)) ? (int)(p->y >> 7) & 1 : 0;
+@@ -884,8 +925,6 @@ static void draw_player(struct player *p)
+ 		draw_frame(&anim_willy_jump.frames[i % anim_willy_jump.count], sx, sy, p->palofs, p->flip);
+ 	} else if (p->knife_t)
+ 		draw_frame(&anim_willy_knife.frames[(16 - p->knife_t) / 4 % anim_willy_knife.count], sx, sy, p->palofs, p->flip);
+-	else if (p->bazooka_t)
+-		draw_anim(&anim_willy_bazooka, p->t, sx, sy, p->palofs, p->flip);
+ 	else if (p->firing)
+ 		draw_anim(&anim_willy_machine_gun, p->t, sx, sy, p->palofs, p->flip);
+ 	else if (moving)
+@@ -900,8 +939,6 @@ static void draw_shots(struct player *p)
+ 	for (i = 0; i < 6; i++)
+ 		if (p->shots[i].live)
+ 			draw_tile(TILE_BULLET, p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, PAL_BULLET, p->shots[i].dir < 0);
+-	if (p->rocket.live)
+-		put_sprite(p->rocket.x - cam_x, p->rocket.y - cam_y, TILE_ROCKET, (u16)(PAL_ROCKET | (p->rocket.dir < 0 ? 0x20 : 0) | (1 << 8)));
+ }
+ 
+ static void draw_robots(void)
+@@ -939,12 +976,6 @@ static void draw_civilians(void)
+ 	}
+ }
+ 
+-static void draw_pickup(void)
+-{
+-	if (pickup.live && (frame_count & 16))
+-		put_sprite((int)pickup.x - cam_x - 16, (int)pickup.fy - cam_y - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
+-}
+-
+ static void draw_world(void)
+ {
+ 	/* first in the table is drawn on top */
+@@ -953,7 +984,6 @@ static void draw_world(void)
+ 	draw_player(&pl[0]);
+ 	draw_player(&pl[1]);
+ 	draw_robots();
+-	draw_pickup();
+ 	draw_civilians();
+ 	flush_sprites();
+ }
+@@ -976,14 +1006,15 @@ static void lab_update(void)
+ 	s->mode = (u8)lab_mode;
+ 	s->credits = (u8)credits;
+ 	s->section_clear = lab_mode == LAB_MODE_CLEAR;
+-	/* this prototype has no exit and no damage: the section clears when
+-	   every civilian is rescued */
+-	s->flags = LAB_FLAG_RESCUE_ALL;
++	/* the spec's level: an exit that clears with every enemy down, and damage */
++	s->flags = LAB_FLAG_EXIT | LAB_FLAG_DAMAGE;
+ 	s->cam_x = (s16)cam_x;
+ 	s->cam_y = (s16)cam_y;
+ 	s->level_w = LEVEL_W;
+ 	s->level_h = LEVEL_H;
+-	s->exit_x0 = s->exit_x1 = s->exit_y = -1;
++	s->exit_x0 = EXIT_X0;
++	s->exit_x1 = EXIT_X1;
++	s->exit_y = EXIT_Y;
+ 	s->n_enemies = ROBOTS < LAB_ENEMIES ? ROBOTS : LAB_ENEMIES;
+ 	s->n_civilians = CIVILIANS < LAB_CIVILIANS ? CIVILIANS : LAB_CIVILIANS;
+ 	s->col_map = (u32)col_map;
+@@ -992,29 +1023,39 @@ static void lab_update(void)
+ 	for (i = 0; i < LAB_PLAYERS; i++) {
+ 		struct lab_player *o = &s->player[i];
+ 		struct player *p = i < PLAYERS ? &pl[i] : 0;
+-		if (!p || !p->active || (lab_mode != LAB_MODE_PLAYING && lab_mode != LAB_MODE_CLEAR)) {
+-			memset(o, 0, sizeof *o);
+-			if (p)
+-				o->score = p->score;
++		int playing = lab_mode == LAB_MODE_PLAYING || lab_mode == LAB_MODE_CLEAR || lab_mode == LAB_MODE_GAME_OVER;
++		memset(o, 0, sizeof *o);
++		if (!p)
++			continue;
++		o->score = p->score;
++		if (!playing || !p->joined)
++			continue;
++		if (!p->active) {
++			/* out of energy, waiting for a credit (or the game is over) */
++			o->state = LAB_PL_DEAD;
++			o->facing = p->flip ? -1 : 1;
++			o->x = (s16)p->x;
++			o->y = (s16)(p->y >> 4);
+ 			continue;
+ 		}
+ 		o->active = 1;
+ 		if (p->climbing)
+ 			o->state = LAB_PL_CLIMB;
++		else if (p->hurt > HURT_FRAMES - 20)
++			o->state = LAB_PL_HURT;
+ 		else if (!p->on_ground)
+ 			o->state = LAB_PL_AIR;
+-		else if (p->knife_t || p->bazooka_t || p->firing)
++		else if (p->knife_t || p->firing)
+ 			o->state = LAB_PL_ATTACK;
+ 		else if (p->pad & (BTN_LEFT | BTN_RIGHT))
+ 			o->state = p->running ? LAB_PL_RUN : LAB_PL_WALK;
+ 		else
+ 			o->state = LAB_PL_IDLE;
+ 		o->facing = p->flip ? -1 : 1;
+-		o->energy = 3;
++		o->energy = (u8)p->energy;
+ 		o->x = (s16)p->x;
+ 		o->y = (s16)(p->y >> 4);
+-		o->score = p->score;
+-		o->hurt = 0;
++		o->hurt = (u8)p->hurt;
+ 		o->pflags = (u8)((p->on_ground ? LAB_PF_GROUND : 0) | (p->climbing ? LAB_PF_CLIMB : 0) |
+ 				 (p->running ? LAB_PF_RUN : 0) | (p->firing ? LAB_PF_FIRE : 0));
+ 		o->vy = (s16)p->vy;
+@@ -1048,44 +1089,73 @@ static void lab_update(void)
+ 
+ /* ------------------------------------------------------------- screens */
+ 
++/* "3P COMING SOON" for 2 s after a 3P or 4P Start, on any screen */
++static void soon_message(int row)
++{
++	if (!soon_t)
++		return;
++	if (--soon_t == 0) {
++		clear_row(row);
++		return;
++	}
++	print(17, row, soon_who == 3 ? "3P COMING SOON" : "4P COMING SOON", TXT_ORANGE);
++}
++
+ static void hud(void)
+ {
+ 	int k;
+ 	for (k = 0; k < PLAYERS; k++) {
+-		int x = k ? 26 : 1;
++		int x = k ? 20 : 1;
+ 		struct player *p = &pl[k];
+ 		print(x, 1, k ? "2UP" : "1UP", TXT_ORANGE);
+ 		if (p->active) {
++			int e;
+ 			print_num(x + 4, 1, p->score, 6, TXT_WHITE);
+-			print(x, 26, p->special == SPECIAL_BAZOOKA ? "BAZOOKA x" : "MACHINE GUN", TXT_WHITE); /* 11 cells */
+-			if (p->special == SPECIAL_BAZOOKA) {
+-				print_num(x + 9, 26, (u32)p->ammo, 1, TXT_WHITE);
+-				print(x + 10, 26, " ", TXT_WHITE);
+-			}
++			print(x, 2, "ENERGY", TXT_WHITE);
++			for (e = 0; e < ENERGY; e++)
++				print(x + 7 + e, 2, e < p->energy ? "#" : "-", e < p->energy ? TXT_RED : TXT_WHITE);
+ 		} else {
+-			print(x + 4, 1, credits ? ((frame_count / 20) & 1 ? "PRESS START" : "           ") : "INSERT COIN", TXT_GREEN);
+-			print(x, 26, "           ", TXT_WHITE);
++			const char *s;
++			if (p->joined && !credits)
++				s = "GAME OVER  ";
++			else if (credits)
++				s = (frame_count / 20) & 1 ? "PUSH START " : "           ";
++			else
++				s = "INSERT COIN";
++			if (p->joined)
++				print_num(x + 4, 1, p->score, 6, TXT_WHITE);
++			else
++				print(x + 4, 1, "      ", TXT_WHITE);
++			print(x, 2, s, TXT_GREEN);
++			print(x + 11, 2, " ", TXT_GREEN);
+ 		}
+ 	}
++	print(38, 1, "SAVED", TXT_GREEN);
++	print_num(44, 1, (u32)rescued, 1, TXT_WHITE);
++	print(45, 1, "/", TXT_WHITE);
++	print_num(46, 1, CIVILIANS, 1, TXT_WHITE);
++	print(38, 2, "ENEMY", TXT_RED);
++	print_num(44, 2, (u32)robots_left(), 1, TXT_WHITE);
++	print(19, 26, "CREDITS", TXT_WHITE);
++	print_num(27, 26, (u32)credits, 1, TXT_WHITE);
+ #ifdef DEBUG_POS
+ 	for (k = 0; k < PLAYERS; k++) {
+ 		print_num(1 + k * 25, 3, (u32)pl[k].x, 4, TXT_RED);
+ 		print_num(6 + k * 25, 3, (u32)(pl[k].y >> 4), 4, TXT_RED);
+ 	}
+ #endif
+-	print(40, 3, "SAVED", TXT_GREEN);
+-	print_num(46, 3, (u32)rescued, 1, TXT_WHITE);
+ }
+ 
+-static void attract(void)
++/* The title: the spec's five lines over a camera touring the docks. */
++static int attract(void)
+ {
+ 	u32 t = 0;
+ 	int last_credits = -1;
+ 	clear_text();
+ 	game_reset();
+-	print(15, 4, "WILLY GORKLINGO", TXT_ORANGE);
+-	print(13, 6, "THE LAG PROTOCOL - DEMO", TXT_WHITE);
+-	print(9, 25, "(C) 2026 GO-LINK - OWN GAME DATA", TXT_WHITE);
++	print(16, 4, "WILLY GORKLINGO", TXT_ORANGE);
++	print(16, 6, "THE LAG PROTOCOL", TXT_WHITE);
++	print(16, 25, "(C) 2026 GO-LINK", TXT_WHITE);
+ 	for (;;) {
+ 		wait_vblank();
+ 		read_inputs();
+@@ -1099,60 +1169,85 @@ static void attract(void)
+ 			print_num(27, 22, (u32)credits, 1, TXT_WHITE);
+ 			last_credits = credits;
+ 		}
+-		if (credits)
+-			print(16, 14, (t / 20) & 1 ? "PRESS 1P START" : "              ", TXT_GREEN);
+-		else
+-			print(17, 14, (t / 20) & 1 ? "INSERT COIN" : "           ", TXT_ORANGE);
++		clear_row(14);
++		if (credits) {
++			if ((t / 20) & 1)
++				print(19, 14, "PUSH START", TXT_GREEN);
++		} else if ((t / 20) & 1)
++			print(18, 14, "INSERT COIN", TXT_ORANGE);
++		soon_message(16);
+ 		update_robots();
+ 		draw_world();
+ 		lab_mode = LAB_MODE_TITLE;
+ 		lab_update();
+-		if (credits && SYS_PRESSED(SYS_START1)) {
++		if (credits && (SYS_PRESSED(SYS_START1) || SYS_PRESSED(SYS_START2))) {
+ 			credits--;
+-			return;
++			return SYS_PRESSED(SYS_START1) ? 0 : 1;
+ 		}
+ 	}
+ }
+ 
+-static void play(void)
++static void play(int first)
+ {
+-	u32 done_t = 0;
++	u32 end_t = 0;
++	int k, hint = 0;
+ 	clear_text();
+ 	game_reset();
+-	player_spawn(&pl[0], 64, 400);
+-	cam_far = 0;
++	player_spawn(&pl[first], START_X, START_Y);
+ 	update_camera(1);
++	stream_level(cam_x);
++	lab_mode = LAB_MODE_PLAYING;
+ 	for (;;) {
+ 		wait_vblank();
+ 		read_inputs();
+-		/* player 2 joins with a credit and 2P Start, next to player 1 */
+-		if (!pl[1].active && credits && SYS_PRESSED(SYS_START2)) {
+-			credits--;
+-			player_spawn(&pl[1], pl[0].x - 24, pl[0].y >> 4);
+-			pl[1].score = 0;
+-		}
+-		if (!pl[0].active && credits && SYS_PRESSED(SYS_START1)) {
+-			credits--;
+-			player_spawn(&pl[0], pl[1].x - 24, pl[1].y >> 4);
+-		}
+-		update_player(&pl[0], 0);
+-		update_player(&pl[1], 1);
+-		update_robots();
+-		update_civilians();
+-		update_camera(0);
++		if (lab_mode == LAB_MODE_PLAYING) {
++			/* a player joins, or continues, with a credit and their Start */
++			for (k = 0; k < PLAYERS; k++)
++				if (!pl[k].active && credits && SYS_PRESSED(k ? SYS_START2 : SYS_START1)) {
++					credits--;
++					player_enter(k);
++				}
++			update_player(&pl[0]);
++			update_player(&pl[1]);
++			update_robots();
++			touch_damage();
++			update_civilians();
++			update_camera(0);
++			if (at_exit()) {
++				if (!robots_left()) {
++					lab_mode = LAB_MODE_CLEAR;
++					end_t = frame_count;
++				} else if (!hint) {
++					print(14, 9, "DEFEAT EVERY TROOPER", TXT_RED);
++					hint = 1;
++				}
++			} else if (hint) {
++				clear_row(9);
++				hint = 0;
++			}
++			if (!pl[0].active && !pl[1].active && !credits) {
++				lab_mode = LAB_MODE_GAME_OVER;
++				end_t = frame_count;
++			}
++		} else
++			update_robots(); /* the section is over: only the fallen still animate */
+ 		set_scroll();
+ 		draw_world();
+ 		hud();
+-		lab_mode = rescued == CIVILIANS ? LAB_MODE_CLEAR : LAB_MODE_PLAYING;
++		soon_message(5);
++		if (lab_mode == LAB_MODE_PLAYING && !pl[0].active && !pl[1].active)
++			print(15, 12, (frame_count / 20) & 1 ? "CONTINUE? PUSH START" : "                    ", TXT_GREEN);
++		else
++			clear_row(12);
++		if (lab_mode == LAB_MODE_CLEAR) {
++			clear_row(9);
++			print(17, 9, "SECTION CLEAR", TXT_GREEN);
++			print(17, 11, "NOBODY WAITS.", TXT_ORANGE);
++		} else if (lab_mode == LAB_MODE_GAME_OVER)
++			print(19, 10, "GAME OVER", TXT_RED);
+ 		lab_update();
+-		if (rescued == CIVILIANS) {
+-			if (!done_t)
+-				done_t = frame_count;
+-			print(16, 9, "MISSION COMPLETE!", TXT_GREEN);
+-			print(16, 11, "NOBODY WAITS.", TXT_ORANGE);
+-			if (frame_count - done_t > 360)
+-				return;
+-		}
++		if (end_t && frame_count - end_t > (lab_mode == LAB_MODE_CLEAR ? CLEAR_FRAMES : GAME_OVER_FRAMES))
++			return;
+ 	}
+ }
+ 
+@@ -1160,9 +1255,7 @@ int main(void)
+ {
+ 	video_init();
+ 	__asm__ volatile("move.w #0x2000,%sr"); /* allow the vblank interrupt */
+-	for (;;) {
+-		attract();
+-		play();
+-	}
++	for (;;)
++		play(attract());
+ 	return 0;
+ }
+diff --git a/rom/tools/art.mjs b/rom/tools/art.mjs
+index 29b40a2b115743e247232804a59790bcae5cb8b7..d0e82f8d89be8794961595ece2a61a2ad888a430 100644
+--- a/rom/tools/art.mjs
++++ b/rom/tools/art.mjs
+@@ -622,8 +622,11 @@ export function addArt(gfx, defs, genDir) {
+     `extern const s16 civ_spawn[${OBJECTS.civilians.length * 3}]; /* x, feet y, child */`,
+     `#define ROBOTS ${OBJECTS.robots.length}`,
+     `extern const s16 robot_spawn[${OBJECTS.robots.length * 4}]; /* x, feet y, patrol min, max */`,
+-    `#define PICKUP_X ${OBJECTS.pickup.x}`,
+-    `#define PICKUP_Y ${OBJECTS.pickup.y}`,
++    `#define START_X ${OBJECTS.start.x}`,
++    `#define START_Y ${OBJECTS.start.y}`,
++    `#define EXIT_X0 ${OBJECTS.exit.x0}`,
++    `#define EXIT_X1 ${OBJECTS.exit.x1}`,
++    `#define EXIT_Y ${OBJECTS.exit.y}`,
+   );
+   console.log(`art: sprites up to tile ${hex4(code)}, backdrop ${sky.unique} tiles, level ${lv.tiles} tiles`);
+ 
+diff --git a/rom/tools/level.mjs b/rom/tools/level.mjs
+index 4ef4346c64e2d008354d7a37d93f8d47895aa7cc..bdd8c195ec84730e3d27b3d4f8724f436d029af8 100644
+--- a/rom/tools/level.mjs
++++ b/rom/tools/level.mjs
+@@ -1,59 +1,64 @@
+ // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+-// The Metal Slug-style test level (journal, step 4): a 1024x448 world on
+-// scroll2 (64x28 cells of 16x16), drawn by code with one fixed 15-color
+-// palette, plus its collision map and the objects the 68000 places.
++// Mission 1, section 1, "Dead Air": the Puerto Madero docks at night
++// (docs/experiments/README.md, Game Spec v1; case A, decisions D-002,
++// D-003 and D-011). A 1536x448 world on scroll2 (96x28 cells of 16x16),
++// drawn by code with the prototype's tiles and its fixed 15-color
++// palette, plus its collision map and the objects the 68000 places. The
++// board's scroll2 tilemap is 64 cells wide (1024 px), so main.c streams
++// the level's columns into it as the camera moves.
+ //
+-// Cells: '.' empty, 'G' street (solid), 'W' building facade (scenery the
+-// players walk in front of; its roof row is a one-way ledge, like Metal
+-// Slug's upper routes), '=' one-way platform (stand on top, jump up
+-// through, down+jump drops), 'L' ladder, 'C' crate (2x2 cells, solid,
+-// destructible). Street props (lamps, hydrants, bins, a fence) are drawn
+-// into empty cells and never collide.
++// Cells: '.' empty, 'K' the lower dock (solid, the prototype's street
++// tiles), '=' one-way ledge (stand on top, jump up through, down+jump
++// drops), 'D' the upper dock's deck (one-way, the same platform tiles),
++// 'L' ladder, 'C' crate (2x2 cells, solid; pushed up, never broken), 'E'
++// the exit gate (scenery, the only new art: reaching it is checked by
++// position). Props (lamps, hydrants, bins, a fence) are drawn into empty
++// cells and never collide.
+ 
+-export const COLS = 64;
++export const COLS = 96;
+ export const ROWS = 28;
+ 
+ // collision codes shared with main.c (hw.h has no level, so gfx.h gets them)
+ export const CELL = { EMPTY: 0, SOLID: 1, ONEWAY: 2, LADDER: 3, CRATE: 4 };
+ 
+-/** The map, built from rectangles so it stays readable. */
++/** The map, built from rectangles so it stays readable (spec items 1-7, left to right). */
+ function buildMap() {
+   const m = Array.from({ length: ROWS }, () => new Array(COLS).fill("."));
+   const rect = (c0, r0, c1, r1, ch) => {
+     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) m[r][c] = ch;
+   };
+-  rect(0, 25, 63, 27, "G"); // the street, top at y 400
+-  rect(14, 16, 23, 24, "W"); // building A, roof at y 256
+-  rect(13, 16, 13, 24, "L"); // its fire ladder, street to roof
+-  rect(30, 20, 37, 20, "="); // fire escape, y 320
+-  rect(39, 17, 45, 17, "="); // a second one, y 272
+-  rect(50, 13, 61, 24, "W"); // building B, roof at y 208
+-  rect(49, 13, 49, 24, "L"); // its ladder
+-  rect(62, 13, 63, 13, "="); // a ledge past B
++  rect(0, 25, 95, 27, "K"); // 1. the lower dock, top at y 400, the whole width
++  rect(17, 21, 24, 21, "="); // 3. a one-way ledge 64 px up (y 336)
++  rect(40, 15, 40, 24, "L"); // 4. the ladder, lower dock (400) to upper dock (240)
++  rect(41, 15, 71, 15, "D"); // 4. the upper dock's deck, y 240 (160 px up)
++  rect(90, 20, 93, 24, "E"); // 7. the exit gate, x 1440-1504
+   return m;
+ }
+ 
+-// crates (top-left cell); 2x2 cells each: a step, a stack of two, a step
++// 2. crates (top-left cell), 2x2 cells each: a 32 px step, then a stack of
++// two (64 px) next to it; climbed by pushing, then a jump to the ledge
+ export const CRATES = [
+-  [5, 23],
+-  [24, 23],
+-  [26, 21],
+-  [26, 23],
+-  [28, 23],
++  [12, 23],
++  [14, 23],
++  [14, 21],
+ ];
+ 
+ // objects for the 68000 (world pixels; y = feet)
+ export const OBJECTS = {
++  start: { x: 64, y: 400 }, // 1. P1 at x 64, P2 24 px behind (x 40)
++  // 6. two civilians: on the ledge, and at the far end of the upper dock
+   civilians: [
+-    { x: 19 * 16, y: 256, child: 0 },
+-    { x: 57 * 16, y: 208, child: 1 },
++    { x: 22 * 16, y: 336, child: 0 },
++    { x: 68 * 16, y: 240, child: 1 },
+   ],
++  // 5. three Troopers, patrolling 96 px each (x = start, min, max)
+   robots: [
+-    { x: 35 * 16, y: 400, min: 30 * 16, max: 46 * 16 },
+-    { x: 20 * 16, y: 256, min: 15 * 16, max: 23 * 16 },
+-    { x: 53 * 16, y: 208, min: 50 * 16, max: 56 * 16 },
++    { x: 34 * 16, y: 400, min: 31 * 16, max: 37 * 16 }, // the lower dock
++    { x: 56 * 16, y: 240, min: 53 * 16, max: 59 * 16 }, // the upper dock
++    { x: 87 * 16, y: 400, min: 84 * 16, max: 90 * 16 }, // guarding the exit
+   ],
+-  pickup: { x: 42 * 16, y: 272 },
++  // 7. the exit zone on the lower dock
++  exit: { x0: 1440, x1: 1504, y: 400 },
+ };
+ 
+ // the palette (scroll2 palette 0): pens 0-14, 15 transparent
+@@ -83,9 +88,9 @@ function drawCell(m, c, r) {
+   const at = (cc, rr) => (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS ? "." : m[rr][cc]);
+   const ch = m[r][c];
+   const t = blank();
+-  const hash = (c * 7 + r * 13) % 5;
+-  if (ch === "G") {
+-    const top = at(c, r - 1) !== "G";
++  if (ch === "K") {
++    // the lower dock: the prototype's street tiles (sidewalk, curb, asphalt)
++    const top = at(c, r - 1) !== "K";
+     for (let y = 0; y < 16; y++)
+       for (let x = 0; x < 16; x++) {
+         let p = 1;
+@@ -96,26 +101,25 @@ function drawCell(m, c, r) {
+     if (top) for (let x = 0; x < 16; x += 8) t[1][x] = 0; // sidewalk joints
+     return t;
+   }
+-  if (ch === "W") {
+-    const roof = at(c, r - 1) !== "W";
+-    const left = at(c - 1, r) !== "W";
+-    const right = at(c + 1, r) !== "W";
++  if (ch === "E") {
++    // the exit gate, the only new art (D-011): a steel frame around a dark
++    // opening, a lit sign on top
++    const left = at(c - 1, r) !== "E";
++    const right = at(c + 1, r) !== "E";
++    const roof = at(c, r - 1) !== "E";
+     for (let y = 0; y < 16; y++)
+       for (let x = 0; x < 16; x++) {
+-        let p = (y + (x >> 3)) % 4 === 0 ? 5 : 6; // brick rows
+-        if (left && x < 2) p = x === 0 ? 0 : 5;
+-        if (right && x > 13) p = x === 15 ? 0 : 5;
++        let p = y % 4 === 0 ? 5 : 1; // the opening, with scan lines
++        if (left && x < 4) p = x === 0 || x === 3 ? 0 : 9;
++        if (right && x > 11) p = x === 12 || x === 15 ? 0 : 9;
++        if (roof && y < 10) p = y === 0 || y === 9 ? 0 : y < 3 || y > 6 ? 9 : 8; // the lit sign
+         t[y][x] = p;
+       }
+-    // a lit window every other cell
+-    if (!roof && (c + r) % 2 === 0 && !left && !right)
+-      for (let y = 4; y < 12; y++) for (let x = 4; x < 12; x++) t[y][x] = y === 4 || x === 4 ? 0 : hash < 3 ? 7 : hash === 3 ? 8 : 5;
+-    if (roof)
+-      for (let y = 0; y < 5; y++) for (let x = 0; x < 16; x++) t[y][x] = y === 0 ? 0 : y === 1 ? 10 : y < 4 ? 9 : 0;
+-    if (roof && hash === 0) for (let x = 2; x < 14; x++) t[7][x] = 14; // neon strip
++    if (roof) for (let x = 3; x < 13; x += 3) [t[4][x], t[5][x]] = [0, 0]; // marks on the sign
+     return t;
+   }
+-  if (ch === "=") {
++  if (ch === "=" || ch === "D") {
++    // the prototype's one-way platform, used for the ledge and the upper deck
+     for (let x = 0; x < 16; x++) {
+       t[0][x] = 0;
+       t[1][x] = 10;
+@@ -137,19 +141,19 @@ function drawCell(m, c, r) {
+   return null;
+ }
+ 
+-// street props: [kind, col, top row]
++// dock props: [kind, col, top row]
+ export const PROPS = [
+   ["lamp", 3, 22],
+   ["hydrant", 9, 24],
+-  ["bin", 10, 24],
+-  ["lamp", 27, 22],
+-  ["fence", 38, 23],
+-  ["fence", 39, 23],
+-  ["fence", 40, 23],
+-  ["fence", 41, 23],
+-  ["bin", 44, 24],
+-  ["lamp", 46, 22],
+-  ["hydrant", 62, 24],
++  ["bin", 27, 24],
++  ["lamp", 29, 22],
++  ["hydrant", 38, 24],
++  ["fence", 46, 23],
++  ["fence", 47, 23],
++  ["bin", 64, 24],
++  ["lamp", 75, 22],
++  ["hydrant", 80, 24],
++  ["lamp", 95, 22],
+ ];
+ 
+ /** The cells of a prop: [[dc, dr, pens]]. */
+@@ -232,8 +236,7 @@ export function buildLevel(gfx, base) {
+       const pic = drawCell(m, c, r);
+       map.push(pic ? codeOf(pic) : empty);
+       const ch = m[r][c];
+-      const roof = ch === "W" && (r === 0 || m[r - 1][c] !== "W");
+-      col.push(ch === "G" ? CELL.SOLID : ch === "=" || roof ? CELL.ONEWAY : ch === "L" ? CELL.LADDER : CELL.EMPTY);
++      col.push(ch === "K" ? CELL.SOLID : ch === "=" || ch === "D" ? CELL.ONEWAY : ch === "L" ? CELL.LADDER : CELL.EMPTY);
+     }
+   for (const [kind, cc, rr] of PROPS)
+     for (const [dc, dr, pens] of drawProp(kind)) {

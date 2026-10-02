@@ -1,0 +1,85 @@
+{
+  "summary": "Ready to export",
+  "checks": [
+    {
+      "cls": "is-info",
+      "text": "Note: No hero of your own yet: the game uses the built-in Willy. Go"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: There is a player 1 start and an exit"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: The whole path can be walked with jumps, crates and ladders"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: No place where a player gets stuck"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: The camera can follow the way to every exit"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every level fits the board's map (up to 16384 × 2048 px)"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every object has its properties"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every reference name is unique and valid"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: The title “Willy Gorklingo” fits the board's font"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: 4 players · 3 buttons assigned"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Sprite palettes: 0 of 32"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every tile and sprite zone has 15 colors or fewer"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every color exists on the board"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Graphics: 0.01 of 6 MB"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Sprites on one screen: 42 of 256"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every background is on its layer's grid"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Program and levels: 0.09 of 2 MB"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: scroll2: 9 different 16 px tiles of 49152"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: scroll3: 6 different 32 px tiles of 12288"
+    },
+    {
+      "cls": "is-ok",
+      "text": "Passed: Every background tile and sprite part has 15 colors or fewer"
+    }
+  ]
+}

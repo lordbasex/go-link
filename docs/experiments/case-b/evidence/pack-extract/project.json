@@ -1,0 +1,378 @@
+{
+  "format": 2,
+  "id": "eed47366-1b2e-4bfb-90c4-4fafcf135d19",
+  "title": "Willy Gorklingo",
+  "author": "go-link",
+  "createdAt": "2026-10-01T21:23:47.467Z",
+  "updatedAt": "2026-10-01T21:25:57.074Z",
+  "board": {
+    "id": "cps1",
+    "layout": "slammast"
+  },
+  "settings": {
+    "players": 4,
+    "buttons": {
+      "b1": "jump",
+      "b2": "fire",
+      "b3": "special",
+      "run": "double-tap"
+    },
+    "actionLabels": {},
+    "runTapMs": 250,
+    "playerSlots": [
+      {
+        "character": "builtin:willy",
+        "variant": 0
+      },
+      {
+        "character": "builtin:willy",
+        "variant": 1
+      },
+      {
+        "character": "builtin:willy",
+        "variant": 2
+      },
+      {
+        "character": "builtin:willy",
+        "variant": 3
+      }
+    ],
+    "credits": "(C) 2026 GO-LINK",
+    "dip": {
+      "difficulty": "normal",
+      "lives": 3,
+      "freePlay": false,
+      "demoSound": true
+    },
+    "menus": {
+      "title": {
+        "blocks": [],
+        "texts": {
+          "subtitle": "THE LAG PROTOCOL"
+        },
+        "background": {
+          "kind": "level",
+          "level": ""
+        },
+        "music": "title",
+        "credits": true
+      },
+      "attract": {
+        "blocks": [],
+        "texts": {},
+        "background": {
+          "kind": "level",
+          "level": ""
+        },
+        "music": "none",
+        "credits": true,
+        "demoLevel": "level-1",
+        "panels": []
+      },
+      "select": {
+        "blocks": [],
+        "texts": {},
+        "background": {
+          "kind": "solid",
+          "color": "#000000"
+        },
+        "music": "select",
+        "credits": false,
+        "characters": []
+      },
+      "hud": {
+        "blocks": [],
+        "texts": {
+          "cleared": "SECTION CLEAR"
+        },
+        "background": {
+          "kind": "level",
+          "level": ""
+        },
+        "music": "stage",
+        "credits": false
+      },
+      "continue": {
+        "blocks": [],
+        "texts": {},
+        "background": {
+          "kind": "solid",
+          "color": "#000000"
+        },
+        "music": "continue",
+        "credits": false
+      },
+      "gameOver": {
+        "blocks": [],
+        "texts": {},
+        "background": {
+          "kind": "solid",
+          "color": "#000000"
+        },
+        "music": "game-over",
+        "credits": false
+      },
+      "highScores": {
+        "blocks": [],
+        "texts": {},
+        "background": {
+          "kind": "solid",
+          "color": "#000000"
+        },
+        "music": "high-scores",
+        "credits": true
+      }
+    },
+    "levels": [
+      "level-1"
+    ]
+  },
+  "palettes": [
+    {
+      "id": "pal-city",
+      "group": "play",
+      "colors": [
+        "#110011",
+        "#222233",
+        "#CCCCCC",
+        "#665577",
+        "#EEAA33",
+        "#222233",
+        "#333355",
+        "#EEBB55",
+        "#55BBDD",
+        "#667788",
+        "#BBCCDD",
+        "#663322",
+        "#996633",
+        "#DD9955",
+        "#DD6677"
+      ]
+    },
+    {
+      "id": "pal-sky",
+      "group": "far",
+      "colors": [
+        "#111122",
+        "#111133",
+        "#221144",
+        "#332255",
+        "#442255",
+        "#663355",
+        "#111111",
+        "#222233",
+        "#333344",
+        "#EEBB55",
+        "#55BBCC",
+        "#CCCCDD"
+      ]
+    }
+  ],
+  "characters": [],
+  "tilesets": [
+    {
+      "id": "ts-city",
+      "tile": 16,
+      "image": "sha256:e523f4009884c2bfd704ebfcc7e7fed6ae080f054d830fe293f0cb171ce8d4c5",
+      "palettes": [
+        "pal-city"
+      ],
+      "columns": 8,
+      "count": 31
+    },
+    {
+      "id": "ts-sky",
+      "tile": 32,
+      "image": "sha256:b9a9a93bb42dcba9d4b5f09938420c4ee6791c7e6eb6c1c1c967de8b39a31e74",
+      "palettes": [
+        "pal-sky"
+      ],
+      "columns": 8,
+      "count": 12
+    }
+  ],
+  "levels": [
+    {
+      "id": "level-1",
+      "name": "Puerto Madero docks",
+      "size": {
+        "w": 1536,
+        "h": 448
+      },
+      "camera": {
+        "forwardOnly": true,
+        "backtrack": 48
+      },
+      "layers": [
+        {
+          "visible": true,
+          "locked": false,
+          "opacity": 1,
+          "id": "far",
+          "kind": "tiles",
+          "grid": 32,
+          "data": "rle:1*96,2*96,3*96,4*96,10*48,12*240",
+          "name": "Far background",
+          "tileset": "ts-sky"
+        },
+        {
+          "visible": true,
+          "locked": false,
+          "opacity": 1,
+          "id": "mid",
+          "kind": "tiles",
+          "grid": 32,
+          "data": "rle:0*672",
+          "name": "Middle background"
+        },
+        {
+          "visible": true,
+          "locked": false,
+          "opacity": 1,
+          "id": "play",
+          "kind": "tiles",
+          "grid": 16,
+          "data": "rle:0*1572,6,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,0*60,6,0*95,6,0*95,6,0*95,6,0*95,6,0*73,7,8,0*4,4,5,4,5,4,5,4,5,0*8,6,0*73,9,10,0*20,6,0*71,7,8,7,8,0*20,6,0*71,9,10,9,10,0*20,6,0*59,1*96,3*96",
+          "name": "Play",
+          "tileset": "ts-city"
+        },
+        {
+          "visible": true,
+          "locked": false,
+          "opacity": 0.7,
+          "id": "collision",
+          "kind": "tags",
+          "grid": 16,
+          "data": "rle:0*1572,3,2*35,0*60,3,0*95,3,0*95,3,0*95,3,0*95,3,0*73,4*2,0*4,2*8,0*8,3,0*73,4*2,0*20,3,0*71,4*4,0*20,3,0*71,4*4,0*20,3,0*59,1*192",
+          "props": {},
+          "name": "Collision"
+        },
+        {
+          "visible": true,
+          "locked": false,
+          "opacity": 1,
+          "id": "objects",
+          "kind": "objects",
+          "items": [
+            {
+              "name": "p1_start",
+              "type": "player_start",
+              "x": 32,
+              "y": 416,
+              "player": 1
+            },
+            {
+              "name": "p2_start",
+              "type": "player_start",
+              "x": 48,
+              "y": 416,
+              "player": 2
+            },
+            {
+              "name": "p3_start",
+              "type": "player_start",
+              "x": 64,
+              "y": 416,
+              "player": 3
+            },
+            {
+              "name": "p4_start",
+              "type": "player_start",
+              "x": 80,
+              "y": 416,
+              "player": 4
+            },
+            {
+              "name": "exit",
+              "type": "exit",
+              "x": 1440,
+              "y": 416
+            },
+            {
+              "name": "crate_single",
+              "type": "crate",
+              "x": 192,
+              "y": 384,
+              "size": 32,
+              "hp": 2,
+              "contents": "nothing"
+            },
+            {
+              "name": "crate_stack_low",
+              "type": "crate",
+              "x": 224,
+              "y": 384,
+              "size": 32,
+              "hp": 2,
+              "contents": "nothing"
+            },
+            {
+              "name": "crate_stack_top",
+              "type": "crate",
+              "x": 224,
+              "y": 352,
+              "size": 32,
+              "hp": 2,
+              "contents": "nothing"
+            },
+            {
+              "name": "trooper_lower",
+              "type": "enemy",
+              "x": 720,
+              "y": 416,
+              "kind": "trooper",
+              "facing": "left",
+              "patrol": 96
+            },
+            {
+              "name": "trooper_upper",
+              "type": "enemy",
+              "x": 864,
+              "y": 256,
+              "kind": "trooper",
+              "facing": "left",
+              "patrol": 96
+            },
+            {
+              "name": "trooper_exit",
+              "type": "enemy",
+              "x": 1344,
+              "y": 416,
+              "kind": "trooper",
+              "facing": "left",
+              "patrol": 96
+            },
+            {
+              "name": "civ_ledge",
+              "type": "civilian",
+              "x": 400,
+              "y": 352,
+              "kind": "woman",
+              "trapped_in": ""
+            },
+            {
+              "name": "civ_upper",
+              "type": "civilian",
+              "x": 1088,
+              "y": 256,
+              "kind": "child",
+              "trapped_in": ""
+            }
+          ],
+          "name": "Objects"
+        },
+        {
+          "visible": false,
+          "locked": true,
+          "opacity": 1,
+          "id": "text",
+          "kind": "tiles",
+          "grid": 8,
+          "data": "rle:0*10752",
+          "name": "HUD and text"
+        }
+      ],
+      "sections": []
+    }
+  ]
+}

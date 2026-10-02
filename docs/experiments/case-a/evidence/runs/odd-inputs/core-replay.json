@@ -1,0 +1,59 @@
+{
+  "type": "rom_replay",
+  "set": "slammast",
+  "core": "MAME 2003-Plus  3141930",
+  "fps": 60,
+  "width": 384,
+  "height": 224,
+  "frames": 2400,
+  "seconds": 3.204809311,
+  "checkpoints": [
+    {
+      "frame": 200,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f000200.png",
+      "hash": "20b66c19"
+    },
+    {
+      "frame": 260,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f000260.png",
+      "hash": "ed52b887"
+    },
+    {
+      "frame": 500,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f000500.png",
+      "hash": "bd6e2614"
+    },
+    {
+      "frame": 700,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f000700.png",
+      "hash": "a84761d4"
+    },
+    {
+      "frame": 900,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f000900.png",
+      "hash": "9a4816ae"
+    },
+    {
+      "frame": 1100,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f001100.png",
+      "hash": "cd1abdf2"
+    },
+    {
+      "frame": 1300,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f001300.png",
+      "hash": "78ddd0ac"
+    },
+    {
+      "frame": 1500,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f001500.png",
+      "hash": "a124689e"
+    },
+    {
+      "frame": 2400,
+      "png": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/frames/f002400.png",
+      "hash": "eaf641f1"
+    }
+  ],
+  "pngs": 9,
+  "mp4": "/private/tmp/claude-501/exp1/case-a/runs/odd-inputs/core/run.mp4"
+}

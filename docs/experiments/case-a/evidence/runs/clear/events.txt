@@ -1,0 +1,16 @@
+122 credits 0 -> 1
+154 mode title -> playing; credits 1 -> 0; P1 active false -> true at (64,400)
+448 civilian 0 rescued
+523 enemy 0 hp 3 -> 2
+530 enemy 0 hp 2 -> 1
+537 enemy 0 hp 1 -> 0 (down)
+924 enemy 1 hp 3 -> 2
+931 enemy 1 hp 2 -> 1
+938 enemy 1 hp 1 -> 0 (down)
+1118 civilian 1 rescued
+1217 credits 0 -> 1
+1227 credits 1 -> 0; P2 active false -> true at (1146,400)
+1231 enemy 2 hp 3 -> 2
+1238 enemy 2 hp 2 -> 1
+1245 enemy 2 hp 1 -> 0 (down)
+1376 mode playing -> clear

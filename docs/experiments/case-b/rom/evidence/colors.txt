@@ -1,0 +1,24 @@
+levels/level-1/play.png 1536 448 transparent 630882 colors 9
+   222233ff:39936 665577ff:5952 110011ff:4439 667788ff:1595 eeaa33ff:1536 996633ff:1338 bbccddff:1088 663322ff:918 dd9955ff:444
+levels/level-1/far.png 1536 448 transparent 30720 colors 8
+   222233ff:217152 332255ff:98304 111122ff:97440 111133ff:97248 221144ff:97152 111111ff:45504 ccccddff:3072 333344ff:1536
+levels/level-1/collision.png 1536 448 transparent 0 colors 5
+   ffffffff:622336 000000ff:49152 00ff00ff:11008 ffaa00ff:3072 0000ffff:2560
+tilesets/ts-city.png 128 64 transparent 1950 colors 14
+   333355ff:1464 222233ff:1324 110011ff:1040 667788ff:590 996633ff:446 55bbddff:310 663322ff:306 bbccddff:245 dd9955ff:154 eeaa33ff:112 dd6677ff:92 eebb55ff:65 665577ff:62 ccccccff:32
+tilesets/ts-sky.png 256 64 transparent 5336 colors 12
+   222233ff:3896 332255ff:1024 442255ff:1024 663355ff:1024 111122ff:1015 111133ff:1013 221144ff:1012 111111ff:786 333344ff:96 55bbccff:80 eebb55ff:46 ccccddff:32
+far row 0 ccccddff 111122ff
+far row 1 ccccddff 111122ff
+far row 2 111133ff ccccddff
+far row 3 111133ff ccccddff
+far row 4 221144ff ccccddff
+far row 5 221144ff ccccddff
+far row 6 332255ff
+far row 7 332255ff
+far row 8 00000000 333344ff 222233ff 111111ff
+far row 9 111111ff 222233ff
+far row 10 111111ff 222233ff
+far row 11 111111ff 222233ff
+far row 12 111111ff 222233ff
+far row 13 111111ff 222233ff

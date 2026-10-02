@@ -1,0 +1,49 @@
+{
+  "sim": "/private/tmp/claude-501/exp1/case-a/runs/long-run/sim/frames",
+  "core": "/private/tmp/claude-501/exp1/case-a/runs/long-run/core/frames",
+  "tolerance": 0,
+  "frames": 5,
+  "worstDifferPct": 0,
+  "results": [
+    {
+      "frame": 1500,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-001500.png",
+      "pairPng": "pair-001500.png"
+    },
+    {
+      "frame": 2900,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-002900.png",
+      "pairPng": "pair-002900.png"
+    },
+    {
+      "frame": 3100,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-003100.png",
+      "pairPng": "pair-003100.png"
+    },
+    {
+      "frame": 10000,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-010000.png",
+      "pairPng": "pair-010000.png"
+    },
+    {
+      "frame": 21600,
+      "differPct": 0,
+      "exactPct": 100,
+      "meanAbs": 0,
+      "diffPng": "diff-021600.png",
+      "pairPng": "pair-021600.png"
+    }
+  ]
+}

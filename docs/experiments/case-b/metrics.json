@@ -1,0 +1,62 @@
+{
+  "case": "B",
+  "step": 1,
+  "what": "Game Spec v1's level built in Willy Maker through its UI (Playwright), AI pack exported",
+  "branch": "exp1/case-b",
+  "base": "23806b8",
+  "wallTime": {
+    "first": "2026-10-01T18:06:21-03:00",
+    "last": "2026-10-01T18:33:03-03:00",
+    "minutes": 27,
+    "note": "first and last from date; last is the final commit and copy to the shared folder"
+  },
+  "recordedSession": {
+    "start": "2026-10-01T18:23:29-03:00",
+    "end": "2026-10-01T18:26:12-03:00",
+    "seconds": 163,
+    "userActions": 107,
+    "milestones": 26,
+    "video": { "file": "builder.mp4", "seconds": 163.2, "bytes": 8212982, "chapters": 24, "sha256": "530866000f2d2c9274e351a9e0bcb1736ce74e91c2d97bb1c7215d48cdbf7eb0" }
+  },
+  "toolCalls": { "estimate": 95, "note": "the agent's own tool calls (reads, scripts, runs, commits), counted by hand" },
+  "tokens": null,
+  "attempts": {
+    "driverRuns": 9,
+    "failed": 5,
+    "runs": [
+      { "run": "r1", "result": "failed", "why": "calibration: the Inspector's text is uppercased by CSS" },
+      { "run": "r2a", "result": "failed", "why": "calibration: the probe hit a cell outside the level (negative numbers), finding F-09" },
+      { "run": "r2b", "result": "failed", "why": "picking a Trooper kept the Fill tool, nothing was placed and the last crate was renamed and moved, finding F-03" },
+      { "run": "r3", "result": "failed", "why": "a locator matched the Collision layer's name and kind" },
+      { "run": "r4", "result": "ok", "why": "first full review (no download yet)" },
+      { "run": "r5a", "result": "failed", "why": "the Play button's name matched the Play layer's" },
+      { "run": "r5b", "result": "ok", "why": "play-test and both downloads" },
+      { "run": "r6", "result": "ok", "why": "crate names" },
+      { "run": "final", "result": "ok", "why": "the recorded session" }
+    ],
+    "willyMakerErrors": 0,
+    "pageErrors": 0,
+    "consoleErrors": { "count": 18, "all": "wss://signal.go-link.org 403 for the localhost:5301 origin (the site's header, not Willy Maker)" }
+  },
+  "buildFailures": 0,
+  "validator": {
+    "level1": { "summary": "Ready to export", "errors": 0, "warnings": 0, "info": 1, "infoText": "No hero of your own yet: the game uses the built-in Willy.", "passed": 19 },
+    "level2": { "packCheck": "passed (the AI pack downloaded; a failure blocks the download)" },
+    "level3": null,
+    "level4": null,
+    "note": "levels 3 and 4 need a ROM, which is step 2's"
+  },
+  "pack": {
+    "file": "ai-pack.zip",
+    "bytes": 76402,
+    "entries": 15,
+    "sha256": "23cdc296bc8a61879d5efbb4fe8e5ce60fa192327f61660f4f7f93698ea5d0fa",
+    "modified": false
+  },
+  "rom": { "bytes": null, "symbols": null, "note": "no ROM in step 1" },
+  "specItems": {
+    "inThePack": ["board and layout", "screen and level size", "4 players, P1 Willy, P2-P4 recruit shirts", "controls and run window", "gravity, jump, push-climb, ladders, camera margin (engine numbers)", "start x 32-80", "crates 32 then 64 px", "one-way ledge 64 px up", "ladder to the upper dock 160 px up", "3 Troopers, patrol 96", "2 civilians", "exit at x 1440", "title, subtitle, prompt, credits line, SECTION CLEAR, GAME OVER", "night sky"],
+    "gaps": ["enemy 3 hits (pack says 4)", "points 100 and 500 (pack says 500 and 1000)", "3 energy and 1 s blink (pack says lives)", "exit only with all enemies down", "exit 64 px wide", "CREDITS n on the title", "the section", "symbol map and lab state for the harness"],
+    "findings": "journal.md F-01 to F-14"
+  }
+}

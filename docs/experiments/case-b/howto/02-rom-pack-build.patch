@@ -1,0 +1,2012 @@
+diff --git a/rom/src/game_pack.c b/rom/src/game_pack.c
+new file mode 100644
+index 0000000..94b51fe
+--- /dev/null
++++ b/rom/src/game_pack.c
+@@ -0,0 +1,1575 @@
++/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
++/*
++ * A game built from a Willy Maker AI pack (rom/tools/pack.mjs reads it,
++ * build.mjs --pack compiles this file instead of main.c). It starts from
++ * the prototype's engine (main.c: walking, double-tap run, jump, push-climb,
++ * one-way ledges, ladders, machine gun, knife, crates, civilians, the
++ * forward-only camera) and adds what the pack asks for:
++ *  - four players (slammast: P3/P4 at 0xf1c000/2), each Willy with its own
++ *    shirt (palette swaps), joining with a credit and their Start;
++ *  - a level of any width: scroll2's map is 64 cells (1024 px) wide, so the
++ *    level's columns are streamed into it as the camera moves;
++ *  - troopers that see 170 px, take 4 hits and fire every 90 frames at
++ *    3 px per frame; lives (3, from the DIP settings) with 120 frames
++ *    without harm after a hit;
++ *  - the special button throws a grenade (no weapon pickups in the pack);
++ *  - an exit that clears the section, a continue countdown, game over and a
++ *    high score table; title, attract demo and high scores cycle.
++ * The text comes from the pack (gfx.h TXT_*), the level from gen/art_data.c.
++ */
++#include "hw.h"
++#include "gfx.h"
++#include "lab_state.h"
++
++#ifndef PACK_GAME
++#error "game_pack.c needs a pack build: node rom/tools/build.mjs --pack DIR"
++#endif
++
++volatile u32 frame_count;
++
++void *memset(void *d, int c, unsigned long n)
++{
++	u8 *p = d;
++	while (n--)
++		*p++ = (u8)c;
++	return d;
++}
++
++void *memcpy(void *d, const void *s, unsigned long n)
++{
++	u8 *p = d;
++	const u8 *q = s;
++	while (n--)
++		*p++ = *q++;
++	return d;
++}
++
++static int str_len(const char *s)
++{
++	int n = 0;
++	while (s[n])
++		n++;
++	return n;
++}
++
++static void wait_vblank(void)
++{
++	u32 f = frame_count;
++	while (frame_count == f)
++		;
++}
++
++/* --------------------------------------------------------------- video */
++
++static volatile u16 *scroll1_cell(int col, int row)
++{
++	u32 off = (row & 0x1f) + ((u32)(col & 0x3f) << 5) + ((u32)(row & 0x20) << 6);
++	return (volatile u16 *)(GFX_SCROLL1 + off * 4);
++}
++
++static volatile u16 *scroll2_cell(int col, int row)
++{
++	u32 off = (row & 0x0f) + ((u32)(col & 0x3f) << 4) + ((u32)(row & 0x30) << 6);
++	return (volatile u16 *)(GFX_SCROLL2 + off * 4);
++}
++
++static volatile u16 *scroll3_cell(int col, int row)
++{
++	u32 off = (row & 0x07) + ((u32)(col & 0x3f) << 3) + ((u32)(row & 0x38) << 6);
++	return (volatile u16 *)(GFX_SCROLL3 + off * 4);
++}
++
++enum { TXT_ORANGE, TXT_WHITE, TXT_GREEN, TXT_RED, TXT_BLUE };
++
++/* Text on scroll1, in screen cells (0-47 x 0-27). */
++static void print(int x, int y, const char *s, int pal)
++{
++	for (; *s; s++, x++) {
++		volatile u16 *c = scroll1_cell(x + SCREEN_X0 / 8, y + SCREEN_Y0 / 8);
++		char ch = *s;
++		if (ch >= 'a' && ch <= 'z')
++			ch -= 32;
++		c[0] = ch == ' ' ? 0x0020 : FONT_CODE(ch);
++		c[1] = pal;
++	}
++}
++
++static void print_center(int y, const char *s, int pal)
++{
++	print((48 - str_len(s)) / 2, y, s, pal);
++}
++
++static void print_num(int x, int y, u32 v, int digits, int pal)
++{
++	char buf[11];
++	int i;
++	for (i = digits - 1; i >= 0; i--) {
++		buf[i] = '0' + (char)(v % 10);
++		v /= 10;
++	}
++	buf[digits] = 0;
++	print(x, y, buf, pal);
++}
++
++static void clear_text(void)
++{
++	int c, r;
++	for (c = 0; c < 64; c++)
++		for (r = 0; r < 32; r++)
++			scroll1_cell(c, r)[0] = 0x0020;
++}
++
++/* Board writes through a data register (hardware.md pitfall, main.c). */
++static void copy_words(volatile u16 *dst, const u16 *src, int n)
++{
++	int i;
++	for (i = 0; i < n; i++) {
++		u16 v = src[i];
++		__asm__ volatile("" : "+d"(v));
++		dst[i] = v;
++	}
++}
++
++static void load_palette(int index, const u16 *colors)
++{
++	copy_words(PALETTE + index * 16, colors, 16);
++}
++
++#define LAYERS_PLAY (LAYER_ORDER(3, 2, 0, 1) | LAYER_EN_SCROLL1 | LAYER_EN_SCROLL23)
++#define LAYERS_TEXT (LAYER_ORDER(3, 2, 0, 1) | LAYER_EN_SCROLL1)
++
++/* the screens with a solid black background show only text */
++static void layers(int play)
++{
++	CPSB_LAYER_CTRL = play ? LAYERS_PLAY : LAYERS_TEXT;
++}
++
++/* scroll2's 64 columns hold the level's columns c with c & 63 == slot */
++static s16 slot_col[64];
++static u16 tile_map[LEVEL_ROWS * LEVEL_COLS]; /* RAM copy: crates break */
++
++static void video_init(void)
++{
++	int c, r;
++	CPSA_OBJ_BASE = GFX_OBJ >> 8;
++	CPSA_SCROLL1_BASE = GFX_SCROLL1 >> 8;
++	CPSA_SCROLL2_BASE = GFX_SCROLL2 >> 8;
++	CPSA_SCROLL3_BASE = GFX_SCROLL3 >> 8;
++	CPSA_OTHER_BASE = GFX_OTHER >> 8;
++	CPSA_PALETTE_BASE = GFX_PALETTE >> 8;
++	CPSA_VIDEO_CTRL = 0x000e;
++	CPSB_CONTROL = 0x003f;
++	CPSB_PRIO0 = CPSB_PRIO1 = CPSB_PRIO2 = CPSB_PRIO3 = 0;
++	CPSA_SCROLL1_X = CPSA_SCROLL1_Y = 0;
++	CPSA_SCROLL2_X = CPSA_SCROLL2_Y = 0;
++	CPSA_SCROLL3_X = CPSA_SCROLL3_Y = 0;
++	layers(1);
++
++	for (c = 0; c < 64; c++) {
++		slot_col[c] = -1;
++		for (r = 0; r < 64; r++) {
++			volatile u16 *p = scroll1_cell(c, r);
++			p[0] = 0x0020;
++			p[1] = 0;
++			p = scroll2_cell(c, r);
++			p[0] = TILE16_LEVEL_EMPTY;
++			p[1] = 0;
++			p = scroll3_cell(c, r);
++			p[0] = r < SKY_ROWS && c < SKY_COLS ? sky_map[r * SKY_COLS + c] : sky_map[0];
++			p[1] = 0;
++		}
++	}
++	((volatile u16 *)GFX_OBJ)[3] = 0xff00;
++
++	PALETTE[PAL_BACKGROUND] = 0xf000;
++	load_palette(PAL_SCROLL2 + 0, pal_level);
++	load_palette(PAL_SCROLL3 + 0, pal_sky);
++	for (c = 0; c < OBJ_PALETTES; c++)
++		load_palette(PAL_OBJ + c, obj_palettes + c * 16);
++	/* text: pen 1 ink, pen 2 shadow */
++	PALETTE[(PAL_SCROLL1 + TXT_ORANGE) * 16 + 1] = 0xffa3;
++	PALETTE[(PAL_SCROLL1 + TXT_WHITE) * 16 + 1] = 0xfeee;
++	PALETTE[(PAL_SCROLL1 + TXT_GREEN) * 16 + 1] = 0xf7e9;
++	PALETTE[(PAL_SCROLL1 + TXT_RED) * 16 + 1] = 0xfe67;
++	PALETTE[(PAL_SCROLL1 + TXT_BLUE) * 16 + 1] = 0xf8bf;
++	for (c = 0; c < 5; c++)
++		PALETTE[(PAL_SCROLL1 + c) * 16 + 2] = 0xf000;
++}
++
++static void write_column(int c)
++{
++	int r, slot = c & 63;
++	for (r = 0; r < LEVEL_ROWS; r++)
++		scroll2_cell(slot, r)[0] = tile_map[r * LEVEL_COLS + c];
++	slot_col[slot] = (s16)c;
++}
++
++/* keeps the columns around the camera in scroll2's map */
++static void stream_level(int cam)
++{
++	int c, c0 = cam / 16 - 4, c1 = cam / 16 + SCREEN_W / 16 + 4;
++	if (c0 < 0)
++		c0 = 0;
++	if (c1 > LEVEL_COLS - 1)
++		c1 = LEVEL_COLS - 1;
++	for (c = c0; c <= c1; c++)
++		if (slot_col[c & 63] != c)
++			write_column(c);
++}
++
++/* ------------------------------------------------------------- sprites */
++
++#define MAX_SPRITES 200 /* the table holds 256 */
++#define OBJ ((volatile u16 *)GFX_OBJ)
++static int nobj;
++
++static void put_sprite(int x, int y, u16 code, u16 attr)
++{
++	volatile u16 *o;
++	/* off-screen entries are dropped: X and Y wrap at 512 on the board */
++	if (nobj >= MAX_SPRITES || x < -64 || x > SCREEN_W + 16 || y < -64 || y > SCREEN_H + 16)
++		return;
++	o = OBJ + nobj * 4;
++	o[0] = (u16)(x + SCREEN_X0) & 0x1ff;
++	o[1] = (u16)(y + SCREEN_Y0) & 0x1ff;
++	o[2] = code;
++	o[3] = attr;
++	nobj++;
++}
++
++static void draw_frame(const Frame *f, int x, int y, int pal, int flip)
++{
++	int i;
++	int left = flip ? x - (f->w - f->ax) : x - f->ax;
++	int top = y - f->ay;
++	for (i = 0; i < f->count; i++) {
++		const Tile *t = &f->tiles[i];
++		int tx = flip ? f->w - 16 - t->dx : t->dx;
++		put_sprite(left + tx, top + t->dy, t->code, (u16)(((t->pal + pal) & 0x1f) | (flip ? 0x20 : 0)));
++	}
++}
++
++static void draw_anim(const Anim *a, u32 t, int x, int y, int pal, int flip)
++{
++	u32 i = (t * a->fps / 60) % a->count;
++	draw_frame(&a->frames[i], x, y, pal, flip);
++}
++
++static void draw_tile(u16 code, int x, int y, int pal, int flip)
++{
++	put_sprite(x, y, code, (u16)((pal & 0x1f) | (flip ? 0x20 : 0)));
++}
++
++static void flush_sprites(void)
++{
++	OBJ[nobj * 4 + 3] = 0xff00; /* end of table */
++	nobj = 0;
++}
++
++/* --------------------------------------------------------------- rules */
++
++#define PLAYERS 4
++#define BODY_H 40  /* collision height of a player, px */
++#define HALF_W 5   /* half width at the feet */
++#define GRAVITY 6  /* 1/16 px per frame per frame */
++#define JUMP_VY (-7 * 16)
++#define MAX_FALL (8 * 16)
++#define CLIMB_SPEED 24 /* 1.5 px per frame */
++#define STEP_UP 32    /* the highest edge a push climbs (one crate) */
++#define PUSH_FRAMES 10
++#define RUN_TAP 15     /* frames between the two taps of a run */
++#define DROP_FRAMES 12
++#define SHOTS 6        /* machine gun shots per player on screen */
++#define SHOT_SPEED 6
++#define SHOT_WAIT 7
++#define KNIFE_FRAMES 16
++#define KNIFE_REACH 18
++#define ENEMY_HP 4
++#define ENEMY_SIGHT 170
++#define ENEMY_FIRE 90  /* frames between two shots */
++#define ENEMY_SHOT_SPEED 3
++#define ENEMY_SHOTS 8
++#define SAFE_FRAMES 120 /* without harm after a hit */
++#define GRENADES 10    /* per life (the pack gives no number) */
++#define BLAST_FRAMES 16
++#define BLAST_REACH 24
++#define SCORE_CRATE 100
++#define SCORE_ENEMY 500
++#define SCORE_CIVILIAN 1000
++#define CONTINUE_SECONDS 10
++
++static u16 sys_now, sys_last;
++static u8 start_now, start_last; /* bit k: player k+1's Start */
++static int credits;
++static int cam_x, cam_y;
++static int cam_far; /* the farthest the camera has been: the stage only goes forward */
++
++struct bullet {
++	s16 x, y, dir, live;
++};
++
++struct grenade {
++	s32 x, y, vy; /* px, 1/16 px, 1/16 px per frame */
++	s16 dir, live, blast;
++};
++
++struct player {
++	int joined, active, out, palofs;
++	u16 pad, last;
++	s32 x;  /* world px */
++	s32 y;  /* world y of the feet, 1/16 px */
++	s32 vy; /* 1/16 px per frame */
++	int flip, on_ground, climbing, drop_t, push_t;
++	int running, tap_dir;
++	u32 tap_time;
++	int firing, fire_wait, knife_t, throw_t, grenades;
++	int lives, safe_t;
++	u32 t, score;
++	struct bullet shots[SHOTS];
++	struct grenade gren;
++};
++static struct player pl[PLAYERS];
++
++static u8 col_map[LEVEL_ROWS * LEVEL_COLS]; /* RAM copy: crates can break */
++static s8 crate_hp[CRATES];
++
++enum { ROBOT_OFF, ROBOT_WALK, ROBOT_HIT, ROBOT_DOWN };
++static struct {
++	s32 x, fy, min, max;
++	int state, hp, flip, dir, fire_t;
++	u32 t;
++} robot[ROBOTS];
++
++static struct bullet eshot[ENEMY_SHOTS];
++
++static struct {
++	s32 x, fy;
++	int child, rescued;
++	u32 t;
++} civ[CIVILIANS];
++
++static int rescued;
++
++#define PRESSED(p, bit) (((p)->pad & (bit)) && !((p)->last & (bit)))
++#define SYS_PRESSED(bit) ((sys_now & (bit)) && !(sys_last & (bit)))
++#define START_PRESSED(k) ((start_now & (1 << (k))) && !(start_last & (1 << (k))))
++#define SYS_COIN2  0x02
++#define SYS_START2 0x20
++#define P34_COIN   0x40
++#define P34_START  0x80
++
++static void read_inputs(void)
++{
++	u16 both = (u16)~IN_P12;
++	u16 p3 = (u16)~IN_P3, p4 = (u16)~IN_P4;
++	int k;
++	for (k = 0; k < PLAYERS; k++)
++		pl[k].last = pl[k].pad;
++	pl[0].pad = both & 0x7f;
++	pl[1].pad = (both >> 8) & 0x7f;
++	/* players 3 and 4: stick and buttons 1-2 in their own byte, button 3 in 0x800000 */
++	pl[2].pad = (p3 & 0x3f) | ((both & P3_BTN_3) ? BTN_3 : 0);
++	pl[3].pad = (p4 & 0x3f) | ((both & P4_BTN_3) ? BTN_3 : 0);
++	sys_last = sys_now;
++	sys_now = (u16)(~IN_SYSTEM & 0xff);
++	start_last = start_now;
++	start_now = (u8)(((sys_now & SYS_START1) ? 1 : 0) | ((sys_now & SYS_START2) ? 2 : 0) | ((p3 & P34_START) ? 4 : 0) | ((p4 & P34_START) ? 8 : 0));
++	{
++		static u8 coin_last;
++		u8 coin_now = (u8)(((sys_now & SYS_COIN1) ? 1 : 0) | ((sys_now & SYS_COIN2) ? 2 : 0) | ((p3 & P34_COIN) ? 4 : 0) | ((p4 & P34_COIN) ? 8 : 0));
++		u8 edge = coin_now & ~coin_last;
++		coin_last = coin_now;
++		for (k = 0; k < PLAYERS; k++)
++			if ((edge & (1 << k)) && credits < 9)
++				credits++;
++	}
++}
++
++/* a credit for a start (free play from the DIP settings needs none) */
++static int take_credit(void)
++{
++	if (DIP_FREE_PLAY)
++		return 1;
++	if (!credits)
++		return 0;
++	credits--;
++	return 1;
++}
++
++static int can_start(void)
++{
++	return DIP_FREE_PLAY || credits > 0;
++}
++
++/* ---------------------------------------------------------- the level */
++
++static int cell(int c, int r)
++{
++	if (c < 0 || c >= LEVEL_COLS || r >= LEVEL_ROWS)
++		return CELL_SOLID;
++	if (r < 0)
++		return CELL_EMPTY;
++	return col_map[r * LEVEL_COLS + c];
++}
++
++static int cell_at(s32 x, s32 y)
++{
++	return cell((int)(x >> 4), (int)(y >> 4));
++}
++
++static int is_solid(int t)
++{
++	return t == CELL_SOLID || t == CELL_CRATE;
++}
++
++/* the top of a one-way platform, or of a ladder (a ladder's top cell) */
++static int is_ledge(int c, int r)
++{
++	int t = cell(c, r);
++	return t == CELL_ONEWAY || (t == CELL_LADDER && cell(c, r - 1) != CELL_LADDER);
++}
++
++/* can feet at world y (px, on a cell top) stand at x? 2 = solid, 1 = ledge */
++static int support(s32 x, s32 fy, int drop)
++{
++	int r, c0, c1, best = 0, c;
++	if (fy & 15)
++		return 0;
++	r = (int)(fy >> 4);
++	c0 = (int)((x - HALF_W) >> 4);
++	c1 = (int)((x + HALF_W) >> 4);
++	for (c = c0; c <= c1; c++) {
++		if (is_solid(cell(c, r)))
++			return 2;
++		if (!drop && is_ledge(c, r))
++			best = 1;
++	}
++	return best;
++}
++
++static int body_blocked(s32 x, s32 fy)
++{
++	s32 y;
++	for (y = fy - 1; y > fy - BODY_H; y -= 8)
++		if (is_solid(cell_at(x, y)))
++			return 1;
++	return is_solid(cell_at(x, fy - BODY_H));
++}
++
++static void set_cell_tile(int c, int r, u16 code)
++{
++	tile_map[r * LEVEL_COLS + c] = code;
++	if (slot_col[c & 63] == c)
++		scroll2_cell(c & 63, r)[0] = code;
++}
++
++static void level_reset(void)
++{
++	int i;
++	for (i = 0; i < LEVEL_ROWS * LEVEL_COLS; i++) {
++		col_map[i] = level_col[i];
++		tile_map[i] = level_map[i];
++	}
++	for (i = 0; i < 64; i++)
++		slot_col[i] = -1;
++	for (i = 0; i < CRATES; i++)
++		crate_hp[i] = (s8)crate_cells[i * 3 + 2];
++}
++
++/* a hit on the crate that holds cell (c, r); returns 1 if it was a crate */
++static int hit_crate(int c, int r, int damage, struct player *by)
++{
++	int i, q;
++	for (i = 0; i < CRATES; i++) {
++		int cc = crate_cells[i * 3], rr = crate_cells[i * 3 + 1];
++		if (crate_hp[i] <= 0 || c < cc || c > cc + 1 || r < rr || r > rr + 1)
++			continue;
++		crate_hp[i] -= damage;
++		if (crate_hp[i] <= 0) {
++			for (q = 0; q < 4; q++) {
++				col_map[(rr + (q >> 1)) * LEVEL_COLS + cc + (q & 1)] = CELL_EMPTY;
++				set_cell_tile(cc + (q & 1), rr + (q >> 1), TILE16_LEVEL_EMPTY);
++			}
++			by->score += SCORE_CRATE;
++		}
++		return 1;
++	}
++	return 0;
++}
++
++/* -------------------------------------------------------------- actors */
++
++static void robot_spawn_all(void)
++{
++	int i;
++	for (i = 0; i < ROBOTS; i++) {
++		robot[i].x = robot_spawn[i * 5];
++		robot[i].fy = robot_spawn[i * 5 + 1];
++		robot[i].min = robot_spawn[i * 5 + 2];
++		robot[i].max = robot_spawn[i * 5 + 3];
++		robot[i].dir = robot_spawn[i * 5 + 4];
++		robot[i].flip = robot[i].dir < 0;
++		robot[i].state = ROBOT_WALK;
++		robot[i].hp = ENEMY_HP;
++		robot[i].fire_t = 0;
++		robot[i].t = (u32)i * 11;
++	}
++	for (i = 0; i < ENEMY_SHOTS; i++)
++		eshot[i].live = 0;
++}
++
++static int robot_alive(int i)
++{
++	return robot[i].state == ROBOT_WALK || robot[i].state == ROBOT_HIT;
++}
++
++static void robot_damage(int i, int n, struct player *by)
++{
++	if (!robot_alive(i))
++		return;
++	robot[i].hp -= n;
++	robot[i].t = 0;
++	if (robot[i].hp <= 0) {
++		robot[i].hp = 0;
++		robot[i].state = ROBOT_DOWN;
++		by->score += SCORE_ENEMY;
++	} else
++		robot[i].state = ROBOT_HIT;
++}
++
++/* the robot hit by a point (x, y), or -1 */
++static int robot_at(s32 x, s32 y, int reach)
++{
++	int i;
++	for (i = 0; i < ROBOTS; i++) {
++		s32 dx = robot[i].x - x;
++		if (robot_alive(i) && dx > -reach && dx < reach && y <= robot[i].fy && y > robot[i].fy - 40)
++			return i;
++	}
++	return -1;
++}
++
++static void player_place(struct player *p, s32 x, s32 fy)
++{
++	int i;
++	p->x = x;
++	p->y = fy * 16;
++	p->vy = 0;
++	p->flip = 0;
++	p->on_ground = 1;
++	p->climbing = p->drop_t = p->push_t = 0;
++	p->running = p->tap_dir = 0;
++	p->knife_t = p->throw_t = p->fire_wait = 0;
++	p->t = 0;
++	for (i = 0; i < SHOTS; i++)
++		p->shots[i].live = 0;
++	p->gren.live = p->gren.blast = 0;
++}
++
++/* a player joins (or continues) with a full set of lives */
++static void player_join(struct player *p, s32 x, s32 fy)
++{
++	player_place(p, x, fy);
++	p->joined = p->active = 1;
++	p->out = 0;
++	p->lives = DIP_LIVES;
++	p->grenades = GRENADES;
++	p->safe_t = SAFE_FRAMES;
++}
++
++static void game_reset(void)
++{
++	int i;
++	level_reset();
++	for (i = 0; i < PLAYERS; i++) {
++		pl[i].joined = pl[i].active = pl[i].out = 0;
++		pl[i].score = 0;
++		pl[i].lives = 0;
++		pl[i].palofs = i * RECRUIT_PAL_OFFSET; /* Willy, then the recruits' shirts */
++		player_place(&pl[i], start_pos[i * 2], start_pos[i * 2 + 1]);
++	}
++	robot_spawn_all();
++	for (i = 0; i < CIVILIANS; i++) {
++		civ[i].x = civ_spawn[i * 3];
++		civ[i].fy = civ_spawn[i * 3 + 1];
++		civ[i].child = civ_spawn[i * 3 + 2];
++		civ[i].rescued = 0;
++		civ[i].t = (u32)i * 17;
++	}
++	rescued = 0;
++}
++
++/* an enemy shot or a fall: one life, then SAFE_FRAMES without harm */
++static void player_hit(struct player *p)
++{
++	if (!p->active || p->safe_t)
++		return;
++	p->lives--;
++	if (p->lives <= 0) {
++		p->lives = 0;
++		p->active = 0;
++		p->out = 1;
++		return;
++	}
++	p->safe_t = SAFE_FRAMES;
++}
++
++/* horizontal motion, one pixel at a time, with the push-to-climb step */
++static void walk(struct player *p, int dir, int speed)
++{
++	s32 fy = p->y >> 4;
++	int n;
++	for (n = 0; n < speed; n++) {
++		s32 nx = p->x + dir;
++		s32 front = nx + dir * HALF_W;
++		if (!body_blocked(front, fy)) {
++			p->x = nx;
++			p->push_t = 0;
++			continue;
++		}
++		/* blocked: an edge up to STEP_UP high with room above is climbed after a push */
++		if (p->on_ground) {
++			s32 top = fy;
++			while (fy - top < STEP_UP + 16 && is_solid(cell_at(front, top - 1)))
++				top = ((top - 1) >> 4) << 4;
++			if (fy - top <= STEP_UP && !body_blocked(front, top) && !body_blocked(p->x, top)) {
++				if (++p->push_t >= PUSH_FRAMES) {
++					p->y = top * 16;
++					p->x = nx;
++					p->push_t = 0;
++				}
++			}
++		}
++		return;
++	}
++}
++
++static void blast(struct player *p)
++{
++	struct grenade *g = &p->gren;
++	int i, c, r;
++	s32 gy = g->y >> 4;
++	g->live = 0;
++	g->blast = BLAST_FRAMES;
++	for (i = 0; i < ROBOTS; i++) {
++		s32 dx = robot[i].x - g->x, dy = robot[i].fy - gy;
++		if (dx > -BLAST_REACH && dx < BLAST_REACH && dy > -BLAST_REACH && dy < BODY_H + BLAST_REACH)
++			robot_damage(i, 9, p);
++	}
++	for (r = (int)((gy - BLAST_REACH) >> 4); r <= (int)((gy + 8) >> 4); r++)
++		for (c = (int)((g->x - BLAST_REACH) >> 4); c <= (int)((g->x + BLAST_REACH) >> 4); c++)
++			if (cell(c, r) == CELL_CRATE)
++				hit_crate(c, r, 9, p);
++}
++
++static void update_grenade(struct player *p)
++{
++	struct grenade *g = &p->gren;
++	s32 gy;
++	if (g->blast)
++		g->blast--;
++	if (!g->live)
++		return;
++	g->x += g->dir * 3;
++	g->vy += GRAVITY;
++	if (g->vy > MAX_FALL)
++		g->vy = MAX_FALL;
++	g->y += g->vy;
++	gy = g->y >> 4;
++	if (robot_at(g->x, gy, 10) >= 0 || is_solid(cell_at(g->x, gy)) || (g->vy > 0 && support(g->x, gy & ~15, 0) && (gy & 15) < 8) ||
++	    gy > LEVEL_H || g->x < cam_x - 48 || g->x > cam_x + SCREEN_W + 48)
++		blast(p);
++}
++
++static void update_player(struct player *p)
++{
++	int i, dir = 0;
++	s32 fy;
++	if (!p->active)
++		return;
++	p->t++;
++	if (p->safe_t)
++		p->safe_t--;
++	if (p->drop_t)
++		p->drop_t--;
++	if (p->pad & BTN_LEFT)
++		dir = -1;
++	else if (p->pad & BTN_RIGHT)
++		dir = 1;
++	/* double tap: a second press toward the same side within RUN_TAP frames runs */
++	if (PRESSED(p, BTN_LEFT) || PRESSED(p, BTN_RIGHT)) {
++		if (dir == p->tap_dir && frame_count - p->tap_time <= RUN_TAP)
++			p->running = 1;
++		p->tap_dir = dir;
++		p->tap_time = frame_count;
++	}
++	if (!dir)
++		p->running = 0;
++	fy = p->y >> 4;
++
++	/* ladders: up in front of one, or down standing on its top (6 px of grace) */
++	if (!p->climbing && !p->knife_t) {
++		int k;
++		for (k = -6; k <= 6; k += 6) {
++			s32 lx = p->x + k;
++			if (((p->pad & BTN_UP) && cell_at(lx, fy - 8) == CELL_LADDER) ||
++			    ((p->pad & BTN_DOWN) && !(p->pad & BTN_1) && p->on_ground && cell_at(lx, fy) == CELL_LADDER)) {
++				p->climbing = 1;
++				p->on_ground = 0;
++				p->vy = 0;
++				p->x = ((lx >> 4) << 4) + 8;
++				break;
++			}
++		}
++	}
++	if (p->climbing) {
++		if (p->pad & BTN_UP) {
++			p->y -= CLIMB_SPEED;
++			fy = p->y >> 4;
++			if (cell_at(p->x, fy - 1) != CELL_LADDER) {
++				/* over the top: stand on the ladder's top cell */
++				p->y = (((fy - 1) >> 4) + 1) * 16 * 16;
++				p->climbing = 0;
++				p->on_ground = 1;
++			}
++		} else if (p->pad & BTN_DOWN) {
++			p->y += CLIMB_SPEED;
++			fy = p->y >> 4;
++			if (support(p->x, (fy >> 4) << 4, 1) == 2 && (fy & 15) < 2) {
++				p->y = ((fy >> 4) << 4) * 16;
++				p->climbing = 0;
++				p->on_ground = 1;
++			} else if (cell_at(p->x, fy - 1) != CELL_LADDER && cell_at(p->x, fy) != CELL_LADDER)
++				p->climbing = 0; /* off the bottom: fall */
++		}
++		if (PRESSED(p, BTN_1)) {
++			p->climbing = 0;
++			p->vy = JUMP_VY / 2;
++		}
++	} else {
++		if (dir && !p->knife_t && !p->throw_t) {
++			p->flip = dir < 0;
++			walk(p, dir, p->running ? 2 : 1);
++		} else
++			p->push_t = 0;
++		fy = p->y >> 4;
++		/* down + jump drops through a ledge; jump otherwise */
++		if (p->on_ground && PRESSED(p, BTN_1)) {
++			if ((p->pad & BTN_DOWN) && support(p->x, fy, 0) == 1) {
++				p->drop_t = DROP_FRAMES;
++				p->on_ground = 0;
++				p->vy = 0;
++				p->y += 16;
++			} else {
++				p->vy = JUMP_VY;
++				p->on_ground = 0;
++			}
++		}
++		/* walking off an edge */
++		if (p->on_ground && !support(p->x, fy, 0)) {
++			p->on_ground = 0;
++			p->vy = 0;
++		}
++		if (!p->on_ground) {
++			s32 from = p->y >> 4, to, py;
++			p->vy += GRAVITY;
++			if (p->vy > MAX_FALL)
++				p->vy = MAX_FALL;
++			to = (p->y + p->vy) >> 4;
++			if (p->vy > 0) {
++				for (py = from + 1; py <= to; py++)
++					if (support(p->x, py, p->drop_t != 0)) {
++						p->y = py * 16;
++						p->vy = 0;
++						p->on_ground = 1;
++						break;
++					}
++				if (!p->on_ground)
++					p->y += p->vy;
++			} else {
++				/* the head hits only solid cells: one-way platforms let it through */
++				if (is_solid(cell_at(p->x, to - BODY_H)))
++					p->vy = 0;
++				else
++					p->y += p->vy;
++			}
++		}
++	}
++	fy = p->y >> 4;
++	if (fy > LEVEL_H + 64) {
++		/* fell out of the map: a life, and back on the first start's floor */
++		player_hit(p);
++		player_place(p, cam_x + 64, start_pos[1]);
++		if (!p->active)
++			return;
++	}
++
++	/* special: a grenade (the pack places no weapon to pick up) */
++	if (p->throw_t)
++		p->throw_t--;
++	if (PRESSED(p, BTN_3) && p->grenades > 0 && !p->gren.live && !p->gren.blast && !p->climbing) {
++		p->gren.live = 1;
++		p->gren.dir = p->flip ? -1 : 1;
++		p->gren.x = p->x + (p->flip ? -12 : 12);
++		p->gren.y = (fy - 30) * 16;
++		p->gren.vy = -64;
++		p->grenades--;
++		p->throw_t = 8;
++	}
++	update_grenade(p);
++
++	/* fire: the knife if a robot stands right in front, else the machine gun */
++	if (p->knife_t)
++		p->knife_t--;
++	if (PRESSED(p, BTN_2) && p->on_ground && !p->climbing) {
++		int ri = robot_at(p->x + (p->flip ? -KNIFE_REACH : KNIFE_REACH), fy - 20, 16);
++		if (ri >= 0) {
++			p->knife_t = KNIFE_FRAMES;
++			robot_damage(ri, 2, p);
++		}
++	}
++	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->throw_t && !p->climbing;
++	if (p->fire_wait)
++		p->fire_wait--;
++	if (p->firing && !p->fire_wait)
++		for (i = 0; i < SHOTS; i++)
++			if (!p->shots[i].live) {
++				p->shots[i].live = 1;
++				p->shots[i].dir = p->flip ? -1 : 1;
++				p->shots[i].x = (s16)(p->x + (p->flip ? -20 : 20));
++				p->shots[i].y = (s16)(fy - 27);
++				p->fire_wait = SHOT_WAIT;
++				break;
++			}
++	for (i = 0; i < SHOTS; i++) {
++		struct bullet *b = &p->shots[i];
++		int ri, t;
++		if (!b->live)
++			continue;
++		b->x += b->dir * SHOT_SPEED;
++		ri = robot_at(b->x, b->y, 8);
++		t = cell_at(b->x, b->y);
++		if (ri >= 0) {
++			robot_damage(ri, 1, p);
++			b->live = 0;
++		} else if (t == CELL_CRATE) {
++			hit_crate(b->x >> 4, b->y >> 4, 1, p);
++			b->live = 0;
++		} else if (t == CELL_SOLID || b->x < cam_x - 32 || b->x > cam_x + SCREEN_W + 32)
++			b->live = 0;
++	}
++}
++
++static void enemy_fire(int i)
++{
++	int k;
++	for (k = 0; k < ENEMY_SHOTS; k++)
++		if (!eshot[k].live) {
++			eshot[k].live = 1;
++			eshot[k].dir = (s16)robot[i].dir;
++			eshot[k].x = (s16)(robot[i].x + robot[i].dir * 16);
++			eshot[k].y = (s16)(robot[i].fy - 26);
++			return;
++		}
++}
++
++static void update_robots(void)
++{
++	int i, k;
++	for (i = 0; i < ROBOTS; i++) {
++		robot[i].t++;
++		switch (robot[i].state) {
++		case ROBOT_WALK: {
++			/* face a player on the same floor within sight and fire, else patrol */
++			int target = -1;
++			s32 best = ENEMY_SIGHT;
++			for (k = 0; k < PLAYERS; k++) {
++				s32 dx = pl[k].x - robot[i].x, dy = (pl[k].y >> 4) - robot[i].fy;
++				if (dx < 0)
++					dx = -dx;
++				if (pl[k].active && dy > -16 && dy < 16 && dx < best) {
++					best = dx;
++					target = k;
++				}
++			}
++			if (target >= 0) {
++				s32 dx = pl[target].x - robot[i].x;
++				robot[i].dir = dx > 0 ? 1 : -1;
++				if ((dx > 22 || dx < -22) && (robot[i].t & 1))
++					robot[i].x += robot[i].dir;
++				if (++robot[i].fire_t >= ENEMY_FIRE) {
++					robot[i].fire_t = 0;
++					enemy_fire(i);
++				}
++			} else {
++				robot[i].fire_t = 0;
++				if (robot[i].t & 1) {
++					robot[i].x += robot[i].dir;
++					if (robot[i].x <= robot[i].min || robot[i].x >= robot[i].max)
++						robot[i].dir = -robot[i].dir;
++				}
++			}
++			if (robot[i].x < robot[i].min)
++				robot[i].x = robot[i].min;
++			if (robot[i].x > robot[i].max)
++				robot[i].x = robot[i].max;
++			robot[i].flip = robot[i].dir < 0; /* the sheet faces right */
++			break;
++		}
++		case ROBOT_HIT:
++			if (robot[i].t > 14) {
++				robot[i].state = ROBOT_WALK;
++				robot[i].t = 0;
++			}
++			break;
++		case ROBOT_DOWN:
++			if (robot[i].t > 90)
++				robot[i].state = ROBOT_OFF;
++			break;
++		}
++	}
++	for (i = 0; i < ENEMY_SHOTS; i++) {
++		struct bullet *b = &eshot[i];
++		if (!b->live)
++			continue;
++		b->x += b->dir * ENEMY_SHOT_SPEED;
++		if (is_solid(cell_at(b->x, b->y)) || b->x < cam_x - 32 || b->x > cam_x + SCREEN_W + 32) {
++			b->live = 0;
++			continue;
++		}
++		for (k = 0; k < PLAYERS; k++) {
++			struct player *p = &pl[k];
++			s32 dx = b->x - p->x, fy = p->y >> 4;
++			if (p->active && dx > -6 && dx < 6 && b->y <= fy && b->y > fy - BODY_H) {
++				b->live = 0;
++				player_hit(p);
++				break;
++			}
++		}
++	}
++}
++
++static void update_civilians(void)
++{
++	int i, k;
++	for (i = 0; i < CIVILIANS; i++) {
++		civ[i].t++;
++		if (civ[i].rescued)
++			continue;
++		for (k = 0; k < PLAYERS; k++) {
++			s32 dx = civ[i].x - pl[k].x, dy = (pl[k].y >> 4) - civ[i].fy;
++			if (pl[k].active && pl[k].on_ground && dx > -20 && dx < 20 && dy > -8 && dy < 8) {
++				civ[i].rescued = 1;
++				civ[i].t = 0;
++				rescued++;
++				pl[k].score += SCORE_CIVILIAN;
++				break;
++			}
++		}
++	}
++}
++
++/* a player standing in the exit zone clears the section */
++static int at_exit(void)
++{
++	int k;
++	for (k = 0; k < PLAYERS; k++) {
++		struct player *p = &pl[k];
++		if (p->active && p->on_ground && (p->y >> 4) == EXIT_Y && p->x >= EXIT_X0 && p->x <= EXIT_X1)
++			return 1;
++	}
++	return 0;
++}
++
++/* ------------------------------------------------------------- camera */
++
++/* As main.c: every player in view, forward only, BACKTRACK px of slack. */
++static void update_camera(int snap)
++{
++	s32 sx = 0, sy = 0, tx, ty;
++	int n = 0, k;
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].active) {
++			sx += pl[k].x;
++			sy += pl[k].y >> 4;
++			n++;
++		}
++	if (!n)
++		return;
++	tx = sx / n - SCREEN_W / 3;
++	if (tx < cam_far - BACKTRACK)
++		tx = cam_far - BACKTRACK;
++	ty = sy / n - 150;
++	if (tx < 0)
++		tx = 0;
++	if (tx > LEVEL_W - SCREEN_W)
++		tx = LEVEL_W - SCREEN_W;
++	if (ty < 0)
++		ty = 0;
++	if (ty > LEVEL_H - SCREEN_H)
++		ty = LEVEL_H - SCREEN_H;
++	if (snap) {
++		cam_x = (int)tx;
++		cam_y = (int)ty;
++	} else {
++		cam_x += (int)(tx - cam_x) / 4 + (tx > cam_x) - (tx < cam_x);
++		cam_y += (int)(ty - cam_y) / 6 + (ty > cam_y) - (ty < cam_y);
++	}
++	if (cam_x > cam_far)
++		cam_far = cam_x;
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].active) {
++			if (pl[k].x < cam_x + 12)
++				pl[k].x = cam_x + 12;
++			if (pl[k].x > cam_x + SCREEN_W - 12)
++				pl[k].x = cam_x + SCREEN_W - 12;
++		}
++}
++
++static void set_scroll(void)
++{
++	stream_level(cam_x);
++	/* the tilemap pixel at the screen's left edge is scroll + 64 (and + 16 down) */
++	CPSA_SCROLL2_X = (u16)(cam_x - SCREEN_X0);
++	CPSA_SCROLL2_Y = (u16)(cam_y - SCREEN_Y0);
++	CPSA_SCROLL3_X = (u16)(cam_x / 2 - SCREEN_X0);
++	CPSA_SCROLL3_Y = (u16)(cam_y / 2 - SCREEN_Y0);
++}
++
++/* -------------------------------------------------------------- drawing */
++
++static void draw_player(struct player *p)
++{
++	int sx = (int)p->x - cam_x;
++	int sy = (int)(p->y >> 4) - cam_y;
++	int moving = (p->pad & (BTN_LEFT | BTN_RIGHT)) != 0;
++	if (!p->active || (p->safe_t && (p->safe_t & 4)))
++		return; /* blinking while it cannot be harmed */
++	if (p->climbing) {
++		int f = (p->pad & (BTN_UP | BTN_DOWN)) ? (int)(p->y >> 7) & 1 : 0;
++		draw_frame(&anim_willy_jump.frames[1], sx, sy, p->palofs, f);
++		return;
++	}
++	if (!p->on_ground) {
++		int i = p->vy < -60 ? 1 : p->vy < 0 ? 2 : p->vy < 60 ? 3 : 4;
++		draw_frame(&anim_willy_jump.frames[i % anim_willy_jump.count], sx, sy, p->palofs, p->flip);
++	} else if (p->knife_t)
++		draw_frame(&anim_willy_knife.frames[(KNIFE_FRAMES - p->knife_t) / 4 % anim_willy_knife.count], sx, sy, p->palofs, p->flip);
++	else if (p->throw_t)
++		draw_frame(&anim_willy_knife.frames[0], sx, sy, p->palofs, p->flip);
++	else if (p->firing)
++		draw_anim(&anim_willy_machine_gun, p->t, sx, sy, p->palofs, p->flip);
++	else if (moving)
++		draw_anim(&anim_willy_run, p->running ? p->t : p->t / 2, sx, sy, p->palofs, p->flip);
++	else
++		draw_anim(&anim_willy_idle, p->t, sx, sy, p->palofs, p->flip);
++}
++
++static void draw_shots(struct player *p)
++{
++	int i;
++	for (i = 0; i < SHOTS; i++)
++		if (p->shots[i].live)
++			draw_tile(TILE_BULLET, p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, PAL_BULLET, p->shots[i].dir < 0);
++	if (p->gren.live)
++		draw_tile(TILE_GRENADE, (int)p->gren.x - cam_x - 8, (int)(p->gren.y >> 4) - cam_y - 10, PAL_GRENADE, 0);
++	if (p->gren.blast)
++		put_sprite((int)p->gren.x - cam_x - 16, (int)(p->gren.y >> 4) - cam_y - 24, TILE_BLAST, (u16)(PAL_GRENADE | (1 << 8) | (1 << 12)));
++}
++
++static void draw_enemy_shots(void)
++{
++	int i;
++	for (i = 0; i < ENEMY_SHOTS; i++)
++		if (eshot[i].live)
++			draw_tile(TILE_BULLET, eshot[i].x - cam_x - 8, eshot[i].y - cam_y - 8, PAL_ENEMY_SHOT, eshot[i].dir < 0);
++}
++
++static void draw_robots(void)
++{
++	int i;
++	for (i = 0; i < ROBOTS; i++) {
++		int sx = (int)robot[i].x - cam_x, sy = (int)robot[i].fy - cam_y;
++		if (robot[i].state == ROBOT_OFF || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
++			continue;
++		if (robot[i].state == ROBOT_DOWN) {
++			u32 f = robot[i].t * anim_robot_defeated.fps / 60;
++			if (f >= anim_robot_defeated.count)
++				f = anim_robot_defeated.count - 1;
++			if (robot[i].t < 70 || (robot[i].t & 4))
++				draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, robot[i].flip);
++			continue;
++		}
++		draw_anim(robot[i].state == ROBOT_HIT ? &anim_robot_hit : &anim_robot_walk, robot[i].t, sx, sy, 0, robot[i].flip);
++	}
++}
++
++static void draw_civilians(void)
++{
++	int i;
++	for (i = 0; i < CIVILIANS; i++) {
++		int sx = (int)civ[i].x - cam_x, sy = (int)civ[i].fy - cam_y;
++		const Anim *a;
++		if (sx < -40 || sx > SCREEN_W + 40 || sy < -10 || sy > SCREEN_H + 50)
++			continue;
++		if (civ[i].child)
++			a = civ[i].rescued ? &anim_child_happy : &anim_child_worried;
++		else
++			a = civ[i].rescued ? &anim_woman_happy : &anim_woman_worried;
++		draw_anim(a, civ[i].t, sx, sy, 0, 1);
++	}
++}
++
++/* the exit: a blinking arrow over the zone */
++static void draw_exit(void)
++{
++	int sx = EXIT_X0 - cam_x, sy = EXIT_Y - cam_y - 56;
++	if (frame_count & 16)
++		draw_tile(TILE_BULLET, sx + 8, sy, PAL_BULLET, 0);
++}
++
++static void draw_world(void)
++{
++	int k;
++	/* first in the table is drawn on top */
++	for (k = 0; k < PLAYERS; k++)
++		draw_shots(&pl[k]);
++	draw_enemy_shots();
++	for (k = 0; k < PLAYERS; k++)
++		draw_player(&pl[k]);
++	draw_robots();
++	draw_civilians();
++	draw_exit();
++	flush_sprites();
++}
++
++/* ------------------------------------------------------------ lab state */
++
++/* The state the experiment's harness reads (lab_state.h), filled every frame. */
++struct lab_state lab_state __attribute__((section(".lab_state")));
++
++static int lab_mode;
++static int lab_clear;
++
++static void lab_update(void)
++{
++	struct lab_state *s = &lab_state;
++	int i;
++	s->magic = LAB_MAGIC;
++	s->version = LAB_VERSION;
++	s->size = sizeof(struct lab_state);
++	s->frame = frame_count;
++	s->mode = (u8)lab_mode;
++	s->credits = (u8)credits;
++	s->section_clear = (u8)lab_clear;
++	s->flags = LAB_FLAG_EXIT | LAB_FLAG_DAMAGE;
++	s->cam_x = (s16)cam_x;
++	s->cam_y = (s16)cam_y;
++	s->level_w = LEVEL_W;
++	s->level_h = LEVEL_H;
++	s->exit_x0 = EXIT_X0;
++	s->exit_x1 = EXIT_X1;
++	s->exit_y = EXIT_Y;
++	s->n_enemies = ROBOTS < LAB_ENEMIES ? ROBOTS : LAB_ENEMIES;
++	s->n_civilians = CIVILIANS < LAB_CIVILIANS ? CIVILIANS : LAB_CIVILIANS;
++	s->col_map = (u32)col_map;
++	s->col_cols = LEVEL_COLS;
++	s->col_rows = LEVEL_ROWS;
++	for (i = 0; i < LAB_PLAYERS; i++) {
++		struct lab_player *o = &s->player[i];
++		struct player *p = &pl[i];
++		int playing = lab_mode == LAB_MODE_PLAYING || lab_mode == LAB_MODE_CLEAR || lab_mode == LAB_MODE_GAME_OVER;
++		memset(o, 0, sizeof *o);
++		o->score = p->score;
++		if (!playing || !p->joined)
++			continue;
++		if (p->out) {
++			/* out of lives: where it fell, dead */
++			o->state = LAB_PL_DEAD;
++			o->x = (s16)p->x;
++			o->y = (s16)(p->y >> 4);
++			continue;
++		}
++		o->active = 1;
++		if (p->safe_t > SAFE_FRAMES - 30 && p->lives < DIP_LIVES)
++			o->state = LAB_PL_HURT;
++		else if (p->climbing)
++			o->state = LAB_PL_CLIMB;
++		else if (!p->on_ground)
++			o->state = LAB_PL_AIR;
++		else if (p->knife_t || p->throw_t || p->firing)
++			o->state = LAB_PL_ATTACK;
++		else if (p->pad & (BTN_LEFT | BTN_RIGHT))
++			o->state = p->running ? LAB_PL_RUN : LAB_PL_WALK;
++		else
++			o->state = LAB_PL_IDLE;
++		o->facing = p->flip ? -1 : 1;
++		o->energy = (u8)(p->lives > 3 ? 3 : p->lives); /* lives: the pack's damage model */
++		o->x = (s16)p->x;
++		o->y = (s16)(p->y >> 4);
++		o->hurt = (u8)(p->safe_t > 255 ? 255 : p->safe_t);
++		o->pflags = (u8)((p->on_ground ? LAB_PF_GROUND : 0) | (p->climbing ? LAB_PF_CLIMB : 0) |
++				 (p->running ? LAB_PF_RUN : 0) | (p->firing ? LAB_PF_FIRE : 0));
++		o->vy = (s16)p->vy;
++	}
++	for (i = 0; i < LAB_ENEMIES; i++) {
++		struct lab_enemy *o = &s->enemy[i];
++		memset(o, 0, sizeof *o);
++		if (i >= ROBOTS)
++			continue;
++		o->alive = (u8)robot_alive(i);
++		o->hp = (u8)(robot[i].hp > 0 ? robot[i].hp : 0);
++		o->x = (s16)robot[i].x;
++		o->y = (s16)robot[i].fy;
++		o->facing = robot[i].flip ? -1 : 1;
++		o->estate = (u8)robot[i].state; /* ROBOT_* matches LAB_EN_* */
++	}
++	for (i = 0; i < LAB_CIVILIANS; i++) {
++		struct lab_civ *o = &s->civ[i];
++		memset(o, 0, sizeof *o);
++		if (i >= CIVILIANS)
++			continue;
++		o->rescued = (u8)civ[i].rescued;
++		o->present = 1;
++		o->x = (s16)civ[i].x;
++		o->y = (s16)civ[i].fy;
++	}
++}
++
++/* ------------------------------------------------------------- screens */
++
++/* the high score table (RAM only: the board's EEPROM is not written) */
++#define HISCORES 5
++static struct {
++	u32 score;
++	char name[4];
++} hiscore[HISCORES] = {
++	{ 30000, "GLK" }, { 20000, "WIL" }, { 15000, "VRA" }, { 10000, "UPL" }, { 5000, "LAG" },
++};
++
++static void hiscore_add(u32 score, int player)
++{
++	int i, j;
++	for (i = 0; i < HISCORES; i++)
++		if (score > hiscore[i].score)
++			break;
++	if (i == HISCORES || !score)
++		return;
++	for (j = HISCORES - 1; j > i; j--)
++		hiscore[j] = hiscore[j - 1];
++	hiscore[i].score = score;
++	hiscore[i].name[0] = (char)('1' + player);
++	hiscore[i].name[1] = 'P';
++	hiscore[i].name[2] = ' ';
++	hiscore[i].name[3] = 0;
++}
++
++static const int player_ink[PLAYERS] = { TXT_WHITE, TXT_GREEN, TXT_BLUE, TXT_RED };
++
++static void credits_line(int show)
++{
++	if (!show) {
++		print(18, 23, "            ", TXT_WHITE);
++		return;
++	}
++	if (DIP_FREE_PLAY) {
++		print(18, 23, " FREE PLAY  ", TXT_WHITE);
++		return;
++	}
++	print(18, 23, " CREDITS ", TXT_WHITE);
++	print_num(27, 23, (u32)credits, 1, TXT_WHITE);
++	print(28, 23, "  ", TXT_WHITE);
++}
++
++static void hud(void)
++{
++	int k;
++	for (k = 0; k < PLAYERS; k++) {
++		int x = k * 12;
++		struct player *p = &pl[k];
++		print(x + 1, 1, "1P", player_ink[k]);
++		scroll1_cell(x + 1 + SCREEN_X0 / 8, 1 + SCREEN_Y0 / 8)[0] = FONT_CODE('1' + k);
++		if (p->active) {
++			print_num(x + 4, 1, p->score, 6, TXT_WHITE);
++			print(x + 1, 2, "LIVES", TXT_ORANGE);
++			print_num(x + 7, 2, (u32)p->lives, 1, TXT_WHITE);
++			print(x + 1, 26, "BOMB", TXT_ORANGE);
++			print_num(x + 6, 26, (u32)p->grenades, 2, TXT_WHITE);
++		} else {
++			print(x + 4, 1, can_start() ? ((frame_count / 20) & 1 ? "START  " : "       ") : "COIN   ", TXT_GREEN);
++			print(x + 1, 2, "       ", TXT_WHITE);
++			print(x + 1, 26, "       ", TXT_WHITE);
++		}
++	}
++	print(40, 3, "SAVED", TXT_GREEN);
++	print_num(46, 3, (u32)rescued, 1, TXT_WHITE);
++}
++
++/* which players pressed Start with a credit for it; their bits */
++static u8 starts_with_credit(void)
++{
++	u8 who = 0;
++	int k;
++	for (k = 0; k < PLAYERS && k < GAME_PLAYERS; k++)
++		if (START_PRESSED(k) && can_start())
++			if (take_credit())
++				who |= (u8)(1 << k);
++	return who;
++}
++
++enum { PHASE_TITLE, PHASE_DEMO, PHASE_SCORES };
++#define TITLE_FRAMES 480
++#define DEMO_FRAMES 720
++#define SCORES_FRAMES 360
++
++static void show_hiscores(void)
++{
++	int i;
++	clear_text();
++	print_center(5, "HIGH SCORES", TXT_ORANGE);
++	for (i = 0; i < HISCORES; i++) {
++		print_num(14, 9 + i * 2, (u32)(i + 1), 1, TXT_WHITE);
++		print_num(18, 9 + i * 2, hiscore[i].score, 7, TXT_WHITE);
++		print(28, 9 + i * 2, hiscore[i].name, TXT_GREEN);
++	}
++	print_center(25, TXT_CREDITS_LINE, TXT_WHITE);
++}
++
++static void show_title(void)
++{
++	clear_text();
++	print_center(5, TXT_TITLE, TXT_ORANGE);
++	print_center(7, TXT_SUBTITLE, TXT_WHITE);
++	print_center(25, TXT_CREDITS_LINE, TXT_WHITE);
++}
++
++/* title, attract demo and high scores in a loop; returns the players who started */
++static u8 attract(void)
++{
++	u32 t = 0;
++	int phase = -1, want;
++	game_reset();
++	cam_x = cam_y = 0;
++	for (;;) {
++		u8 who;
++		wait_vblank();
++		read_inputs();
++		/* a credit brings the title back and keeps it */
++		if (can_start() && !DIP_FREE_PLAY) {
++			if (phase != PHASE_TITLE)
++				t = 0;
++			else if (t >= TITLE_FRAMES - 1)
++				t = TITLE_FRAMES - 2;
++		}
++		want = t < TITLE_FRAMES ? PHASE_TITLE : t < TITLE_FRAMES + DEMO_FRAMES ? PHASE_DEMO : PHASE_SCORES;
++		if (want != phase) {
++			phase = want;
++			if (phase == PHASE_TITLE) {
++				show_title();
++				layers(1);
++				cam_x = 0;
++				cam_y = LEVEL_H - SCREEN_H;
++			} else if (phase == PHASE_DEMO) {
++				clear_text();
++				print_center(4, "DEMO", TXT_ORANGE);
++				print_center(6, TXT_LEVEL_NAME, TXT_WHITE);
++				layers(1);
++			} else {
++				show_hiscores();
++				layers(0);
++			}
++		}
++		if (phase == PHASE_DEMO) {
++			/* the demo tours the level */
++			u32 d = t - TITLE_FRAMES;
++			cam_x = (int)(d * 2) % (LEVEL_W - SCREEN_W);
++			cam_y = LEVEL_H - SCREEN_H - (int)((d / 3) % 120);
++		}
++		set_scroll();
++		if (phase == PHASE_TITLE) {
++			if (can_start())
++				print_center(14, (frame_count / 20) & 1 ? "PUSH START " : "           ", TXT_GREEN);
++			else
++				print_center(14, (frame_count / 20) & 1 ? "INSERT COIN" : "           ", TXT_ORANGE);
++		}
++		credits_line(1);
++		if (phase != PHASE_SCORES) {
++			update_robots();
++			draw_world();
++		} else
++			flush_sprites();
++		lab_mode = LAB_MODE_TITLE;
++		lab_clear = 0;
++		lab_update();
++		who = starts_with_credit();
++		if (who)
++			return who;
++		if (++t >= TITLE_FRAMES + DEMO_FRAMES + SCORES_FRAMES)
++			t = 0;
++	}
++}
++
++/* the player select screen: no characters of its own, everyone is Willy */
++static void select_screen(u8 who)
++{
++	int k, n;
++	clear_text();
++	layers(0);
++	flush_sprites();
++	print_center(5, "PLAYER SELECT", TXT_ORANGE);
++	for (n = 0; n < 60; n++) {
++		wait_vblank();
++		read_inputs();
++		who |= starts_with_credit();
++		for (k = 0; k < PLAYERS; k++) {
++			print(16, 10 + k * 2, "1P", player_ink[k]);
++			scroll1_cell(16 + SCREEN_X0 / 8, 10 + k * 2 + SCREEN_Y0 / 8)[0] = FONT_CODE('1' + k);
++			print(20, 10 + k * 2, (who & (1 << k)) ? "WILLY    " : "---      ", (who & (1 << k)) ? TXT_WHITE : TXT_ORANGE);
++		}
++		lab_mode = LAB_MODE_TITLE;
++		lab_update();
++	}
++	for (k = 0; k < PLAYERS; k++)
++		if (who & (1 << k))
++			player_join(&pl[k], start_pos[k * 2], start_pos[k * 2 + 1]);
++}
++
++/* the leader's spot, for a player who joins during the game */
++static struct player *leader(void)
++{
++	int k;
++	struct player *best = 0;
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].active && (!best || pl[k].x > best->x))
++			best = &pl[k];
++	return best;
++}
++
++static int any_active(void)
++{
++	int k;
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].active)
++			return 1;
++	return 0;
++}
++
++/* CONTINUE? with a countdown; returns 1 when someone continues */
++static int continue_screen(void)
++{
++	int sec = CONTINUE_SECONDS - 1, k;
++	u32 n = 0;
++	clear_text();
++	layers(0);
++	flush_sprites();
++	lab_mode = LAB_MODE_GAME_OVER;
++	for (;;) {
++		u8 who;
++		wait_vblank();
++		read_inputs();
++		print_center(9, "CONTINUE?", TXT_ORANGE);
++		print_num(23, 12, (u32)sec, 1, TXT_WHITE);
++		print_center(16, can_start() ? "PUSH START" : "INSERT COIN", TXT_GREEN);
++		credits_line(0);
++		lab_update();
++		who = 0;
++		for (k = 0; k < PLAYERS && k < GAME_PLAYERS; k++)
++			if (START_PRESSED(k) && can_start() && take_credit())
++				who |= (u8)(1 << k);
++		if (who) {
++			for (k = 0; k < PLAYERS; k++)
++				if (who & (1 << k)) {
++					s32 x = pl[k].x, fy = pl[k].y >> 4;
++					int score = (int)pl[k].score;
++					player_join(&pl[k], x, fy);
++					pl[k].score = (u32)score;
++				}
++			clear_text();
++			layers(1);
++			return 1;
++		}
++		if (++n % 60 == 0 && --sec < 0)
++			return 0;
++	}
++}
++
++static void game_over_screen(void)
++{
++	int n;
++	clear_text();
++	layers(0);
++	flush_sprites();
++	print_center(12, "GAME OVER", TXT_RED);
++	lab_mode = LAB_MODE_GAME_OVER;
++	for (n = 0; n < 240; n++) {
++		wait_vblank();
++		read_inputs();
++		lab_update();
++	}
++}
++
++static void play(u8 who)
++{
++	u32 done_t = 0;
++	int k;
++	select_screen(who);
++	clear_text();
++	layers(1);
++	cam_far = 0;
++	update_camera(1);
++	lab_clear = 0;
++	for (;;) {
++		wait_vblank();
++		read_inputs();
++		/* a player joins with a credit and Start, next to the leader */
++		if (!lab_clear)
++			for (k = 0; k < PLAYERS && k < GAME_PLAYERS; k++)
++				if (!pl[k].active && START_PRESSED(k) && can_start()) {
++					struct player *l = leader();
++					if (l && take_credit()) {
++						u32 score = pl[k].score;
++						player_join(&pl[k], l->x - 24, l->y >> 4);
++						pl[k].score = score;
++					}
++				}
++		for (k = 0; k < PLAYERS; k++)
++			update_player(&pl[k]);
++		update_robots();
++		update_civilians();
++		update_camera(0);
++		set_scroll();
++		draw_world();
++		hud();
++		if (!lab_clear && at_exit()) {
++			lab_clear = 1;
++			done_t = frame_count;
++		}
++		lab_mode = lab_clear ? LAB_MODE_CLEAR : LAB_MODE_PLAYING;
++		lab_update();
++		if (lab_clear) {
++			print_center(9, TXT_CLEARED, TXT_GREEN);
++			print_center(11, TXT_LEVEL_NAME, TXT_ORANGE);
++			if (frame_count - done_t > 360)
++				break;
++		} else if (!any_active()) {
++			/* everyone is out of lives */
++			if (!continue_screen()) {
++				game_over_screen();
++				break;
++			}
++			update_camera(1);
++		}
++	}
++	for (k = 0; k < PLAYERS; k++)
++		if (pl[k].joined)
++			hiscore_add(pl[k].score, k);
++}
++
++int main(void)
++{
++	video_init();
++	__asm__ volatile("move.w #0x2000,%sr"); /* allow the vblank interrupt */
++	for (;;)
++		play(attract());
++	return 0;
++}
+diff --git a/rom/tools/art.mjs b/rom/tools/art.mjs
+index 29b40a2..8aa751e 100644
+--- a/rom/tools/art.mjs
++++ b/rom/tools/art.mjs
+@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
+ import { readImage, writePng } from "./png.mjs";
+ import { convertCharacter, deltaE, downscaleDominant, renderFrame, toCps1, toLab } from "../../frontend/packages/cps1/src/index.ts";
+ import { CELL, COLS, CRATES, OBJECTS, PALETTE as LEVEL_PALETTE, ROWS, buildLevel } from "./level.mjs";
++import { CELL as PACK_CELL, cutTiles, pictureColors } from "./pack.mjs";
+ 
+ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+ const SHEETS = path.resolve(ROOT, "../frontend/apps/web/public/destroy");
+@@ -470,8 +471,18 @@ const cArray = (type, name, values, perLine = 12) => {
+ };
+ const hex4 = (v) => "0x" + (v & 0xffff).toString(16).padStart(4, "0");
+ 
+-/** Converts every piece of art; writes art_data.c and the defines. */
+-export function addArt(gfx, defs, genDir) {
++// The recruits' shirts (story.md: players 2 to 4 are palette swaps of
++// Willy with a different shirt color; the prototype's player 2 is green).
++// A pack game has four players: green, blue and red for players 2-4.
++const RECRUIT_SHIRTS = [[40, 132, 84]];
++const PACK_RECRUIT_SHIRTS = [[40, 132, 84], [51, 102, 204], [204, 51, 51]];
++
++/**
++ * Converts every piece of art; writes art_data.c and the defines. With a
++ * pack (pack.mjs readPack), the level, its backdrop and objects come from
++ * the pack instead of level.mjs and the drawn backdrop.
++ */
++export function addArt(gfx, defs, genDir, pack = null) {
+   const tmp = path.join(genDir, "tmp.png");
+   let c = [];
+   const h = [];
+@@ -508,17 +519,19 @@ export function addArt(gfx, defs, genDir) {
+       // (story.md). Same tiles, a copy of the palettes with the shirt color
+       // swapped; draw_frame adds RECRUIT_PAL_OFFSET to the tiles' palettes.
+       const shirt = toLab(SHIRT);
+-      const green = toCps1([40, 132, 84]).word;
+       let swapped = 0;
+-      for (const pal of conv.palettes)
+-        objPalettes.push([
+-          ...pal.map((c) => (deltaE(c.lab, shirt) < 3 ? (swapped++, green) : c.word)),
+-          ...new Array(16 - pal.length).fill(0),
+-        ]);
++      for (const rgb of pack ? PACK_RECRUIT_SHIRTS : RECRUIT_SHIRTS) {
++        const word = toCps1(rgb).word;
++        for (const pal of conv.palettes)
++          objPalettes.push([
++            ...pal.map((c) => (deltaE(c.lab, shirt) < 3 ? (swapped++, word) : c.word)),
++            ...new Array(16 - pal.length).fill(0),
++          ]);
++      }
+       // the swap needs the shirt painted back by fillEnclosed; an atlas with an
+       // opaque shirt needs another way to find it (journal, step 4)
+       if (!swapped) console.warn("art: WARNING the recruit palette swap found no shirt color; player 2 looks like Willy");
+-      h.push(`#define RECRUIT_PAL_OFFSET ${conv.palettes.length} /* palettes after Willy's */`);
++      h.push(`#define RECRUIT_PAL_OFFSET ${conv.palettes.length} /* palettes after Willy's, and between two recruits */`);
+     }
+     console.log(`art: ${ch.name} ${JSON.stringify(conv.stats)}`);
+     // tiles, deduplicated by their pens
+@@ -586,11 +599,49 @@ export function addArt(gfx, defs, genDir) {
+   for (let t = 0; t < 2; t++) gfx.tile16(code + t, rocket.map((row) => row.slice(t * 16, t * 16 + 16)));
+   h.push(`#define TILE_ROCKET ${hex4(code)} /* 2x1 block */`, `#define PAL_ROCKET ${objPalettes.length}`);
+   objPalettes.push([0xf000, 0xf7a8, 0xfcdc, 0xfe54, 0xffb3, ...new Array(10).fill(0xf000), 0x0000]);
++  code += 2;
++  if (pack) {
++    // the troopers' shots: the bullet tile in a red palette
++    h.push(`#define PAL_ENEMY_SHOT ${objPalettes.length}`);
++    objPalettes.push([0xf000, 0xfe33, 0xfffc, ...new Array(12).fill(0xf000), 0x0000]);
++    // a grenade (the special without a picked-up weapon): a 16x16 tile
++    const grenade = Array.from({ length: 16 }, (_, y) =>
++      Array.from({ length: 16 }, (_, x) => {
++        const d = (x - 7.5) ** 2 + (y - 9) ** 2;
++        if (y >= 2 && y < 5 && x >= 6 && x < 10) return 3; // the lever
++        if (d < 12) return d < 3 ? 2 : 1;
++        if (d < 18) return 0;
++        return 15;
++      }),
++    );
++    gfx.tile16(code, grenade);
++    h.push(`#define TILE_GRENADE ${hex4(code)}`, `#define PAL_GRENADE ${objPalettes.length}`);
++    objPalettes.push([0xf000, 0xf584, 0xf9c8, 0xfaaa, ...new Array(11).fill(0xf000), 0x0000]);
++    code += 1;
++    // an explosion: a 32x32 block (2x2 tiles), drawn in the grenade's palette
++    code = (code + 15) & ~15;
++    const blast = Array.from({ length: 32 }, (_, y) =>
++      Array.from({ length: 32 }, (_, x) => {
++        const d = Math.hypot(x - 15.5, y - 15.5) + ((x * 7 + y * 13) % 5) - 2;
++        return d < 7 ? 4 : d < 11 ? 5 : d < 15 ? 6 : 15;
++      }),
++    );
++    for (let t = 0; t < 4; t++) gfx.tile16(code + (t & 1) + 16 * (t >> 1), blast.slice((t >> 1) * 16, (t >> 1) * 16 + 16).map((row) => row.slice((t & 1) * 16, (t & 1) * 16 + 16)));
++    h.push(`#define TILE_BLAST ${hex4(code)} /* 2x2 block */`);
++    const g = objPalettes[objPalettes.length - 1];
++    [g[4], g[5], g[6]] = [0xfffc, 0xffb3, 0xfe53];
++    code += 18;
++  }
+   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
+   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));
+   h.push(`#define OBJ_PALETTES ${objPalettes.length}`, `extern const u16 obj_palettes[${objPalettes.length * 16}];`);
+-  code += 2;
+   h.push(`/* sprite tiles used: 0x1000-${hex4(code)} */`);
++  if (pack) {
++    addPackLevel(gfx, c, h, pack);
++    console.log(`art: sprites up to tile ${hex4(code)}, ${objPalettes.length} sprite palettes`);
++    writeArt(defs, h, c, genDir, tmp);
++    return;
++  }
+ 
+   // backdrop on scroll3: sky and far skyline (32x32 codes from 0x0800 = offset 0x100000)
+   const sky = tilesFromImage(gfx, drawBackdrop(), 32, 0x0800, (cc, px) => gfx.tile32(cc, px));
+@@ -626,7 +677,88 @@ export function addArt(gfx, defs, genDir) {
+     `#define PICKUP_Y ${OBJECTS.pickup.y}`,
+   );
+   console.log(`art: sprites up to tile ${hex4(code)}, backdrop ${sky.unique} tiles, level ${lv.tiles} tiles`);
++  writeArt(defs, h, c, genDir, tmp);
++}
++
++/** The pack's level: tiles cut from its pictures, collision and objects. */
++function addPackLevel(gfx, c, h, pack) {
++  const lv = pack.level;
++  const palOf = (img, what) => {
++    const pal = pictureColors(img);
++    if (pal.length > 15) throw new Error(`pack: ${what} has ${pal.length} colors, one palette holds 15`);
++    for (const rgb of pal) if (rgb.some((v) => v % 17)) throw new Error(`pack: ${what} has a color that is not a board color`);
++    return pal;
++  };
++  // the far layer on scroll3 (32x32 codes from 0x0800 = offset 0x100000)
++  const farPal = palOf(lv.far, "far.png");
++  const far = cutTiles(lv.far, 32, farPal, 0x0800, (cc, px) => gfx.tile32(cc, px));
++  if (far.cols > 64 || far.rows > 64) throw new Error("pack: far.png is wider than scroll3's 64 x 64 map");
++  // the play layer on scroll2 (16x16 codes from 0x4000 = offset 0x200000)
++  const playPal = palOf(lv.play, "play.png");
++  const play = cutTiles(lv.play, 16, playPal, 0x4000, (cc, px) => gfx.tile16(cc, px));
++  if (play.rows > 64) throw new Error("pack: the level is taller than scroll2's 64 rows");
++  const word = (rgb) => toCps1(rgb).word;
++  const pad16 = (pal) => [...pal.map(word), ...new Array(16 - pal.length).fill(0x0000)];
++  c.push(
++    cArray("u16", "sky_map", far.map.map(hex4), 16),
++    cArray("u16", "pal_sky", pad16(farPal).map(hex4), 8),
++    cArray("u16", "level_map", play.map.map(hex4), 16),
++    cArray("u8", "level_col", lv.col, 32),
++    cArray("u16", "pal_level", pad16(playPal).map(hex4), 8),
++    cArray("s16", "crate_cells", lv.crates.flatMap((k) => [k.c, k.r, k.hp]), 3),
++    cArray("s16", "civ_spawn", lv.civilians.flatMap((o) => [o.x, o.y, o.child]), 3),
++    cArray("s16", "robot_spawn", lv.enemies.flatMap((o) => [o.x, o.y, o.min, o.max, o.facing]), 5),
++    cArray("s16", "start_pos", lv.starts.flatMap((o) => [o.x, o.y]), 2),
++  );
++  h.push(
++    "#define PACK_GAME 1",
++    `#define LEVEL_COLS ${lv.cols}`,
++    `#define LEVEL_ROWS ${lv.rows}`,
++    `#define LEVEL_W ${lv.cols * 16}`,
++    `#define LEVEL_H ${lv.rows * 16}`,
++    `#define SKY_COLS ${far.cols}`,
++    `#define SKY_ROWS ${far.rows}`,
++    `#define TILE16_LEVEL_EMPTY 0x4000`,
++    `#define BACKTRACK ${lv.backtrack}`,
++    ...Object.entries(PACK_CELL).map(([k, v]) => `#define CELL_${k} ${v}`),
++    `extern const u16 sky_map[${far.map.length}];`,
++    "extern const u16 pal_sky[16];",
++    `extern const u16 level_map[${play.map.length}];`,
++    `extern const u8 level_col[${lv.col.length}];`,
++    "extern const u16 pal_level[16];",
++    `#define CRATES ${lv.crates.length}`,
++    `extern const s16 crate_cells[${lv.crates.length * 3}]; /* col, row, hits of each 2x2 crate */`,
++    `#define CIVILIANS ${lv.civilians.length}`,
++    `extern const s16 civ_spawn[${lv.civilians.length * 3}]; /* x, feet y, child */`,
++    `#define ROBOTS ${lv.enemies.length}`,
++    `extern const s16 robot_spawn[${lv.enemies.length * 5}]; /* x, feet y, patrol min, max, facing */`,
++    `#define STARTS ${lv.starts.length}`,
++    `extern const s16 start_pos[${lv.starts.length * 2}]; /* x, feet y of players 1-4 */`,
++    `#define EXIT_X0 ${lv.exit.x}`,
++    `#define EXIT_X1 ${lv.exit.x + lv.exit.w - 1}`,
++    `#define EXIT_Y ${lv.exit.y}`,
++    `#define GAME_PLAYERS ${pack.players}`,
++    `#define DIP_LIVES ${pack.dip?.lives ?? 3}`,
++    `#define DIP_FREE_PLAY ${pack.dip?.freePlay ? 1 : 0}`,
++    `#define DIP_DEMO_SOUND ${pack.dip?.demoSound === false ? 0 : 1}`,
++    `#define DIP_DIFFICULTY ${{ easy: 0, normal: 1, hard: 2, hardest: 3 }[pack.dip?.difficulty] ?? 1} /* 0 easy, 1 normal, 2 hard, 3 hardest */`,
++    `#define TXT_TITLE ${cString(pack.title)}`,
++    `#define TXT_SUBTITLE ${cString(pack.texts.title?.subtitle || "")}`,
++    `#define TXT_CREDITS_LINE ${cString(pack.credits)}`,
++    `#define TXT_CLEARED ${cString(pack.texts.hud?.cleared || "MISSION COMPLETE")}`,
++    `#define TXT_LEVEL_NAME ${cString(lv.name)}`,
++  );
++  console.log(`art: pack level ${lv.cols}x${lv.rows} cells, play ${play.unique} tiles (${playPal.length} colors), far ${far.unique} tiles (${farPal.length} colors)`);
++}
++
++/** A C string literal of the 8x8 font's characters (upper case ASCII). */
++function cString(s) {
++  const up = s.toUpperCase();
++  for (const ch of up) if (ch < " " || ch > "_") throw new Error(`pack: "${s}" has a character the 8x8 font does not have (${ch})`);
++  return JSON.stringify(up);
++}
+ 
++function writeArt(defs, h, c, genDir, tmp) {
+   defs.push(
+     "typedef struct { u16 code; u8 dx, dy, pal; } Tile; /* one sprite entry, with its own palette */",
+     "typedef struct { const Tile *tiles; u8 count, w; s16 ax, ay; } Frame; /* (ax, ay) = the feet from the top left of a w-wide box */",
+diff --git a/rom/tools/build.mjs b/rom/tools/build.mjs
+index f3f0947..93bab1f 100644
+--- a/rom/tools/build.mjs
++++ b/rom/tools/build.mjs
+@@ -6,6 +6,12 @@
+ // bytes ours).
+ //
+ //   node rom/tools/build.mjs [set]   -> rom/build/<set>.zip
++//   node rom/tools/build.mjs [set] --pack DIR [--out DIR]
++//       a game from a Willy Maker AI pack (unzipped): its level, objects
++//       and settings (pack.mjs), played by src/game_pack.c instead of the
++//       prototype's src/main.c; the zip and symbol map go to --out
++//       (default rom/build). A pack build leaves the device's list of
++//       go-link sets (the prototype's hashes) alone.
+ //
+ // Sets: slammast (default: 4 players x 3 buttons, QSound board) and
+ // captcomm (4 players x 2 buttons, the first prototype). See
+@@ -21,11 +27,24 @@ import { GfxRegion, KEYS, encodeOpcodes, solid } from "../../frontend/packages/c
+ import { glyphPixels } from "./font.mjs";
+ import { addArt } from "./art.mjs";
+ import { GAMES, writeOwnSets } from "./ownsets.mjs";
++import { readPack } from "./pack.mjs";
+ 
+ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+ const SRC = path.join(ROOT, "src");
+-const OUT = path.join(ROOT, "build");
+-const SET = process.argv[2] || "slammast";
++const args = process.argv.slice(2);
++const opt = (name) => {
++  const i = args.indexOf(name);
++  if (i < 0) return null;
++  const v = args[i + 1];
++  args.splice(i, 2);
++  return v;
++};
++const PACK_DIR = opt("--pack");
++const OUT = path.resolve(opt("--out") || path.join(ROOT, "build"));
++const SET = args[0] || "slammast";
++const PACK = PACK_DIR ? readPack(path.resolve(PACK_DIR)) : null;
++// the game's source: the prototype or the pack's game
++const SKIP_SRC = PACK ? "main.c" : "game_pack.c";
+ 
+ // The layouts, from src/drivers/cps1.c (ROM_START). Program files are
+ // 16-bit words loaded with ROM_LOAD16_WORD_SWAP (`swap`) or byte pairs with
+@@ -97,7 +116,7 @@ defs.push("#define TILE16_EMPTY 0x0400 /* left as pen 15 */");
+ gfx.tile16(0x401, solid(16, 1));
+ defs.push("#define TILE16_SOLID 0x0401");
+ defs.push("#define TILE32_EMPTY 0x0200 /* left as pen 15 */");
+-addArt(gfx, defs, GEN); // sprites, background tiles and palettes (art.mjs)
++addArt(gfx, defs, GEN, PACK); // sprites, background tiles and palettes (art.mjs)
+ fs.writeFileSync(
+   path.join(GEN, "gfx.h"),
+   `/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */\n/* Generated by rom/tools/build.mjs: do not edit. */\n#ifndef GOLINK_GFX_H\n#define GOLINK_GFX_H\n#include "hw.h"\n${defs.join("\n")}\n#endif\n`,
+@@ -107,7 +126,7 @@ fs.writeFileSync(
+ // ROM_DEBUG=1 prints the players' positions on screen (for writing test scripts)
+ const cflags = ["-m68000", "-O2", `-DSET_${SET.toUpperCase()}`, ...(process.env.ROM_DEBUG === "1" ? ["-DDEBUG_POS"] : []), "-I", SRC, "-I", GEN, "-ffreestanding", "-nostdlib", "-fno-builtin", "-fomit-frame-pointer", "-Wall", "-Wextra", "-Wno-unused-parameter"];
+ const objs = [];
+-const sources = [...fs.readdirSync(SRC).map((f) => path.join(SRC, f)), path.join(GEN, "art_data.c")];
++const sources = [...fs.readdirSync(SRC).filter((f) => f !== SKIP_SRC).map((f) => path.join(SRC, f)), path.join(GEN, "art_data.c")];
+ for (const src of sources) {
+   const f = path.basename(src);
+   const obj = path.join(OUT, "obj", f.replace(/\.(c|s)$/, ".o"));
+@@ -191,4 +210,4 @@ fs.rmSync(dir, { recursive: true, force: true });
+ console.log(`built ${zip} (${Object.keys(files).length} files)`);
+ // The device's list of go-link sets (backend-device/pkg/ownsets) follows
+ // every build: the SHA-256 of each file inside the zip.
+-if (GAMES[SET]) writeOwnSets([SET]);
++if (GAMES[SET] && !PACK) writeOwnSets([SET]);
+diff --git a/rom/tools/pack.mjs b/rom/tools/pack.mjs
+new file mode 100644
+index 0000000..3197c3b
+--- /dev/null
++++ b/rom/tools/pack.mjs
+@@ -0,0 +1,157 @@
++// Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
++// Reads a Willy Maker AI pack (PROMPT.md, project.json, levels/<id>.tmj
++// with its layer pictures) into what the CPS-1 build needs: the level's
++// tiles cut from the play and far pictures (deduplicated, one 15-color
++// palette per layer), the collision cells, the objects with their
++// properties and the game settings (title, texts, players, DIP switches).
++//
++//   build.mjs --pack DIR  -> art.mjs addPackArt() -> gen/art_data.c
++
++import fs from "node:fs";
++import path from "node:path";
++import { readPng } from "./png.mjs";
++
++// collision codes shared with the 68000 program (lab_state.h's col_map legend)
++export const CELL = { EMPTY: 0, SOLID: 1, ONEWAY: 2, LADDER: 3, CRATE: 4 };
++// the pack's tags (tilesets[].tiles[].type) to our cells; the ones the
++// engine does not have yet are refused rather than silently dropped
++const TAGS = { solid: CELL.SOLID, oneway: CELL.ONEWAY, ladder: CELL.LADDER, crate: CELL.CRATE };
++
++const prop = (o, name, dflt) => {
++  const p = (o.properties || []).find((q) => q.name === name);
++  return p ? p.value : dflt;
++};
++
++/** The pack's first level, ready for the build. */
++export function readPack(dir) {
++  const project = JSON.parse(fs.readFileSync(path.join(dir, "project.json"), "utf8"));
++  const settings = project.settings;
++  const levelId = settings.levels[0];
++  if (settings.levels.length !== 1) throw new Error(`pack: ${settings.levels.length} levels, this build plays one`);
++  const tmj = JSON.parse(fs.readFileSync(path.join(dir, "levels", `${levelId}.tmj`), "utf8"));
++  if (tmj.tilewidth !== 16 || tmj.tileheight !== 16) throw new Error("pack: the play grid must be 16 px");
++  const cols = tmj.width;
++  const rows = tmj.height;
++  const layer = (name) => tmj.layers.find((l) => l.name === name);
++
++  // collision: the tag tileset's gids to cells
++  const tagSet = tmj.tilesets.find((t) => t.name === "collision");
++  const tagOf = new Map(tagSet.tiles.map((t) => [tagSet.firstgid + t.id, t.type]));
++  const col = layer("collision").data.map((gid) => {
++    if (!gid) return CELL.EMPTY;
++    const tag = tagOf.get(gid);
++    if (!(tag in TAGS)) throw new Error(`pack: collision tag "${tag}" is not in the engine yet`);
++    return TAGS[tag];
++  });
++
++  // objects, by type
++  const objs = layer("objects").objects;
++  const ofType = (t) => objs.filter((o) => o.type === t);
++  const starts = ofType("player_start")
++    .map((o) => ({ player: prop(o, "player", 1), x: o.x, y: o.y }))
++    .sort((a, b) => a.player - b.player);
++  const exits = ofType("exit");
++  if (exits.length !== 1) throw new Error(`pack: ${exits.length} exits, the engine has one`);
++  const crates = ofType("crate").map((o) => {
++    const size = prop(o, "size", 32);
++    if (size !== 32) throw new Error(`pack: crate ${o.name} is ${size} px, the engine has 32 px crates`);
++    if (prop(o, "contents", "nothing") !== "nothing") throw new Error(`pack: crate ${o.name} holds something, not built yet`);
++    return { name: o.name, c: o.x / 16, r: o.y / 16, hp: prop(o, "hp", 3) };
++  });
++  for (const k of crates)
++    for (let q = 0; q < 4; q++)
++      if (col[(k.r + (q >> 1)) * cols + k.c + (q & 1)] !== CELL.CRATE) throw new Error(`pack: crate ${k.name} is not on crate cells`);
++  const enemies = ofType("enemy").map((o) => {
++    const patrol = prop(o, "patrol", 96);
++    return { name: o.name, kind: prop(o, "kind", "trooper"), x: o.x, y: o.y, min: o.x - patrol / 2, max: o.x + patrol / 2, facing: prop(o, "facing", "left") === "left" ? -1 : 1 };
++  });
++  const civilians = ofType("civilian").map((o) => ({ name: o.name, x: o.x, y: o.y, child: prop(o, "kind", "woman") === "child" ? 1 : 0 }));
++
++  // pictures: the play layer on scroll2 (16 px), the far one on scroll3 (32 px)
++  const levelDir = path.join(dir, "levels", levelId);
++  const play = readPng(fs.readFileSync(path.join(levelDir, "play.png")));
++  const far = readPng(fs.readFileSync(path.join(levelDir, "far.png")));
++  if (play.w !== cols * 16 || play.h !== rows * 16) throw new Error("pack: play.png does not match the map");
++
++  const props = Object.fromEntries((tmj.properties || []).map((p) => [p.name, p.value]));
++  const lv = project.levels.find((l) => l.id === levelId);
++  return {
++    project,
++    settings,
++    title: project.title,
++    credits: settings.credits || "",
++    texts: Object.fromEntries(Object.entries(settings.menus || {}).map(([k, m]) => [k, m.texts || {}])),
++    dip: settings.dip,
++    players: settings.players,
++    level: {
++      id: levelId,
++      name: props.level_name || lv?.name || levelId,
++      cols,
++      rows,
++      col,
++      backtrack: props.camera_backtrack ?? lv?.camera?.backtrack ?? 48,
++      parallax: layer("far")?.parallaxx ?? 0.5,
++      starts,
++      exit: { x: exits[0].x, y: exits[0].y, w: 32 },
++      crates,
++      enemies,
++      civilians,
++      play,
++      far,
++    },
++  };
++}
++
++/** The colors of a picture (opaque pixels), as [r,g,b]. */
++export function pictureColors(img) {
++  const seen = new Map();
++  for (let i = 0; i < img.w * img.h; i++) {
++    if (!img.rgba[i * 4 + 3]) continue;
++    const k = (img.rgba[i * 4] << 16) | (img.rgba[i * 4 + 1] << 8) | img.rgba[i * 4 + 2];
++    seen.set(k, (seen.get(k) || 0) + 1);
++  }
++  // most used first, so the palette's order is stable
++  return [...seen.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([k]) => [(k >> 16) & 255, (k >> 8) & 255, k & 255]);
++}
++
++/**
++ * Cuts a picture into size x size tiles with one palette (the picture's
++ * own colors, at most 15: Willy Maker exports in board colors). Returns
++ * the tile code of every cell (deduplicated, the empty tile shared).
++ */
++export function cutTiles(img, size, palette, baseCode, write) {
++  const index = new Map(palette.map((c, i) => [(c[0] << 16) | (c[1] << 8) | c[2], i]));
++  const cols = Math.ceil(img.w / size);
++  const rows = Math.ceil(img.h / size);
++  const seen = new Map();
++  const map = [];
++  let next = baseCode;
++  // the empty tile first (baseCode): broken crates turn into it
++  const blank = Array.from({ length: size }, () => new Array(size).fill(15));
++  seen.set(blank.map((r) => r.join(",")).join(";"), next);
++  write(next++, blank);
++  for (let ty = 0; ty < rows; ty++)
++    for (let tx = 0; tx < cols; tx++) {
++      const px = Array.from({ length: size }, (_, y) =>
++        Array.from({ length: size }, (_, x) => {
++          const sx = tx * size + x;
++          const sy = ty * size + y;
++          if (sx >= img.w || sy >= img.h) return 15;
++          const o = (sy * img.w + sx) * 4;
++          if (!img.rgba[o + 3]) return 15;
++          const pen = index.get((img.rgba[o] << 16) | (img.rgba[o + 1] << 8) | img.rgba[o + 2]);
++          if (pen === undefined) throw new Error(`pack: a color at ${sx},${sy} is not in the palette`);
++          return pen;
++        }),
++      );
++      const key = px.map((r) => r.join(",")).join(";");
++      let code = seen.get(key);
++      if (code === undefined) {
++        code = next++;
++        seen.set(key, code);
++        write(code, px);
++      }
++      map.push(code);
++    }
++  return { map, cols, rows, unique: seen.size };
++}
