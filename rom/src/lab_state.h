@@ -77,6 +77,7 @@ enum { LAB_MODE_BOOT, LAB_MODE_TITLE, LAB_MODE_PLAYING, LAB_MODE_CLEAR, LAB_MODE
 #define LAB_FLAG_EXIT       0x01 /* the level has an exit zone (exit_*) */
 #define LAB_FLAG_RESCUE_ALL 0x02 /* the section clears when every civilian is rescued */
 #define LAB_FLAG_DAMAGE     0x04 /* enemies hurt players (energy changes) */
+#define LAB_FLAG_EXIT_TOUCH 0x08 /* the exit clears on touch; without it an exit needs every enemy down */
 
 enum { LAB_CELL_EMPTY, LAB_CELL_SOLID, LAB_CELL_ONEWAY, LAB_CELL_LADDER, LAB_CELL_CRATE };
 

@@ -337,6 +337,29 @@ The result appears in Willy Maker's Export screen as the same checklist, with th
 - The test folder is never the library: no import, no overwrite, no game list entry, and it is deleted after the test.
 - Production sets: the device has the allow-list of go-link-made sets by the SHA-256 of their inner files (decided and built 2026-10-01, see the status above). These sets reuse a real set's file names, so without it the library shows them as the original game; with it, only a zip whose files all match is shown as ours.
 
+## Test with bots (built)
+
+Experiment 1's jury found the worst bugs of every ROM (a soft-lock behind the forward-only camera, a crate left hanging, players inside the floor) with players that play the way people do, while every route bot and scripted run passed ([verdict](../experiments/verdict.md), T-08). The Export tab's **Test with bots** card (`qa/bots.ts`, `ui/organisms/BotsCard.tsx`) brings them into Willy Maker: each bot plays each level in play order for 3600 frames (a minute) on play mode's engine with the game's rules, players and lives, and the game is checked every frame. The spec level takes about 140 ms for all of them.
+
+| Bot | Plays like |
+|---|---|
+| Newcomer | holds right, fires every 30 frames, jumps every 90 |
+| Two friends | two players holding right and fire, jumping every 20 frames |
+| Runs past | holds right and jumps, never fires |
+| Shoots everything | fires for 5 s standing (at the crates too), then walks on firing |
+| Skips and comes back | runs past every branch for 30 s, then walks back and tries to climb |
+| Random, 4 controllers | four ports pressing random buttons (seeded, three seeds), joining as they press |
+
+| Finding | Severity | When |
+|---|---|---|
+| `stuck` | blocks the game | a bot that holds a direction makes no progress (ground, score, enemies, rescues) for 30 s; with "the exit needs every enemy" it says how many are left |
+| `clear_alive` | blocks the game | the level cleared with enemies alive although the rules say the exit needs every one |
+| `crate_hanging` | blocks the game | a crate with nothing under it |
+| `in_solid`, `on_air`, `out_of_level` | looks wrong | a player inside a solid or crate cell, standing on air, or out of the level |
+| `off_screen` | worth a look | a player outside the camera's picture |
+
+Findings are deduplicated by kind and 16 px cell and come with **Go** to the place and **Copy the moves**: the bot's inputs reduced by ddmin to the shortest that still give the same kind, written as experiment 1's harness script (a coin and Start first, play from frame 156), so they can be replayed on the ROM with `run.mjs` and `device romtest --input`. Play mode starts at once and the ROM after its title, so on the ROM the moves may need another start frame. Bots are seeded: the same game gives the same findings. The harness runs the same kind of QA on the ROM itself ([harness.md](../experiments/harness.md)).
+
 ## Testing the validator itself
 
 | Layer | Tool | What |

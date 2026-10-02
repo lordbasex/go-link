@@ -6,10 +6,13 @@
 //   node rom/tools/lab/acceptance.mjs ZIP --script clear.json --out DIR
 //       [--bot-games N] [--laya-games N] [--bot-frames F] [--laya-frames F]
 //       [--device PATH] [--no-mp4] [--skip level4,core,bot,laya]
+//       [--no-qa] [--qa-minutes M]
 //
 // DIR gets: level3.json (+ level3.png), level4.json, scripted/sim (the
 // runner's outputs), scripted/core (the real core's checkpoints and MP4),
-// scripted/compare (difference pictures and compare.json), bot/game-NN and
+// scripted/compare (difference pictures and compare.json), qa/ (the QA
+// run: qa.mjs's qa.json, qa.md and findings/; on by default, --no-qa skips
+// it, --qa-minutes sets its fuzz length, default 2), bot/game-NN and
 // laya/game-NN (one runner folder per game) and acceptance.json with the
 // verdict of each test. Game 1 of each player is its plain (argmax)
 // game; games 2..N pass --seed 1..N-1.
@@ -20,16 +23,17 @@ import os from "node:os";
 import path from "node:path";
 import { REPO, readZip, runPowerOn, setOf, WASM } from "./lab.mjs";
 import { run } from "./run.mjs";
+import { qa, PLAYERS } from "./qa.mjs";
 import { writePng } from "../png.mjs";
 
 const args = process.argv.slice(2);
 const opt = (name, def) => (args.includes(name) ? args[args.indexOf(name) + 1] : def);
-const valued = ["--script", "--out", "--bot-games", "--laya-games", "--bot-frames", "--laya-frames", "--device", "--skip", "--python", "--laya-every"];
+const valued = ["--script", "--out", "--bot-games", "--laya-games", "--bot-frames", "--laya-frames", "--device", "--skip", "--python", "--laya-every", "--qa-minutes"];
 const zip = args.find((a, i) => !a.startsWith("--") && !valued.includes(args[i - 1]));
 const script = opt("--script");
 const out = opt("--out");
 if (!zip || !script || !out) {
-  console.error("usage: node rom/tools/lab/acceptance.mjs ZIP --script clear.json --out DIR [--bot-games N] [--laya-games N] [--bot-frames F] [--laya-frames F] [--device PATH] [--no-mp4] [--skip level4,core,bot,laya]");
+  console.error("usage: node rom/tools/lab/acceptance.mjs ZIP --script clear.json --out DIR [--bot-games N] [--laya-games N] [--bot-frames F] [--laya-frames F] [--device PATH] [--no-mp4] [--skip level4,core,bot,laya] [--no-qa] [--qa-minutes M]");
   process.exit(2);
 }
 const skip = new Set((opt("--skip", "") || "").split(",").filter(Boolean));
@@ -41,6 +45,8 @@ const layaGames = Number(opt("--laya-games", 1));
 const botFrames = Number(opt("--bot-frames", 5400));
 const layaFrames = Number(opt("--laya-frames", 3600));
 const layaEvery = Number(opt("--laya-every", 6));
+const withQa = !args.includes("--no-qa") && !skip.has("qa");
+const qaMinutes = Number(opt("--qa-minutes", 2));
 fs.mkdirSync(out, { recursive: true });
 const report = { zip: path.resolve(zip), script: path.resolve(script), started: new Date().toISOString(), tests: {} };
 const save = () => fs.writeFileSync(path.join(out, "acceptance.json"), JSON.stringify(report, null, 2) + "\n");
@@ -95,7 +101,24 @@ if (!skip.has("core")) {
   save();
 }
 
-// 5. Automatic players
+// 5. The QA run: adversarial players, a seeded 4-port fuzz, per-frame invariants, minimized repro scripts
+if (withQa) {
+  say(`QA run (adversarial players, ${qaMinutes} min of fuzz)`);
+  const q = await qa({ zip, out: path.join(out, "qa"), players: [...PLAYERS], frames: 7200, fuzzMinutes: qaMinutes, seed: 1, exitRule: "auto", patrol: 160, minimize: true, minSeconds: 30, minBudget: 120, quiet: true });
+  report.tests.qa = {
+    ok: q.ok,
+    verdict: q.verdict,
+    counts: q.counts,
+    framesPlayed: q.framesPlayed,
+    cleared: q.cleared,
+    seconds: q.seconds.total,
+    findings: q.findings.map((x) => ({ id: x.id, severity: x.severity, kind: x.kind, runs: x.runs, frame: x.frame, x: x.x, y: x.y, why: x.detail?.why ?? null, script: `qa/${x.minimized?.file ?? x.inputsFile}`, steps: x.minimized?.ok ? x.minimized.steps : x.inputSteps })),
+    report: "qa/qa.md",
+  };
+  save();
+}
+
+// 6. Automatic players
 async function games(kind, n, cmd, frames, every) {
   const list = [];
   for (let g = 1; g <= n; g++) {

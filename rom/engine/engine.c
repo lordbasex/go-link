@@ -1392,7 +1392,7 @@ static void lab_update(void)
 	s->mode = (u8)lab_mode;
 	s->credits = (u8)credits;
 	s->section_clear = lab_mode == LAB_MODE_CLEAR;
-	s->flags = (u8)((D->exit_w > 0 ? LAB_FLAG_EXIT : 0) | (R->touch_hurts || R->enemies_shoot ? LAB_FLAG_DAMAGE : 0));
+	s->flags = (u8)((D->exit_w > 0 ? LAB_FLAG_EXIT : 0) | (D->exit_w > 0 && !R->exit_needs_enemies ? LAB_FLAG_EXIT_TOUCH : 0) | (R->touch_hurts || R->enemies_shoot ? LAB_FLAG_DAMAGE : 0));
 	s->cam_x = (s16)cam_x;
 	s->cam_y = (s16)cam_y;
 	s->level_w = (u16)level_w;

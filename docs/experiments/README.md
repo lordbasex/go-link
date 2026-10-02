@@ -43,6 +43,7 @@ The same for every case, run by the harness and again by each juror:
 4. **Same picture on the real core:** the scripted run replayed on the real core gives the same frames as in the simulator at the checkpoints (the core is deterministic from power on).
 5. **Automatic players:** a route bot and a [Laya](https://huggingface.co/convaiinnovations/laya-multilingual) decision model play N games each; their clear rate, deaths and time are recorded.
 6. **Spec checklist:** every item of the spec, ticked or recorded as a gap with evidence.
+7. **QA run** (added after the verdict, task T-08): adversarial players and a seeded 4-port fuzz with invariants on the game's state every frame; every finding comes with a minimized script that replays on the real core ([the harness](harness.md#the-qa-run)). It passes with no high finding (soft-lock, a clear with an enemy alive, a fault).
 
 ## Records
 

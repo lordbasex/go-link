@@ -21,6 +21,7 @@ import { downloadBytes } from "../download";
 import { levelThumbnail } from "../thumbnail";
 import { PowerOnCard } from "./PowerOnCard";
 import { CreateRomCard } from "./CreateRomCard";
+import { BotsCard } from "./BotsCard";
 
 type Busy = null | "project" | "ai";
 
@@ -189,6 +190,7 @@ export function ExportView({ project, version, store, onGo }: { project: Project
       </div>
 
       <div className="wm-export-col">
+        <BotsCard project={project} onGo={onGo} />
         <CreateRomCard project={project} blocked={review.errors > 0} />
         <PowerOnCard />
       </div>

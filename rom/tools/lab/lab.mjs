@@ -21,6 +21,8 @@ export const WASM = path.join(REPO, "frontend/packages/cps1-sim/wasm/cps1sim.was
 export const LAB_MAGIC = 0x4c414231;
 export const LAB_SIZE = 0xc8;
 export const WRAM_BASE = 0xff0000;
+const WRAM_BYTES = 0x10000;
+const PROGRAM_BYTES = 0x200000; // the board model's program space (cps1-sim PROGRAM_SIZE)
 export const MODES = ["boot", "title", "playing", "clear", "game_over"];
 export const PLAYER_STATES = ["off", "idle", "walk", "run", "air", "climb", "attack", "hurt", "dead"];
 export const ENEMY_STATES = ["off", "walk", "hit", "down"];
@@ -250,6 +252,74 @@ export class Machine {
     return renderScreen({ gfxram: shown, regs, gfx: this.gfx, set: this.set });
   }
 
+  /**
+   * The lab state read straight from the board's memory (only its 200
+   * bytes, no copy of the whole work RAM): the same result as lab(), about
+   * ten times cheaper, for tools that read it every frame (qa.mjs).
+   */
+  labFast() {
+    if (this.labAddr === null) return this.lab();
+    const at = (this.labAddr - WRAM_BASE) >> 1;
+    const words = this.wramView();
+    if (at < 0 || at + LAB_SIZE / 2 > words.length) return null;
+    const b = new Uint8Array(LAB_SIZE);
+    for (let i = 0; i < LAB_SIZE / 2; i++) {
+      b[i * 2] = words[at + i] >> 8;
+      b[i * 2 + 1] = words[at + i] & 0xff;
+    }
+    return be32(b, 0) === LAB_MAGIC ? decodeLab(b, 0) : null;
+  }
+
+  /** collision() without copying the work RAM (a map in ROM is read once and kept). */
+  collisionFast(lab) {
+    if (!lab?.colMap || !lab.colCols) return null;
+    const n = lab.colCols * lab.colRows;
+    const at = lab.colMap - WRAM_BASE;
+    if (at >= 0 && at + n <= WRAM_BYTES) {
+      const words = this.wramView();
+      const cells = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const w = words[(at + i) >> 1];
+        cells[i] = (at + i) & 1 ? w & 0xff : w >> 8;
+      }
+      return { cols: lab.colCols, rows: lab.colRows, cells };
+    }
+    const key = `${lab.colMap}:${n}`;
+    if (this.romMap?.key !== key) this.romMap = { key, map: this.collision(lab, new Uint8Array(0)) };
+    return this.romMap.map;
+  }
+
+  /** A live view of the work RAM words (host order; valid until the next call into the board). */
+  wramView() {
+    return new Uint16Array(this.sim.x.memory.buffer, this.sim.x.board_wram(), WRAM_BYTES / 2);
+  }
+
+  /**
+   * The whole machine at this frame (the board model's memory and the
+   * runner's own state), for restore(): replaying from a snapshot gives
+   * the same frames as running from power on.
+   */
+  snapshot() {
+    // the program ROM (2 MB) never changes after load(): it is left out
+    const all = new Uint8Array(this.sim.x.memory.buffer);
+    const rom = this.sim.x.board_rom();
+    const romEnd = rom + PROGRAM_BYTES;
+    return { size: all.length, rom, low: all.slice(0, rom), high: all.slice(romEnd), frame: this.frame, queue: this.queue.map((p) => p.map((s) => new Set(s))), prevObj: this.prevObj?.slice() ?? null, labAddr: this.labAddr, labFrom: this.labFrom };
+  }
+
+  restore(s) {
+    const mem = this.sim.x.memory;
+    if (mem.buffer.byteLength < s.size) mem.grow((s.size - mem.buffer.byteLength) / 65536);
+    const all = new Uint8Array(mem.buffer);
+    all.set(s.low, 0);
+    all.set(s.high, s.rom + PROGRAM_BYTES);
+    this.frame = s.frame;
+    this.queue = s.queue.map((p) => p.map((x) => new Set(x)));
+    this.prevObj = s.prevObj?.slice() ?? null;
+    this.labAddr = s.labAddr;
+    this.labFrom = s.labFrom;
+  }
+
   /** Keeps the sprite table history right when a frame is not drawn. */
   keepSprites() {
     const regs = this.sim.regs();
@@ -303,7 +373,7 @@ export function decodeLab(b, at) {
     mode: MODES[b[at + 0x0c]] ?? b[at + 0x0c],
     credits: b[at + 0x0d],
     sectionClear: b[at + 0x0e] === 1,
-    flags: { exit: !!(flags & 1), rescueAll: !!(flags & 2), damage: !!(flags & 4) },
+    flags: { exit: !!(flags & 1), rescueAll: !!(flags & 2), damage: !!(flags & 4), exitTouch: !!(flags & 8) },
     cam: { x: s16(b, at + 0x10), y: s16(b, at + 0x12) },
     level: { w: be16(b, at + 0x14), h: be16(b, at + 0x16) },
     exit: { x0: s16(b, at + 0x18), x1: s16(b, at + 0x1a), y: s16(b, at + 0x1c) },

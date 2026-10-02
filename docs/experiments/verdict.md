@@ -73,6 +73,7 @@ On 2026-10-01 an AI outside this project, with only a browser, was asked to "cre
 - **Willy Maker still feels tied to Willy's game:** a game of another genre cannot be made from zero.
 - **A full sprite sheet** (12 moves: idle, walk and run, turn, jump, jump kick combo, crouch, crawl, machine gun, knife, bazooka, a yawn, a thumbs up): Characters imports and animates all of it, but the engine plays six moves (idle, walk or run, jump, shoot, knife, bazooka) (U-05).
 - **The CPS-1 can do much more:** Street Fighter II and Final Fight run on the same board; the 44 px hero, the six moves and the silent sound are go-link's choices so far, not the board's limits (U-06).
+- **A meter of the board's use** in plain sight, to grow the game (levels, detail, sound) without going over (U-07).
 
 ## Tasks
 
@@ -89,7 +90,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-05 | **The exit is drawn** as a door by default | L-07, J-13 | done |
 | T-06 | **P3 and P4 behaviour** as a setting (join, coming soon, ignore), "coming soon" by default and no credit taken | L-08, J-14 | done |
 | T-07 | **How crates are climbed** as a rule: by jumping (default, as in Super Mario Bros.) or by pushing (the prototype's) | U-01 | done |
-| T-08 | QA run in the acceptance: per-frame invariants, a seeded 4-port fuzz, adversarial players (skipper, newcomer, shooter, masher) and a ddmin minimizer | L-03 | next |
+| T-08 | QA run in the acceptance: per-frame invariants, a seeded 4-port fuzz, adversarial players (skipper, newcomer, shooter, masher) and a ddmin minimizer | L-03 | done |
 | T-09 | Camera, ladder and join rules: leaving the ladder column ends the climb, the camera never pushes a player into solid cells, join points checked, every active player kept in the picture vertically | L-06, J-04, J-05, J-06, J-12, J-16 | next |
 | T-10 | Every rule the engine does not decide goes into the project and the AI pack as a setting; P-01 to P-26 are the checklist | L-08, J-07, J-10 | next |
 | T-11 | Screen text: whole fields cleared, overlays never erase the HUD, prompts follow credits, an HUD safe zone, an automatic on-screen text check | L-09, J-15, J-10, J-16 | next |
@@ -108,6 +109,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |
 | T-25 | The moves of a full sprite sheet, in play mode and in the ROM: crouch and crawl on down, landing, turning, a victory or thumbs up on a rescue and at the clear, a yawn after a long idle, a jump kick, and a double jump and a jet pack as optional rules; effects (muzzle flash, smoke) as their own sprites instead of inside the hero's frames | U-05 | next |
 | T-26 | Toward the CPS-1's real limits (Street Fighter II and Final Fight run on it): heroes taller than 44 px (Final Fight scale is about 2 to 2.5 times taller) with the body, jump and reach checks scaled to the character, more sprite tiles per frame and per screen, the third background layer and row scroll for parallax, and QSound music and effects | U-06 | roadmap |
+| T-27 | A board usage meter: how much of the CPS-1 the game uses (graphics and program memory, sprite and layer palettes with the engine's own, sprites on screen, colors, layers, animations, sound), measured from Create ROM's real result when there is one and estimated live while building, always in sight, warning before a change goes over | U-07 | next (before T-25) |
 
 ## Records
 

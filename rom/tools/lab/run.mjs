@@ -99,7 +99,7 @@ export function actionButtons(action, k, n, { facing = 1, last = null } = {}) {
 }
 
 /** The collision map as text rows (CELLS: . # = H C). */
-function mapText(col) {
+export function mapText(col) {
   const rows = [];
   for (let r = 0; r < col.rows; r++) rows.push(col.cells.slice(r * col.cols, (r + 1) * col.cols).map((c) => CELLS[c] ?? "?").join(""));
   return rows;
