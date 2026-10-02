@@ -218,6 +218,7 @@ export function migrateProject(raw: unknown): Project {
       dip: { ...base.dip, ...(s.dip ?? {}) },
       menus: migrateMenus(base.menus, s.menus),
       levels: Array.isArray(s.levels) ? s.levels : p.levels.map((l) => (l as Level).id),
+      imagePrompts: isRecord(s.imagePrompts) ? (Object.fromEntries(Object.entries(s.imagePrompts).filter(([, v]) => isRecord(v))) as GameSettings["imagePrompts"]) : undefined,
     },
     palettes: (Array.isArray(p.palettes) ? p.palettes : []).filter(isPalette).map((x) => ({ ...x, colors: x.colors.filter((c) => typeof c === "string") })),
     characters: (Array.isArray(p.characters) ? (p.characters as unknown[]) : []).filter(isRecord).map(normalizeCharacter),

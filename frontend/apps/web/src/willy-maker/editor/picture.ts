@@ -59,7 +59,12 @@ export function pixelSize(src: Rgba): number {
  * the proportion): each board pixel takes the most common board color of
  * its block, so a picture drawn at 4x comes back pixel for pixel.
  */
-export function scalePicture(src: Rgba, height: number): KeyImage {
+/** A background color an image AI was asked for (#FF00FF, give or take): read as transparent when keying. */
+export function isMagenta(r: number, g: number, b: number): boolean {
+  return r >= 200 && b >= 200 && g <= 72;
+}
+
+export function scalePicture(src: Rgba, height: number, keyMagenta = false): KeyImage {
   const f = src.h / height;
   const w = Math.max(1, Math.round(src.w / f));
   const h = height;
@@ -81,7 +86,7 @@ export function scalePicture(src: Rgba, height: number): KeyImage {
         for (let xx = x0; xx < x1; xx += sx) {
           const o = (yy * src.w + xx) * 4;
           n++;
-          if (src.data[o + 3]! < 128) {
+          if (src.data[o + 3]! < 128 || (keyMagenta && isMagenta(src.data[o]!, src.data[o + 1]!, src.data[o + 2]!))) {
             clear++;
             continue;
           }

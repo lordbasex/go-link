@@ -311,6 +311,7 @@ export const coreEs: CoreMessages = {
     mode: "El arte de esta capa",
     add: "Conservarlo y sumar la imagen",
     replace: "Reemplazarlo",
+    keyMagenta: "El magenta (#FF00FF) es transparente",
     repeat: "Repetirla hasta el final del nivel",
     grow: "Ensanchar el nivel si no entra",
     working: "Ajustando la imagen…",

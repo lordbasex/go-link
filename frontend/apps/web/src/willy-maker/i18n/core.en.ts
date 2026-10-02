@@ -311,6 +311,7 @@ export const coreEn = {
     mode: "This layer's art",
     add: "Keep it, add the picture",
     replace: "Replace it",
+    keyMagenta: "Magenta (#FF00FF) is transparent",
     repeat: "Repeat it to the end of the level",
     grow: "Make the level wider if it does not fit",
     working: "Fitting the picture…",

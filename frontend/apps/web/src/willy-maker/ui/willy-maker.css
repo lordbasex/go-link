@@ -372,3 +372,19 @@ input.wm-layer-name { cursor: text; }
 .wm-picture-opts .wm-input { width: auto; }
 .wm-picture-preview { overflow-x: auto; border-radius: 10px; background: var(--color-video); }
 .wm-picture-preview canvas { display: block; height: 224px; image-rendering: pixelated; }
+
+/* Prompt for image AI (T-29) */
+.wm-promptdlg { width: min(860px, 100%); }
+.wm-prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px; }
+.wm-prompt-desc { min-height: 90px; resize: vertical; }
+.wm-prompt-flags { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; }
+.wm-prompt-flags legend { padding: 0 6px; }
+.wm-prompt-flag { display: inline-flex; align-items: center; gap: 4px; }
+.wm-help { position: relative; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--color-border-strong); background: var(--color-surface-2); color: var(--color-text-muted); font: 700 11px var(--font-text); cursor: help; padding: 0; }
+.wm-help::before { content: ""; position: absolute; inset: -12px; }
+.wm-help[data-tip]:is(:hover, :focus-visible)::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 30; width: max-content; max-width: 260px; white-space: normal; text-align: left; padding: 6px 8px; border-radius: 8px; background: var(--color-surface-2); border: 1px solid var(--color-border-strong); color: var(--color-text); font: 500 12px/1.35 var(--font-text); pointer-events: none; }
+.wm-prompt-out { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.wm-prompt-out .wm-row { justify-content: space-between; gap: 8px; }
+.wm-prompt-out pre { white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; }
+.wm-prompt-bar { justify-content: flex-end; margin-bottom: 8px; }
+.wm-self-start { align-self: flex-start; }

@@ -18,6 +18,7 @@ import { drawOverview, paletteFrom, type TileImage, type View } from "../render"
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
 import { IconPlus, IconTrash, IconWarn } from "../icons";
+import { usePromptMessages } from "./PromptDialog";
 
 export function ProjectTree({ store, project, levelId, onLevel }: { store: EditorStore; project: Project; levelId: string; onLevel: (id: string) => void }) {
   const t = useCore();
@@ -122,8 +123,9 @@ function TileButton({ n, img, on, onClick, label }: { n: number; img: TileImage;
   );
 }
 
-export function PartsPalette({ partId, onPart, level, activeLayerId, images }: { partId: string | null; onPart: (id: string) => void; level: Level; activeLayerId: string; images: Map<string, TileImage> }) {
+export function PartsPalette({ partId, onPart, level, activeLayerId, images, onPrompt }: { partId: string | null; onPart: (id: string) => void; level: Level; activeLayerId: string; images: Map<string, TileImage>; onPrompt?: (kind: "object" | "tiles") => void }) {
   const t = useCore();
+  const tp = usePromptMessages();
   const [group, setGroup] = useState<PartGroup>("terrain");
   const active = level.layers.find((l) => l.id === activeLayerId);
   const tileLayer = active?.kind === "tiles" ? active : level.layers.find((l): l is TileLayer => l.id === "play" && l.kind === "tiles");
@@ -167,6 +169,11 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images }: {
         </div>
       )}
       <p className="wm-dim wm-small">{group === "tiles" ? t.parts.tilesHint : t.parts.hint}</p>
+      {onPrompt && (group === "objects" || group === "tiles") && (
+        <Capsule size="sm" className="wm-self-start" title={tp.buttonTip} onClick={() => onPrompt(group === "tiles" ? "tiles" : "object")}>
+          {tp.button}
+        </Capsule>
+      )}
     </section>
   );
 }
@@ -405,7 +412,8 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
 
 const BASE_LAYERS = new Set(["far", "mid", "play", "collision", "objects", "text"]);
 
-export function LayersPanel({ store, level, activeLayerId, onActive, onPicture }: { store: EditorStore; level: Level; activeLayerId: string; onActive: (id: string) => void; onPicture?: (layer: "far" | "play") => void }) {
+export function LayersPanel({ store, level, activeLayerId, onActive, onPicture, onPrompt }: { store: EditorStore; level: Level; activeLayerId: string; onActive: (id: string) => void; onPicture?: (layer: "far" | "play") => void; onPrompt?: (sub: string) => void }) {
+  const tp = usePromptMessages();
   const t = useCore();
   const rows = [...level.layers].reverse();
   const active = level.layers.find((l) => l.id === activeLayerId);
@@ -463,6 +471,11 @@ export function LayersPanel({ store, level, activeLayerId, onActive, onPicture }
         {onPicture && active?.kind === "tiles" && (active.id === "far" || active.id === "play") && (
           <Capsule size="sm" title={t.picture.buttonTip} onClick={() => onPicture(active.id as "far" | "play")}>
             {t.picture.button}
+          </Capsule>
+        )}
+        {onPrompt && (
+          <Capsule size="sm" title={tp.buttonTip} onClick={() => onPrompt(active?.id === "far" ? "far" : "play")}>
+            {tp.button}
           </Capsule>
         )}
         {active && (

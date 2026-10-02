@@ -30,6 +30,18 @@ describe("own backgrounds (T-28)", () => {
     expect(img.keys).toEqual(exact.keys);
   });
 
+  it("reads an image AI's #FF00FF magenta background as transparent when asked (T-29)", () => {
+    const src = pixelArt(96, 56, 4, 6);
+    // the left half on magenta, a little off as image AIs draw it
+    for (let y = 0; y < src.h; y++)
+      for (let x = 0; x < src.w / 2; x++) src.data.set([250, 8, 246, 255], (y * src.w + x) * 4);
+    const keyed = scalePicture(src, 56, true);
+    expect(keyed.keys.slice(0, 48).every((k) => k < 0)).toBe(true);
+    expect(keyed.keys.slice(48, 96).every((k) => k >= 0)).toBe(true);
+    // without the option, magenta is a color like any other
+    expect(scalePicture(src, 56).keys.slice(0, 48).every((k) => k >= 0)).toBe(true);
+  });
+
   it("fits a layer: at most 15 colors per tile, palettes per tile, unique tiles", () => {
     const img = keysOf(pixelArt(64, 32, 1, 40));
     const fit = fitLayer(img, 16);

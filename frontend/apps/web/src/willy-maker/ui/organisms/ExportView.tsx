@@ -22,12 +22,14 @@ import { levelThumbnail } from "../thumbnail";
 import { PowerOnCard } from "./PowerOnCard";
 import { CreateRomCard } from "./CreateRomCard";
 import { BotsCard } from "./BotsCard";
+import { usePromptMessages } from "./PromptDialog";
 
 type Busy = null | "project" | "ai";
 
 const ICONS = { ok: IconCheck, info: IconInfo, warning: IconWarn, error: IconX } as const;
 
-export function ExportView({ project, version, store, onGo }: { project: Project; version: number; store: EditorStore; onGo: (target: Target) => void }) {
+export function ExportView({ project, version, store, onGo, onPrompt }: { project: Project; version: number; store: EditorStore; onGo: (target: Target) => void; onPrompt?: () => void }) {
+  const tp = usePromptMessages();
   const t = useExportMessages();
   const [busy, setBusy] = useState<Busy>(null);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
@@ -150,6 +152,15 @@ export function ExportView({ project, version, store, onGo }: { project: Project
             <IconDownload /> {busy === "project" ? t.preparing : t.project.download}
           </Capsule>
         </Card>
+        {onPrompt && (
+          <Card className="wm-export-card">
+            <Eyebrow accent>{tp.title}</Eyebrow>
+            <p className="wm-dim">{tp.buttonTip}.</p>
+            <Capsule size="lg" className="wm-self-start" onClick={onPrompt}>
+              {tp.button}
+            </Capsule>
+          </Card>
+        )}
         <Card className="wm-export-card">
           <Eyebrow accent>{t.ai.title}</Eyebrow>
           <p className="wm-dim">{t.ai.text}</p>

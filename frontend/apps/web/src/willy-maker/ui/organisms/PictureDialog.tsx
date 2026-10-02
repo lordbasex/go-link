@@ -37,7 +37,7 @@ export function PictureDialog({ store, level, layer, images, onClose }: { store:
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [prepared, setPrepared] = useState<PreparedPicture | null>(null);
-  const [opts, setOpts] = useState<PictureOptions>({ layer, height: level.size.h, x: 0, repeat: false, grow: true });
+  const [opts, setOpts] = useState<PictureOptions>({ layer, height: level.size.h, x: 0, repeat: false, grow: true, keyMagenta: layer === "play" });
   const [keep, setKeep] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const heights = Array.from({ length: Math.floor(level.size.h / 224) }, (_, i) => (i + 1) * 224).filter((h) => h <= level.size.h);
@@ -133,6 +133,9 @@ export function PictureDialog({ store, level, layer, images, onClose }: { store:
               <option value="replace">{t.replace}</option>
               <option value="add">{t.add}</option>
             </select>
+          </label>
+          <label className="wm-small">
+            <input type="checkbox" checked={opts.keyMagenta === true} onChange={(e) => setOpts({ ...opts, keyMagenta: e.target.checked })} /> {t.keyMagenta}
           </label>
           <label className="wm-small">
             <input type="checkbox" checked={opts.repeat} onChange={(e) => setOpts({ ...opts, repeat: e.target.checked })} /> {t.repeat}

@@ -24,6 +24,8 @@ export interface PictureOptions {
   repeat: boolean;
   /** Make the level wider when the picture does not fit. */
   grow: boolean;
+  /** Read a #FF00FF magenta background as transparent (what the image AI prompts ask for). */
+  keyMagenta?: boolean;
 }
 
 export interface PreparedPicture {
@@ -47,7 +49,7 @@ export function preparePicture(level: Level, src: Rgba, options: PictureOptions,
   if (!layer) throw new Error(`the level has no ${options.layer} layer`);
   const px = pixelSize(src);
   const height = Math.max(tile, Math.min(level.size.h, Math.round(options.height)));
-  const pic = scalePicture(src, height);
+  const pic = scalePicture(src, height, options.keyMagenta === true);
   const x = Math.max(0, Math.round(options.x / tile) * tile);
   // the level grows to the picture's end (on the 32 px grid both layers share)
   const width = options.grow && !options.repeat && x + pic.w > level.size.w ? Math.ceil((x + pic.w) / 32) * 32 : level.size.w;

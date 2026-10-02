@@ -104,6 +104,8 @@ export interface GameSettings {
   menus: MenuSettings;
   /** Level ids in play order. */
   levels: string[];
+  /** The image AI prompt helper's last choices per kind (prompts/imagePrompt.ts), kept to repeat or adjust a request. */
+  imagePrompts?: Record<string, Record<string, unknown>>;
 }
 
 export type PaletteGroup = "sprite" | "play" | "far" | "text";

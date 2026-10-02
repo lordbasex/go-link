@@ -45,6 +45,9 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
       { "character": "builtin:willy", "variant": 3 }
     ],
     "credits": "(C) 2026 go-link",     // the credits line the menu screens show
+    "imagePrompts": {                  // optional: the Prompt for image AI dialog's last choices per kind
+      "background": { "sub": "far", "description": "…", "flags": ["sky", "moon"] }
+    },
     "dip": { "difficulty": "normal", "lives": 3, "freePlay": false, "demoSound": true },
     "rules": { "enemyHp": 3, "touchHurts": true },  // optional: only what the Rules card changed (engine.md)
     "menus": {                         // each screen: text fields, background, music slot, credits line, blocks

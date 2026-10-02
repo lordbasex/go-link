@@ -311,6 +311,7 @@ export const corePt: CoreMessages = {
     mode: "A arte desta camada",
     add: "Manter e somar a imagem",
     replace: "Substituir",
+    keyMagenta: "O magenta (#FF00FF) é transparente",
     repeat: "Repetir até o fim da fase",
     grow: "Alargar a fase se não couber",
     working: "Ajustando a imagem…",

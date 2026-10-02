@@ -21,6 +21,8 @@ import { menuText } from "../../game/menus";
 import { playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { BoardUsageChip } from "./BoardUsage";
 import { PictureDialog } from "./PictureDialog";
+import { PromptDialog, usePromptMessages } from "./PromptDialog";
+import type { PromptKind } from "../../prompts/imagePrompt";
 import { issueText, useGameText, useMenusText } from "../../game/texts";
 import { autosaver, saveProject } from "../../io/storage";
 import { useProjectImages } from "../useTileImages";
@@ -291,10 +293,12 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
     if (mode === "phone") setSheet(null);
   };
   const projectPanel = <ProjectTree store={store} project={p} levelId={level.id} onLevel={setLevelId} />;
-  const partsPanel = <PartsPalette partId={partId} level={level} activeLayerId={activeLayerId} images={images} onPart={pickPart} />;
+  const [promptFor, setPromptFor] = useState<{ kind: PromptKind; sub?: string } | null>(null);
+  const tp = usePromptMessages();
+  const partsPanel = <PartsPalette partId={partId} level={level} activeLayerId={activeLayerId} images={images} onPart={pickPart} onPrompt={(kind) => setPromptFor({ kind })} />;
   const inspectorPanel = <Inspector store={store} level={level} selected={selected} cell={cell} onSelect={setSelected} />;
   const [pictureLayer, setPictureLayer] = useState<"far" | "play" | null>(null);
-  const layersPanel = <LayersPanel store={store} level={level} activeLayerId={activeLayerId} onActive={setActiveLayerId} onPicture={setPictureLayer} />;
+  const layersPanel = <LayersPanel store={store} level={level} activeLayerId={activeLayerId} onActive={setActiveLayerId} onPicture={setPictureLayer} onPrompt={(sub) => setPromptFor({ kind: "background", sub })} />;
   const checksPanel = (
     <>
       <WarningsPanel
@@ -487,6 +491,11 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
       {tab === "characters" && (
         <Suspense fallback={<p className="wm-pad wm-dim">{t.home.loading}</p>}>
           <div className="wm-tabbody">
+            <div className="wm-row wm-prompt-bar">
+              <Capsule size="sm" title={tp.buttonTip} onClick={() => setPromptFor({ kind: "character" })}>
+                {tp.button}
+              </Capsule>
+            </div>
             <CharactersScreen key={charFocus.n} characterId={charFocus.id} project={p} onChange={(next: Project) => store.editProject(t.ide.tabs.characters, (cur) => Object.assign(cur, cloneProject(next)))} />
           </div>
         </Suspense>
@@ -518,6 +527,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
           project={p}
           version={version}
           store={store}
+          onPrompt={() => setPromptFor({ kind: "background" })}
           onGo={(target) => {
             if (target.tab === "characters") setCharFocus((f) => ({ id: target.character ?? null, n: f.n + 1 }));
             if (target.tab !== "build") {
@@ -533,6 +543,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
         />
       )}
 
+      {promptFor && <PromptDialog store={store} project={p} kind={promptFor.kind} sub={promptFor.sub} onClose={() => setPromptFor(null)} />}
       {pictureLayer && (
         <PictureDialog
           store={store}
