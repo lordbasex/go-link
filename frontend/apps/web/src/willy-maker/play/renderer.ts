@@ -7,7 +7,7 @@
 
 import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, type Game } from "../engine";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
-import { HEIGHTS, drawFrame, frameOf, type PlaySprites, type Sheet } from "./sprites";
+import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
 import { TEXT_INKS, boardTextWidth, drawBoardText } from "../game/boardText";
 
 export interface Overlays {
@@ -95,6 +95,8 @@ export interface DrawOptions {
   words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's); by player number when missing. */
   variants?: number[];
+  /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
+  ownHeroes?: (Sheet | null)[];
 }
 
 export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, o: DrawOptions): void {
@@ -111,7 +113,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
   drawCells(ctx, game);
   drawExits(ctx, game);
-  drawObjects(ctx, game, sprites, o.variants);
+  drawObjects(ctx, game, sprites, o.variants, o.ownHeroes);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
   if (o.ghost) {
@@ -265,7 +267,7 @@ function drawExits(ctx: CanvasRenderingContext2D, game: Game): void {
   }
 }
 
-function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[]): void {
+function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[], ownHeroes?: (Sheet | null)[]): void {
   const f = game.frame;
   for (const k of game.pickups) {
     if (!k.live) continue;
@@ -315,7 +317,12 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       anim = "run";
       t = p.running ? p.t : p.t / 2;
     }
-    if (sheet) sheetDraw(ctx, sheet, anim, "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
+    const own = ownHeroes?.[p.index];
+    if (own) {
+      // an own hero is saved at board scale: its idle frame's feet give its height
+      const ref = own.frames[own.anims.idle?.frames[0] ?? ""];
+      sheetDraw(ctx, own, heroAnim(own, anim), "idle", t, p.x, fy, ref?.py ?? HEIGHTS.hero, p.flip, 1);
+    } else if (sheet) sheetDraw(ctx, sheet, anim, "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
     else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
     for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);

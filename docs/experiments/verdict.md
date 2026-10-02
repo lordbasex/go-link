@@ -102,8 +102,8 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-20 | A lighter AI pack: level pictures cut into the board's tiles instead of 22 MB pictures | E-03 | next |
 | T-21 | A project or AI pack is not a ROM: the export page says so, and a `.willy.zip` dropped on the device gets a message | E-04 | next |
 | T-22 | Other genres, in the order of [genres.md](../willy-maker/genres.md) | E-05, U-04 | roadmap |
-| T-23 | The number of players in plain sight (one or two, up to four) in the wizard and the Game tab | U-02 | next |
-| T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | next |
+| T-23 | The number of players in plain sight (one or two, up to four) in the wizard and the Game tab | U-02 | done |
+| T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |
 
 ## Records
 

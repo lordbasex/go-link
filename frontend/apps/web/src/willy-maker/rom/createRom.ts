@@ -1,14 +1,15 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // Create ROM in the browser: fetches the prebuilt engine once (same origin,
-// public/willy-maker/engine/), decodes the game's tileset pictures from the
-// asset store, packs the game (pack.ts) and zips the set. The power-on test
+// public/willy-maker/engine/), decodes the game's tileset pictures and its
+// players' own heroes' pictures from the asset store, packs the game (pack.ts) and zips the set. The power-on test
 // (validation level 3) runs on the result in the Export tab.
 
 import { getAsset } from "../io/assets";
 import { decodePng } from "../io/png";
 import { writeZip } from "../io/zip";
-import type { Project } from "../model";
+import { BUILTIN_HERO, type AssetRef, type Project } from "../model";
+import { playerSlots } from "../game/settings";
 import { packGame, romSymbols, type Engine, type EngineManifest, type PackResult, type Picture } from "./pack";
 
 export const ENGINE_URL = "/willy-maker/engine/";
@@ -45,19 +46,36 @@ export function loadEngine(base = ENGINE_URL, fetcher: typeof fetch = fetch): Pr
   return p;
 }
 
+async function picture(ref: AssetRef): Promise<Picture | null> {
+  const asset = await getAsset(ref);
+  if (!asset) return null;
+  try {
+    const img = await decodePng(asset.bytes);
+    return { w: img.w, h: img.h, rgba: img.data };
+  } catch {
+    // not a PNG: packed without it, and a note says so
+    return null;
+  }
+}
+
 /** The decoded pictures of the project's tilesets, by tileset id. */
 export async function tilesetPictures(project: Project): Promise<Map<string, Picture>> {
   const out = new Map<string, Picture>();
   for (const ts of project.tilesets) {
-    if (!ts.image) continue;
-    const asset = await getAsset(ts.image);
-    if (!asset) continue;
-    try {
-      const img = await decodePng(asset.bytes);
-      out.set(ts.id, { w: img.w, h: img.h, rgba: img.data });
-    } catch {
-      // not a PNG: the layer is packed without art and a note says so
-    }
+    const pic = ts.image ? await picture(ts.image) : null;
+    if (pic) out.set(ts.id, pic);
+  }
+  return out;
+}
+
+/** The decoded pictures of the heroes the players use (not Willy), by character id. */
+export async function characterPictures(project: Project): Promise<Map<string, Picture>> {
+  const out = new Map<string, Picture>();
+  const used = new Set(playerSlots(project).map((s) => s.character).filter((id) => id !== BUILTIN_HERO));
+  for (const ch of project.characters) {
+    if (!used.has(ch.id) || !ch.sheet) continue;
+    const pic = await picture(ch.sheet);
+    if (pic) out.set(ch.id, pic);
   }
   return out;
 }
@@ -82,8 +100,9 @@ export async function createRom(project: Project, onStep: (step: CreateStep) => 
   const engine = await engineLoader();
   onStep("pictures");
   const pictures = await tilesetPictures(project);
+  const heroes = await characterPictures(project);
   onStep("pack");
-  const pack = packGame(project, engine, (id) => pictures.get(id) ?? null);
+  const pack = packGame(project, engine, (id) => pictures.get(id) ?? null, (id) => heroes.get(id) ?? null);
   onStep("zip");
   const zip = await zipSet(pack.files);
   return { name: `${engine.manifest.set}.zip`, zip, symbols: romSymbols(engine), pack };

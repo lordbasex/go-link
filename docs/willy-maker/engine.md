@@ -10,13 +10,14 @@ It was built in [experiment 1, case C](../experiments/README.md) (records in [`d
 | The data format | [`rom/engine/wmdata.h`](../../rom/engine/wmdata.h) | `struct wm_data` at 0x100000, checked at compile time |
 | The engine build | [`rom/tools/engine.mjs`](../../rom/tools/engine.mjs) | Builds it once into `frontend/apps/web/public/willy-maker/engine/` (`engine.bin`, `engine.json`); `--check` rebuilds and compares |
 | The packer | `frontend/apps/web/src/willy-maker/rom/pack.ts` | The project to the set's files (pure, tested) |
-| Create ROM | `rom/createRom.ts`, `ui/organisms/CreateRomCard.tsx` | Loads the engine and the tile pictures, packs, zips, runs the power-on test |
+| The players' looks | `rom/looks.ts` | The game's own heroes cut into the engine's sprite records |
+| Create ROM | `rom/createRom.ts`, `ui/organisms/CreateRomCard.tsx` | Loads the engine, the tile pictures and the heroes' pictures, packs, zips, runs the power-on test |
 | The rules | `engine/rules.ts` (`GameRules`), the Game tab's **Rules** card | The numbers play mode and the ROM share |
 
 ## How a ROM is made
 
 ```
- project (levels, tiles, objects, texts, rules)        engine.bin (prebuilt)
+ project (levels, tiles, objects, heroes, texts, rules) engine.bin (prebuilt)
                 │                                       │       │        │
             pack.ts ──► wm_data (data block)        program  sprites   Z80
                 │            │                          │       │        │
@@ -24,7 +25,8 @@ It was built in [experiment 1, case C](../experiments/README.md) (records in [`d
                 │   68000 space: engine at 0, data at 0x100000  │        │
                 │            │  splitProgram                    │        │
                 ▼            ▼                                  ▼        ▼
-   font + level tiles ──► graphics region (GfxRegion) ◄── sprite tiles   Kabuki (encodeOpcodes)
+   font + level tiles   ──► graphics region (GfxRegion) ◄── sprite tiles   Kabuki (encodeOpcodes)
+   + the heroes' tiles
                              │ split                                     │
                              ▼                                           ▼
                  mbe_*.rom, mb_gfx*.rom, mb_*.bin, mb_qa.rom, mb_q1-8.bin ──► slammast.zip (fixed dates)
@@ -33,8 +35,8 @@ It was built in [experiment 1, case C](../experiments/README.md) (records in [`d
 ```
 
 1. **The engine** (`engine.bin`, fetched once, its SHA-256 checked against `engine.json`): the 68000 program, the engine's own sprite tiles (Willy, three recruit shirts, the woman and the child, the Lag android, the bullet and the rocket) and the plain Z80 sound program.
-2. **The pictures**: each tileset's PNG from the browser's asset store, decoded in JavaScript (`io/png.ts`).
-3. **Pack** (`packGame`): the data block, the font and its double size, the sprites, the play layer's 16 px tiles and the far layer's 32 px tiles in the board's graphics format (`@go-link/cps1` `GfxRegion`), the program space split into the program files (`splitProgram`), the Z80 program encrypted for the QSound board (`encodeOpcodes`, the `slammast` keys), silent samples.
+2. **The pictures**: each tileset's PNG and the saved picture of each hero a player uses, from the browser's asset store, decoded in JavaScript (`io/png.ts`).
+3. **Pack** (`packGame`): the data block, the font and its double size, the sprites, the players' own heroes ([looks](#the-players-looks)), the play layer's 16 px tiles and the far layer's 32 px tiles in the board's graphics format (`@go-link/cps1` `GfxRegion`), the program space split into the program files (`splitProgram`), the Z80 program encrypted for the QSound board (`encodeOpcodes`, the `slammast` keys), silent samples.
 4. **Zip** (`zipSet`): every file with a fixed date, sorted: the same game always gives the same `.zip` byte for byte (the recorded session made three identical zips).
 5. **Power-on test** (validation level 3) runs on it at once in its Worker, with its picture. Then **Download ROM**, **Symbol map** (`symbols.json`, the engine's symbols: the harness reads the game's state through it) and **Play on my go-link** (the same zip on the linked device's real core, validation level 4).
 
@@ -42,11 +44,11 @@ Nothing is uploaded except by **Play on my go-link**, and only to the user's own
 
 ## The data block (`wm_data`)
 
-Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB program space; the engine ends well before it (about 24 KB). Pointers are absolute 68000 addresses. `wmdata.h` checks every offset at compile time and `rom/rom.test.tsx` checks the same offsets in a packed game.
+Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB program space; the engine ends well before it (about 26 KB). Pointers are absolute 68000 addresses. `wmdata.h` checks every offset at compile time and `rom/rom.test.tsx` checks the same offsets in a packed game.
 
 | Offset | Field | Meaning |
 |---|---|---|
-| 00 | `magic`, `version`, `size` | `WMD1`, 1, 0x70 |
+| 00 | `magic`, `version`, `size` | `WMD1`, 2, 0x74 |
 | 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play, `0x0002` crates climbed by pushing (else by jumping), `0x0004` Start on a port past the players shows "nP COMING SOON" |
 | 0c | `level_w`, `level_h`, `cols`, `rows` | px, and 16 px cells |
 | 14 | `far_cols`, `far_rows` | 32 px cells |
@@ -59,10 +61,11 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | 30 | `n_enemies`, `n_civs`, `n_crates`, `n_pickups` | at most 16, 8, 32, 16 |
 | 38 | `start_x[4]`, `start_y[4]` | each player's start (-1 for none) |
 | 48 | `exit_x`, `exit_y`, `exit_w`, `exit_h` | the exit zone; `exit_w` 0 = no exit |
-| 50 | `slots[4]` | each player's look: 0 Willy, 1-3 a recruit's shirt |
+| 50 | `slots[4]` | Willy's shirt for each player drawn as Willy: 0 his own, 1-3 a recruit's |
 | 58 | `bg_color`, `backtrack` | the color behind every layer; how far the camera may go back |
 | 5c | `rules` | 16 bytes: energy, enemy hits, touch hurts, chase, shoot, exit needs every enemy down, respawn on hurt, the run window; blink frames, enemy, rescue and crate points |
 | 6c | `title` | the game's title (for the record) |
+| 70 | `looks` | `u32[4]`, one per player: 0 = Willy with that player's shirt, else a `wm_look` ([below](#the-players-looks)); `looks` itself is 0 when every player is Willy |
 
 **Objects** (`x, y, a, b, c, d`, s16): an enemy is `x, feet y, patrol min, patrol max, hits (0 = the rules'), facing`; a civilian `x, feet y, child`; a crate `col, row, size in cells, hits (0 = never breaks from shots), contents (1 bazooka, 2 health)`; a pickup `x, feet y, item`.
 
@@ -77,7 +80,8 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | 0x0200 | 32 × 32 | empty (pen 15) |
 | 0x0400 | 16 × 16 | empty (pen 15) |
 | 0x0800 + n − 1 | 32 × 32 | the far layer's tileset, tile n |
-| 0x1000 … | 16 × 16 | the engine's sprites (`engine.json` `sprites`) |
+| 0x1000 … | 16 × 16 | the engine's sprites (`engine.json` `sprites`, 290 tiles today: up to 0x1121) |
+| after them … 0x1fff | 16 × 16 | the players' own heroes' tiles, deduplicated (about 3800 tiles of room) |
 | 0x4000 + n − 1 | 16 × 16 | the play layer's tileset, tile n |
 
 Only the tiles a level uses are written. A tile's pixels become pens of its tileset's first palette (exact colors, the nearest otherwise; transparent pixels pen 15).
@@ -86,7 +90,7 @@ Only the tiles a level uses are written. A tile's pixels become pens of its tile
 
 The prototype's code, generalized: the same physics (gravity 6/16 px per frame², a −7 px per frame jump, 32 px crates jumped onto or, with the push rule, pushed up, ladders at 1.5 px per frame, down + jump through one-way ledges, the double-tap run), the machine gun and the automatic knife, the bazooka from pickups and crates, the forward-only camera with its back margin. What changed:
 
-- **Everything is read from `wm_data`**: the level, its tiles and palettes, the objects, each player's look, the texts and the rules. Without a valid block it shows "NO GAME DATA" instead of crashing.
+- **Everything is read from `wm_data`**: the level, its tiles and palettes, the objects, each player's look (Willy or one of the game's own heroes), the texts and the rules. Without a valid block it shows "NO GAME DATA" instead of crashing.
 - **Tile columns are streamed**: the board's tilemaps are 64 columns wide (1024 px of 16 px tiles, 2048 px of 32 px tiles), so the engine writes the columns around the camera as it moves (and a broken crate's columns from the collision map in RAM). Levels up to 24 576 cells of 16 px and 1024 px tall fit (the 8192 × 672 Buenos Aires canvas does).
 - **Up to 4 players** on the ports `slammast` wires (P3 and P4 at 0xf1c000/2, their button 3 in the P1/P2 word). Start on a port past the game's players shows "3P COMING SOON" (or 4P) for 2 s, or nothing with that rule; it never takes a credit.
 - **Opposite directions cancel**: left with right, and up with down, held together count as neither, as the mame2003-plus core delivers them, so the board model and the core give the same frames (experiment 1, J-17).
@@ -94,6 +98,26 @@ The prototype's code, generalized: the same physics (gravity 6/16 px per frame²
 - **Energy and game over**: a player takes as many hits as the board's lives; a hit blinks the player (and, with the rule, brings them back near the camera's left); at no energy a credit and Start bring them back, and with every player out and no credit the game shows the Game over screen and returns to the title. With a credit left, the Continue screen counts down from 9.
 - **The exit** clears the section when a player stands in its zone (and, with the rule, every enemy is down); the HUD's Level clear text shows, then the title. Create ROM draws a door on it (`engine/door.ts`, in the play layer's own colors, over empty cells), as play mode does. With the rule, the HUD shows `ENEMY n` (the enemies left) and reaching the exit early shows "DEFEAT EVERY ENEMY" (experiment 1, J-11 and J-13).
 - **The lab state** (`rom/src/lab_state.h`) is filled every frame, as in the prototype, so experiment 1's harness and its players read any Willy Maker game.
+
+## The players' looks
+
+A player whose slot (the Game tab's players, `settings.playerSlots`) is one of the game's own heroes is drawn with that hero's art instead of Willy's. Only the slots of the game's players count (a 2-player game packs slots 1 and 2), and each hero is packed once however many players use it.
+
+- **The picture**: the hero's saved picture (`sheet`), the 1:1 atlas the Characters screen made with its colors already fitted to the zone palettes ([file-format.md](file-format.md)). Nothing is converted again.
+- **The tiles**: each frame is cut into 16 × 16 sprite tiles from the feet up (the last tile row ends on the frame's bottom row, as `rom/tools/art.mjs` cuts Willy), so each tile row is one palette zone and each tile gets that zone's palette. A pixel takes its zone palette's pen (the exact color, else the nearest); transparent pixels are pen 15. Empty tiles and frames with no pixels are left out, and identical tiles are written once. They go after the engine's own sprites, up to 0x1fff, where the far layer's tiles start.
+- **The palettes**: every zone palette of the hero, loaded at power-on into free sprite palettes, one run per hero. The engine's art takes palettes 0-24 (`engine.json` `spritePalettes`): Willy's 4, three recruit shirts of 4 each, the civilians, the android, the bullet and the rocket. Free are 25-31 (7) and the 4 of each recruit shirt no Willy of the game wears.
+- **The animations**: the engine's six, each from the hero's first animation that has frames: idle ← `idle` (else `walk`, `run` or any); run ← `run`, `walk`, idle; jump ← `jump`, idle; knife ← `knife`, `fire`, idle; gun ← `fire`, `shoot`, idle; bazooka ← `bazooka`, `fire`, idle. The engine picks frames as for Willy: the jump frame by the vertical speed (and its second frame while climbing), the knife frame by the stab's time, the others at the animation's own fps (1-60).
+
+The data: `looks` points to four `u32`, one per player. A look is the engine's own records, written by the packer in the 68000's layout (big-endian, 2-byte alignment, checked with `_Static_assert` in `wmdata.h`):
+
+| Record | Bytes | Fields |
+|---|---|---|
+| `Tile` | 6 | `code` (u16), `dx`, `dy`, `pal` (u8, relative to the look's first palette), one pad byte |
+| `Frame` | 10 | `tiles` (pointer), `count`, `w` (u8, the box's width), `ax`, `ay` (s16, the feet from the box's top left) |
+| `Anim` | 8 | `frames` (pointer), `count`, `fps` (u16) |
+| `wm_look` | 28 | `idle`, `run`, `jump`, `knife`, `gun`, `bazooka` (pointers to `Anim`), `pal` (the first sprite palette), `npal`; then `npal` × 16 palette words |
+
+**Limits**, each with a Create ROM note when a hero does not fit (that player is then drawn as Willy): a picture is needed; a frame takes at most 32 tiles and 15 across (240 px); every zone needs its palette; the hero's palettes must fit one free run; the tiles must fit the room left. A shirt variant on a player who uses an own hero is noted too: every player using that hero wears its own colors.
 
 ## Rules (the Game tab)
 
@@ -117,7 +141,7 @@ The prototype's code, generalized: the same physics (gravity 6/16 px per frame²
 Create ROM lists these as notes under its result; none of them stops it.
 
 - Only the **first level** in play order goes into the ROM.
-- **Custom characters** are drawn as Willy, and every **enemy kind** as the Lag android: the engine carries the prototype's art. Converting a project's own sprite sheets in the browser (`@go-link/cps1` `convertCharacter`) is the next step.
+- Every **enemy kind** is drawn as the Lag android, and the civilians as the prototype's woman and child: the engine carries the prototype's art for them. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
 - **Bosses, camera locks and checkpoints** are left out; **water** plays as air; civilians trapped in crates start free; crates and pickups give only the bazooka and health.
 - The **mid layer** and extra tile layers are left out (the board has one far layer); each layer uses its tileset's first palette.
 - **Sound**: the Z80 program is the prototype's silent one.

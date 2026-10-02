@@ -801,9 +801,9 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Jogadores e botões**: de 1 até os 4 jogadores do layout.",
+            "**Jogadores e botões**: de 1 até os 4 jogadores do layout. Quantos jogam também fica sempre na barra de cima, ao lado do nome da fase.",
             "**Ações**: as entradas são fixadas pelo layout da placa (B1 pulo, B2 tiro, B3 ou B1 + B2 especial, dois toques para correr); os nomes são seus.",
-            "**Personagem de cada jogador**: o seu próprio herói ou o Willy (incluído), com as cores dele ou uma camiseta de recruta.",
+            "**Personagem de cada jogador**: o seu próprio herói (de **Personagens**) ou o Willy (incluído), com as cores dele ou uma camiseta de recruta. O modo jogo e a ROM desenham o seu herói com as próprias animações (parado, andar ou correr, pular, atirar) no tamanho em que você o salvou.",
             "**Seu controle**: o controle conectado acende ao apertar; atribua cada ação a um botão ou tecla, escolha o pad na tela para jogar, ou volte ao **Padrão do go-link**. Fica salvo neste navegador e as salas do go-link também o usam.",
             "**Placa (DIP switches)**: dificuldade, vidas, jogo livre e som na demo, salvos com o jogo. Na ROM, as vidas são os golpes que um jogador aguenta.",
             "**Regras**: quantos golpes um inimigo aguenta, os pontos por inimigo, por resgate e por caixa, se tocar num inimigo machuca, se os inimigos perseguem ou atiram, se a saída exige todos os inimigos derrotados (então o HUD conta os inimigos que faltam e a saída diz por que ainda não abre), o que um golpe faz (voltar perto da câmera, ou piscar no lugar pelo tempo que você escolher), como se sobe numa caixa de 32 px (pulando, como na maioria dos jogos de plataforma, ou andando contra ela) e o que o Start faz num controle sem jogador (\"em breve\" ou nada). O modo jogo e a ROM usam as mesmas regras; **Regras padrão** volta às de sempre.",

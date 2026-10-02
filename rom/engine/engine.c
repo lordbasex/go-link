@@ -55,6 +55,17 @@ static void wait_vblank(void)
 #define D_FAR ((const u16 *)D->far)
 #define D_PAL ((const u16 *)D->palettes)
 #define D_OBJ ((const struct wm_object *)D->objects)
+#define D_LOOKS ((const u32 *)D->looks)
+
+/* the built-in hero: the engine's own art (gfx.h), shirts from slots[] */
+static const struct wm_look willy_look = { &anim_willy_idle, &anim_willy_run, &anim_willy_jump, &anim_willy_knife, &anim_willy_machine_gun, &anim_willy_bazooka, 0, 0 };
+
+/* player slot k's own look (wm_look), or 0 for Willy */
+static const struct wm_look *own_look(int k)
+{
+	u32 a = D->looks ? D_LOOKS[k] : 0;
+	return a >= WM_DATA_ADDR && a < 2 * WM_DATA_ADDR ? (const struct wm_look *)a : 0;
+}
 
 static int cols, rows, level_w, level_h, nplayers;
 
@@ -304,6 +315,13 @@ static void video_init(void)
 	load_palette(PAL_SCROLL3 + 0, D_PAL + 16);
 	for (c = 0; c < OBJ_PALETTES; c++)
 		load_palette(PAL_OBJ + c, obj_palettes + c * 16);
+	/* the 4 player slots' own looks, over palettes no Willy shirt of the game or other art uses */
+	for (c = 0; c < 4; c++) {
+		const struct wm_look *l = own_look(c);
+		if (l)
+			for (r = 0; r < l->npal && l->pal + r < 32; r++)
+				load_palette(PAL_OBJ + l->pal + r, WM_LOOK_PALETTES(l) + r * 16);
+	}
 	/* text: pen 1 ink, pen 2 shadow */
 	PALETTE[(PAL_SCROLL1 + INK_ACCENT) * 16 + 1] = 0xffa3;
 	PALETTE[(PAL_SCROLL1 + INK_WHITE) * 16 + 1] = 0xfeee;
@@ -410,6 +428,7 @@ struct rocket {
 
 struct player {
 	int active, dead, pal;
+	const struct wm_look *look;
 	u16 pad, last;
 	s32 x, y, vy; /* x world px; y and vy in 1/16 px */
 	int flip, on_ground, climbing, drop_t, push_t;
@@ -806,7 +825,13 @@ static void game_reset(void)
 		damaged[i].hp = 0;
 	for (i = 0; i < MAX_PLAYERS; i++) {
 		memset(&pl[i], 0, sizeof pl[i]);
-		pl[i].pal = (int)D->slots[i] * RECRUIT_PAL_OFFSET;
+		pl[i].look = own_look(i);
+		if (pl[i].look)
+			pl[i].pal = pl[i].look->pal;
+		else {
+			pl[i].look = &willy_look;
+			pl[i].pal = (int)D->slots[i] * RECRUIT_PAL_OFFSET;
+		}
 	}
 	nen = D->n_enemies < MAX_ENEMIES ? D->n_enemies : MAX_ENEMIES;
 	for (i = 0; i < nen; i++, o++) {
@@ -1258,26 +1283,27 @@ static void draw_player(struct player *p)
 	int sx = (int)p->x - cam_x;
 	int sy = (int)(p->y >> 4) - cam_y;
 	int moving = (p->pad & (BTN_LEFT | BTN_RIGHT)) != 0;
+	const struct wm_look *l = p->look;
 	if (!p->active || (p->hurt & 4))
 		return;
 	if (p->climbing) {
 		int f = (p->pad & (BTN_UP | BTN_DOWN)) ? (int)(p->y >> 7) & 1 : 0;
-		draw_frame(&anim_willy_jump.frames[1], sx, sy, p->pal, f);
+		draw_frame(&l->jump->frames[1 % l->jump->count], sx, sy, p->pal, f);
 		return;
 	}
 	if (!p->on_ground) {
 		int i = p->vy < -60 ? 1 : p->vy < 0 ? 2 : p->vy < 60 ? 3 : 4;
-		draw_frame(&anim_willy_jump.frames[i % anim_willy_jump.count], sx, sy, p->pal, p->flip);
+		draw_frame(&l->jump->frames[i % l->jump->count], sx, sy, p->pal, p->flip);
 	} else if (p->knife_t)
-		draw_frame(&anim_willy_knife.frames[(KNIFE_FRAMES - p->knife_t) / 4 % anim_willy_knife.count], sx, sy, p->pal, p->flip);
+		draw_frame(&l->knife->frames[(KNIFE_FRAMES - p->knife_t) / 4 % l->knife->count], sx, sy, p->pal, p->flip);
 	else if (p->bazooka_t)
-		draw_anim(&anim_willy_bazooka, p->t, sx, sy, p->pal, p->flip);
+		draw_anim(l->bazooka, p->t, sx, sy, p->pal, p->flip);
 	else if (p->firing)
-		draw_anim(&anim_willy_machine_gun, p->t, sx, sy, p->pal, p->flip);
+		draw_anim(l->gun, p->t, sx, sy, p->pal, p->flip);
 	else if (moving)
-		draw_anim(&anim_willy_run, p->running ? p->t : p->t / 2, sx, sy, p->pal, p->flip);
+		draw_anim(l->run, p->running ? p->t : p->t / 2, sx, sy, p->pal, p->flip);
 	else
-		draw_anim(&anim_willy_idle, p->t, sx, sy, p->pal, p->flip);
+		draw_anim(l->idle, p->t, sx, sy, p->pal, p->flip);
 }
 
 static void draw_shots(struct player *p)

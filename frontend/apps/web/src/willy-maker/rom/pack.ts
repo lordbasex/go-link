@@ -16,6 +16,7 @@ import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
 import { BUILTIN_HERO } from "../model";
+import { LOOK_ANIMS, planLooks, type LookAnim, type LooksBudget } from "./looks";
 
 /** The engine as rom/tools/engine.mjs ships it (engine.json). */
 export interface EngineManifest {
@@ -24,6 +25,8 @@ export interface EngineManifest {
   dataAddr: number;
   program: { offset: number; size: number };
   sprites: { offset: number; size: number; code: number };
+  /** The sprite palettes the engine's own art takes: Willy's, then `recruits` shirts of `recruitOffset` each, up to `used`. */
+  spritePalettes?: { used: number; recruitOffset: number; recruits: number };
   z80: { offset: number; size: number };
   kabuki: string;
   sha256: string;
@@ -56,19 +59,21 @@ export interface PackResult {
   /** The data block (for tests and the record). */
   data: Uint8Array;
   notes: RomNote[];
-  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number };
+  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number };
 }
 
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 1;
-const HEADER = 0x70;
+const WM_VERSION = 2;
+const HEADER = 0x74;
 const FONT_BIG = 0x0080;
 const EMPTY16 = 0x0400;
 const EMPTY32 = 0x0200;
 const FAR_TILES = 0x0800;
 const PLAY_TILES = 0x4000;
+/** The players' own looks' tiles end where the far layer's 32 px tiles start in the graphics region. */
+const LOOK_TILES_END = (FAR_TILES * 512) / 128;
 const MAX_CELLS = 24576;
 const SCR = { title: 0, hud: 1, clear: 2, continue: 3, gameOver: 4, join: 5, ammo: 6, coin: 7 } as const;
 const TXT_BIG = 0x10;
@@ -217,14 +222,33 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
   return out;
 }
 
+/** The sprite palettes and tiles the players' own looks may use, after the engine's art. */
+export function looksBudget(manifest: EngineManifest, slots: readonly { character: string; variant: number }[], players: number): LooksBudget {
+  const sp = manifest.spritePalettes ?? { used: 25, recruitOffset: 4, recruits: 3 };
+  const palettes: [number, number][] = [];
+  // a recruit's shirt no active Willy wears leaves its palettes free
+  for (let k = 1; k <= sp.recruits; k++)
+    if (!slots.some((s, i) => i < players && s.character === BUILTIN_HERO && Math.max(0, Math.min(3, s.variant)) === k)) palettes.push([k * sp.recruitOffset, sp.recruitOffset]);
+  if (sp.used < 32) palettes.push([sp.used, 32 - sp.used]);
+  return { firstCode: manifest.sprites.code + Math.ceil(manifest.sprites.size / 128), endCode: LOOK_TILES_END, palettes };
+}
+
 /**
  * Packs a project into a slammast set with the engine. `pictures` gives the
- * decoded picture of a tileset (by id), or null when it is missing.
+ * decoded picture of a tileset (by id), or null when it is missing;
+ * `characterPictures` the saved picture of a character (by id).
  */
-export function packGame(project: Project, engine: Engine, pictures: (tilesetId: string) => Picture | null): PackResult {
+export function packGame(
+  project: Project,
+  engine: Engine,
+  pictures: (tilesetId: string) => Picture | null,
+  characterPictures: (characterId: string) => Picture | null = () => null,
+): PackResult {
   const notes: RomNote[] = [];
+  // a note about one hero is kept once per hero, any other once
+  const noteKey = (id: string, params?: Record<string, string | number>) => (params?.name !== undefined ? `${id}:${params.name}` : id);
   const note = (id: string, params?: Record<string, string | number>) => {
-    if (!notes.some((n) => n.id === id)) notes.push(params ? { id, params } : { id });
+    if (!notes.some((n) => noteKey(n.id, n.params) === noteKey(id, params))) notes.push(params ? { id, params } : { id });
   };
   const level = romLevel(project);
   if (!level) throw new Error("the game has no level");
@@ -361,17 +385,12 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   if (crates.length > 32) note("crates", { n: crates.length, max: 32 });
   if (new Set(objects.filter((o) => o.type === "enemy").map((o) => String(o.kind ?? ""))).size > 1 || objects.some((o) => o.type === "enemy" && o.kind !== "trooper")) note("enemyArt");
 
-  // each player's look: Willy, or a recruit's shirt
-  const slots = playerSlots(project)
-    .slice(0, 4)
-    .map((s) => {
-      if (s.character !== BUILTIN_HERO) {
-        note("characters");
-        return 0;
-      }
-      return Math.max(0, Math.min(3, s.variant));
-    });
+  // each player's look: Willy (or a recruit's shirt), or one of the game's own heroes
+  const players = Math.max(1, Math.min(4, project.settings.players));
+  const slotList = playerSlots(project).slice(0, 4);
+  const slots = slotList.map((s) => (s.character === BUILTIN_HERO ? Math.max(0, Math.min(3, s.variant)) : 0));
   while (slots.length < 4) slots.push(slots.length);
+  const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note);
 
   const rules = rulesWith(project.settings.rules);
   const dip = project.settings.dip;
@@ -433,6 +452,47 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   out.u8(0);
   out.align();
 
+  // the players' own looks: their Tile, Frame and Anim records (gfx.h's layout), each wm_look and its palettes, then looks[4]
+  let looksAt = 0;
+  if (looks.looks.length) {
+    const lookAt: number[] = [];
+    for (const look of looks.looks) {
+      const animAt = new Map<LookAnim, number>();
+      for (const anim of new Set(look.cut.values())) {
+        const tilesAt = anim.frames.map((f) => {
+          const at = out.addr;
+          for (const t of f.tiles) {
+            out.u16(t.code);
+            out.u8(t.dx);
+            out.u8(t.dy);
+            out.u8(t.pal);
+            out.u8(0);
+          }
+          return at;
+        });
+        const framesAt = out.addr;
+        anim.frames.forEach((f, i) => {
+          out.u32(tilesAt[i]!);
+          out.u8(f.tiles.length);
+          out.u8(f.w);
+          out.u16(f.ax & 0xffff);
+          out.u16(f.ay & 0xffff);
+        });
+        animAt.set(anim, out.addr);
+        out.u32(framesAt);
+        out.u16(anim.frames.length);
+        out.u16(anim.fps);
+      }
+      lookAt.push(out.addr);
+      for (const id of LOOK_ANIMS) out.u32(animAt.get(look.cut.get(look.anims[id])!)!);
+      out.u16(look.pal);
+      out.u16(look.palettes.length);
+      for (const pal of look.palettes) for (const w of pal) out.u16(w);
+    }
+    looksAt = out.addr;
+    for (const k of looks.slots) out.u32(k >= 0 ? lookAt[k]! : 0);
+  }
+
   // the header (wm_data)
   let h = 0;
   const w16 = (v: number) => {
@@ -481,6 +541,7 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
   w16(rules.rescueScore);
   w16(rules.crateScore);
   w32(titleAt);
+  w32(looksAt);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);
@@ -515,6 +576,8 @@ export function packGame(project: Project, engine: Engine, pictures: (tilesetId:
       crates: crates.length,
       pickups: pickups.length,
       dataBytes: data.length,
+      looks: looks.looks.length,
+      lookTiles: looks.tiles,
     },
   };
 }

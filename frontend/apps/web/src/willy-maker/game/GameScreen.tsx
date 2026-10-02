@@ -115,18 +115,21 @@ export function GameScreen({ store, project, issues, onGo }: GameScreenProps) {
                     </option>
                   ))}
                 </select>
-                <select
-                  className="wm-input is-sm"
-                  aria-label={fill(t.characters.shirt, { n: i + 1 })}
-                  value={slot.variant}
-                  onChange={(e) => setPlayerSlot(store, i, { ...slot, variant: Number(e.target.value) }, t.undo.character)}
-                >
-                  {SHIRTS.map((k, v) => (
-                    <option key={k} value={v}>
-                      {t.characters.shirts[k]}
-                    </option>
-                  ))}
-                </select>
+                {/* shirts recolor the built-in Willy only: an own hero keeps its colors */}
+                {slot.character === BUILTIN_HERO && (
+                  <select
+                    className="wm-input is-sm"
+                    aria-label={fill(t.characters.shirt, { n: i + 1 })}
+                    value={slot.variant}
+                    onChange={(e) => setPlayerSlot(store, i, { ...slot, variant: Number(e.target.value) }, t.undo.character)}
+                  >
+                    {SHIRTS.map((k, v) => (
+                      <option key={k} value={v}>
+                        {t.characters.shirts[k]}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {!active && <span className="wm-dim wm-small">{t.characters.inactive}</span>}
               </li>
             );

@@ -13,10 +13,11 @@
 #define GOLINK_WMDATA_H
 
 #include "hw.h"
+#include "gfx.h" /* Tile, Frame, Anim: the engine's sprite records, also the looks' */
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 1
+#define WM_VERSION 2
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -89,12 +90,30 @@ struct wm_data {
 	s16 start_y[4];           /* 40 */
 	s16 exit_x, exit_y;       /* 48, 4a */
 	s16 exit_w, exit_h;       /* 4c, 4e exit_w 0 = no exit */
-	u16 slots[4];             /* 50 each player's look: 0 Willy, 1-3 a recruit's shirt */
+	u16 slots[4];             /* 50 Willy's shirt per player (looks[i] 0): 0 his own, 1-3 a recruit's */
 	u16 bg_color;             /* 58 the color behind every layer */
 	u16 backtrack;            /* 5a px the camera may go back */
 	struct wm_rules rules;    /* 5c */
 	u32 title;                /* 6c the game's title (zero-terminated), for the record */
+	u32 looks;                /* 70 u32[4], one per player slot: 0 = Willy with slots[i]'s shirt, else a wm_look */
 };
+
+/*
+ * A player's own look (a Willy Maker hero drawn in the browser): its six
+ * animations, in the engine's own records (Tile, Frame, Anim from gfx.h,
+ * written by the packer in exactly this layout), and its palettes. A tile's
+ * pal is relative: the engine adds `pal`, the first sprite palette the look's
+ * `npal` palettes are loaded into at startup; their words (npal x 16) follow
+ * the struct. Climbing uses a jump frame, as Willy does.
+ */
+struct wm_look {
+	const Anim *idle, *run, *jump; /* 00, 04, 08 */
+	const Anim *knife, *gun;       /* 0c, 10 */
+	const Anim *bazooka;           /* 14 */
+	u16 pal;                       /* 18 the first sprite palette (0-31) */
+	u16 npal;                      /* 1a palettes that follow the struct */
+};
+#define WM_LOOK_PALETTES(l) ((const u16 *)((l) + 1))
 
 #define WM_OFF(f) __builtin_offsetof(struct wm_data, f)
 _Static_assert(sizeof(struct wm_object) == 12, "wm_object");
@@ -102,6 +121,12 @@ _Static_assert(sizeof(struct wm_rules) == 16, "wm_rules");
 _Static_assert(WM_OFF(tags) == 0x18 && WM_OFF(objects) == 0x28 && WM_OFF(n_enemies) == 0x30, "wm_data head");
 _Static_assert(WM_OFF(start_x) == 0x38 && WM_OFF(exit_x) == 0x48 && WM_OFF(slots) == 0x50, "wm_data body");
 _Static_assert(WM_OFF(bg_color) == 0x58 && WM_OFF(rules) == 0x5c && WM_OFF(title) == 0x6c, "wm_data tail");
-_Static_assert(sizeof(struct wm_data) == 0x70, "wm_data size");
+_Static_assert(WM_OFF(looks) == 0x70, "wm_data looks");
+_Static_assert(sizeof(struct wm_data) == 0x74, "wm_data size");
+/* the records the packer writes for a look: 68000 alignment (2), big-endian */
+_Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
+_Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");
+_Static_assert(sizeof(Anim) == 8 && __builtin_offsetof(Anim, count) == 4 && __builtin_offsetof(Anim, fps) == 6, "Anim");
+_Static_assert(sizeof(struct wm_look) == 28 && __builtin_offsetof(struct wm_look, pal) == 0x18, "wm_look");
 
 #endif

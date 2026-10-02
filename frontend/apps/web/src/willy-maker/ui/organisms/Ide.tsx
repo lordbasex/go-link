@@ -6,7 +6,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCore } from "../../i18n";
-import { cloneProject, findLevel, type LevelObject, type Project, type ValidationIssue } from "../../model";
+import { BUILTIN_HERO, cloneProject, findLevel, type LevelObject, type Project, type ValidationIssue } from "../../model";
 import type { LevelView } from "../../engine";
 import { layoutOf } from "../../board/cps1";
 import { EditorStore } from "../../editor/store";
@@ -17,7 +17,7 @@ import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
 import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
-import { playerSlots, runTapMs } from "../../game/settings";
+import { playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { issueText, useGameText, useMenusText } from "../../game/texts";
 import { autosaver, saveProject } from "../../io/storage";
 import { useProjectImages } from "../useTileImages";
@@ -304,6 +304,16 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
         <Logo />
         <span className="wm-chip wm-mono wm-level-chip">{t.ide.levelChip(levelIndex + 1, level.name)}</span>
         <span className="wm-chip is-voice wm-hide-sm">{t.ide.boardChip(layout.id, layout.players, layout.buttons)}</span>
+        <label className="wm-chip wm-players-chip" title={t.ide.playersTip(layout.players)}>
+          <span className="wm-hide-sm">{t.ide.players}</span>
+          <select className="wm-input is-sm" aria-label={t.ide.players} value={p.settings.players} onChange={(e) => setPlayers(store, Number(e.target.value), layout.players, t.ide.players)}>
+            {Array.from({ length: layout.players }, (_, i) => (
+              <option key={i} value={i + 1}>
+                {t.ide.playersN(i + 1)}
+              </option>
+            ))}
+          </select>
+        </label>
         <span className="wm-chip wm-hide-sm" title={t.ide.genre}>
           {t.genres[p.genre]?.name ?? t.genres["platform-shooter"].name}
         </span>
@@ -515,6 +525,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               runTapMs={runTapMs(p)}
               combo={layout.buttons < 3}
               variants={playerSlots(p).map((s) => s.variant)}
+              heroes={playerSlots(p).map((s) => (s.character === BUILTIN_HERO ? null : (p.characters.find((c) => c.id === s.character) ?? null)))}
               texts={{
                 start: menuText(p, "hud", "join"),
                 ammo: menuText(p, "hud", "ammo"),

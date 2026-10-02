@@ -5,7 +5,7 @@ import { WillyMakerApp } from "..";
 import { coreEn } from "../i18n/core.en";
 import { coreEs } from "../i18n/core.es";
 import { corePt } from "../i18n/core.pt";
-import { listProjects, saveProject } from "../io/storage";
+import { listProjects, loadProject, saveProject } from "../io/storage";
 import { newProject } from "../model";
 
 function shape(v: unknown): unknown {
@@ -50,6 +50,12 @@ describe("Willy Maker app", () => {
     expect(await screen.findByRole("button", { name: "Build" })).toBeInTheDocument();
     expect(screen.getByTitle("Play the level (P)")).toBeInTheDocument();
     expect(screen.getByTitle("Genre")).toHaveTextContent("Platform shooter");
+    // how many play is in the top bar, and changes the game (T-23)
+    const players = screen.getByRole("combobox", { name: "Players" }) as HTMLSelectElement;
+    expect(players.value).toBe("2");
+    expect([...players.options].map((o) => o.textContent)).toEqual(["1 player", "2 players", "3 players", "4 players"]);
+    fireEvent.change(players, { target: { value: "1" } });
+    await waitFor(() => expect(loadProject(saved.id)?.settings.players).toBe(1));
   });
 
   it("lists saved games and opens one in Spanish", async () => {

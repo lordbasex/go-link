@@ -9,6 +9,7 @@ import { playEn } from "../i18n/play.en";
 import { playEs } from "../i18n/play.es";
 import { playPt } from "../i18n/play.pt";
 import { PlayControls, PlayView, applyEdit, planPiece, toInput } from "./index";
+import { characterSheet, heroAnim, type Sheet } from "./sprites";
 
 function shape(v: unknown): unknown {
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shape(x)]));
@@ -105,5 +106,26 @@ describe("Willy Maker play mode", () => {
     await act(async () => {
       await Promise.resolve();
     });
+  });
+});
+
+describe("own heroes in play mode (T-24)", () => {
+  const sheet = (anims: string[]): Sheet => ({
+    image: {} as CanvasImageSource,
+    frames: { a: { x: 0, y: 0, w: 32, h: 48, px: 16, py: 46 } },
+    anims: Object.fromEntries(anims.map((n) => [n, { frames: ["a"], fps: 8, loop: true }])),
+  });
+
+  it("uses the hero's own names for a move, and idle when it has none", () => {
+    expect(heroAnim(sheet(["idle", "walk"]), "run")).toBe("walk");
+    expect(heroAnim(sheet(["idle", "run", "walk"]), "run")).toBe("run");
+    expect(heroAnim(sheet(["idle", "fire"]), "machine_gun")).toBe("fire");
+    expect(heroAnim(sheet(["idle", "fire"]), "bazooka")).toBe("fire");
+    expect(heroAnim(sheet(["idle"]), "jump")).toBe("idle");
+  });
+
+  it("gives no sheet for a character without a picture or frames", async () => {
+    const ch = { id: "c1", name: "Ana", role: "hero", height: 44, sheet: null, frames: [], anims: {}, swapColors: [] } as const;
+    expect(await characterSheet({ ...ch, frames: [], anims: {}, swapColors: [] }, async () => null)).toBeNull();
   });
 });

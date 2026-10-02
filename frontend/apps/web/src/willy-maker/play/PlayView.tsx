@@ -15,7 +15,9 @@ import { playEs } from "../i18n/play.es";
 import { playPt } from "../i18n/play.pt";
 import { loadTouchPref, PlayControls, type Seat, type TouchPref } from "./input";
 import { DEFAULT_COLORS, drawGame, type Ghost, type OverlayColors, type Overlays } from "./renderer";
-import { loadPlaySprites, type PlaySprites } from "./sprites";
+import { characterSheet, loadPlaySprites, type PlaySprites, type Sheet } from "./sprites";
+import { assetUrl } from "../io/assets";
+import type { Character } from "../model";
 import { IconBack, IconDots, IconPause, IconPencil, IconPlay } from "../ui/icons";
 import { StatusBadge } from "../ui/molecules";
 import { partSupport } from "../editor/support";
@@ -48,6 +50,8 @@ export interface PlayViewProps {
   texts?: Partial<PlayMessages["hud"]> & { overLine?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's). */
   variants?: number[];
+  /** Each player's own hero (the Game tab's character); null or missing = the built-in Willy. */
+  heroes?: (Character | null)[];
   /** The on-screen pad: on touch screens ("auto"), always or never; this browser's choice by default. */
   touchPad?: TouchPref;
   /** Where the character sheets are served (the built-in ones by default). */
@@ -89,7 +93,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, runTapMs, combo = false, texts, variants, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, runTapMs, combo = false, texts, variants, heroes, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,17 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
   if (!game.current) game.current = make();
 
   const [sprites, setSprites] = useState<PlaySprites | null>(null);
+  const [ownHeroes, setOwnHeroes] = useState<(Sheet | null)[]>([]);
+  // the own heroes' sheets, loaded again only when a player's character or its picture changes
+  const heroKey = (heroes ?? []).map((c) => (c ? `${c.id}:${c.sheet ?? ""}:${c.frames.length}` : "")).join("|");
+  useEffect(() => {
+    let live = true;
+    Promise.all((heroes ?? []).map((c) => (c ? characterSheet(c, assetUrl).catch(() => null) : Promise.resolve(null)))).then((s) => live && setOwnHeroes(s));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroKey]);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -171,8 +186,8 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
 
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
-  const state = useRef({ paused, slow, overlays, ghost, scale, sprites, words, variants });
-  state.current = { paused, slow, overlays, ghost, scale, sprites, words, variants };
+  const state = useRef({ paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes });
+  state.current = { paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -215,7 +230,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
           canvas.width = w;
           canvas.height = h;
         }
-        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants });
+        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes });
       }
       if (++ui % 6 === 0) {
         setSnap(g.snapshot());

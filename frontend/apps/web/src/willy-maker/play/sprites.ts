@@ -1,9 +1,12 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
-// The built-in characters play mode draws until a project brings its own:
-// Willy (players 2-4 in other shirts), the Glitch-9 android and the
-// civilians, from the site's character atlases (public/destroy). A sheet
-// that fails to load leaves its characters drawn as boxes.
+// The characters play mode draws: the built-in ones (Willy, players 2-4 in
+// other shirts, the Glitch-9 android and the civilians, from the site's
+// character atlases in public/destroy) and a project's own heroes, from the
+// picture Characters saved (characterSheet). A sheet that fails to load
+// leaves its characters drawn as boxes.
+
+import type { Character } from "../model";
 
 export interface FrameBox {
   x: number;
@@ -55,6 +58,37 @@ export async function loadPlaySprites(base: string): Promise<PlaySprites> {
   const [hero, enemy, civilians] = await Promise.all(["player", "robot", "npcs"].map((n) => loadSheet(base, n).catch(() => null)));
   const heroes = hero ? PLAYER_SHIFTS.map((s) => (s ? recolor(hero, s) : hero)) : [];
   return { heroes, enemy: enemy ?? null, civilians: civilians ?? null };
+}
+
+/**
+ * A project's own character as a sheet: its saved picture (frames packed
+ * 1:1 at board scale), its frames by id and its animations. Null when the
+ * picture cannot be loaded or there are no frames.
+ */
+export async function characterSheet(ch: Character, url: (ref: string) => Promise<string | null>): Promise<Sheet | null> {
+  if (!ch.sheet || !ch.frames.length) return null;
+  const src = await url(ch.sheet);
+  if (!src || typeof Image === "undefined") return null;
+  const image = new Image();
+  image.src = src;
+  await image.decode();
+  const frames: Record<string, FrameBox> = {};
+  for (const f of ch.frames) frames[f.id] = { x: f.x, y: f.y, w: f.w, h: f.h, px: f.px, py: f.py };
+  const anims: Record<string, AnimDef> = {};
+  for (const [name, a] of Object.entries(ch.anims ?? {})) anims[name] = { frames: a.frames.filter((id) => frames[id]), fps: a.fps, loop: a.loop };
+  return { image, frames, anims };
+}
+
+/** The animation a hero sheet has for a move play mode asks for: an own character may name it differently or not have it. */
+export function heroAnim(sheet: Sheet, anim: string): string {
+  const options: Record<string, string[]> = {
+    run: ["run", "walk"],
+    machine_gun: ["machine_gun", "fire", "shoot"],
+    knife: ["knife", "melee", "fire"],
+    bazooka: ["bazooka", "fire"],
+    jump: ["jump"],
+  };
+  return (options[anim] ?? [anim]).find((n) => sheet.anims[n]?.frames.length) ?? "idle";
 }
 
 /**
