@@ -47,7 +47,7 @@ A project picks its board when it is created. Every limit, meter, check and conv
 
 ### Phase 2: "Create ROM" in the browser
 
-**Built (2026-10-01), in [experiment 1, case C](../experiments/README.md):** the engine, the packer and the Create ROM card, described in [engine.md](engine.md). The level of Game Spec v1 made with it in a recorded browser session passes validation levels 3 and 4, the scripted clear and the same-picture test on the real core. What it leaves out for now is listed in [engine.md](engine.md#what-the-rom-leaves-out-for-now).
+**Built (2026-10-01), in [experiment 1, case C](../experiments/README.md):** the engine, the packer and the Create ROM card, described in [engine.md](engine.md). The level of Game Spec v1 made with it in a recorded browser session passes validation levels 3 and 4, the scripted clear and the same-picture test on the real core. What it leaves out for now is listed in [engine.md](engine.md#what-the-rom-leaves-out-for-now). [Experiment 1's verdict](../experiments/verdict.md) chose this way over a ROM written by hand or by an AI from the AI pack, and turned what the hand-made ROM did better into Willy Maker's next tasks.
 
 The prototype's 68000 program is turned into a **data-driven engine**: levels, characters, menus and settings become data that the engine reads. Building a game is then **packing**, not compiling:
 
