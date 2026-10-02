@@ -128,7 +128,7 @@ export const CPS1: BoardProfile = {
     return (size * size) / 2;
   },
   meters(project) {
-    const count = (g: string) => project.palettes.filter((p) => p.group === g).length;
+    const count = (g: string) => (g === "play" || g === "far" ? layerPaletteCount(project, g) : project.palettes.filter((p) => p.group === g).length);
     const maxColors = project.palettes.reduce((m, p) => Math.max(m, p.colors.length), 0);
     // Graphics: every tile of every tileset, plus every character frame in 16 × 16 tiles.
     let bytes = ENGINE_USE.sprites + ENGINE_USE.font;
@@ -168,6 +168,25 @@ export const CPS1: BoardProfile = {
     return meters;
   },
 };
+
+/**
+ * The play or far layer's palettes the board loads: the most any level uses
+ * (the palettes of the tilesets its layers of that kind draw with). Each level
+ * loads its own, so two levels with their own pictures do not add up.
+ */
+export function layerPaletteCount(project: Project, group: "play" | "far"): number {
+  let most = 0;
+  for (const lv of project.levels) {
+    const ids = new Set<string>();
+    for (const l of lv.layers) {
+      if (l.kind !== "tiles" || !l.tileset) continue;
+      const ts = project.tilesets.find((t) => t.id === l.tileset);
+      for (const pid of ts?.palettes ?? []) if (project.palettes.find((x) => x.id === pid)?.group === group) ids.add(pid);
+    }
+    most = Math.max(most, ids.size);
+  }
+  return most;
+}
 
 /** The board profile of a project (only CPS-1 for now). */
 export function boardOf(_project?: Project): BoardProfile {

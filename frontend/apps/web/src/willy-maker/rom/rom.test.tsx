@@ -11,7 +11,7 @@ import { bigGlyph, packGame, romSymbols, WM_DATA_ADDR, type Engine, type Picture
 import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
-import type { Project } from "../model";
+import { layerGrid, type Project, type TileLayer } from "../model";
 
 // Create ROM end to end with the committed engine (public/willy-maker/engine,
 // rom/tools/engine.mjs): Game Spec v1's level packed, zipped and powered on
@@ -45,9 +45,15 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(2);
-    expect(u16(d, 6)).toBe(0x74);
+    expect(u16(d, 4)).toBe(3);
+    expect(u16(d, 6)).toBe(0x84);
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
+    // one palette per layer (the starter tilesets have one), every used tile on it
+    expect([u16(d, 0x74), u16(d, 0x76)]).toEqual([1, 1]);
+    const playTable = u32(d, 0x78) - WM_DATA_ADDR;
+    expect(u16(d, 0x80)).toBeGreaterThan(0);
+    expect([...d.subarray(playTable, playTable + u16(d, 0x80))].every((k) => k === 0)).toBe(true);
+    expect(u32(d, 0x7c) - WM_DATA_ADDR).toBe(playTable + u16(d, 0x80));
     expect(u16(d, 8)).toBe(2); // players
     expect([u16(d, 0x0c), u16(d, 0x0e), u16(d, 0x10), u16(d, 0x12)]).toEqual([SPEC.w, SPEC.h, 96, 28]);
     expect([u16(d, 0x30), u16(d, 0x32), u16(d, 0x34)]).toEqual([3, 2, 3]);
@@ -108,6 +114,133 @@ describe("Create ROM", () => {
       writeFileSync(resolve(out, "slammast.zip"), zip);
       writeFileSync(resolve(out, "slammast.symbols.json"), romSymbols(engine));
       writeFileSync(resolve(out, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    expect(result.ok).toBe(true);
+  }, 30000);
+});
+
+/**
+ * Game Spec v1 with its play tileset over three palettes (T-28): the city
+ * palette, and the same colors with their channels turned (g, b, r) and
+ * (b, r, g). The used tiles go round the three in tile order, and each is
+ * recolored in the picture to its palette, so its pens stay the city's.
+ */
+function threePaletteProject(city: Picture): { project: Project; picture: Picture; palettes: string[][]; slotOf: Map<number, number> } {
+  const p = specProject();
+  const ts = p.tilesets.find((t) => t.id === CITY_TILESET.id)!;
+  const base = p.palettes.find((x) => x.id === ts.palettes[0])!;
+  const turn = (hex: string, k: number) => {
+    const ch = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)];
+    return "#" + [0, 1, 2].map((i) => ch[(i + k) % 3]).join("");
+  };
+  const palettes = [0, 1, 2].map((k) => base.colors.map((c) => turn(c.toLowerCase(), k)));
+  p.palettes.push({ id: "pal-city-gbr", group: base.group, colors: palettes[1]! }, { id: "pal-city-brg", group: base.group, colors: palettes[2]! });
+  ts.palettes = [base.id, "pal-city-gbr", "pal-city-brg"];
+  const play = p.levels[0]!.layers.find((l) => l.kind === "tiles" && l.id === "play") as TileLayer;
+  const used = [...new Set(layerGrid(p.levels[0]!, play).cells.filter((n) => n))].sort((a, b) => a - b);
+  const slotOf = new Map(used.map((n, i) => [n, i % 3]));
+  ts.tilePalettes = Array.from({ length: Math.max(...used) }, (_, i) => slotOf.get(i + 1) ?? 0);
+  const rgba = new Uint8Array(city.rgba);
+  const hex = (o: number) => "#" + [0, 1, 2].map((k) => rgba[o + k]!.toString(16).padStart(2, "0")).join("");
+  for (const [n, k] of slotOf) {
+    if (!k) continue;
+    const tx = ((n - 1) % CITY_TILESET.columns) * 16;
+    const ty = Math.floor((n - 1) / CITY_TILESET.columns) * 16;
+    for (let y = 0; y < 16; y++)
+      for (let x = 0; x < 16; x++) {
+        const o = ((ty + y) * city.w + tx + x) * 4;
+        if (rgba[o + 3]! < 128) continue;
+        const to = turn(hex(o), k);
+        for (let c = 0; c < 3; c++) rgba[o + c] = parseInt(to.slice(1 + c * 2, 3 + c * 2), 16);
+      }
+  }
+  return { project: p, picture: { w: city.w, h: city.h, rgba }, palettes, slotOf };
+}
+
+describe("Create ROM with a background over many palettes", () => {
+  it("loads each palette a layer's tiles use and cuts every tile with its own", () => {
+    const { project, picture, palettes, slotOf } = threePaletteProject(pictures.get(CITY_TILESET.id)!);
+    const pics = (id: string) => (id === CITY_TILESET.id ? picture : (pictures.get(id) ?? null));
+    const r = packGame(project, engine, pics);
+    expect(r.notes).toEqual([]);
+    expect([r.stats.playPalettes, r.stats.farPalettes]).toEqual([3, 1]);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    expect([u16(d, 0x74), u16(d, 0x76)]).toEqual([3, 1]);
+    // the palettes: the play layer's three, then the far layer's
+    const pal = u32(d, 0x24) - WM_DATA_ADDR;
+    const word = (hex: string) => toCps1([parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]).word;
+    palettes.forEach((colors, k) => colors.forEach((c, i) => expect(u16(d, pal + (k * 16 + i) * 2), `palette ${k} color ${i}`).toBe(word(c))));
+    expect(u16(d, pal + (3 * 16) * 2)).not.toBe(u16(d, pal)); // the far layer's sky comes after them
+    // the table: the palette of each play tile code, from 0x4000
+    const table = u32(d, 0x78) - WM_DATA_ADDR;
+    expect(u16(d, 0x80)).toBe(Math.max(...slotOf.keys()));
+    for (const [n, k] of slotOf) expect(d[table + n - 1], `tile ${n}`).toBe(k);
+    expect(new Set(slotOf.values())).toEqual(new Set([0, 1, 2]));
+    // each tile's pens: its pixels' index in its own palette
+    const gfx = joinGfx(SLAMMAST, r.files);
+    const want = new GfxRegion(SLAMMAST.gfxSize);
+    for (const [n, k] of slotOf) {
+      const code = 0x4000 + n - 1;
+      const tx = ((n - 1) % CITY_TILESET.columns) * 16;
+      const ty = Math.floor((n - 1) / CITY_TILESET.columns) * 16;
+      want.tile16(
+        code,
+        Array.from({ length: 16 }, (_, y) =>
+          Array.from({ length: 16 }, (_, x) => {
+            const o = ((ty + y) * picture.w + tx + x) * 4;
+            if (picture.rgba[o + 3]! < 128) return 15;
+            const hexc = "#" + [0, 1, 2].map((c) => picture.rgba[o + c]!.toString(16).padStart(2, "0")).join("");
+            const i = palettes[k]!.indexOf(hexc);
+            expect(i, `tile ${n} pixel ${x},${y} ${hexc}`).toBeGreaterThanOrEqual(0);
+            return i;
+          }),
+        ),
+      );
+      expect(gfx.subarray(code * 128, code * 128 + 128), `tile ${n}`).toEqual(want.data.subarray(code * 128, code * 128 + 128));
+    }
+  });
+
+  it("keeps a layer to the board's 32 palettes, the rest on the closest", () => {
+    const { project, picture } = threePaletteProject(pictures.get(CITY_TILESET.id)!);
+    const ts = project.tilesets.find((t) => t.id === CITY_TILESET.id)!;
+    const play = project.levels[0]!.layers.find((l) => l.kind === "tiles" && l.id === "play") as TileLayer;
+    const used = [...new Set(layerGrid(project.levels[0]!, play).cells.filter((n) => n))].sort((a, b) => a - b);
+    // 40 palettes, each used tile on its own (the spec level uses fewer tiles: palettes past them are not loaded)
+    const base = project.palettes.find((x) => x.id === ts.palettes[0])!;
+    ts.palettes = Array.from({ length: 40 }, (_, i) => (i ? `pal-x${i}` : base.id));
+    for (let i = 1; i < 40; i++) project.palettes.push({ id: `pal-x${i}`, group: base.group, colors: [...base.colors] });
+    ts.tilePalettes = Array.from({ length: 64 }, (_, i) => i % 40);
+    for (const n of used) ts.tilePalettes[n - 1] = 0;
+    // 34 tiles of the level on palettes 1-34
+    const grid = layerGrid(project.levels[0]!, play);
+    for (let i = 0; i < 34; i++) {
+      ts.tilePalettes[30 + i] = i + 1;
+      grid.set(i, 0, 31 + i);
+    }
+    grid.commit();
+    const wide = { w: picture.w, h: 16 * 8, rgba: new Uint8Array(picture.w * 16 * 8 * 4) };
+    wide.rgba.set(picture.rgba);
+    const r = packGame(project, engine, (id) => (id === CITY_TILESET.id ? wide : (pictures.get(id) ?? null)));
+    expect(r.notes).toContainEqual({ id: "layerPalettes", params: { layer: "play", n: 35, max: 32 } });
+    expect(r.stats.playPalettes).toBe(32);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    expect(u16(d, 0x74)).toBe(32);
+    const table = u32(d, 0x78) - WM_DATA_ADDR;
+    for (let i = 0; i < 34; i++) expect(d[table + 30 + i]).toBeLessThan(32);
+  });
+
+  it("powers on in the board model (validation level 3)", async () => {
+    const { project, picture } = threePaletteProject(pictures.get(CITY_TILESET.id)!);
+    const r = packGame(project, engine, (id) => (id === CITY_TILESET.id ? picture : (pictures.get(id) ?? null)));
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "palettes");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
     }
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);

@@ -9,7 +9,7 @@
 // Messages live in the module's i18n (i18n/export.*.ts), keyed by `msg`.
 
 import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
-import { boardOf, ENGINE_USE, isBoardColor, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
+import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { leftBehind, reachability, routes } from "../reach";
 import { rulesWith } from "../../engine/rules";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
@@ -337,7 +337,7 @@ function graphicsChecks(p: Project, board: BoardProfile): Check[] {
     ["far", board.palettes.far],
   ];
   for (const [g, max] of groups) {
-    const n = p.palettes.filter((x) => x.group === g).length;
+    const n = g === "sprite" ? p.palettes.filter((x) => x.group === g).length : layerPaletteCount(p, g as "play" | "far");
     // the engine's own characters already take sprite palettes (board/cps1.ts ENGINE_USE)
     const total = g === "sprite" ? n + ENGINE_USE.spritePalettes : n;
     const target: Target = g === "sprite" ? { tab: "characters" } : { tab: "build", level: p.levels[0]?.id ?? "" };

@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 2
+#define WM_VERSION 3
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -81,7 +81,7 @@ struct wm_data {
 	u32 tags;                 /* 18 u8[cols * rows] */
 	u32 play;                 /* 1c u16 tile codes [cols * rows] */
 	u32 far;                  /* 20 u16 tile codes [far_cols * far_rows] */
-	u32 palettes;             /* 24 u16[32]: the play layer's palette, then the far layer's */
+	u32 palettes;             /* 24 u16[16 x (n_play_pals + n_far_pals)]: the play layer's palettes, then the far layer's */
 	u32 objects;              /* 28 wm_object[]: enemies, civilians, crates, pickups */
 	u32 texts;                /* 2c text lines */
 	u16 n_enemies, n_civs;    /* 30, 32 */
@@ -96,7 +96,14 @@ struct wm_data {
 	struct wm_rules rules;    /* 5c */
 	u32 title;                /* 6c the game's title (zero-terminated), for the record */
 	u32 looks;                /* 70 u32[4], one per player slot: 0 = Willy with slots[i]'s shirt, else a wm_look */
+	u16 n_play_pals;          /* 74 palettes loaded into the scroll2 bank (1-32) */
+	u16 n_far_pals;           /* 76 palettes loaded into the scroll3 bank (1-32) */
+	u32 play_pal;             /* 78 u8[n_play_codes]: the palette of play tile code WM_PLAY_TILES + i */
+	u32 far_pal;              /* 7c u8[n_far_codes]: the palette of far tile code WM_FAR_TILES + i */
+	u16 n_play_codes;         /* 80 codes past the table use palette 0 (the empty tile, the exit door) */
+	u16 n_far_codes;          /* 82 */
 };
+#define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
 /*
  * A player's own look (a Willy Maker hero drawn in the browser): its six
@@ -121,8 +128,9 @@ _Static_assert(sizeof(struct wm_rules) == 16, "wm_rules");
 _Static_assert(WM_OFF(tags) == 0x18 && WM_OFF(objects) == 0x28 && WM_OFF(n_enemies) == 0x30, "wm_data head");
 _Static_assert(WM_OFF(start_x) == 0x38 && WM_OFF(exit_x) == 0x48 && WM_OFF(slots) == 0x50, "wm_data body");
 _Static_assert(WM_OFF(bg_color) == 0x58 && WM_OFF(rules) == 0x5c && WM_OFF(title) == 0x6c, "wm_data tail");
-_Static_assert(WM_OFF(looks) == 0x70, "wm_data looks");
-_Static_assert(sizeof(struct wm_data) == 0x74, "wm_data size");
+_Static_assert(WM_OFF(looks) == 0x70 && WM_OFF(n_play_pals) == 0x74 && WM_OFF(play_pal) == 0x78, "wm_data looks, palettes");
+_Static_assert(WM_OFF(far_pal) == 0x7c && WM_OFF(n_play_codes) == 0x80 && WM_OFF(n_far_codes) == 0x82, "wm_data tile palettes");
+_Static_assert(sizeof(struct wm_data) == 0x84, "wm_data size");
 /* the records the packer writes for a look: 68000 alignment (2), big-endian */
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");

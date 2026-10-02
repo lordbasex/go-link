@@ -97,6 +97,35 @@ export interface DrawOptions {
   variants?: number[];
   /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
   ownHeroes?: (Sheet | null)[];
+  /** The level's own art (T-28): its far and play tile layers, drawn as the board does (the far one at half speed). */
+  art?: ArtLayer[];
+}
+
+/** A tile layer play mode draws: its cells and its tileset picture. */
+export interface ArtLayer {
+  layer: "far" | "play";
+  tile: number;
+  cols: number;
+  rows: number;
+  cells: ArrayLike<number>;
+  image: CanvasImageSource;
+  columns: number;
+}
+
+/** Draws a tile layer's visible cells, the layer scrolled to (ox, oy); `skip` leaves a cell out. */
+function drawArt(ctx: CanvasRenderingContext2D, a: ArtLayer, ox: number, oy: number, skip?: (c: number, r: number) => boolean): void {
+  const c0 = Math.max(0, Math.floor(ox / a.tile));
+  const c1 = Math.min(a.cols - 1, Math.floor((ox + SCREEN_W) / a.tile));
+  const r0 = Math.max(0, Math.floor(oy / a.tile));
+  const r1 = Math.min(a.rows - 1, Math.floor((oy + SCREEN_H) / a.tile));
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++) {
+      const n = a.cells[r * a.cols + c] ?? 0;
+      if (!n || skip?.(c, r)) continue;
+      const sx = ((n - 1) % a.columns) * a.tile;
+      const sy = Math.floor((n - 1) / a.columns) * a.tile;
+      ctx.drawImage(a.image, sx, sy, a.tile, a.tile, c * a.tile - ox, r * a.tile - oy, a.tile, a.tile);
+    }
 }
 
 export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, o: DrawOptions): void {
@@ -107,11 +136,25 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   const cx = game.camX;
   const cy = game.camY;
 
-  drawBackdrop(ctx, game);
+  const far = o.art?.find((a) => a.layer === "far");
+  const play = o.art?.find((a) => a.layer === "play");
+  if (far) {
+    ctx.fillStyle = ART.skyTop;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    drawArt(ctx, far, Math.trunc(cx / 2), Math.trunc(cy / 2));
+  } else drawBackdrop(ctx, game);
+  if (play) {
+    // a crate or breakable wall shot away takes its art with it, as on the board
+    const gone = (c: number, r: number) => {
+      const was = Number(game.level.tags[r * game.cols + c] ?? 0);
+      return (was === Tag.Crate || was === Tag.Breakable) && game.cell(c, r) === Tag.Air;
+    };
+    drawArt(ctx, play, cx, cy, gone);
+  }
   ctx.save();
   ctx.translate(-cx, -cy);
-  for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
-  drawCells(ctx, game);
+  if (!far) for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
+  drawCells(ctx, game, play);
   drawExits(ctx, game);
   drawObjects(ctx, game, sprites, o.variants, o.ownHeroes);
   if (o.overlays.collision) drawCollision(ctx, game);
@@ -161,7 +204,7 @@ function drawBuilding(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
     }
 }
 
-function drawCells(ctx: CanvasRenderingContext2D, game: Game): void {
+function drawCells(ctx: CanvasRenderingContext2D, game: Game, art?: ArtLayer): void {
   const c0 = Math.max(0, Math.floor(game.camX / CELL));
   const c1 = Math.min(game.cols - 1, Math.floor((game.camX + SCREEN_W) / CELL));
   const r0 = Math.max(0, Math.floor(game.camY / CELL));
@@ -170,6 +213,8 @@ function drawCells(ctx: CanvasRenderingContext2D, game: Game): void {
     for (let c = c0; c <= c1; c++) {
       const t = game.cell(c, r);
       if (t === Tag.Air) continue;
+      // the level's own art draws this cell
+      if (art && (art.cells[r * art.cols + c] ?? 0)) continue;
       const x = c * CELL;
       const y = r * CELL;
       const above = game.cell(c, r - 1);

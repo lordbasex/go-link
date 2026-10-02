@@ -10,7 +10,7 @@
 // out as the set's. Pure: pictures come in decoded, nothing touches the DOM.
 
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
-import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer } from "../model";
+import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -59,14 +59,16 @@ export interface PackResult {
   /** The data block (for tests and the record). */
   data: Uint8Array;
   notes: RomNote[];
-  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number };
+  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; playPalettes?: number; farPalettes?: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number };
 }
 
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 2;
-const HEADER = 0x74;
+const WM_VERSION = 3;
+const HEADER = 0x84;
+/** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
+export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
 const EMPTY16 = 0x0400;
 const EMPTY32 = 0x0200;
@@ -84,8 +86,6 @@ const ITEM: Record<string, number> = { bazooka: 1, health: 2 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
-/** The exit door's six 16 px tiles, after the room a level's tileset may use. */
-const DOOR_TILES = PLAY_TILES + 0x700;
 
 /** The first level in play order. */
 export function romLevel(project: Project): Level | undefined {
@@ -144,21 +144,69 @@ function hexRgb(hex: string): [number, number, number] {
   return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
 }
 
-/** A layer's palette: its tileset's first palette (15 colors), or none. */
-function layerPalette(project: Project, layer: TileLayer | undefined): [number, number, number][] {
-  const ts = layer?.tileset ? project.tilesets.find((t) => t.id === layer.tileset) : undefined;
-  const pal = ts ? project.palettes.find((p) => p.id === ts.palettes[0]) : undefined;
+type Rgb = [number, number, number];
+
+/** A layer's palettes as the ROM loads them into its bank, and the slot each tile uses. */
+interface LayerPalettes {
+  /** The palettes in bank order (at least one: slot 0 is the tileset's first palette, the exit door's and the far layer's backdrop color). */
+  colors: Rgb[][];
+  /** Tile n's (1-based) slot in `colors`. */
+  slot: (n: number) => number;
+  /** Distinct palettes the tiles asked for, before the bank's limit. */
+  wanted: number;
+}
+
+function paletteColors(project: Project, id: string | undefined): Rgb[] {
+  const pal = id === undefined ? undefined : project.palettes.find((p) => p.id === id);
   return (pal?.colors ?? []).slice(0, 15).map(hexRgb);
 }
 
-function paletteWords(colors: [number, number, number][]): number[] {
+const rgbDistance = (a: Rgb, b: Rgb) => (a[0] - b[0]) ** 2 * 3 + (a[1] - b[1]) ** 2 * 4 + (a[2] - b[2]) ** 2 * 2;
+
+/**
+ * The palettes a layer's tiles use (Tileset.tilePalettes, T-28): its
+ * tileset's first palette always, then every other one a used tile names, in
+ * the tileset's order, each once. Past the bank's 32 a palette's tiles take
+ * the kept palette closest to its colors.
+ */
+function layerPalettes(project: Project, ts: Tileset | undefined, used: Iterable<number>): LayerPalettes {
+  const ids = ts?.palettes ?? [];
+  const index = (n: number) => {
+    const k = ts?.tilePalettes?.[n - 1];
+    return typeof k === "number" && Number.isInteger(k) && k >= 0 && k < ids.length ? k : 0;
+  };
+  const ks = new Set<number>([0]);
+  for (const n of used) ks.add(index(n));
+  const order: string[] = [];
+  for (const k of [...ks].sort((a, b) => a - b)) if (ids[k] !== undefined && !order.includes(ids[k]!)) order.push(ids[k]!);
+  const kept = order.slice(0, LAYER_PALETTES);
+  const colors = kept.length ? kept.map((id) => paletteColors(project, id)) : [[]];
+  const slotOf = new Map<string, number>(kept.map((id, i) => [id, i]));
+  for (const id of order.slice(LAYER_PALETTES)) {
+    const own = paletteColors(project, id);
+    let best = 0;
+    let bd = Infinity;
+    colors.forEach((pal, i) => {
+      // how far each of its colors is from the closest color of a kept palette
+      const d = pal.length ? own.reduce((sum, c) => sum + Math.min(...pal.map((p) => rgbDistance(c, p))), 0) : Infinity;
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    });
+    slotOf.set(id, best);
+  }
+  return { colors, slot: (n) => slotOf.get(ids[index(n)]!) ?? 0, wanted: Math.max(1, order.length) };
+}
+
+function paletteWords(colors: Rgb[]): number[] {
   const out = colors.map((c) => toCps1(c).word);
   while (out.length < 16) out.push(0x0000);
   return out;
 }
 
 /** Tile n (1-based) of a tileset picture as pens of its palette (pen 15 transparent). */
-function tilePens(pic: Picture, columns: number, size: number, n: number, colors: [number, number, number][]): Pens {
+function tilePens(pic: Picture, columns: number, size: number, n: number, colors: Rgb[]): Pens {
   const tx = ((n - 1) % columns) * size;
   const ty = Math.floor((n - 1) / columns) * size;
   const cache = new Map<number, number>();
@@ -169,7 +217,7 @@ function tilePens(pic: Picture, columns: number, size: number, n: number, colors
       let best = 0;
       let bd = Infinity;
       colors.forEach((c, i) => {
-        const d = (c[0] - r) ** 2 * 3 + (c[1] - g) ** 2 * 4 + (c[2] - b) ** 2 * 2;
+        const d = rgbDistance(c, [r, g, b]);
         if (d < bd) {
           bd = d;
           best = i;
@@ -289,38 +337,50 @@ export function packGame(
   if (mid && layerGrid(level, mid).cells.some((v) => v)) note("mid");
   if (level.layers.some((l) => l.kind === "tiles" && !["far", "mid", "play", "text"].includes(l.id) && layerGrid(level, l).cells.some((v) => v))) note("layers");
 
-  const tileMap = (layer: TileLayer | undefined, size: 16 | 32, base: number, empty: number): { codes: Uint16Array; cols: number; rows: number; used: number } => {
+  type LayerMap = { codes: Uint16Array; cols: number; rows: number; used: number; palettes: LayerPalettes; table: Uint8Array };
+  const tileMap = (layer: TileLayer | undefined, size: 16 | 32, base: number, empty: number): LayerMap => {
     const lc = Math.ceil(level.size.w / size);
     const lr = Math.ceil(level.size.h / size);
     const codes = new Uint16Array(lc * lr).fill(empty);
-    if (!layer) return { codes, cols: lc, rows: lr, used: 0 };
+    const ts = layer?.tileset ? project.tilesets.find((t) => t.id === layer.tileset) : undefined;
+    // without tiles the layer still loads its tileset's first palette (the door's colors, the backdrop)
+    const none = (): LayerMap => ({ codes, cols: lc, rows: lr, used: 0, palettes: layerPalettes(project, ts, []), table: new Uint8Array(0) });
+    if (!layer) return none();
     if (layer.grid !== size) {
       note("grid", { layer: layer.id, grid: layer.grid });
-      return { codes, cols: lc, rows: lr, used: 0 };
+      return none();
     }
-    const ts = project.tilesets.find((t) => t.id === layer.tileset);
     const pic = ts ? pictures(ts.id) : null;
     const grid = layerGrid(level, layer);
     if (!ts || !pic || ts.tile !== size) {
       if (grid.cells.some((v) => v)) note("tileset", { layer: layer.id });
-      return { codes, cols: lc, rows: lr, used: 0 };
+      return none();
     }
     const columns = ts.columns ?? Math.max(1, Math.floor(pic.w / size));
-    const colors = layerPalette(project, layer);
-    const done = new Set<number>();
+    const used = new Set<number>();
     for (let i = 0; i < codes.length; i++) {
       const n = grid.cells[i] ?? 0;
       if (!n) continue;
       codes[i] = base + n - 1;
-      if (done.has(n)) continue;
-      done.add(n);
-      const pens = tilePens(pic, columns, size, n, colors);
+      used.add(n);
+    }
+    const palettes = layerPalettes(project, ts, used);
+    if (palettes.wanted > LAYER_PALETTES) note("layerPalettes", { layer: layer.id, n: palettes.wanted, max: LAYER_PALETTES });
+    // the palette of each tile code from `base`, for the engine's attribute words; each tile cut with its own palette's pens
+    const table = new Uint8Array(used.size ? Math.max(...used) : 0);
+    for (const n of [...used].sort((a, b) => a - b)) {
+      const slot = palettes.slot(n);
+      table[n - 1] = slot;
+      const pens = tilePens(pic, columns, size, n, palettes.colors[slot]!);
       if (size === 16) gfx.tile16(base + n - 1, pens);
       else gfx.tile32(base + n - 1, pens);
     }
-    return { codes, cols: lc, rows: lr, used: done.size };
+    return { codes, cols: lc, rows: lr, used: used.size, palettes, table };
   };
   const play = tileMap(playLayer, 16, PLAY_TILES, EMPTY16);
+  // the exit door's six 16 px tiles go right after the highest tile the play layer uses (a picture may use thousands)
+  let doorTiles = PLAY_TILES;
+  for (const c of play.codes) if (c !== EMPTY16 && c >= doorTiles) doorTiles = c + 1;
   const far = tileMap(farLayer, 32, FAR_TILES, EMPTY32);
   // crate and breakable cells without art get the starter crate look from the tags only when painted; nothing to do here
 
@@ -395,8 +455,8 @@ export function packGame(
   const rules = rulesWith(project.settings.rules);
   const dip = project.settings.dip;
 
-  // the exit's door (engine/door.ts), in the play layer's own colors, over empty cells only
-  const playColors = layerPalette(project, playLayer);
+  // the exit's door (engine/door.ts), in the play layer's own colors (its first palette, which the engine gives codes past the table), over empty cells only
+  const playColors = play.palettes.colors[0]!;
   if (exit[2] > 0 && playColors.length) {
     const lum = (c: [number, number, number]) => c[0] * 3 + c[1] * 4 + c[2] * 2;
     const by = (score: (c: [number, number, number]) => number) => playColors.reduce((best, c, i) => (score(c) > score(playColors[best]!) ? i : best), 0);
@@ -410,7 +470,7 @@ export function packGame(
         const c = c0 + tc;
         const r = r0 + tr;
         if (c < 0 || r < 0 || c >= cols || r >= rows || tags[r * cols + c] !== 0) continue;
-        const code = DOOR_TILES + tr * (DOOR_W / CELL) + tc;
+        const code = doorTiles + tr * (DOOR_W / CELL) + tc;
         gfx.tile16(
           code,
           Array.from({ length: CELL }, (_, y) => Array.from({ length: CELL }, (_, x) => pens[parts[tr * CELL + y]![tc * CELL + x]! as number] ?? 15)),
@@ -430,8 +490,13 @@ export function packGame(
   const farAt = out.addr;
   for (const c of far.codes) out.u16(c);
   const palAt = out.addr;
-  const farColors = layerPalette(project, farLayer);
-  for (const w of [...paletteWords(playColors), ...paletteWords(farColors)]) out.u16(w);
+  const farColors = far.palettes.colors[0]!;
+  for (const pal of [...play.palettes.colors, ...far.palettes.colors]) for (const w of paletteWords(pal)) out.u16(w);
+  const playPalAt = out.addr;
+  for (const k of play.table) out.u8(k);
+  const farPalAt = out.addr;
+  for (const k of far.table) out.u8(k);
+  out.align();
   const objAt = out.addr;
   for (const row of [...enemies.slice(0, 16), ...civs.slice(0, 8), ...crates.slice(0, 32), ...pickups.slice(0, 16)]) for (const v of row) out.u16(v & 0xffff);
   const textAt = out.addr;
@@ -542,6 +607,12 @@ export function packGame(
   w16(rules.crateScore);
   w32(titleAt);
   w32(looksAt);
+  w16(play.palettes.colors.length);
+  w16(far.palettes.colors.length);
+  w32(play.table.length ? playPalAt : 0);
+  w32(far.table.length ? farPalAt : 0);
+  w16(play.table.length);
+  w16(far.table.length);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);
@@ -578,6 +649,8 @@ export function packGame(
       rows,
       playTiles: play.used,
       farTiles: far.used,
+      playPalettes: play.palettes.colors.length,
+      farPalettes: far.palettes.colors.length,
       enemies: enemies.length,
       civilians: civs.length,
       crates: crates.length,

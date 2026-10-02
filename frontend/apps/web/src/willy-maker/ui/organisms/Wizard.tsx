@@ -6,16 +6,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCore } from "../../i18n";
-import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, type GenreId, type LayoutId, type Level, type Project } from "../../model";
+import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
 import { projectFromTemplate, addStarterTilesets, type TemplateId } from "../../templates";
 import { buenosAiresLevel } from "../../templates/buenosAires";
 import { attachStarterImages } from "../../io/starter";
+import { putAsset } from "../../io/assets";
+import { decodeImage, encodePng } from "../../sprites/image";
+import { clearLevelArt, preparePicture, setPicture as setPictureInto } from "../../editor/pictureImport";
+import type { Rgba } from "../../editor/picture";
 import { levelFromTiled } from "../../io/tiled";
 import { drawLevel, paletteFrom } from "../render";
 import { useStarterImages } from "../useTileImages";
 import { Capsule, Card, Eyebrow, Field, Segmented, SoonBadge } from "../atoms";
 
-type Start = TemplateId | "tiled";
+type Start = TemplateId | "tiled" | "picture";
 
 function TemplatePreview({ level }: { level: Level }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -64,6 +68,9 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
   const [height, setHeight] = useState(224);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const pictureRef = useRef<HTMLInputElement>(null);
+  const [picture, setPicture] = useState<{ name: string; rgba: Rgba } | null>(null);
+  const [pictureError, setPictureError] = useState(false);
   const baPreview = useMemo(() => buenosAiresLevel(1), []);
   const emptyPreview = useMemo(() => projectFromTemplate("empty", { title: "", layout: "slammast", players: 1, screens: 1 }).levels[0]!, []);
 
@@ -75,6 +82,20 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     setLevelName("");
     setTiled(null);
     setTiledError(null);
+    setPicture(null);
+    setPictureError(false);
+  };
+
+  const pickPicture = async (f: File) => {
+    setPictureError(false);
+    try {
+      const rgba = await decodeImage(new Uint8Array(await f.arrayBuffer()), f.type || "image/png");
+      setPicture({ name: f.name, rgba });
+      setStart("picture");
+    } catch {
+      setPicture(null);
+      setPictureError(true);
+    }
   };
 
   const pickTiled = async (f: File) => {
@@ -97,7 +118,17 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (start === "tiled" && tiled) {
       p = newProject({ title: name, author, layout, players, levels: [tiled.level] });
       addStarterTilesets(p);
-    } else p = projectFromTemplate(start === "tiled" ? "empty" : start, { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens, height });
+    } else if (start === "picture" && picture) {
+      // a game from a picture: an empty level as wide as the picture, nothing drawn, the picture as the play layer
+      p = projectFromTemplate("empty", { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens: 1, height });
+      const level = p.levels[0]!;
+      clearLevelArt(level);
+      const prepared = preparePicture(level, picture.rgba, { layer: "play", height, x: 0, repeat: false, grow: true }, null);
+      const ts = prepared.fit.tileset;
+      setPictureInto(p, prepared, await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png"));
+      const exit = objectLayer(level).items.find((o) => o.type === "exit");
+      if (exit) exit.x = Math.max(exit.x, level.size.w - 64);
+    } else p = projectFromTemplate(start === "tiled" || start === "picture" ? "empty" : start, { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens, height });
     p.genre = genre;
     await attachStarterImages(p);
     setBusy(false);
@@ -105,7 +136,7 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     onCreated(p);
   };
 
-  const canNext = step === 1 ? genreAvailable(genre) : step !== 2 || start !== "tiled" || !!tiled;
+  const canNext = step === 1 ? genreAvailable(genre) : step !== 2 || (start === "tiled" ? !!tiled : start === "picture" ? !!picture : true);
 
   return (
     <Card className="wm-wizard">
@@ -210,7 +241,40 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
               <b>{t.wizard.templateTiled}</b>
               <span className="wm-dim">{tiled ? t.wizard.tiledPicked(tiled.name) : t.wizard.templateTiledText}</span>
             </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={start === "picture"}
+            className={`wm-choice is-art${start === "picture" ? " is-on" : ""}`}
+            onClick={() => {
+              setStart("picture");
+              if (!picture) pictureRef.current?.click();
+            }}
+          >
+            <span className="wm-template-art is-upload" aria-hidden="true">
+              ▣
+            </span>
+            <b>{t.wizard.templatePicture}</b>
+            <span className="wm-dim">{picture ? t.wizard.picturePicked(picture.name, picture.rgba.w, picture.rgba.h) : t.wizard.templatePictureText}</span>
+          </button>
           </div>
+          <input
+            ref={pictureRef}
+            type="file"
+            accept="image/*"
+            hidden
+            aria-label={t.wizard.pickPicture}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void pickPicture(f);
+            }}
+          />
+          {pictureError && (
+            <p className="wm-note is-error" role="alert">
+              {t.wizard.pictureError}
+            </p>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -254,6 +318,19 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
             <p className="wm-lead">
               {t.wizard.tiledPicked(tiled.name)} · {tiled.level.size.w} × {tiled.level.size.h} px
             </p>
+          )}
+          {start === "picture" && picture && (
+            <>
+              <p className="wm-lead">
+                {t.wizard.picturePicked(picture.name, picture.rgba.w, picture.rgba.h)} · {t.wizard.pictureLevel}
+              </p>
+              <Field label={t.wizard.levelName}>
+                <input className="wm-input" value={levelName} maxLength={60} placeholder={t.wizard.levelNamePh} onChange={(e) => setLevelName(e.target.value)} autoFocus />
+              </Field>
+              <Field label={t.wizard.height}>
+                <Segmented label={t.wizard.height} value={height} options={[224, 448, 672].map((px) => ({ value: px, label: t.wizard.heightN(px, px / 224) }))} onChange={setHeight} />
+              </Field>
+            </>
           )}
           {start === "empty" && (
             <>

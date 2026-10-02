@@ -405,7 +405,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
 
 const BASE_LAYERS = new Set(["far", "mid", "play", "collision", "objects", "text"]);
 
-export function LayersPanel({ store, level, activeLayerId, onActive }: { store: EditorStore; level: Level; activeLayerId: string; onActive: (id: string) => void }) {
+export function LayersPanel({ store, level, activeLayerId, onActive, onPicture }: { store: EditorStore; level: Level; activeLayerId: string; onActive: (id: string) => void; onPicture?: (layer: "far" | "play") => void }) {
   const t = useCore();
   const rows = [...level.layers].reverse();
   const active = level.layers.find((l) => l.id === activeLayerId);
@@ -460,6 +460,11 @@ export function LayersPanel({ store, level, activeLayerId, onActive }: { store: 
         >
           <IconPlus /> {t.layers.add}
         </Capsule>
+        {onPicture && active?.kind === "tiles" && (active.id === "far" || active.id === "play") && (
+          <Capsule size="sm" title={t.picture.buttonTip} onClick={() => onPicture(active.id as "far" | "play")}>
+            {t.picture.button}
+          </Capsule>
+        )}
         {active && (
           <label className="wm-opacity">
             <span>{t.layers.opacity}</span>

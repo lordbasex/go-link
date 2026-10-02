@@ -113,6 +113,7 @@ export const exportPt: ExportMessages = {
       mid: () => "A camada do meio fica de fora (a placa tem uma só camada de fundo).",
       layers: () => "As camadas de tiles extras ficam de fora.",
       grid: (p: P) => `A grade de ${p.grid} px da camada ${p.layer} não é a da placa para essa camada: fica de fora.`,
+      layerPalettes: (p: P) => `A camada ${p.layer} usa ${p.n} paletas e a placa dá ${p.max} a cada camada: os tiles das outras usam a mais parecida das primeiras ${p.max}.`,
       tileset: (p: P) => `A camada ${p.layer} não tem imagem de tiles: fica vazia.`,
       trapped: () => "Os civis presos em caixas começam livres.",
       contents: (p: P) => `Caixas com ${p.item} ainda não soltam nada (bazuca e vida sim).`,

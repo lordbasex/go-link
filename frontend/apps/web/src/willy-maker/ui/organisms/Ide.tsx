@@ -6,7 +6,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCore } from "../../i18n";
-import { BUILTIN_HERO, cloneProject, findLevel, type LevelObject, type Project, type ValidationIssue } from "../../model";
+import { BUILTIN_HERO, cloneProject, findLevel, layerGrid, type Level, type LevelObject, type Project, type TileLayer, type ValidationIssue } from "../../model";
 import type { LevelView } from "../../engine";
 import { layoutOf } from "../../board/cps1";
 import { EditorStore } from "../../editor/store";
@@ -19,10 +19,12 @@ import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
 import { playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { BoardUsageChip } from "./BoardUsage";
+import { PictureDialog } from "./PictureDialog";
 import { issueText, useGameText, useMenusText } from "../../game/texts";
 import { autosaver, saveProject } from "../../io/storage";
 import { useProjectImages } from "../useTileImages";
-import type { View } from "../render";
+import type { TileImage, View } from "../render";
+import type { ArtLayer } from "../../play/renderer";
 import { Capsule, IconButton, Logo } from "../atoms";
 import { IconBack, IconX, IconEraser, IconFill, IconHand, IconPencil, IconPlay, IconRedo, IconSelect, IconUndo, IconZoomIn, IconZoomOut } from "../icons";
 import { TagChip } from "../molecules";
@@ -70,6 +72,20 @@ export function useIdeMode(): IdeMode {
 type Sheet = "parts" | "layers" | "inspector" | "project" | "checks";
 
 const TERRAIN_TAGS = ["solid", "oneway", "ladder", "crate", "breakable", "hazard", "water"] as const;
+
+/** The level's far and play tile layers with their tileset pictures, for play mode (T-28). */
+function levelArt(level: Level, images: Map<string, TileImage>): ArtLayer[] {
+  const out: ArtLayer[] = [];
+  for (const id of ["far", "play"] as const) {
+    const layer = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === id);
+    const image = layer?.tileset ? images.get(layer.tileset) : undefined;
+    if (!layer || layer.visible === false || !image) continue;
+    const g = layerGrid(level, layer);
+    if (!g.cells.some((n) => n)) continue;
+    out.push({ layer: id, tile: layer.grid, cols: g.cols, rows: g.rows, cells: g.cells, image: image.img, columns: image.columns });
+  }
+  return out;
+}
 
 export function Ide({ project, onHome }: { project: Project; onHome: () => void }) {
   const t = useCore();
@@ -276,7 +292,8 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
   const projectPanel = <ProjectTree store={store} project={p} levelId={level.id} onLevel={setLevelId} />;
   const partsPanel = <PartsPalette partId={partId} level={level} activeLayerId={activeLayerId} images={images} onPart={pickPart} />;
   const inspectorPanel = <Inspector store={store} level={level} selected={selected} cell={cell} onSelect={setSelected} />;
-  const layersPanel = <LayersPanel store={store} level={level} activeLayerId={activeLayerId} onActive={setActiveLayerId} />;
+  const [pictureLayer, setPictureLayer] = useState<"far" | "play" | null>(null);
+  const layersPanel = <LayersPanel store={store} level={level} activeLayerId={activeLayerId} onActive={setActiveLayerId} onPicture={setPictureLayer} />;
   const checksPanel = (
     <>
       <WarningsPanel
@@ -515,6 +532,20 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
         />
       )}
 
+      {pictureLayer && (
+        <PictureDialog
+          store={store}
+          level={level}
+          layer={pictureLayer}
+          images={images}
+          onClose={(applied) => {
+            setPictureLayer(null);
+            // next: trace what players stand on, on the collision layer
+            const tags = level.layers.find((l) => l.kind === "tags");
+            if (applied && tags) setActiveLayerId(tags.id);
+          }}
+        />
+      )}
       {playing && (
         <div className="wm-play-layer">
           <Suspense fallback={<p className="wm-pad wm-dim">{t.home.loading}</p>}>
@@ -528,6 +559,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               combo={layout.buttons < 3}
               variants={playerSlots(p).map((s) => s.variant)}
               heroes={playerSlots(p).map((s) => (s.character === BUILTIN_HERO ? null : (p.characters.find((c) => c.id === s.character) ?? null)))}
+              art={levelArt(level, images)}
               texts={{
                 start: menuText(p, "hud", "join"),
                 ammo: menuText(p, "hud", "ammo"),

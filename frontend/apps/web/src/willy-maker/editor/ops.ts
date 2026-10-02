@@ -16,7 +16,7 @@ import {
   type TagLayer,
   type TileLayer,
 } from "../model";
-import { applyAutoArt } from "./autoArt";
+import { applyAutoArt, autoArtFits } from "./autoArt";
 import { baseName, type Part } from "./parts";
 import { cellsCommand, type CellChange, type EditorStore } from "./store";
 
@@ -67,7 +67,7 @@ export class Stroke {
       }
     if (!changed) return;
     grid.commit();
-    if (this.autoArt && layer.kind === "tags" && play && play.grid === CELL) {
+    if (this.autoArt && layer.kind === "tags" && play && play.grid === CELL && autoArtFits(play)) {
       const playGrid = layerGrid(level, play);
       for (const [i, b, a] of applyAutoArt(grid, playGrid, ca, ra, cb, rb)) {
         const prev = this.art.get(i);
@@ -112,7 +112,7 @@ function crateCells(level: Level, c: number, r: number, tag: number, autoArt: bo
   for (let dr = 0; dr < 2; dr++) for (let dc = 0; dc < 2; dc++) grid.set(c + dc, r + dr, tag);
   grid.commit();
   const play = level.layers.find((l): l is TileLayer => l.id === "play" && l.kind === "tiles");
-  if (autoArt && play) {
+  if (autoArt && play && autoArtFits(play)) {
     const playGrid = layerGrid(level, play);
     applyAutoArt(grid, playGrid, c, r, c + 1, r + 1);
     playGrid.commit();

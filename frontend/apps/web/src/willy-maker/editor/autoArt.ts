@@ -12,6 +12,11 @@ import { AUTO_TILES, CITY } from "../templates/tiles";
 const { air, solid, oneway, ladder, crate, breakable, hazard, water } = TAG_NUMBER;
 
 /** The tile for one cell from the tags around it (0 = none). */
+/** Auto art writes the starter city tiles: only into a play layer that uses them, never over a picture of the user's own (T-28). */
+export function autoArtFits(play: { tileset?: string } | undefined): boolean {
+  return !!play && (!play.tileset || play.tileset === "ts-city");
+}
+
 export function autoTile(tags: CellGrid, c: number, r: number): number {
   const t = tags.get(c, r);
   const above = r > 0 ? tags.get(c, r - 1) : air;

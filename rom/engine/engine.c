@@ -234,29 +234,48 @@ static void load_palette(int index, const u16 *colors)
 static s16 loaded2[64], loaded3[64];
 static u8 col_map[24576]; /* the collision map in RAM: crates and walls break */
 
+/*
+ * Each tile code's palette within its layer's bank (wm_data play_pal and
+ * far_pal) goes in the attribute word's low 5 bits; codes outside the table
+ * (the empty tiles, the exit door) use palette 0. The loops stay tight: the
+ * first frame of a game streams every column on screen.
+ */
 static void load_col2(int c)
 {
-	int r;
-	for (r = 0; r < rows && r < 64; r++) {
-		int i = r * cols + c;
-		u16 code = D_PLAY[i];
-		u8 t = D_TAGS[i];
-		volatile u16 *p = scroll2_cell(c, r);
-		if ((t == T_CRATE || t == T_BREAKABLE) && col_map[i] == T_AIR)
+	int r, n = rows < 64 ? rows : 64;
+	const u8 *pal = (const u8 *)D->play_pal;
+	u16 npal = pal ? D->n_play_codes : 0;
+	const u16 *src = D_PLAY + c;
+	const u8 *tag = D_TAGS + c;
+	const u8 *col = col_map + c;
+	volatile u16 *p = 0;
+	for (r = 0; r < n; r++, src += cols, tag += cols, col += cols, p += 2) {
+		u16 code = *src, k;
+		u8 t = *tag;
+		if (!(r & 15)) /* the tilemap is laid out in blocks of 16 rows */
+			p = scroll2_cell(c, r);
+		if ((t == T_CRATE || t == T_BREAKABLE) && *col == T_AIR)
 			code = WM_EMPTY16;
+		k = (u16)(code - WM_PLAY_TILES);
 		p[0] = code;
-		p[1] = 0;
+		p[1] = k < npal ? pal[k] : 0;
 	}
 	loaded2[c & 63] = (s16)c;
 }
 
 static void load_col3(int c)
 {
-	int r, fc = D->far_cols, fr = D->far_rows;
-	for (r = 0; r < fr && r < 64; r++) {
-		volatile u16 *p = scroll3_cell(c, r);
-		p[0] = D_FAR[r * fc + c];
-		p[1] = 0;
+	int r, fc = D->far_cols, fr = D->far_rows < 64 ? D->far_rows : 64;
+	const u8 *pal = (const u8 *)D->far_pal;
+	u16 npal = pal ? D->n_far_codes : 0;
+	const u16 *src = D_FAR + c;
+	volatile u16 *p = 0;
+	for (r = 0; r < fr; r++, src += fc, p += 2) {
+		u16 code = *src, k = (u16)(code - WM_FAR_TILES);
+		if (!(r & 7)) /* blocks of 8 rows */
+			p = scroll3_cell(c, r);
+		p[0] = code;
+		p[1] = k < npal ? pal[k] : 0;
 	}
 	loaded3[c & 63] = (s16)c;
 }
@@ -311,8 +330,11 @@ static void video_init(void)
 	((volatile u16 *)GFX_OBJ)[3] = 0xff00;
 
 	PALETTE[PAL_BACKGROUND] = D->bg_color;
-	load_palette(PAL_SCROLL2 + 0, D_PAL);
-	load_palette(PAL_SCROLL3 + 0, D_PAL + 16);
+	/* each layer's palettes into its own bank: the play layer's into scroll2's, the far layer's into scroll3's */
+	for (c = 0; c < D->n_play_pals && c < WM_LAYER_PALETTES; c++)
+		load_palette(PAL_SCROLL2 + c, D_PAL + c * 16);
+	for (c = 0; c < D->n_far_pals && c < WM_LAYER_PALETTES; c++)
+		load_palette(PAL_SCROLL3 + c, D_PAL + (D->n_play_pals + c) * 16);
 	for (c = 0; c < OBJ_PALETTES; c++)
 		load_palette(PAL_OBJ + c, obj_palettes + c * 16);
 	/* the 4 player slots' own looks, over palettes no Willy shirt of the game or other art uses */

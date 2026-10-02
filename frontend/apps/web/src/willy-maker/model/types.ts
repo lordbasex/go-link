@@ -164,6 +164,12 @@ export interface Tileset {
   columns?: number;
   /** Number of tiles in the image (derived on load when missing). */
   count?: number;
+  /**
+   * Each tile's palette, as an index into `palettes` (tile n at [n - 1]);
+   * missing or shorter means palette 0. A picture imported as a background
+   * (T-28) spreads its colors over up to 32 palettes, chosen per tile.
+   */
+  tilePalettes?: number[];
 }
 
 /** The collision tags, in their stored numbers (file-format.md). */

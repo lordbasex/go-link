@@ -99,6 +99,7 @@ export const exportEn = {
       mid: () => "The mid layer is left out (the board has one far layer).",
       layers: () => "Extra tile layers are left out.",
       grid: (p: P) => `The ${p.layer} layer's ${p.grid} px grid is not the board's for that layer: it is left out.`,
+      layerPalettes: (p: P) => `The ${p.layer} layer uses ${p.n} palettes and the board gives a layer ${p.max}: the tiles of the others take the closest of the first ${p.max}.`,
       tileset: (p: P) => `The ${p.layer} layer has no tile picture: it is left empty.`,
       trapped: () => "Civilians trapped in crates are free from the start.",
       contents: (p: P) => `Crates with ${p.item} drop nothing yet (bazooka and health work).`,

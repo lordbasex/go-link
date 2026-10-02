@@ -48,14 +48,14 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 
 | Offset | Field | Meaning |
 |---|---|---|
-| 00 | `magic`, `version`, `size` | `WMD1`, 2, 0x74 |
+| 00 | `magic`, `version`, `size` | `WMD1`, 3, 0x84 |
 | 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play, `0x0002` crates climbed by pushing (else by jumping), `0x0004` Start on a port past the players shows "nP COMING SOON" |
 | 0c | `level_w`, `level_h`, `cols`, `rows` | px, and 16 px cells |
 | 14 | `far_cols`, `far_rows` | 32 px cells |
 | 18 | `tags` | `u8[cols × rows]`: Willy Maker's collision tags (0 air, 1 solid, 2 one-way, 3 ladder, 4 crate, 5 breakable, 6 hazard, 7 water) |
 | 1c | `play` | `u16[cols × rows]`: the play layer's tile codes |
 | 20 | `far` | `u16[far_cols × far_rows]`: the far layer's tile codes |
-| 24 | `palettes` | `u16[32]`: the play layer's palette, then the far layer's (CPS-1 words) |
+| 24 | `palettes` | `u16[16 × (n_play_pals + n_far_pals)]`: the play layer's palettes, then the far layer's (CPS-1 words, 15 colors and a pad word each) |
 | 28 | `objects` | 12-byte objects: the enemies, then the civilians, the crates, the pickups |
 | 2c | `texts` | the screens' text lines (below) |
 | 30 | `n_enemies`, `n_civs`, `n_crates`, `n_pickups` | at most 16, 8, 32, 16 |
@@ -66,6 +66,14 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | 5c | `rules` | 16 bytes: energy, enemy hits, touch hurts, chase, shoot, exit needs every enemy down, respawn on hurt, the run window; blink frames, enemy, rescue and crate points |
 | 6c | `title` | the game's title (for the record) |
 | 70 | `looks` | `u32[4]`, one per player: 0 = Willy with that player's shirt, else a `wm_look` ([below](#the-players-looks)); `looks` itself is 0 when every player is Willy |
+| 74 | `n_play_pals`, `n_far_pals` | palettes loaded into each layer's bank (1-32): scroll2's palettes 64-95 for the play layer, scroll3's 96-127 for the far layer |
+| 78 | `play_pal` | `u8[n_play_codes]`: the palette (within the play layer's bank) of play tile code 0x4000 + i ([below](#layer-palettes)); 0 when no tile is used |
+| 7c | `far_pal` | `u8[n_far_codes]`: the same for far tile code 0x0800 + i |
+| 80 | `n_play_codes`, `n_far_codes` | the tables' lengths: codes past them (the empty tiles, the exit door) use palette 0 |
+
+### Layer palettes
+
+A layer may use **up to 32 palettes of 15 colors, chosen per tile**, as the CPS-1's own games do (task T-28: a picture imported as a background spreads its colors over them). A tileset lists its palettes (`palettes`) and each tile's one (`tilePalettes`, [file-format.md](file-format.md)). Create ROM loads, per layer, the tileset's first palette (always: slot 0, the exit door's colors and the far layer's backdrop color) and every other palette a tile used by the level names, each once, in the tileset's order; at power-on the engine copies them into the layer's bank. Since a tile number always has the same palette, the palette of each tile code goes in a per-layer table (`play_pal`, `far_pal`, one byte per code) instead of an attribute per cell: the engine writes it into the attribute word's low 5 bits as it streams each column (`load_col2`, `load_col3`). A layer that needs more than 32 palettes gets a Create ROM note (`layerPalettes`): the tiles of the palettes past 32 take the kept palette closest to their colors.
 
 **Objects** (`x, y, a, b, c, d`, s16): an enemy is `x, feet y, patrol min, patrol max, hits (0 = the rules'), facing`; a civilian `x, feet y, child`; a crate `col, row, size in cells, hits (0 = never breaks from shots), contents (1 bazooka, 2 health)`; a pickup `x, feet y, item`.
 
@@ -84,7 +92,7 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 | after them … 0x1fff | 16 × 16 | the players' own heroes' tiles, deduplicated (about 3800 tiles of room) |
 | 0x4000 + n − 1 | 16 × 16 | the play layer's tileset, tile n |
 
-Only the tiles a level uses are written. A tile's pixels become pens of its tileset's first palette (exact colors, the nearest otherwise; transparent pixels pen 15).
+Only the tiles a level uses are written. A tile's pixels become pens of its own palette (`tilePalettes`, [above](#layer-palettes); the tileset's first when it has none), exact colors, the nearest otherwise; transparent pixels pen 15.
 
 ## The engine
 
@@ -143,7 +151,7 @@ Create ROM lists these as notes under its result; none of them stops it.
 - Only the **first level** in play order goes into the ROM.
 - Every **enemy kind** is drawn as the Lag android, and the civilians as the prototype's woman and child: the engine carries the prototype's art for them. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
 - **Bosses, camera locks and checkpoints** are left out; **water** plays as air; civilians trapped in crates start free; crates and pickups give only the bazooka and health.
-- The **mid layer** and extra tile layers are left out (the board has one far layer); each layer uses its tileset's first palette.
+- The **mid layer** and extra tile layers are left out (the board has one far layer); each layer loads the palettes its tiles use, up to 32 ([layer palettes](#layer-palettes)).
 - **Sound**: the Z80 program is the prototype's silent one.
 - The ROM is always laid out as `slammast` (a `captcomm` game is noted).
 - **Play on my go-link** powers the set on with the real core of the linked device (validation level 4); opening a room with it needs the device to accept a user's own set under its own identity, which is not built yet.
@@ -155,7 +163,7 @@ brew install m68k-elf-binutils m68k-elf-gcc z80asm   # rom/README.md
 node rom/tools/engine.mjs           # after changing rom/engine or the art: rewrites public/willy-maker/engine/
 node rom/tools/engine.mjs --check   # fails when the committed engine is not this source's build
 cd frontend && npx vitest run apps/web/src/willy-maker/rom   # packs Game Spec v1, powers it on
-WM_ROM_OUT=/tmp/wm npx vitest run apps/web/src/willy-maker/rom/rom.test.tsx   # also writes the zip and symbols.json
+WM_ROM_OUT=/tmp/wm npx vitest run apps/web/src/willy-maker/rom/rom.test.tsx   # also writes the zip and symbols.json (and hero/, palettes/)
 ```
 
 `rom/tools/art.mjs` gained two options for it (`level: false`, `recruits`); the prototype's 28 files stay byte for byte the same.

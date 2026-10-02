@@ -363,3 +363,12 @@ input.wm-layer-name { cursor: text; }
 .wm-usage-chip.is-over .wm-usage-gauge i { background: var(--color-p3); }
 .wm-usage-pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: min(380px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: 14px; box-shadow: 0 12px 40px var(--shadow-strong); }
 .wm-usage-head { align-items: center; }
+
+/* own backgrounds (T-28): the picture dialog */
+.wm-picture-back { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: var(--shadow-strong); }
+.wm-picture { width: min(760px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; background: var(--color-surface-sunken); border-radius: var(--radius-card); box-shadow: 0 20px 60px var(--shadow-strong); }
+.wm-picture-file { align-self: flex-start; cursor: pointer; }
+.wm-picture-opts { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.wm-picture-opts .wm-input { width: auto; }
+.wm-picture-preview { overflow-x: auto; border-radius: 10px; background: var(--color-video); }
+.wm-picture-preview canvas { display: block; height: 224px; image-rendering: pixelated; }

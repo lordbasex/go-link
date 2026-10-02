@@ -113,6 +113,7 @@ export const exportEs: ExportMessages = {
       mid: () => "La capa media queda afuera (la placa tiene una sola capa de fondo).",
       layers: () => "Las capas de tiles extra quedan afuera.",
       grid: (p: P) => `La grilla de ${p.grid} px de la capa ${p.layer} no es la de la placa para esa capa: queda afuera.`,
+      layerPalettes: (p: P) => `La capa ${p.layer} usa ${p.n} paletas y la placa le da ${p.max} a cada capa: los tiles de las demás toman la más parecida de las primeras ${p.max}.`,
       tileset: (p: P) => `La capa ${p.layer} no tiene imagen de tiles: queda vacía.`,
       trapped: () => "Los civiles atrapados en cajas empiezan libres.",
       contents: (p: P) => `Las cajas con ${p.item} todavía no sueltan nada (bazooka y salud sí).`,

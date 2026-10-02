@@ -14,7 +14,7 @@ import { playEn, type PlayMessages } from "../i18n/play.en";
 import { playEs } from "../i18n/play.es";
 import { playPt } from "../i18n/play.pt";
 import { loadTouchPref, PlayControls, type Seat, type TouchPref } from "./input";
-import { DEFAULT_COLORS, drawGame, type Ghost, type OverlayColors, type Overlays } from "./renderer";
+import { DEFAULT_COLORS, drawGame, type ArtLayer, type Ghost, type OverlayColors, type Overlays } from "./renderer";
 import { characterSheet, loadPlaySprites, type PlaySprites, type Sheet } from "./sprites";
 import { assetUrl } from "../io/assets";
 import type { Character } from "../model";
@@ -52,6 +52,8 @@ export interface PlayViewProps {
   variants?: number[];
   /** Each player's own hero (the Game tab's character); null or missing = the built-in Willy. */
   heroes?: (Character | null)[];
+  /** The level's far and play tile art, drawn as the board does (T-28). */
+  art?: ArtLayer[];
   /** The on-screen pad: on touch screens ("auto"), always or never; this browser's choice by default. */
   touchPad?: TouchPref;
   /** Where the character sheets are served (the built-in ones by default). */
@@ -93,7 +95,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, runTapMs, combo = false, texts, variants, heroes, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -186,8 +188,8 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
 
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
-  const state = useRef({ paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes });
-  state.current = { paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes };
+  const state = useRef({ paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes, art });
+  state.current = { paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes, art };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -230,7 +232,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
           canvas.width = w;
           canvas.height = h;
         }
-        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes });
+        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes, art: st.art });
       }
       if (++ui % 6 === 0) {
         setSnap(g.snapshot());
