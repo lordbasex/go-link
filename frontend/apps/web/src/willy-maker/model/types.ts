@@ -1,12 +1,14 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // The Willy Maker project, exactly as docs/willy-maker/file-format.md
-// describes `project.json` (format 2). Plain data: it is saved as JSON,
+// describes `project.json` (format 3). Plain data: it is saved as JSON,
 // exported in a .zip and read by every part of the module (editor, sprite
 // importer, play mode, exports).
 
+import type { GenreId } from "./genres";
+
 /** The current project format; older ones are migrated on load. */
-export const PROJECT_FORMAT = 2;
+export const PROJECT_FORMAT = 3;
 
 export type BoardId = "cps1";
 export type LayoutId = "slammast" | "captcomm";
@@ -254,6 +256,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   board: BoardRef;
+  /** The game's genre (model/genres.ts); format 3. Only "platform-shooter" has an engine today. */
+  genre: GenreId;
   settings: GameSettings;
   palettes: Palette[];
   characters: Character[];

@@ -51,6 +51,16 @@
 .wm-chip.is-on { border-color: var(--color-accent); color: var(--color-accent-text); background: var(--tint-accent-bg); height: 22px; font-size: 11px; }
 .wm-chip.is-voice { border-color: var(--tint-voice-border); color: var(--color-voice); }
 .wm-chip.is-violet { border-color: var(--color-p4); color: var(--color-p4); height: 22px; font-size: 11px; }
+.wm-soon { position: relative; height: 20px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--color-p4); color: var(--color-p4); background: var(--color-surface); display: inline-flex; align-items: center; font: 600 10px var(--font-text); white-space: nowrap; flex: none; }
+.wm-soon.is-rom-only { border-color: var(--tint-voice-border); color: var(--color-voice); }
+.wm-soon[data-tip] { cursor: help; }
+.wm-soon[data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 30; width: max-content; max-width: 260px; white-space: normal; padding: 4px 8px; border-radius: 8px; background: var(--color-surface-2); border: 1px solid var(--color-border-strong); color: var(--color-text); font: 500 12px var(--font-text); pointer-events: none; }
+.wm-part .wm-soon { margin-top: -2px; }
+.wm-prop-soon { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.wm-prop-soon .wm-input { flex: 1; min-width: 0; }
+.wm-choice.is-soon { opacity: 0.6; cursor: default; }
+.wm-choice .wm-soon { align-self: flex-start; }
+.wm-genres { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 
 /* fields */
 .wm-field { display: flex; flex-direction: column; gap: 6px; }

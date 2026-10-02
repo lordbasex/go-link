@@ -17,6 +17,8 @@ import { loadTouchPref, PlayControls, type Seat, type TouchPref } from "./input"
 import { DEFAULT_COLORS, drawGame, type Ghost, type OverlayColors, type Overlays } from "./renderer";
 import { loadPlaySprites, type PlaySprites } from "./sprites";
 import { IconBack, IconDots, IconPause, IconPencil, IconPlay } from "../ui/icons";
+import { StatusBadge } from "../ui/molecules";
+import { partSupport } from "../editor/support";
 import "./play.css";
 
 const PLAY = { en: playEn, es: playEs, pt: playPt };
@@ -26,6 +28,9 @@ export type PlayEdit = { kind: "cells"; cells: { col: number; row: number; tag: 
 
 export type Piece = "crate" | "platform" | "ladder" | "enemy" | "civilian" | "weapon";
 const PIECES: Piece[] = ["crate", "platform", "ladder", "enemy", "civilian", "weapon"];
+
+/** The editor part each piece places (planPiece), for its "Coming soon" badge (editor/support.ts). */
+export const PIECE_PARTS: Record<Piece, string> = { crate: "crate:object", platform: "tag:oneway", ladder: "tag:ladder", enemy: "enemy:glitch9", civilian: "civilian:woman", weapon: "pickup:bazooka" };
 
 export interface PlayViewProps {
   level: LevelView;
@@ -289,6 +294,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, runTapMs, 
       {PIECES.map((p) => (
         <button key={p} type="button" className={`wm-cap${piece === p ? " is-on" : ""}`} aria-pressed={piece === p} onClick={() => setPiece(p)}>
           {t.piece[p]}
+          <StatusBadge support={partSupport(PIECE_PARTS[p])} tip={false} />
         </button>
       ))}
       <span className="wm-play-spacer" />

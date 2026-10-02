@@ -719,7 +719,7 @@ export const docsEn: Docs = {
           t: "steps",
           items: [
             "Open [Tools › Willy Maker](/tools/willy-maker) and press **New game**.",
-            "Pick the board (CPS-1), how the emulator will see it (**4 players · 3 buttons** or **4 players · 2 buttons**) and where to start from, then give it a title and a first level.",
+            "Pick the genre (today the **Platform shooter**), the board (CPS-1), how the emulator will see it (**4 players · 3 buttons** or **4 players · 2 buttons**) and where to start from, then give it a title and a first level.",
             "In **Build**, paint the floor with the pencil, place a **Start** and an **Exit**, and press **Play** (P) to try it.",
             "Bring in your hero in **Characters**, set the players and buttons in **Game**, and the screens in **Menus**.",
             "Open **Export**, fix what the review lists and download the project (.zip) to keep a backup.",
@@ -729,6 +729,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
+            "**Genre**: the first step lists the genres Willy Maker plans: platform shooter, platformer, beat 'em up, light gun, horizontal and vertical shooters, top-down run and gun, maze action, versus fighting, puzzle, quiz and party, sports and racing. Today only the **Platform shooter** (run and gun seen from the side) has an engine; the others show **Coming soon** with a line on what they will be. The genre is saved with the game and shows in the top bar.",
             "**Board**: CPS-1, with its limits on the card (16 × 16 sprites with 15 colors per block, 32 sprite palettes, 3 layers, 6 MB of graphics, no BIOS). Other boards come later.",
             "**Layout**: **4 players · 3 buttons** (jump, fire and special) or **4 players · 2 buttons**, where special is jump + fire together.",
             "**Start from**: the **Buenos Aires template** (Mission 1's five sections: docks, cranes, lobby, servers and helipad, about 21 screens), **Empty** (just the grid and the floor) or **A Tiled map** (.tmj, .json or .tmx).",
@@ -762,6 +763,17 @@ export const docsEn: Docs = {
             ["Breakable", "Solid until destroyed."],
             ["Hazard", "Hurts: fire, electricity, spikes."],
             ["Water", "Slows down, no jetpack."],
+          ],
+        },
+        { t: "h2", id: "coming-soon", text: "Coming soon parts" },
+        { t: "p", text: "Some parts are already in the palette so you can plan your levels, but the game does not use them yet. They carry a **Coming soon** badge in **Parts**, in the Inspector's lists and in the pieces you place while playing; hold the pointer on the badge to read what is missing. The Export review warns about each one you placed (it never blocks the export):" },
+        {
+          t: "list",
+          items: [
+            "**Pickups and crate contents**: only the **Bazooka** works today. The flamethrower, the spread gun, the grenades and health are picked up with no effect, and the Lattenza page is picked up but nothing counts it.",
+            "**A civilian inside a crate** does not come out yet, **bosses** are left out of play mode, **checkpoints** do nothing (a player who loses a life comes back next to the camera) and **water** plays like air.",
+            "**Enemies**: every kind walks, chases and shoots the same way for now; the review shows this as a note.",
+            "**ROM only**: the difficulty, free play and the demo sound switches, and a level's time limit, are saved for the ROM; play mode ignores them.",
           ],
         },
         { t: "h2", id: "characters", text: "Characters" },

@@ -719,7 +719,7 @@ export const docsPt: Docs = {
           t: "steps",
           items: [
             "Abra [Ferramentas › Willy Maker](/tools/willy-maker) e clique em **Novo jogo**.",
-            "Escolha a placa (CPS-1), como o emulador vai ver (**4 jogadores · 3 botões** ou **4 jogadores · 2 botões**) e de onde começar; depois dê um título e uma primeira fase.",
+            "Escolha o gênero (hoje **Plataforma com tiros**), a placa (CPS-1), como o emulador vai ver (**4 jogadores · 3 botões** ou **4 jogadores · 2 botões**) e de onde começar; depois dê um título e uma primeira fase.",
             "Em **Construir**, pinte o chão com o lápis, coloque um **Início** e uma **Saída**, e clique em **Jogar** (P) para testar.",
             "Traga o seu herói em **Personagens**, defina os jogadores e botões em **Jogo**, e as telas em **Menus**.",
             "Abra **Exportar**, corrija o que a revisão apontar e baixe o projeto (.zip) para ter uma cópia.",
@@ -729,6 +729,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
+            "**Gênero**: o primeiro passo lista os gêneros que o Willy Maker planeja: plataforma com tiros, plataforma, beat 'em up, pistola de luz, nave horizontal e vertical, tiro visto de cima, labirinto, luta um contra um, quebra-cabeça, perguntas e festa, esportes e corrida. Hoje só **Plataforma com tiros** (correr e atirar visto de lado) tem motor; os outros mostram **Em breve** com uma linha sobre o que serão. O gênero é salvo com o jogo e aparece na barra superior.",
             "**Placa**: CPS-1, com os seus limites no cartão (sprites de 16 × 16 com 15 cores por bloco, 32 paletas de sprites, 3 camadas, 6 MB de gráficos, sem BIOS). Outras placas virão depois.",
             "**Layout**: **4 jogadores · 3 botões** (pulo, tiro e especial) ou **4 jogadores · 2 botões**, onde o especial é pulo + tiro juntos.",
             "**Começar de**: o **Modelo Buenos Aires** (as cinco seções da missão 1: docas, guindastes, saguão, servidores e heliponto, cerca de 21 telas), **Vazio** (só a grade e o chão) ou **Um mapa do Tiled** (.tmj, .json ou .tmx).",
@@ -762,6 +763,17 @@ export const docsPt: Docs = {
             ["Quebrável", "Sólido até ser destruído."],
             ["Perigo", "Machuca: fogo, eletricidade, espinhos."],
             ["Água", "Deixa lento, sem jetpack."],
+          ],
+        },
+        { t: "h2", id: "coming-soon", text: "Peças que chegam em breve" },
+        { t: "p", text: "Algumas peças já estão na paleta para você planejar as suas fases, mas o jogo ainda não as usa. Elas levam a etiqueta **Em breve** em **Peças**, nas listas do Inspetor e nas peças que você coloca enquanto joga; deixe o ponteiro sobre a etiqueta para ler o que falta. A revisão de Exportar avisa sobre cada uma que você colocou (nunca bloqueia a exportação):" },
+        {
+          t: "list",
+          items: [
+            "**Itens e conteúdo das caixas**: hoje só a **Bazuca** funciona. O lança-chamas, a arma de leque, as granadas e a saúde são pegos sem efeito, e a página de Lattenza é pega mas nada a conta.",
+            "**Um civil dentro de uma caixa** ainda não sai, os **chefes** ficam fora do modo de jogo, os **checkpoints** não fazem nada (quem perde uma vida volta perto da câmera) e a **água** funciona como ar.",
+            "**Inimigos**: por enquanto todos os tipos andam, perseguem e atiram do mesmo jeito; a revisão mostra isso como uma nota.",
+            "**Só na ROM**: a dificuldade, o jogo livre, o som na demo e o limite de tempo de uma fase são salvos para a ROM; o modo de jogo os ignora.",
           ],
         },
         { t: "h2", id: "characters", text: "Personagens" },

@@ -160,8 +160,8 @@ describe("hard inputs: project .zip", { timeout: 60000 }, () => {
     const future = { ...JSON.parse(JSON.stringify(p)), format: 7 };
     const zip = await writeZip([{ name: "project.json", data: new TextEncoder().encode(JSON.stringify(future)) }]);
     const e = await importProjectZip(zip).catch((x) => x);
-    expect(e).toMatchObject({ code: "project.newer", params: { format: 7, max: 2 } });
-    expect(translated(e)[0]).toMatch(/format 7; this one reads up to 2/);
+    expect(e).toMatchObject({ code: "project.newer", params: { format: 7, max: 3 } });
+    expect(translated(e)[0]).toMatch(/format 7; this one reads up to 3/);
     for (const raw of [null, 3, "x", [], { format: "2", id: "a", levels: [] }, { format: 2, levels: [] }, { format: 2, id: "a" }, { format: 0.5, id: "a", levels: [] }])
       expect(() => migrateProject(raw)).toThrow(InputError);
     const notJson = await writeZip([{ name: "project.json", data: new TextEncoder().encode("{not json") }]);
@@ -178,7 +178,8 @@ describe("hard inputs: project .zip", { timeout: 60000 }, () => {
     delete p.settings.credits;
     p.settings.menus = { title: { blocks: [{ kind: "text", x: 1, y: 2, text: "HI" }] } };
     const back = migrateProject(p);
-    expect(back.format).toBe(2);
+    expect(back.format).toBe(3);
+    expect(back.genre).toBe("platform-shooter");
     expect(back.settings.playerSlots).toHaveLength(4);
     expect(back.settings.menus.title.blocks).toEqual([{ kind: "text", x: 1, y: 2, text: "HI" }]);
     expect(back.settings.menus.gameOver).toBeDefined();

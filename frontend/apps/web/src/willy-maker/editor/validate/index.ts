@@ -12,6 +12,7 @@ import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Projec
 import { boardOf, isBoardColor, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { reachability, routes } from "../reach";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
+import { supportChecks } from "./support";
 import type { ExportMessages } from "../../i18n/export.en";
 
 export type Severity = "ok" | "info" | "warning" | "error";
@@ -403,7 +404,7 @@ const RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2, ok: 3 };
  */
 export function reviewProject(p: Project, opts: { board?: BoardProfile; extra?: Rule[] } = {}): Review {
   const board = opts.board ?? boardOf(p);
-  const checks = [...levelChecks(p, board), ...nameChecks(p), ...gameChecks(p, board), ...animChecks(p), ...graphicsChecks(p, board), ...safely(() => tileGridChecks(p, board)), ...safely(() => spriteChecks(p, board)), ...safely(() => programChecks(p, board))];
+  const checks = [...levelChecks(p, board), ...nameChecks(p), ...gameChecks(p, board), ...animChecks(p), ...graphicsChecks(p, board), ...safely(() => tileGridChecks(p, board)), ...safely(() => spriteChecks(p, board)), ...safely(() => programChecks(p, board)), ...safely(() => supportChecks(p))];
   for (const rule of opts.extra ?? []) {
     try {
       checks.push(...rule(p, board));

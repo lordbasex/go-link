@@ -84,3 +84,18 @@ export function Logo() {
     </span>
   );
 }
+
+/**
+ * A small capsule for a part or setting the game does not use yet
+ * ("Coming soon") or only the ROM reads ("ROM only"). The reason is its
+ * tooltip (`tip`; off inside a button that shows it already) and, for
+ * screen readers, part of its text.
+ */
+export function SoonBadge({ label, reason, tone = "soon", tip = true }: { label: string; reason?: string; tone?: "soon" | "rom-only"; tip?: boolean }) {
+  return (
+    <span className={`wm-soon is-${tone}`} data-tip={tip ? reason : undefined}>
+      {label}
+      {reason && <span className="wm-sr">: {reason}</span>}
+    </span>
+  );
+}

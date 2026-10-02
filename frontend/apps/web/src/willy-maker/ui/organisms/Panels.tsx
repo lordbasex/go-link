@@ -9,12 +9,13 @@ import { CELL, layerGrid, newLevel, objectLayer, TAGS, type Level, type LevelObj
 import { CPS1 } from "../../board/cps1";
 import { BOSS_KINDS, CIVILIAN_KINDS, CRATE_CONTENTS, ENEMY_KINDS, PART_GROUPS, PARTS, PICKUP_ITEMS, type Part, type PartGroup } from "../../editor/parts";
 import { deleteObject, nameFree, updateObject } from "../../editor/ops";
+import { optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
-import { LayerRow, PartButton, PropRow } from "../molecules";
+import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
 import { IconPlus, IconTrash, IconWarn } from "../icons";
 
 export function ProjectTree({ store, project, levelId, onLevel }: { store: EditorStore; project: Project; levelId: string; onLevel: (id: string) => void }) {
@@ -42,6 +43,9 @@ export function ProjectTree({ store, project, levelId, onLevel }: { store: Edito
     <nav className="wm-tree" aria-label={t.tree.project}>
       <Eyebrow>{t.tree.project}</Eyebrow>
       <div className="wm-tree-title">{project.title}</div>
+      <div className="wm-dim wm-small">
+        {t.tree.genre}: {t.genres[project.genre]?.name ?? t.genres["platform-shooter"].name}
+      </div>
       <div className="wm-tree-group">
         <span className="wm-dim">{t.tree.levels}</span>
         <IconButton className="is-xs" label={t.tree.addLevel} onClick={add}>
@@ -157,7 +161,7 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images }: {
       ) : (
         <div className="wm-partgrid">
           {PARTS.filter((p) => p.group === group).map((p) => (
-            <PartButton key={p.id} on={partId === p.id} swatch={swatch(p)} label={label(p)} help={p.kind === "tag" ? t.tagsHelp[p.tag] : undefined} onClick={() => onPart(p.id)} />
+            <PartButton key={p.id} on={partId === p.id} swatch={swatch(p)} label={label(p)} help={supportHelp(t, partSupport(p.id)) ?? (p.kind === "tag" ? t.tagsHelp[p.tag] : undefined)} badge={<StatusBadge support={partSupport(p.id)} tip={false} />} onClick={() => onPart(p.id)} />
           ))}
         </div>
       )}
@@ -184,16 +188,25 @@ function NumberInput({ value, onChange, min, max, step = 1, label }: { value: nu
   );
 }
 
-function Select({ value, options, onChange, label }: { value: string; options: readonly string[]; onChange: (v: string) => void; label: string }) {
+/**
+ * A select of kinds, items or crate contents: options the game does not
+ * play yet say so, and the chosen one shows the badge with the reason.
+ */
+function Select({ value, options, onChange, label, support }: { value: string; options: readonly string[]; onChange: (v: string) => void; label: string; support?: (option: string) => Support }) {
   const t = useCore();
+  const status = support?.(value);
   return (
-    <select className="wm-input is-sm" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {t.kinds[o as keyof typeof t.kinds] ?? o}
-        </option>
-      ))}
-    </select>
+    <span className="wm-prop-soon">
+      <select className="wm-input is-sm" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {t.kinds[o as keyof typeof t.kinds] ?? o}
+            {support?.(o).status === "soon" ? ` · ${t.support.soon}` : ""}
+          </option>
+        ))}
+      </select>
+      {status && <StatusBadge support={status} />}
+    </span>
   );
 }
 
@@ -219,6 +232,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
         <section className="wm-inspector" aria-label={t.inspector.title(t.tags[tag])}>
           <Eyebrow>{t.inspector.title(t.inspector.cell(t.tags[tag], cell.c, cell.r))}</Eyebrow>
           <p className="wm-dim wm-small">{t.tagsHelp[tag]}</p>
+          <StatusBadge support={partSupport(`tag:${tag}`)} />
           {tag === "breakable" && (
             <PropRow label={t.inspector.hp}>
               <NumberInput label={t.inspector.hp} value={Number(props.hp ?? 3)} min={1} max={99} onChange={(v) => setProp("hp", v)} />
@@ -237,6 +251,9 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
         <Eyebrow>{t.inspector.title(t.inspector.level)}</Eyebrow>
         <PropRow label={t.inspector.levelName}>
           <input className="wm-input is-sm" defaultValue={level.name} key={level.id + level.name} maxLength={60} onBlur={(e) => e.target.value.trim() && e.target.value !== level.name && store.editLevel(t.tree.renameLevel, level.id, (l) => (l.name = e.target.value.trim()))} />
+        </PropRow>
+        <PropRow label={t.tree.genre}>
+          <span>{t.genres[store.project.genre]?.name ?? t.genres["platform-shooter"].name}</span>
         </PropRow>
         <PropRow label={t.inspector.levelSize}>
           <span className="wm-mono">
@@ -261,6 +278,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
   return (
     <section className="wm-inspector" aria-label={t.inspector.title(t.objects[o.type])}>
       <Eyebrow>{t.inspector.title(t.objects[o.type])}</Eyebrow>
+      {o.type === "checkpoint" && <StatusBadge support={partSupport("checkpoint:checkpoint")} />}
       <PropRow label={t.inspector.name}>
         <input
           className={`wm-input is-sm wm-mono${ok ? "" : " is-bad"}`}
@@ -303,9 +321,10 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
       )}
       {(o.type === "enemy" || o.type === "civilian" || o.type === "boss") && (
         <PropRow label={t.inspector.kind}>
-          <Select label={t.inspector.kind} value={String(o.kind ?? "")} options={o.type === "enemy" ? ENEMY_KINDS : o.type === "civilian" ? CIVILIAN_KINDS : BOSS_KINDS} onChange={(kind) => set({ kind })} />
+          <Select label={t.inspector.kind} value={String(o.kind ?? "")} options={o.type === "enemy" ? ENEMY_KINDS : o.type === "civilian" ? CIVILIAN_KINDS : BOSS_KINDS} support={(k) => optionSupport("kind", k, o.type)} onChange={(kind) => set({ kind })} />
         </PropRow>
       )}
+      {o.type === "enemy" && optionSupport("kind", String(o.kind ?? ""), "enemy").shared && <p className="wm-dim wm-small">{t.support.shared}</p>}
       {o.type === "enemy" && (
         <>
           <PropRow label={t.inspector.facing}>
@@ -325,13 +344,13 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
             <NumberInput label={t.inspector.hp} value={Number(o.hp ?? 2)} min={1} max={9} onChange={(hp) => set({ hp })} />
           </PropRow>
           <PropRow label={t.inspector.contents}>
-            <Select label={t.inspector.contents} value={String(o.contents ?? "nothing")} options={CRATE_CONTENTS} onChange={(contents) => set({ contents })} />
+            <Select label={t.inspector.contents} value={String(o.contents ?? "nothing")} options={CRATE_CONTENTS} support={(c) => optionSupport("contents", c)} onChange={(contents) => set({ contents })} />
           </PropRow>
         </>
       )}
       {o.type === "pickup" && (
         <PropRow label={t.inspector.item}>
-          <Select label={t.inspector.item} value={String(o.item ?? "bazooka")} options={PICKUP_ITEMS} onChange={(item) => set({ item })} />
+          <Select label={t.inspector.item} value={String(o.item ?? "bazooka")} options={PICKUP_ITEMS} support={(i) => optionSupport("item", i)} onChange={(item) => set({ item })} />
         </PropRow>
       )}
       <Capsule

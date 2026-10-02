@@ -56,10 +56,11 @@ beforeEach(() => window.localStorage.clear());
 afterEach(cleanup);
 
 describe("Game settings: model and migration", () => {
-  it("starts new games on format 2 with the defaults", () => {
+  it("starts new games on format 3 with the defaults", () => {
     const p = newProject({ title: "New", players: 3 });
-    expect(p.format).toBe(2);
-    expect(PROJECT_FORMAT).toBe(2);
+    expect(p.format).toBe(3);
+    expect(PROJECT_FORMAT).toBe(3);
+    expect(p.genre).toBe("platform-shooter");
     expect(p.settings.runTapMs).toBe(250);
     expect(p.settings.credits).toBe(DEFAULT_CREDITS);
     expect(p.settings.playerSlots).toEqual([0, 1, 2, 3].map((variant) => ({ character: BUILTIN_HERO, variant })));
@@ -69,7 +70,7 @@ describe("Game settings: model and migration", () => {
 
   it("migrates a format 1 project and keeps what it had", () => {
     const p = migrateProject(formatOne());
-    expect(p.format).toBe(2);
+    expect(p.format).toBe(3);
     expect(p.settings.players).toBe(2);
     expect(p.settings.runTapMs).toBe(250);
     expect(p.settings.credits).toBe(DEFAULT_CREDITS);
@@ -82,6 +83,17 @@ describe("Game settings: model and migration", () => {
     expect(p.settings.menus.select.characters).toEqual(["willy"]);
     // the title screen's default title is the game's title
     expect(menuText(p, "title", "title")).toBe("OLD GAME");
+  });
+
+  it("migrates a format 2 project to a platform shooter and keeps a known genre", () => {
+    const old = JSON.parse(JSON.stringify(newProject({ title: "Two", players: 1 })));
+    old.format = 2;
+    delete old.genre;
+    const p = migrateProject(old);
+    expect(p.format).toBe(3);
+    expect(p.genre).toBe("platform-shooter");
+    expect(migrateProject({ ...old, format: 3, genre: "beat-em-up" }).genre).toBe("beat-em-up");
+    expect(migrateProject({ ...old, format: 3, genre: "opera" }).genre).toBe("platform-shooter");
   });
 
   it("repairs bad values while migrating", () => {

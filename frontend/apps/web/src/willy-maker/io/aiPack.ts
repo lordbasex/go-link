@@ -8,11 +8,12 @@
 // deterministic: the same project gives the same bytes (fixed timestamps,
 // sorted entries, a PNG writer without a canvas).
 
-import { CELL, layerGrid, TAGS, tagLayer, type AssetRef, type Character, type Level, type Project, type TileLayer, type Tileset } from "../model";
+import { CELL, DEFAULT_GENRE, genreAvailable, isGenre, layerGrid, TAGS, tagLayer, type AssetRef, type Character, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { boardOf, layoutOf } from "../board/cps1";
 import * as R from "../engine/rules";
 import { checkText, REQUIRED_ANIMS, type Review } from "../editor/validate";
 import { exportEn } from "../i18n/export.en";
+import { coreEn } from "../i18n/core.en";
 import { getAsset } from "./assets";
 import { decodePng, encodePng, type RgbaImage } from "./png";
 import { COLLISION_TILES, levelToTiled, playLayer, TAG_COLORS } from "./tiledExport";
@@ -216,6 +217,8 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   line("## The game");
   line();
   line(`- Title: "${p.title}"${p.author ? ` by ${p.author}` : ""}.`);
+  const genre = isGenre(p.genre) ? p.genre : DEFAULT_GENRE;
+  line(`- Genre: ${coreEn.genres[genre].name} (\`${genre}\`): ${coreEn.genres[genre].text}${genreAvailable(genre) ? " Willy Maker's play mode and the prototype's engine are this genre." : " Willy Maker has no engine for this genre yet (docs/willy-maker/genres.md in the repository is the plan); build it as a new engine, not on the platform shooter's rules."}`);
   line(`- Board: ${board.name}, layout \`${layout.id}\` (${layout.players} players × ${layout.buttons} buttons). Players: ${s.players}.`);
   line(`- Levels, in play order: ${levels.length}.`);
   levels.forEach((l, i) => {

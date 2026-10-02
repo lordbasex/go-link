@@ -294,6 +294,9 @@ describe("level 1: every rule of validation.md", () => {
     ch.frames[0] = { ...ch.frames[0]!, w: 200, h: 90, px: 300 };
     c.characters.push(ch);
     broken.push(c);
+    const d = base();
+    objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
+    broken.push(d);
     for (const p of broken) add(reviewProject(p, { extra: EXTRA_RULES }).checks);
     add(reviewProject(base(), { board: { ...CPS1, rom: { ...CPS1.rom, programBytes: 1024 } } }).checks);
     const pics = tiled(picture(16, 16, (x) => [x * 17, 0, 0, 255]));

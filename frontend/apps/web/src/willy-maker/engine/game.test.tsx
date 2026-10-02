@@ -158,6 +158,13 @@ describe("Willy Maker engine", () => {
     expect(g.players[0]!.ammo).toBe(3);
   });
 
+  it("drops nothing from an empty crate", () => {
+    const g = new Game(flat(undefined, [{ name: "box", type: "crate", x: 160, y: 368, size: 32, hp: 1, contents: "nothing" }]));
+    run(g, 30, (f) => (f % 8 < 4 ? Input.B2 : 0));
+    expect(g.crates[0]!.broken).toBe(true);
+    expect(g.pickups).toHaveLength(0);
+  });
+
   it("fires the bazooka with B3 and spends its ammo", () => {
     const g = new Game(flat(undefined, [{ name: "gun", type: "pickup", x: 64, y: 400, item: "bazooka" }]));
     run(g, 1, 0);

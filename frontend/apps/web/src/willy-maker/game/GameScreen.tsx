@@ -10,6 +10,8 @@ import type { EditorStore } from "../editor/store";
 import { BUILTIN_HERO, RUN_TAP_MAX, RUN_TAP_MIN, type DipSettings, type Project, type ValidationIssue } from "../model";
 import { Capsule, Eyebrow, Segmented } from "../ui/atoms";
 import { IconWarn } from "../ui/icons";
+import { StatusBadge } from "../ui/molecules";
+import { partSupport } from "../editor/support";
 import { ControllerPanel } from "./ControllerPanel";
 import { actionLabel, actionRows, heroChoices, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRunTap, slotResolves } from "./settings";
 import { fill, issueText, useGameText, useMenusText } from "./texts";
@@ -154,7 +156,9 @@ function DipCard({ store, dip }: { store: EditorStore; dip: DipSettings }) {
         {t.dip.title}
       </h2>
       <div className="wm-game-stack">
-        <span className="wm-field-label">{t.dip.difficulty}</span>
+        <span className="wm-field-label">
+          {t.dip.difficulty} <StatusBadge support={partSupport("dip:difficulty")} />
+        </span>
         <Segmented
           label={t.dip.difficulty}
           value={dip.difficulty}
@@ -167,11 +171,15 @@ function DipCard({ store, dip }: { store: EditorStore; dip: DipSettings }) {
         <Segmented label={t.dip.lives} value={dip.lives} options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))} onChange={(lives) => set({ lives })} />
       </div>
       <div className="wm-game-stack">
-        <span className="wm-field-label">{t.dip.freePlay}</span>
+        <span className="wm-field-label">
+          {t.dip.freePlay} <StatusBadge support={partSupport("dip:freePlay")} />
+        </span>
         <Segmented label={t.dip.freePlay} value={dip.freePlay ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ freePlay: v === "yes" })} />
       </div>
       <div className="wm-game-stack">
-        <span className="wm-field-label">{t.dip.demoSound}</span>
+        <span className="wm-field-label">
+          {t.dip.demoSound} <StatusBadge support={partSupport("dip:demoSound")} />
+        </span>
         <Segmented label={t.dip.demoSound} value={dip.demoSound ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ demoSound: v === "yes" })} />
       </div>
       <p className="wm-dim wm-small">{t.dip.note}</p>

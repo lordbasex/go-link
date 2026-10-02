@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { beforeEach, describe, expect, it } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { WillyMakerApp } from "..";
 import { coreEn } from "../i18n/core.en";
 import { coreEs } from "../i18n/core.es";
@@ -27,6 +27,15 @@ describe("Willy Maker app", () => {
     let opened: string | null = null;
     render(<WillyMakerApp lang="en" onProjectId={(id) => (opened = id)} />);
     expect(screen.getByText("No games yet. Start one with “New game”.")).toBeInTheDocument();
+    // step 1: the genre, only the platform shooter can be chosen today
+    const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
+    expect(genres).toHaveLength(13);
+    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter")]);
+    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(12);
+    expect(genres[0]).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: /Beat 'em up/ }));
+    expect(genres[0]).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("button", { name: /Next: the board/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Empty/ }));
     fireEvent.click(screen.getByRole("button", { name: /Next: name and players/ }));
     fireEvent.change(screen.getByLabelText("Game title"), { target: { value: "Dead Air" } });
@@ -40,6 +49,7 @@ describe("Willy Maker app", () => {
     expect(opened).toBe(saved.id);
     expect(await screen.findByRole("button", { name: "Build" })).toBeInTheDocument();
     expect(screen.getByTitle("Play the level (P)")).toBeInTheDocument();
+    expect(screen.getByTitle("Genre")).toHaveTextContent("Platform shooter");
   });
 
   it("lists saved games and opens one in Spanish", async () => {

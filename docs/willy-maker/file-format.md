@@ -4,16 +4,17 @@ The project file, the `.zip` that carries it between browsers, and the AI pack. 
 
 ## The project file (`project.json`)
 
-Versioned JSON; the current `format` is 2. Unknown fields are kept on import (a newer version's data is not lost), and an older `format` is migrated on load.
+Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a newer version's data is not lost), and an older `format` is migrated on load.
 
 | Format | What changed | Migration from the one before |
 |---|---|---|
 | 1 | the first format | — |
 | 2 | `settings.actionLabels`, `runTapMs`, `playerSlots`, `credits`; every menu screen's `texts`, `background`, `music`, `credits` | the new fields get their defaults (labels empty, 250 ms, Willy and three recruits, `(C) 2026 go-link`, each screen's default background and music); blocks and unknown fields are kept |
+| 3 | `genre`: the game's genre, one of the ids of [genres.md](genres.md) (`platform-shooter`, `platformer`, `beat-em-up`, `light-gun`, `horizontal-shooter`, `vertical-shooter`, `top-down-shooter`, `maze`, `versus-fighting`, `puzzle`, `quiz-party`, `sports`, `racing`) | older projects become `platform-shooter`, the only genre with an engine; an unknown genre is read as `platform-shooter` too |
 
 ```jsonc
 {
-  "format": 2,
+  "format": 3,
   "id": "a7f3…",                       // random, made on creation
   "title": "Dead Air",
   "author": "",
@@ -24,6 +25,8 @@ Versioned JSON; the current `format` is 2. Unknown fields are kept on import (a 
     "id": "cps1",
     "layout": "slammast"               // or "captcomm"
   },
+
+  "genre": "platform-shooter",         // genres.md; the only one with an engine today
 
   "settings": {
     "players": 4,                      // 1-4
@@ -176,7 +179,7 @@ my-game.ai-pack.zip
 Filled in from the project and the review, in English, with these sections:
 
 1. **The brief**: build an arcade ROM for go-link with the tools in `rom/`; the target board (CPS-1, 384 × 224 at 60 Hz, 68000), the set layout (`slammast` 4 × 3 or `captcomm` 4 × 2) and the mame2003-plus core; every byte original; which docs to follow (`docs/` in the pack).
-2. **The game**: title and author, players, the levels in play order (id, size, camera, sections, map file), the characters (role, height, animations), the buttons and what each does (with 2 buttons, special is buttons 1 + 2), Start/Coin, the DIP switches and the menus.
+2. **The game**: title and author, the genre (its name and description; a genre with no engine yet says so and points to [genres.md](genres.md)), players, the levels in play order (id, size, camera, sections, map file), the characters (role, height, animations), the buttons and what each does (with 2 buttons, special is buttons 1 + 2), Start/Coin, the DIP switches and the menus.
 3. **Rules the engine keeps**: a table of the numbers in `engine/rules.ts` (the same as `rom/src/main.c`): body, gravity, jump, fall, ladders, push-climb, run tap, drop-through, camera, weapons, enemies, crates, lives, score.
 4. **Board limits**: palettes, colors, graphics and program ROM, sprite table, and what the game uses now (the meters).
 5. **What is in this pack**: the tree above, the collision tags and the object rules.

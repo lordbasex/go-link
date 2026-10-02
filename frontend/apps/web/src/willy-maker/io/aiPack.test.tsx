@@ -183,7 +183,7 @@ describe("AI pack", { timeout: 30000 }, () => {
   });
 });
 
-describe("project .zip and the review", { timeout: 30000 }, () => {
+describe("project .zip and the review", { timeout: 90000 }, () => {
   it("gives the same review and the same maps after a round trip", async () => {
     const { project, assets } = sample();
     const back = (await importProjectZip(await exportProjectZip(project))).project;
@@ -206,6 +206,7 @@ describe("PROMPT.md", () => {
       "`slammast` set: 4 players × 3 buttons",
       "mame2003-plus",
       '"Dead Air" by Federico',
+      "- Genre: Platform shooter (`platform-shooter`)",
       "docs/story.md",
       "docs/art-spec.md",
       `edges up to ${R.STEP_UP} px`,

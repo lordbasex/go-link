@@ -304,6 +304,9 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
         <Logo />
         <span className="wm-chip wm-mono wm-level-chip">{t.ide.levelChip(levelIndex + 1, level.name)}</span>
         <span className="wm-chip is-voice wm-hide-sm">{t.ide.boardChip(layout.id, layout.players, layout.buttons)}</span>
+        <span className="wm-chip wm-hide-sm" title={t.ide.genre}>
+          {t.genres[p.genre]?.name ?? t.genres["platform-shooter"].name}
+        </span>
         <span className={`wm-save wm-mono is-${save}`} role="status" title={save === "saved" ? t.ide.saved : save === "saving" ? t.ide.saving : t.ide.notSaved}>
           ● <span className="wm-save-text">{save === "saved" ? t.ide.saved : save === "saving" ? t.ide.saving : t.ide.notSaved}</span>
         </span>

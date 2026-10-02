@@ -1,18 +1,19 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
-// The new game wizard: board and layout plus a starting point, then name and
-// players, then the first level.
+// The new game wizard: the genre (only the platform shooter has an engine
+// today; the rest are listed as coming soon), board and layout plus a
+// starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCore } from "../../i18n";
-import { InputError, inputErrorText, newProject, type LayoutId, type Level, type Project } from "../../model";
+import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, type GenreId, type LayoutId, type Level, type Project } from "../../model";
 import { projectFromTemplate, addStarterTilesets, type TemplateId } from "../../templates";
 import { buenosAiresLevel } from "../../templates/buenosAires";
 import { attachStarterImages } from "../../io/starter";
 import { levelFromTiled } from "../../io/tiled";
 import { drawLevel, paletteFrom } from "../render";
 import { useStarterImages } from "../useTileImages";
-import { Capsule, Card, Eyebrow, Field, Segmented } from "../atoms";
+import { Capsule, Card, Eyebrow, Field, Segmented, SoonBadge } from "../atoms";
 
 type Start = TemplateId | "tiled";
 
@@ -41,12 +42,16 @@ function TemplatePreview({ level }: { level: Level }) {
   return <canvas ref={ref} className="wm-template-art" width={384} height={224} aria-hidden="true" />;
 }
 
+/** Genre, board and start, name and players, the first level. */
+const STEPS = 4;
+
 /** Tiled maps bigger than this are refused before they are read. */
 const MAX_MAP_BYTES = 16 * 1024 * 1024;
 
 export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
   const t = useCore();
   const [step, setStep] = useState(1);
+  const [genre, setGenre] = useState<GenreId>(DEFAULT_GENRE);
   const [layout, setLayout] = useState<LayoutId>("slammast");
   const [start, setStart] = useState<Start>("buenos-aires");
   const [tiled, setTiled] = useState<{ name: string; level: Level } | null>(null);
@@ -64,6 +69,7 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
 
   const reset = () => {
     setStep(1);
+    setGenre(DEFAULT_GENRE);
     setTitle("");
     setAuthor("");
     setLevelName("");
@@ -92,28 +98,58 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
       p = newProject({ title: name, author, layout, players, levels: [tiled.level] });
       addStarterTilesets(p);
     } else p = projectFromTemplate(start === "tiled" ? "empty" : start, { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens, height });
+    p.genre = genre;
     await attachStarterImages(p);
     setBusy(false);
     reset();
     onCreated(p);
   };
 
-  const canNext = step !== 1 || start !== "tiled" || !!tiled;
+  const canNext = step === 1 ? genreAvailable(genre) : step !== 2 || start !== "tiled" || !!tiled;
 
   return (
     <Card className="wm-wizard">
       <div className="wm-wizard-head">
         <Eyebrow accent>
-          {t.wizard.title} · {t.wizard.step(step, 3)}
+          {t.wizard.title} · {t.wizard.step(step, STEPS)}
         </Eyebrow>
         <span className="wm-steps" aria-hidden="true">
-          {[1, 2, 3].map((n) => (
+          {[1, 2, 3, 4].map((n) => (
             <i key={n} className={n <= step ? "is-on" : ""} />
           ))}
         </span>
       </div>
 
       {step === 1 && (
+        <>
+          <h2 className="wm-wizard-q">{t.wizard.genreQ}</h2>
+          <p className="wm-lead">{t.wizard.genreHint}</p>
+          <div className="wm-genres" role="radiogroup" aria-label={t.wizard.genreQ}>
+            {GENRES.map((id) => {
+              const ready = genreAvailable(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={genre === id}
+                  disabled={!ready}
+                  className={`wm-choice${genre === id ? " is-on" : ""}${ready ? "" : " is-soon"}`}
+                  onClick={() => setGenre(id)}
+                >
+                  <span className="wm-choice-head">
+                    <b>{t.genres[id].name}</b>
+                    {ready ? <span className="wm-chip is-on">{t.wizard.available}</span> : <SoonBadge label={t.support.soon} tip={false} />}
+                  </span>
+                  <span className="wm-dim">{t.genres[id].text}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
         <>
           <h2 className="wm-wizard-q">{t.wizard.boardQ}</h2>
           <div className="wm-grid3" role="radiogroup" aria-label={t.wizard.boardQ}>
@@ -195,7 +231,7 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
         </>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <>
           <h2 className="wm-wizard-q">{t.wizard.nameQ}</h2>
           <Field label={t.wizard.gameTitle}>
@@ -210,7 +246,7 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
         </>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <>
           <h2 className="wm-wizard-q">{t.wizard.levelQ}</h2>
           {start === "buenos-aires" && <p className="wm-lead">{t.wizard.templateSize}</p>}
@@ -245,9 +281,9 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
             {t.wizard.back}
           </Capsule>
         )}
-        {step < 3 ? (
+        {step < STEPS ? (
           <Capsule size="lg" tone="primary" disabled={!canNext} onClick={() => setStep(step + 1)}>
-            {step === 1 ? t.wizard.next1 : t.wizard.next2} →
+            {step === 1 ? t.wizard.next0 : step === 2 ? t.wizard.next1 : t.wizard.next2} →
           </Capsule>
         ) : (
           <Capsule size="lg" tone="primary" disabled={busy} onClick={() => void create()}>

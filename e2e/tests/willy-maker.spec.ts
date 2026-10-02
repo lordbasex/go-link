@@ -33,7 +33,8 @@ test("Willy Maker: create, paint, place, play, undo, reload and export", async (
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto("/tools/willy-maker");
 
-  // the wizard: the Buenos Aires template
+  // the wizard: the genre (only the platform shooter today), then the Buenos Aires template
+  await page.getByRole("button", { name: /Next: the board/ }).click();
   await page.getByRole("radio", { name: /Buenos Aires template/ }).click();
   await page.getByRole("button", { name: /Next: name and players/ }).click();
   await page.getByLabel("Game title").fill("Dead Air");

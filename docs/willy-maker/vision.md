@@ -1,0 +1,35 @@
+# Vision: a game-making IDE for every genre and every board
+
+Willy Maker is named after go-link's mascot, Willy Gorklingo, but it is not a maker of Willy games. Its goal is a broad game-making IDE: any of the [genres](genres.md), first squeezing the CPS-1 to its limits, then on bigger boards that MAME runs, and finally on go-link's own engine with modern 2D quality. Every game it makes must play in a go-link room.
+
+## Principles
+
+1. **A game is described once.** Levels, characters, animations, rules, menus and settings live in the project (see [file-format.md](file-format.md)), never in a board's code.
+2. **A genre is an engine module.** Each genre (platform shooter today, the others in [genres.md](genres.md)) is a set of rules and parts: the editor shows its parts, the play mode runs its rules, and each board target has the same rules in its own CPU's code.
+3. **A board is a target.** A board profile (`board/`) gives its limits, its converters and its prebuilt engine. Exporting to a board checks the project against that board (the [validator](validation.md) is already per profile) and converts it; a smaller board may need cuts (fewer colors, fewer sprites), which the validator explains before exporting.
+4. **Nothing in the core is tied to Willy or to one genre.** Willy is the default character of a template, not a rule.
+5. **Every target is validated the same way:** live rules, the export's self-check, a power-on test in the browser and on the linked device ([validation.md](validation.md)).
+6. **The play mode is the same game.** What the user plays while building must behave like the board's ROM; a part the engine does not run yet is marked "coming soon", never silently ignored.
+
+## The board ladder
+
+| Step | Target | What it adds | Main limit |
+|---|---|---|---|
+| 1, today | **Capcom CPS-1** (384 × 224, the `slammast` layout of 4 players × 3 buttons) | Three scroll layers, 256 sprites, 6 MB of graphics; the board of the classic fighting and beat 'em up games of 1991 | 15 colors per tile, no rotation, no transparency |
+| 2 | **Bigger boards that the mame2003-plus core runs**, to be evaluated: Taito F3 (transparency, per-line effects, much more graphics memory), CPS-2 (more memory; its encryption must be handled), Sega boards with sprite scaling | Effects and sizes the CPS-1 lacks | Each board is a new profile: its rules, its graphics converters and a genre engine in its CPU |
+| 3 | **go-link's own engine**, a "virtual board" shipped as a libretro core of our own | HD output, colors without palette limits, skeletal animation, particles, shaders, updates: modern console-class 2D | It has to be written; it is not MAME, so it does not carry MAME's hardware or license limits |
+
+Step 3 fits go-link as it is: the device already runs a libretro core and streams it to the players. A go-link core takes the place of the MAME core, and rooms, voice, controllers, recordings, invitations and phones keep working unchanged.
+
+## What this asks of the code today
+
+- The project format keeps `genre` and the board as separate fields (format 3 has `genre`), and converters work from board-agnostic data.
+- The data-driven engine of stage 2 ("Create ROM", see [README.md](README.md#phase-2-create-rom-in-the-browser)) is the first genre engine on the first board: the pattern every later genre and board follows.
+- New parts get an entry in `editor/support.ts` per genre engine, so the editor never offers what a target cannot run without saying so.
+
+## Order of work
+
+1. Stage 2 on the CPS-1 (Create ROM), informed by [experiment 1](../experiments/README.md).
+2. More genres on the CPS-1, in the order of [genres.md](genres.md), each one as an experiment with a frozen spec and a jury.
+3. The first bigger board, chosen when a genre needs what the CPS-1 cannot do.
+4. go-link's own engine.

@@ -55,6 +55,7 @@ Every case keeps, in its folder:
 | `metrics.json` | Wall time, tool calls, attempts, build failures, validator results, ROM size, tokens when known. |
 | `trace.md` | The traceability index: each source file of the result, its commits, and the decisions behind them. |
 | `evidence/` | Screenshots, logs, the validator reports, the scripted run's frames and state. |
+| `HOWTO.md` | The case as a copy-and-paste guide: from a clean checkout to the finished ROM in a go-link room, every command, every file's full content or exact patch, every click (for B and C, with screenshots), what each step should print, and what to do when it does not. A second agent follows it literally in a fresh worktree; the guide is done only when that run gets the same ROM. |
 
 **Commits:** small, on the case's own branch (`exp1/case-a`, `exp1/case-b`, `exp1/case-c`), each message ending with a `Decision: D-014` line (several allowed). `git log --format=%B` plus `git blame` lead from any line to its commit and from the commit to the decision.
 

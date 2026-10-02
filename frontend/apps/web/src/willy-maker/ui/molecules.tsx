@@ -4,16 +4,18 @@
 // row, a property row, a warning row.
 
 import { useState, type ReactNode } from "react";
-import { useCore } from "../i18n";
+import { useCore, type CoreMessages } from "../i18n";
 import type { Layer } from "../model";
-import { IconButton, Swatch } from "./atoms";
+import type { Support } from "../editor/support";
+import { IconButton, SoonBadge, Swatch } from "./atoms";
 import { IconDown, IconEye, IconEyeOff, IconLock, IconUnlock, IconUp } from "./icons";
 
-export function PartButton({ on, swatch, label, help, onClick, children }: { on: boolean; swatch?: ReactNode; label: string; help?: string; onClick: () => void; children?: ReactNode }) {
+export function PartButton({ on, swatch, label, help, badge, onClick, children }: { on: boolean; swatch?: ReactNode; label: string; help?: string; badge?: ReactNode; onClick: () => void; children?: ReactNode }) {
   return (
     <button type="button" className={`wm-part${on ? " is-on" : ""}`} aria-pressed={on} title={help} onClick={onClick}>
       {children ?? swatch}
       <span className="wm-part-label">{label}</span>
+      {badge}
     </button>
   );
 }
@@ -102,4 +104,16 @@ export function PropRow({ label, children }: { label: string; children: ReactNod
       {children}
     </label>
   );
+}
+
+/** The reason a part, option or setting is not in the game yet, for a tooltip. */
+export function supportHelp(t: CoreMessages, s: Support): string | undefined {
+  return s.status !== "works" && s.reason ? t.support.reasons[s.reason] : undefined;
+}
+
+/** "Coming soon" or "ROM only" for a part, option or setting the game does not play; nothing when it works. */
+export function StatusBadge({ support, tip = true }: { support: Support; tip?: boolean }) {
+  const t = useCore();
+  if (support.status === "works") return null;
+  return <SoonBadge label={support.status === "soon" ? t.support.soon : t.support.romOnly} reason={supportHelp(t, support)} tone={support.status} tip={tip} />;
 }

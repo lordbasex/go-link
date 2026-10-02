@@ -355,7 +355,8 @@ export class Game {
     if (by) by.score += SCORE_CRATE;
     this.events.push({ kind: "crate", name: crate.name });
     const x = (crate.col + crate.cells / 2) * CELL;
-    if (crate.contents) this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
+    // "nothing" leaves no pickup; a civilian inside a crate has no effect yet (editor/support.ts)
+    if (crate.contents && crate.contents !== "nothing" && crate.contents !== "civilian") this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
     for (const v of this.civilians) if (v.trappedIn === crate.name) v.trappedIn = "";
   }
 

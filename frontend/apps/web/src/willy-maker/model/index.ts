@@ -30,8 +30,10 @@ import {
   type TileLayer,
   type Tileset,
 } from "./types";
+import { DEFAULT_GENRE, isGenre, type GenreId } from "./genres";
 
 export * from "./types";
+export * from "./genres";
 export * from "./inputError";
 export { decodeCells, encodeCells } from "./rle";
 
@@ -149,6 +151,8 @@ export interface NewProjectOptions {
   players?: number;
   /** Levels to start with; one empty level when missing. */
   levels?: Level[];
+  /** The genre (the platform shooter when missing). */
+  genre?: GenreId;
 }
 
 export function newProject(opts: NewProjectOptions): Project {
@@ -167,6 +171,7 @@ export function newProject(opts: NewProjectOptions): Project {
     createdAt: now,
     updatedAt: now,
     board: { id: "cps1", layout },
+    genre: opts.genre ?? DEFAULT_GENRE,
     settings,
     palettes: [],
     characters: [],
@@ -200,6 +205,8 @@ export function migrateProject(raw: unknown): Project {
     createdAt: typeof p.createdAt === "string" ? p.createdAt : new Date().toISOString(),
     updatedAt: typeof p.updatedAt === "string" ? p.updatedAt : new Date().toISOString(),
     board: { id: "cps1", layout },
+    // format 3 added the genre: older projects (and unknown genres) are platform shooters
+    genre: isGenre(p.genre) ? p.genre : DEFAULT_GENRE,
     settings: {
       ...base,
       ...s,
