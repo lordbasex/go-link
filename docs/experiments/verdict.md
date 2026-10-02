@@ -74,6 +74,7 @@ On 2026-10-01 an AI outside this project, with only a browser, was asked to "cre
 - **A full sprite sheet** (12 moves: idle, walk and run, turn, jump, jump kick combo, crouch, crawl, machine gun, knife, bazooka, a yawn, a thumbs up): Characters imports and animates all of it, but the engine plays six moves (idle, walk or run, jump, shoot, knife, bazooka) (U-05).
 - **The CPS-1 can do much more:** Street Fighter II and Final Fight run on the same board; the 44 px hero, the six moves and the silent sound are go-link's choices so far, not the board's limits (U-06).
 - **A meter of the board's use** in plain sight, to grow the game (levels, detail, sound) without going over (U-07).
+- **Own backgrounds:** use a picture of their own (a screen, many, or a long strip, like a night city with neon and docks), and draw on it with the pencil what is floor, a crate, a ladder (U-08).
 
 ## Tasks
 
@@ -110,6 +111,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-25 | The moves of a full sprite sheet, in play mode and in the ROM: crouch and crawl on down, landing, turning, a victory or thumbs up on a rescue and at the clear, a yawn after a long idle, a jump kick, and a double jump and a jet pack as optional rules; effects (muzzle flash, smoke) as their own sprites instead of inside the hero's frames | U-05 | next |
 | T-26 | Toward the CPS-1's real limits (Street Fighter II and Final Fight run on it): heroes taller than 44 px (Final Fight scale is about 2 to 2.5 times taller) with the body, jump and reach checks scaled to the character, more sprite tiles per frame and per screen, the third background layer and row scroll for parallax, and QSound music and effects | U-06 | roadmap |
 | T-27 | A board usage meter: how much of the CPS-1 the game uses (graphics and program memory, sprite and layer palettes with the engine's own, sprites on screen, colors, layers, animations, sound), measured from Create ROM's real result when there is one and estimated live while building, always in sight, warning before a change goes over | U-07 | done |
+| T-28 | Own backgrounds: import a picture (one screen, several, or one long strip) into the far or the play layer; find its pixel size and scale it to board pixels, fit its colors to the board (up to 32 palettes of 15 colors per layer, chosen per tile), cut and deduplicate the tiles, show the cost on the board usage meter; then trace the collision tags over it with the pencil (floor, one-way, ladder, crate, hazard), with the picture under the tags. Later, tags suggested from the picture | U-08 | next (after T-25) |
 
 ## Records
 

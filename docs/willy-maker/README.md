@@ -129,7 +129,7 @@ Layers like an image editor's, each with a name, visibility, lock, opacity (edit
 | `objects` | free (snaps to 8 px) | everything that is not a tile |
 | `text` | 8 px | HUD and menus (game settings) |
 
-Background art can be painted with tiles from a palette, stamped from ready-made tiles (the prototype's city, crates and ladders), or imported as a full PNG that the tool cuts into tiles, deduplicates and checks.
+Background art is painted with tiles from a tileset (the prototype's city, crates and ladders, and its night sky), or comes from a Tiled map in the new game wizard. Importing a full PNG of your own (one screen, many, or a long strip) that the tool scales to board pixels, fits to the board's palettes, cuts into tiles and deduplicates, then tracing the collision tags over it with the pencil, is task T-28 of [experiment 1's verdict](../experiments/verdict.md) (not built yet).
 
 ### The pencil: collision tags
 
