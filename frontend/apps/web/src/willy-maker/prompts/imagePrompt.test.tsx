@@ -138,6 +138,17 @@ describe("the prompt dialog", () => {
     render(<PromptDialog store={new EditorStore(p)} project={p} kind="background" sub="far" onClose={() => {}} />);
     expect((screen.getByLabelText("Which one") as HTMLSelectElement).value).toBe("far");
     fireEvent.click(screen.getByRole("radio", { name: "Character" }));
-    expect(screen.getByRole("checkbox", { name: /jump_kick/ })).toBeTruthy();
+    const kick = screen.getByRole("checkbox", { name: /jump_kick/ });
+    // focusing an animation shows what it is (Willy playing it when the sheet loads)
+    fireEvent.focus(kick);
+    expect(screen.getByRole("tooltip").textContent).toContain(promptEn.animDesc.jump_kick);
+    expect(kick).toHaveAccessibleDescription(expect.stringContaining("Down + B2"));
+    fireEvent.blur(kick);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("has a description of every preset animation in every language", () => {
+    for (const msgs of [promptEn, promptEs, promptPt])
+      for (const role of Object.keys(ANIMS) as (keyof typeof ANIMS)[]) for (const a of ANIMS[role]) expect(msgs.animDesc[a.name], a.name).toBeTruthy();
   });
 });

@@ -388,3 +388,7 @@ input.wm-layer-name { cursor: text; }
 .wm-prompt-out pre { white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; }
 .wm-prompt-bar { justify-content: flex-end; margin-bottom: 8px; }
 .wm-self-start { align-self: flex-start; }
+.wm-anim-chip { position: relative; display: inline-flex; }
+.wm-anim-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; display: flex; flex-direction: column; gap: 4px; width: 230px; padding: 10px; border-radius: 12px; background: var(--color-surface-2); border: 1px solid var(--color-border-strong); box-shadow: 0 10px 30px var(--shadow-strong); color: var(--color-text); font: 500 12px/1.35 var(--font-text); pointer-events: none; }
+.wm-anim-pop canvas { align-self: center; width: 200px; height: auto; image-rendering: pixelated; border-radius: 8px; background: var(--color-video); }
+.wm-anim-none { padding: 18px 8px; text-align: center; border-radius: 8px; background: var(--color-video); color: var(--color-text-muted); }

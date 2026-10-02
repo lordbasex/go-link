@@ -15,6 +15,7 @@ import { ANIMS, DEFAULT_HEIGHT } from "../../sprites/presets";
 import { buildPrompts, defaultChoices, EXAMPLE, FLAGS, mergeChoices, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
 import { Capsule, Field, Segmented } from "../atoms";
 import { IconCopy } from "../icons";
+import { AnimPreview } from "./AnimPreview";
 
 export const PROMPT = { en: promptEn, es: promptEs, pt: promptPt };
 
@@ -92,6 +93,9 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
   const subs = t.subs[kind] as Record<string, string>;
   const flags = t.flags[kind] as Record<string, string[]>;
   const role = (kind === "character" ? c.sub : "hero") as CharacterRole;
+  // the animation whose example is showing (hover or keyboard focus)
+  const [peek, setPeek] = useState<string | null>(null);
+  const peekId = useId();
 
   const close = () => {
     // keep the choices with the game (one undo step, only when something changed)
@@ -195,9 +199,24 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
               {t.anims} <Help text={t.animsHelp} label={`${t.help}: ${t.anims}`} />
             </legend>
             {ANIMS[role].map((a) => (
-              <label key={a.name} className="wm-small wm-mono">
-                <input type="checkbox" checked={c.anims.includes(a.name)} onChange={(e) => set({ anims: toggle(c.anims, a.name, e.target.checked) })} /> {a.name} ({a.frames})
-              </label>
+              <span key={a.name} className="wm-anim-chip" onMouseEnter={() => setPeek(a.name)} onMouseLeave={() => setPeek((x) => (x === a.name ? null : x))}>
+                <label className="wm-small wm-mono">
+                  <input
+                    type="checkbox"
+                    checked={c.anims.includes(a.name)}
+                    aria-describedby={peek === a.name ? `${peekId}-${a.name}` : undefined}
+                    onFocus={() => setPeek(a.name)}
+                    onBlur={() => setPeek((x) => (x === a.name ? null : x))}
+                    onChange={(e) => set({ anims: toggle(c.anims, a.name, e.target.checked) })}
+                  />{" "}
+                  {a.name} ({a.frames})
+                </label>
+                {peek === a.name && (
+                  <span id={`${peekId}-${a.name}`}>
+                    <AnimPreview name={a.name} frames={a.frames} text={t.animDesc[a.name] ?? ""} labels={{ example: t.animExample, shownWith: t.animShownWith, none: t.animNoExample, frames: t.animFrames }} />
+                  </span>
+                )}
+              </span>
             ))}
           </fieldset>
         )}
