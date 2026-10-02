@@ -71,6 +71,8 @@ On 2026-10-01 an AI outside this project, with only a browser, was asked to "cre
 - **Crates climb themselves:** walking into a 32 px crate lifts the player on top of it (the prototype's "climbed by pushing" rule, which the spec kept). The user expects to jump over it, as in Super Mario Bros.
 - **No visible choice of one or two players**, and no way to give the game a hero other than Willy.
 - **Willy Maker still feels tied to Willy's game:** a game of another genre cannot be made from zero.
+- **A full sprite sheet** (12 moves: idle, walk and run, turn, jump, jump kick combo, crouch, crawl, machine gun, knife, bazooka, a yawn, a thumbs up): Characters imports and animates all of it, but the engine plays six moves (idle, walk or run, jump, shoot, knife, bazooka) (U-05).
+- **The CPS-1 can do much more:** Street Fighter II and Final Fight run on the same board; the 44 px hero, the six moves and the silent sound are go-link's choices so far, not the board's limits (U-06).
 
 ## Tasks
 
@@ -104,6 +106,8 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-22 | Other genres, in the order of [genres.md](../willy-maker/genres.md) | E-05, U-04 | roadmap |
 | T-23 | The number of players in plain sight (one or two, up to four) in the wizard and the Game tab | U-02 | done |
 | T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |
+| T-25 | The moves of a full sprite sheet, in play mode and in the ROM: crouch and crawl on down, landing, turning, a victory or thumbs up on a rescue and at the clear, a yawn after a long idle, a jump kick, and a double jump and a jet pack as optional rules; effects (muzzle flash, smoke) as their own sprites instead of inside the hero's frames | U-05 | next |
+| T-26 | Toward the CPS-1's real limits (Street Fighter II and Final Fight run on it): heroes taller than 44 px (Final Fight scale is about 2 to 2.5 times taller) with the body, jump and reach checks scaled to the character, more sprite tiles per frame and per screen, the third background layer and row scroll for parallax, and QSound music and effects | U-06 | roadmap |
 
 ## Records
 
