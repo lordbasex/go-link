@@ -98,3 +98,22 @@ export function joinGfx(set: RomSet, files: ReadonlyMap<string, Uint8Array>): Ui
   });
   return out;
 }
+
+/** The set's program files from the 68000's program space (big-endian bytes): the loader's work undone, as rom/tools/build.mjs does it. */
+export function splitProgram(set: RomSet, space: Uint8Array): Record<string, Uint8Array> {
+  const out: Record<string, Uint8Array> = {};
+  for (const f of set.program) {
+    const data = new Uint8Array(f.size);
+    if (f.swap) {
+      for (let i = 0; i + 1 < f.size; i += 2) {
+        data[i] = space[f.at + i + 1] ?? 0xff;
+        data[i + 1] = space[f.at + i] ?? 0xff;
+      }
+    } else {
+      const base = f.at & ~1;
+      for (let i = 0; i < f.size; i++) data[i] = space[base + i * 2 + (f.odd ? 1 : 0)] ?? 0xff;
+    }
+    out[f.name] = data;
+  }
+  return out;
+}

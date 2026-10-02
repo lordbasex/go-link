@@ -11,7 +11,7 @@ A browser cannot prove that alone. The checks are split into four levels. Each l
 | 3. Power-on in the browser | browser, a Web Worker with a 68000 in WebAssembly | on Create ROM | the 68000 program starts, draws and keeps running on a model of the board | ~1 s for 10 s of game |
 | 4. Power-on on the device | the user's linked go-link device, the exact core | on **Create and play**, or **Test on my device** | the real core loads the set without warnings, shows a picture, plays sound and reacts to inputs | ~15 s |
 
-Levels 1 and 2 are needed for Phase 1, because the AI pack must already be correct. Level 3 is built as a power-on test of any ROM `.zip` the user drops (for example one an AI built from the pack); level 4 is reached from the same Export card (**Test on my go-link**, with a linked device); levels 3 and 4 run on their own in Phase 2, when Willy Maker builds the ROM. Level 4 is the ground truth. When level 4 disagrees with level 3, level 4 wins, and the case is added to level 3 or level 2 as a new rule.
+**Create ROM** (Phase 2, built 2026-10-01, [engine.md](engine.md)) runs level 3 on the set it builds by itself, shows the steps and the picture, and offers level 4 as **Play on my go-link**. Levels 1 and 2 are needed for Phase 1, because the AI pack must already be correct. Level 3 is built as a power-on test of any ROM `.zip` the user drops (for example one an AI built from the pack); level 4 is reached from the same Export card (**Test on my go-link**, with a linked device); levels 3 and 4 run on their own in Phase 2, when Willy Maker builds the ROM. Level 4 is the ground truth. When level 4 disagrees with level 3, level 4 wins, and the case is added to level 3 or level 2 as a new rule.
 
 ## Level 1: live rules
 
@@ -63,7 +63,7 @@ Rules added by the implementation, beyond the tables: `level.start` also warns w
 |---|---|---|---|
 | `level.start` | error | there is exactly one P1 start, and starts for P2-P4 when the game has those players | "Level {n} has no start for player {p}." |
 | `level.exit` | error | there is one exit | "Level {n} has no exit." |
-| `level.reachable` | error | the exit can be reached from the start with the engine's moves: walk, jump of 64 px, push-climb of up to 32 px (`STEP_UP`), ladders, drop-through platforms. This is a flood fill over the collision grid using the same constants as `engine/`. | "Players cannot reach the exit from the start. The path stops at x {x}." |
+| `level.reachable` | error | the exit can be reached from the start with the engine's moves: walk, a jump onto ledges up to 48 px (it peaks at 61.9 px), push-climb of up to 32 px (`STEP_UP`), ladders, drop-through platforms. This is a flood fill over the collision grid using the same constants as `engine/`. | "Players cannot reach the exit from the start. The path stops at x {x}." |
 | `level.ledge` | warning | every tagged platform can be reached (same search) | "Nobody can reach the ledge at x {x}: it is {h} px high." |
 | `level.trap` | warning | no reachable spot lets the player fall out of the map or get stuck with no way forward | "A player can get stuck at x {x}." |
 | `level.camera` | error | the camera can scroll through the level: no wall that blocks the screen, and a 48 px back margin | "The camera cannot pass x {x}." |

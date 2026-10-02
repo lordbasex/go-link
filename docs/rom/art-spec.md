@@ -12,7 +12,7 @@ If a delivery follows this page, the build accepts it or says exactly which rule
 | Frame rate | 60 frames per second |
 | Grid | everything snaps to **16 px** (the playfield's tile size) |
 | Hero height | **44 px** = 19.6 % of the screen height (Metal Slug's soldiers are about 40 px of 224) |
-| Hero jump | about **64 px** high (4 tiles) |
+| Hero jump | peaks at **61.9 px** (−7 px per frame, gravity 6/16): a ledge **48 px** up (3 tiles) is reachable, 64 px is not (experiment 1, case C) |
 | Step climbed by pushing | up to **32 px** (one crate) |
 
 Sizes as a share of the screen height (224 px), to keep every character in proportion:

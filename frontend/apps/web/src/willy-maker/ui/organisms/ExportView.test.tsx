@@ -113,11 +113,11 @@ describe("Export tab", () => {
     }
   });
 
-  it("shows Create ROM as the next stage, turned off", () => {
+  it("offers Create ROM (stage 2); the download and Play on my go-link come with a created ROM", () => {
     render(<Harness store={new EditorStore(newProject({ title: "A", players: 1 }))} onGo={() => undefined} />);
     expect(screen.getByText("stage 2")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Download ROM/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Play on my go-link/ })).toBeDisabled();
-    expect(screen.getByText("slammast.zip · the set's files")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: exportEn.rom.create })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Download ROM/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Play on my go-link/ })).toBeNull();
   });
 });

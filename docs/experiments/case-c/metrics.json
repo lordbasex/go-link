@@ -1,0 +1,46 @@
+{
+ "case": "C",
+ "what": "Willy Maker stage 2 (data-driven engine + Create ROM), then Game Spec v1 made in the browser as a user, recorded",
+ "wallTime": { "start": "2026-10-01T18:06:22-03:00", "end": "2026-10-01T19:49:00-03:00", "minutes": 103, "note": "from the first to the last action, by date; about 35 of them were waits for Laya on a machine at load 45-70" },
+ "toolCalls": { "estimate": 260 },
+ "tokens": null,
+ "attempts": {
+  "engineBuilds": 3,
+  "engineBuildFailures": 0,
+  "romCreations": 9,
+  "sessionRecordings": { "trials": 4, "final": 2, "note": "trials 1-2 found a selector problem and the 164 bug (D-017); the first final recording was redone after the title fix (D-022)" },
+  "acceptanceRuns": { "started": 2, "completed": 1, "note": "the first, on the ROM made before D-022, was stopped" }
+ },
+ "buildFailures": [
+  { "what": "npm run build (tsc)", "why": "a test literal not of type PowerOnStep", "fixed": "18:35" },
+  { "what": "engine.mjs --check", "why": "the source was edited after the committed build", "fixed": "19:01 (D-016)" }
+ ],
+ "testFailures": [
+  { "what": "ExportView test expected Create ROM disabled", "fixed": "replaced by CreateRomCard tests" },
+  { "what": "reach tests and the Buenos Aires template after the 48 px jump", "fixed": "D-021" },
+  { "what": "aiPack round trip timed out at 30 s under load 68", "fixed": "passed in the full run at load ~45 (622 tests)" }
+ ],
+ "validator": {
+  "level3": "pass (10 of 10 steps)",
+  "level4": "pass (10 of 10 device steps)",
+  "scripted": { "cleared": true, "clearFrame": 1883, "expectations": "18/18" },
+  "sameAsCore": { "checkpoints": 11, "worstDifferPct": 0 },
+  "bot": { "games": 5, "clears": 5, "clearFrames": [1260, 1428, 1478, 1298, 1354], "rescuedEach": 1 },
+  "laya": { "games": 3, "clears": 0, "msPerDecision": [1639, 2033, 2033] },
+  "damageScript": { "expectations": "12/12", "gameOverFrame": 1273, "sameAsCore": "6/6 checkpoints, 0 %" },
+  "oddInputsScript": { "expectations": "14/14", "sameAsCore": "5/5 checkpoints, 0 %" }
+ },
+ "rom": {
+  "file": "docs/experiments/case-c/build/slammast.zip",
+  "sha256": "b1742aac038263f5f8323bdb64a99ce2c579c98192c699abab2f87c94f45d990",
+  "zipBytes": 55854,
+  "setFiles": 28,
+  "engineProgramBytes": 24288,
+  "engineSpriteBytes": 37120,
+  "dataBlockBytes": null,
+  "note": "the data block is about 10 KB (the session card: 10 KB of data)"
+ },
+ "session": { "steps": 82, "errors": 0, "seconds": 227, "mp4Bytes": 11939232, "chapters": 82 },
+ "frontend": { "tests": "622 passed, 2 skipped", "typecheck": "pass", "build": "pass" },
+ "commits": 14
+}

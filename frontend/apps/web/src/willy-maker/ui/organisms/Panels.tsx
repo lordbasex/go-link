@@ -13,6 +13,7 @@ import { optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
+import { rulesWith } from "../../engine/rules";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
@@ -170,20 +171,40 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images }: {
   );
 }
 
-function NumberInput({ value, onChange, min, max, step = 1, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string }) {
+/**
+ * A number field. What is typed stays as typed while it is out of range
+ * (typing 64 into a field whose minimum is 16 passes through 6), and is
+ * kept in range when the field is left (experiment 1, case C: clamping
+ * every keystroke turned 64 into 164).
+ */
+export function NumberInput({ value, onChange, min, max, step = 1, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string }) {
+  const shown = Number.isFinite(value) ? value : 0;
+  const [text, setText] = useState<string | null>(null);
+  const clamp = (v: number) => Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v));
   return (
     <input
       className="wm-input is-sm wm-num"
       type="number"
       aria-label={label}
-      value={Number.isFinite(value) ? value : 0}
+      value={text ?? shown}
       min={min}
       max={max}
       step={step}
       onChange={(e) => {
-        const v = Number(e.target.value);
-        if (Number.isFinite(v)) onChange(Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v)));
+        const raw = e.target.value;
+        const v = Number(raw);
+        if (raw !== "" && Number.isFinite(v) && v === clamp(v)) {
+          setText(null);
+          if (v !== shown) onChange(v);
+        } else setText(raw);
       }}
+      onBlur={() => {
+        if (text === null) return;
+        const v = Number(text);
+        setText(null);
+        if (text !== "" && Number.isFinite(v) && clamp(v) !== shown) onChange(clamp(v));
+      }}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
     />
   );
 }
@@ -304,6 +325,13 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           <NumberInput label={t.inspector.y} value={o.y} min={0} max={level.size.h} step={8} onChange={(y) => set({ y })} />
         </PropRow>
       </div>
+      {o.type === "exit" && (
+        <div className="wm-grid2 is-tight">
+          <PropRow label={t.inspector.w}>
+            <NumberInput label={t.inspector.w} value={Number(o.w ?? 2 * CELL)} min={CELL} max={level.size.w} step={CELL} onChange={(w) => set({ w })} />
+          </PropRow>
+        </div>
+      )}
       {(o.type === "camera_lock" || o.type === "boss") && (
         <div className="wm-grid2 is-tight">
           <PropRow label={t.inspector.w}>
@@ -335,6 +363,9 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           </PropRow>
           <PropRow label={t.inspector.patrol}>
             <NumberInput label={t.inspector.patrol} value={Number(o.patrol ?? 96)} min={0} max={1024} step={16} onChange={(patrol) => set({ patrol })} />
+          </PropRow>
+          <PropRow label={t.inspector.hp}>
+            <NumberInput label={t.inspector.hp} value={Number(o.hp ?? rulesWith(store.project.settings.rules).enemyHp)} min={1} max={99} onChange={(hp) => set({ hp })} />
           </PropRow>
         </>
       )}

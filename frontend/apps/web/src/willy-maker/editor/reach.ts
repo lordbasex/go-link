@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // Can the players get everywhere? A flood over the places a hero can stand,
-// with the ROM prototype's moves: walking, falling, jumping up to 64 px
+// with the ROM prototype's moves: walking, falling, jumping up to 48 px
 // (which also covers the 32 px push-climb), ladders, and dropping through
 // one-way ledges. Ledges and objects it never reaches become warnings.
 
@@ -9,8 +9,8 @@ import { CELL, objectLayer, tagGrid, TAG_NUMBER, type CellGrid, type Level } fro
 
 /** The hero is 44 px tall: three cells of headroom. */
 const BODY = 3;
-/** Rows a jump climbs (64 px). */
-const JUMP_ROWS = 4;
+/** Rows a jump climbs: 48 px. The jump peaks at 61.9 px (-112 + 6 per frame, in 1/16 px), so a ledge 64 px up is out of reach (experiment 1, case C; engine/game.test.tsx). */
+const JUMP_ROWS = 3;
 /** Cells a jump crosses: farther when landing level or lower. */
 const JUMP_REACH_LOW = 5;
 const JUMP_REACH_HIGH = 3;
@@ -120,7 +120,7 @@ export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: numb
     const land = fall(g, c, bottom + 1);
     if (land >= 0) to(c, land);
   }
-  // jumps: up to 64 px up, landing anywhere lower within reach
+  // jumps: up to 48 px up, landing anywhere lower within reach
   for (let up = 1; up <= JUMP_ROWS; up++) {
     // the head must not hit a ceiling on the way up
     if (r - up - BODY + 1 >= 0 && blocks(g.get(c, r - up - BODY + 1))) break;

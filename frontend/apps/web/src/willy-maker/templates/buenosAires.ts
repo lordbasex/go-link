@@ -2,7 +2,7 @@
 
 // The "Buenos Aires" template: Mission 1's 8192 × 672 canvas with the five
 // sections of docs/rom/art-spec.md, drawn with the prototype's street tiles
-// and following its climbing rules (jumps up to 64 px, 32 px crates climbed
+// and following its climbing rules (ledges up to 48 px by a jump, 32 px crates climbed
 // by pushing, ladders for anything higher, a way down from every upper
 // route). A starting point to edit, not the final mission.
 
@@ -147,8 +147,8 @@ export function buenosAiresLevel(players = 4): Level {
   });
   tag(214, STREET - 1, 217, STREET - 1, hazard);
   for (let c = 214; c <= 217; c++) tile(c, STREET - 1, CITY.hazard);
-  platform(222, 232, STREET - 4);
-  civilian("civ_lobby_1", "baby", 228, STREET - 4);
+  platform(222, 232, STREET - 3); // 48 px: a jump peaks at 61.9 px, so 64 px is out of reach
+  civilian("civ_lobby_1", "baby", 228, STREET - 3);
   enemy("trooper_lobby_1", "trooper", 236, STREET, 64);
   obj({ name: "lock_lobby", type: "camera_lock", x: 240 * CELL, y: H - 224, w: 384, h: 224 });
   obj({ name: "boss_truck", type: "boss", x: 258 * CELL, y: y(STREET), kind: "armored_truck", w: 384, h: 224 });

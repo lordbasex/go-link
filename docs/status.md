@@ -19,7 +19,7 @@
 | Website | Landing, rooms, new game, room, My device dashboard, ROMs, history; EN/ES/PT; dark and light themes; phones and tablets play in a full-screen console (Game Boy upright, Switch sideways), auto-hiding see-through controls, one-row phone header with a bottom tab bar |
 | Security | Device secret, HMAC challenges, PIN gate with lockout, strict CSP and headers, limits everywhere |
 | Builds | macOS app and dmg (Intel and Apple silicon), Linux (window and headless, amd64/arm64), Windows (amd64/arm64), static libvpx and Opus, release script, Homebrew cask |
-| Willy Maker | Visual maker of CPS-1 games in Tools: wizard (genre list, only the platform shooter today) and Buenos Aires template, level editor (collision tags, objects, layers, undo, autosave, project `.zip`), characters from a sprite sheet, play while building with the ROM's rules, game and menu screens, AI pack with `PROMPT.md`, phones and tablets; parts with no effect yet marked "Coming soon" |
+| Willy Maker | Visual maker of CPS-1 games in Tools: wizard (genre list, only the platform shooter today) and Buenos Aires template, level editor (collision tags, objects, layers, undo, autosave, project `.zip`), characters from a sprite sheet, play while building with the ROM's rules, game and menu screens with the Rules card, AI pack with `PROMPT.md`, Create ROM (the game packed next to a prebuilt engine, powered on at once), phones and tablets; parts with no effect yet marked "Coming soon" |
 | ROM validation | Four levels: live editor rules, the AI pack's self-check, a power-on test in the browser (Musashi 68000 + a CPS-1 board model in WebAssembly) and on the linked device with the exact core (`rom_test`, `device romtest`) |
 | Own games | A CPS-1 ROM prototype of *Willy Gorklingo: The Lag Protocol* (4 players x 3 buttons) on the stock core; the device recognizes go-link's own sets by the SHA-256 of their files and shows their title, art and controls |
 | Tests | Go (`-race`), vitest, Playwright end to end with axe, CI with gitleaks and vulnerability checks |
@@ -32,6 +32,6 @@
 4. **End-to-end tests with real games** and four players.
 5. **Emulator core patches** (see [cores/mame2003-plus](../cores/mame2003-plus/README.md#pending)): propose them upstream, then The Simpsons driver banking, CPS2 sound after loading, and other games that cannot be saved.
 6. **Release 0.1.8** with Willy Maker, the ROM validator and go-link's own sets (the website already has them; the device app needs the release).
-7. **Willy Maker stage 2:** Create ROM in the browser from a data-driven engine, then play it on the linked go-link in one click.
+7. **Willy Maker stage 2:** Create ROM in the browser from a data-driven engine is built ([engine.md](willy-maker/engine.md)); next, the project's own characters in the ROM and a room opened with the created set on the linked go-link in one click.
 8. **The ROM's next stage:** ladder climbing animation, a camera for players on distant floors, QSound music and effects, and the remaining levels of the [game bible](rom/story.md).
 9. **Willy Maker's AI playtester:** a small player trained on each game in the browser (emulator in WebAssembly, network on WebGPU) that reports clear rates, deaths and stuck spots ([vision](willy-maker/vision.md#the-ai-playtester)).

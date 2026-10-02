@@ -1,0 +1,387 @@
+{
+  "zip": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-4/docs/experiments/case-c/build/slammast.zip",
+  "script": "/Volumes/HD12TB/github/MAME-WEBRTC/.claude/worktrees/wf_216c9ab5-365-4/docs/experiments/case-c/runs/clear.json",
+  "started": "2026-10-01T22:26:25.778Z",
+  "tests": {
+    "level3": {
+      "ok": true,
+      "failed": []
+    },
+    "level4": {
+      "ok": true,
+      "failed": [],
+      "error": null
+    },
+    "scripted": {
+      "ok": true,
+      "cleared": true,
+      "clearFrame": 1883,
+      "expectOk": true,
+      "expect": [
+        {
+          "frame": 150,
+          "path": "mode",
+          "equals": "title",
+          "ok": true,
+          "got": "title"
+        },
+        {
+          "frame": 156,
+          "path": "mode",
+          "equals": "playing",
+          "ok": true,
+          "got": "playing"
+        },
+        {
+          "frame": 156,
+          "path": "players.0.energy",
+          "equals": 3,
+          "ok": true,
+          "got": 3
+        },
+        {
+          "frame": 156,
+          "path": "flags.exit",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 330,
+          "path": "players.0.y",
+          "equals": 352,
+          "ok": true,
+          "got": 352
+        },
+        {
+          "frame": 444,
+          "path": "civilians.0.rescued",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 444,
+          "path": "players.0.score",
+          "equals": 500,
+          "ok": true,
+          "got": 500
+        },
+        {
+          "frame": 718,
+          "path": "enemies.0.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 718,
+          "path": "players.0.score",
+          "equals": 600,
+          "ok": true,
+          "got": 600
+        },
+        {
+          "frame": 864,
+          "path": "players.0.y",
+          "equals": 256,
+          "ok": true,
+          "got": 256
+        },
+        {
+          "frame": 1088,
+          "path": "enemies.1.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 1348,
+          "path": "civilians.1.rescued",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 1682,
+          "path": "enemies.2.alive",
+          "equals": false,
+          "ok": true,
+          "got": false
+        },
+        {
+          "frame": 1883,
+          "path": "sectionClear",
+          "equals": true,
+          "ok": true,
+          "got": true
+        },
+        {
+          "frame": 1883,
+          "path": "players.0.x",
+          "min": 1440,
+          "max": 1504,
+          "ok": true,
+          "got": 1440
+        },
+        {
+          "frame": 2003,
+          "path": "mode",
+          "equals": "clear",
+          "ok": true,
+          "got": "clear"
+        },
+        {
+          "frame": 2003,
+          "path": "players.0.score",
+          "equals": 1300,
+          "ok": true,
+          "got": 1300
+        },
+        {
+          "frame": 2003,
+          "path": "players.0.energy",
+          "equals": 3,
+          "ok": true,
+          "got": 3
+        }
+      ],
+      "error": null,
+      "labState": {
+        "from": "symbol",
+        "address": "0xff0000"
+      }
+    },
+    "sameAsCore": {
+      "ok": true,
+      "frames": 11,
+      "worstDifferPct": 0,
+      "perFrame": [
+        {
+          "frame": 150,
+          "differPct": 0
+        },
+        {
+          "frame": 156,
+          "differPct": 0
+        },
+        {
+          "frame": 330,
+          "differPct": 0
+        },
+        {
+          "frame": 444,
+          "differPct": 0
+        },
+        {
+          "frame": 718,
+          "differPct": 0
+        },
+        {
+          "frame": 864,
+          "differPct": 0
+        },
+        {
+          "frame": 1088,
+          "differPct": 0
+        },
+        {
+          "frame": 1348,
+          "differPct": 0
+        },
+        {
+          "frame": 1682,
+          "differPct": 0
+        },
+        {
+          "frame": 1883,
+          "differPct": 0
+        },
+        {
+          "frame": 2003,
+          "differPct": 0
+        }
+      ]
+    },
+    "bot": {
+      "games": 5,
+      "clears": 5,
+      "clearRate": 1,
+      "clearFrame": {
+        "best": 1260,
+        "worst": 1478,
+        "median": 1354
+      },
+      "energyLost": 0,
+      "falls": 0,
+      "errors": [],
+      "list": [
+        {
+          "game": 1,
+          "dir": "bot/game-01",
+          "seed": null,
+          "cleared": true,
+          "clearFrame": 1260,
+          "frames": 1380,
+          "decisions": 184,
+          "thinkMsMean": 5,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 2,
+          "dir": "bot/game-02",
+          "seed": 1,
+          "cleared": true,
+          "clearFrame": 1428,
+          "frames": 1548,
+          "decisions": 212,
+          "thinkMsMean": 5,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 3,
+          "dir": "bot/game-03",
+          "seed": 2,
+          "cleared": true,
+          "clearFrame": 1478,
+          "frames": 1598,
+          "decisions": 221,
+          "thinkMsMean": 5,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 4,
+          "dir": "bot/game-04",
+          "seed": 3,
+          "cleared": true,
+          "clearFrame": 1298,
+          "frames": 1418,
+          "decisions": 191,
+          "thinkMsMean": 5,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        },
+        {
+          "game": 5,
+          "dir": "bot/game-05",
+          "seed": 4,
+          "cleared": true,
+          "clearFrame": 1354,
+          "frames": 1474,
+          "decisions": 200,
+          "thinkMsMean": 5,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 1,
+          "enemiesDown": 3,
+          "score": 800,
+          "error": null
+        }
+      ]
+    },
+    "laya": {
+      "games": 3,
+      "clears": 0,
+      "clearRate": 0,
+      "clearFrame": null,
+      "energyLost": 0,
+      "falls": 0,
+      "errors": [],
+      "note": "game 1 by acceptance.mjs; games 2 and 3 by the same runner command (--seed 1, --seed 2) in parallel, to save wall time on a loaded machine",
+      "list": [
+        {
+          "game": 1,
+          "dir": "laya/game-01",
+          "seed": null,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 1639,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 574
+          },
+          "finalX": 32,
+          "error": null
+        },
+        {
+          "game": 2,
+          "dir": "../laya-parallel/game-02",
+          "seed": 1,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 2033,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 462,
+            "jump": 2,
+            "run_right": 110
+          },
+          "finalX": 186,
+          "error": null
+        },
+        {
+          "game": 3,
+          "dir": "../laya-parallel/game-03",
+          "seed": 2,
+          "cleared": false,
+          "clearFrame": null,
+          "frames": 3600,
+          "decisions": 574,
+          "thinkMsMean": 2033,
+          "energyLost": 0,
+          "falls": 0,
+          "rescued": 0,
+          "enemiesDown": 0,
+          "score": 200,
+          "actions": {
+            "fire": 480,
+            "climb_up": 1,
+            "run_right": 91,
+            "jump": 2
+          },
+          "finalX": 186,
+          "error": null
+        }
+      ]
+    }
+  },
+  "summary": {
+    "level3": true,
+    "level4": true,
+    "scripted": true,
+    "sameAsCore": true,
+    "bot": "5/5 cleared",
+    "laya": "0/3 cleared"
+  }
+}

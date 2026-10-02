@@ -211,7 +211,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   line();
   line("Follow docs/rom-README.md, docs/art-spec.md and docs/hardware.md (in this pack). docs/journal.md is the lab journal of the prototype that already runs in the core and in a go-link room: its section \"How to reproduce from zero\" is the build you start from. docs/story.md is the game bible: the world, the heroes and the tone.");
   line();
-  line(`The rules the game must keep (jump about 64 px, push-climb ${R.STEP_UP} px, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers, the same as rom/src/main.c.`);
+  line(`The rules the game must keep (a jump peaks at about 62 px, so ledges up to 48 px; push-climb ${R.STEP_UP} px, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers, the same as rom/src/main.c.`);
   line();
 
   line("## The game");
@@ -265,7 +265,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
     ["Collision grid", `${R.CELL} px`],
     ["Player body", `${R.BODY_H} px tall, ${R.HALF_W} px half width at the feet`],
     ["Gravity", `${R.GRAVITY}/16 px per frame, per frame`],
-    ["Jump", `start speed ${R.JUMP_VY}/16 px per frame (about 64 px high)`],
+    ["Jump", `start speed ${R.JUMP_VY}/16 px per frame (peaks at 61.9 px: a ledge 48 px up is reachable, 64 px is not)`],
     ["Fastest fall", `${R.MAX_FALL}/16 px per frame`],
     ["Ladders", `${R.CLIMB_SPEED}/16 px per frame (up and down on the stick)`],
     ["Push-climb", `edges up to ${R.STEP_UP} px (one 32 px crate), in ${R.PUSH_FRAMES} frames`],

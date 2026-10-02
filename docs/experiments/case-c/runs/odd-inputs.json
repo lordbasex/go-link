@@ -1,0 +1,39 @@
+{
+ "name": "case-c-odd-inputs",
+ "description": "Case C, spec checklist: two coins, 1P Start, then 2P Start joins player 2 (a recruit) next to player 1; P3 and P4 press Coin and Start (the game is for 2 players: they must not join or crash it), every port presses B3 (the special does nothing without a weapon), P1 presses Start mid-game, B4-B6 are pressed; both players then walk right.",
+ "frames": 900,
+ "checkpoints": [150, 210, 330, 600, 900],
+ "expect": [
+  {"frame": 145, "path": "credits", "equals": 2},
+  {"frame": 160, "path": "mode", "equals": "playing"},
+  {"frame": 160, "path": "credits", "equals": 1},
+  {"frame": 210, "path": "players.1.active", "equals": true},
+  {"frame": 210, "path": "players.1.energy", "equals": 3},
+  {"frame": 210, "path": "credits", "equals": 0},
+  {"frame": 330, "path": "players.2.active", "equals": false},
+  {"frame": 330, "path": "players.3.active", "equals": false},
+  {"frame": 330, "path": "mode", "equals": "playing"},
+  {"frame": 600, "path": "players.0.active", "equals": true},
+  {"frame": 600, "path": "players.0.energy", "equals": 3},
+  {"frame": 900, "path": "mode", "equals": "playing"},
+  {"frame": 900, "path": "players.0.x", "min": 150},
+  {"frame": 900, "path": "players.1.x", "min": 100}
+ ],
+ "steps": [
+  {"from": 120, "to": 125, "port": 1, "buttons": ["coin"]},
+  {"from": 135, "to": 140, "port": 2, "buttons": ["coin"]},
+  {"from": 150, "to": 155, "port": 1, "buttons": ["start"]},
+  {"from": 200, "to": 205, "port": 2, "buttons": ["start"]},
+  {"from": 240, "to": 245, "port": 3, "buttons": ["coin", "start"]},
+  {"from": 250, "to": 255, "port": 4, "buttons": ["coin", "start"]},
+  {"from": 260, "to": 265, "port": 3, "buttons": ["start", "b1", "b2", "b3", "right"]},
+  {"from": 270, "to": 275, "port": 1, "buttons": ["b3"]},
+  {"from": 270, "to": 275, "port": 2, "buttons": ["b3"]},
+  {"from": 270, "to": 275, "port": 3, "buttons": ["b3"]},
+  {"from": 270, "to": 275, "port": 4, "buttons": ["b3"]},
+  {"from": 290, "to": 295, "port": 1, "buttons": ["start"]},
+  {"from": 300, "to": 305, "port": 1, "buttons": ["b4", "b5", "b6"]},
+  {"from": 340, "to": 899, "port": 1, "buttons": ["right"]},
+  {"from": 360, "to": 899, "port": 2, "buttons": ["right"]}
+ ]
+}

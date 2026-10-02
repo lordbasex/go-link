@@ -165,7 +165,7 @@ function failureText(t: DeviceT, e: { code?: string; error?: string; message?: s
 }
 
 /** Validation level 4: the same .zip on the owner's go-link, with its exact core. */
-function DeviceRomTest({ file, browserSet }: { file: File; browserSet?: string }) {
+export function DeviceRomTest({ file, browserSet }: { file: File; browserSet?: string }) {
   const t = useExportMessages().powerOn.device;
   const device = useMakerDevice();
   const [state, setState] = useState<DeviceState>({ kind: "idle" });

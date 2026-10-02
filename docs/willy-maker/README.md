@@ -47,6 +47,8 @@ A project picks its board when it is created. Every limit, meter, check and conv
 
 ### Phase 2: "Create ROM" in the browser
 
+**Built (2026-10-01), in [experiment 1, case C](../experiments/README.md):** the engine, the packer and the Create ROM card, described in [engine.md](engine.md). The level of Game Spec v1 made with it in a recorded browser session passes validation levels 3 and 4, the scripted clear and the same-picture test on the real core. What it leaves out for now is listed in [engine.md](engine.md#what-the-rom-leaves-out-for-now).
+
 The prototype's 68000 program is turned into a **data-driven engine**: levels, characters, menus and settings become data that the engine reads. Building a game is then **packing**, not compiling:
 
 - Convert the graphics to the board's format, with the shared `@go-link/cps1` package (`frontend/packages/cps1`: `gfx.ts`, `sprites.ts`, `color.ts`), the same code `rom/tools` builds the prototype with.
@@ -166,7 +168,7 @@ The names are references: the AI pack, the warnings and the play mode's debug ov
 
 - Grids (8, 16 and 32 px), rulers, guides and snapping, like the skin editor.
 - A **minimap** of the whole canvas, with the visible screen (384 × 224) and the sections.
-- **Reachability check** with the engine's rules (jump about 64 px, push-climb 32 px, ladders, drop through one-way ledges): it shades what a player cannot reach and points at the gap.
+- **Reachability check** with the engine's rules (a jump reaches ledges up to 48 px, push-climb 32 px, ladders, drop through one-way ledges): it shades what a player cannot reach and points at the gap.
 - **Warnings** while working:
   - no exit;
   - a civilian behind an unbreakable wall;
@@ -195,7 +197,8 @@ Two tabs of the IDE (`src/willy-maker/game/`, texts in `i18n/game.*.ts` and `i18
 
 - **Each player's character**: a project hero or the built-in Willy, plus a shirt (own colors or one of three recruit shirts). New games: Willy for player 1, recruits for players 2-4.
 - **Your controller**: the connected controller (Gamepad API) drawn with its own button names (`src/controllers`) and lit while pressed; press-to-assign remapping of the keyboard and of each controller model for Up, Down, Left, Right, B1-B3, Start and Coin; the on-screen pad in play mode (automatic on touch screens, always or never); and "go-link defaults". The mapping is the site's button map in this browser (`go-link.input`), so play mode and go-link rooms use it; the touch choice is `go-link.wm.touchpad`.
-- **DIP switches**: difficulty (Easy, Normal, Hard, Lag), lives (1-5), free play and demo sound, saved with the game. Play mode uses the lives; the ROM reads the rest.
+- **DIP switches**: difficulty (Easy, Normal, Hard, Lag), lives (1-5), free play and demo sound, saved with the game. Play mode uses the lives; in the ROM the lives are the hits a player takes, and free play needs no credit.
+- **Rules**: hits an enemy takes, points per enemy, rescue and crate, touch damage, enemies that chase or shoot, an exit that needs every enemy down, and what a hit does (back near the camera, or blink in place, with the blink's length). Play mode and the ROM read the same values ([engine.md](engine.md#rules-the-game-tab)); **Prototype rules** clears them.
 - **Checks**: the live rules of the game settings and menus (below), each with Go.
 
 **Menus tab**
@@ -246,7 +249,7 @@ The screens match the mocks being designed on the go-link design canvas:
 | **Sprite import** | the dropped sheet with detected frames, animation slots, pivot editor, palette zones with their 15-color meters, CPS-1 snap preview, 1x and 2x preview |
 | **Play test** | the 2× game view with HUD, debug overlay switches, the controller panel with live buttons, Pause / Edit / Resume / Restart here |
 | **Game settings** | players, buttons and actions, controller mapping, menus, DIP switches, level order |
-| **Export / Build** | validation checklist, Export project, Export AI pack (with a preview of the prompt), Create ROM (Phase 2, shown as coming), the power-on test of a ROM `.zip`, Create and play (Phase 2) |
+| **Export / Build** | validation checklist, Export project, Export AI pack (with a preview of the prompt), Create ROM (its steps, the power-on test at once with its picture, Download ROM, the symbol map, Play on my go-link, notes on what the ROM leaves out), the power-on test of a ROM `.zip` |
 
 ### Keyboard shortcuts
 
@@ -282,12 +285,13 @@ The screens match the mocks being designed on the go-link design canvas:
 5. **Characters**: sheet import, frame detection, animations, palette zones.
 6. **Game settings**: players, buttons, controller mapping, menus, DIP switches.
 7. **Validation and the AI pack.** This completes Phase 1.
-8. **The data-driven ROM engine and Create ROM** (Phase 2), then Create and play over the `files` channel.
+8. **The data-driven ROM engine and Create ROM** (Phase 2): built ([engine.md](engine.md)). Next: the project's own characters in the ROM, more levels, bosses and camera locks, and a room opened with the created set on the linked go-link.
 9. **More boards** (Phase 3).
 
 ## Open questions
 
-- **The engine's data format** for Phase 2: designed with Phase 1's project format so that export is a translation, not a rewrite.
+- **The engine's data format** for Phase 2: answered by `wm_data` ([engine.md](engine.md#the-data-block-wm_data)), a translation of the project format.
+- **A room with a created set**: the device keeps one `slammast.zip` in the ROM folder and recognizes go-link's own sets by their hashes; a user's set needs its own identity before **Play on my go-link** can open a room with it instead of only powering it on.
 - **Sound** in the maker: QSound samples on `slammast` need a sound driver first (journal: pending). Phase 1 only stores references.
 - **Our sets' identity**: the device's allow-list of go-link-owned sets by hash, so the library shows the user's title and art instead of the original set's ([docs/rom/README.md](../rom/README.md#how-the-core-finds-the-game)). It is needed before Create and play.
 - **Sharing projects between users**: Phase 1 is files only. A gallery would need storage, which go-link does not have by choice.

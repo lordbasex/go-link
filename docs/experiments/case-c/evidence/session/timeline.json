@@ -1,0 +1,748 @@
+{
+ "started": "2026-10-01T22:19:37.183Z",
+ "base": "http://localhost:5302",
+ "viewport": "1920x1080",
+ "noteMs": 1500,
+ "video": "video/page@b303b1f30fb16bd4d606fdc7a8b8e9fe.webm",
+ "errors": [],
+ "steps": [
+  {
+   "step": 1,
+   "t": 4.791,
+   "text": "Open Willy Maker and start a new game",
+   "why": "Game Spec v1 is built from \"New game\", the way any user starts.",
+   "selector": "role=button[name=\"New game\"]",
+   "screenshot": "shots/01.jpg",
+   "after": 5.468
+  },
+  {
+   "step": 2,
+   "t": 7.362,
+   "text": "Keep the CPS-1 board with the slammast layout (4 players × 3 buttons)",
+   "why": "The spec's set is slammast: B1 jump, B2 fire, B3 special.",
+   "selector": "role=radio[name~=\"4 players · 3 buttons\"]",
+   "screenshot": "shots/02.jpg",
+   "after": 7.952
+  },
+  {
+   "step": 3,
+   "t": 9.657,
+   "text": "Start from the Empty template",
+   "why": "The spec's level is small (4 screens × 2) and its own; the Buenos Aires template is the whole mission.",
+   "selector": "role=radio[name~=\"Empty\"]",
+   "screenshot": "shots/03.jpg",
+   "after": 10.254
+  },
+  {
+   "step": 4,
+   "t": 11.962,
+   "text": "Next: name and players",
+   "why": "The wizard's second step.",
+   "selector": "role=button[name~=\"Next: name and players\"]",
+   "screenshot": "shots/04.jpg",
+   "after": 12.572
+  },
+  {
+   "step": 5,
+   "t": 14.272,
+   "text": "Type the game's title: Willy Gorklingo",
+   "why": "The title screen shows it (WILLY GORKLINGO, the board's font is uppercase).",
+   "selector": "label=\"Game title\"",
+   "screenshot": "shots/05.jpg",
+   "after": 15.545
+  },
+  {
+   "step": 6,
+   "t": 17.23,
+   "text": "Type the author",
+   "why": "Recorded with the project.",
+   "selector": "label=\"Author (optional)\"",
+   "screenshot": "shots/06.jpg",
+   "after": 19.258
+  },
+  {
+   "step": 7,
+   "t": 20.99,
+   "text": "Choose 2 players",
+   "why": "The spec: P1 Willy and P2 a recruit play at once.",
+   "selector": "role=radio[name=\"2 players\"]",
+   "screenshot": "shots/07.jpg",
+   "after": 21.629
+  },
+  {
+   "step": 8,
+   "t": 23.366,
+   "text": "Next: the first level",
+   "why": "Its name and size come next.",
+   "selector": "role=button[name~=\"Next: the first level\"]",
+   "screenshot": "shots/08.jpg",
+   "after": 23.966
+  },
+  {
+   "step": 9,
+   "t": 25.682,
+   "text": "Name the level Dead Air",
+   "why": "Mission 1, section 1: the Puerto Madero docks.",
+   "selector": "label=\"Level name\"",
+   "screenshot": "shots/09.jpg",
+   "after": 26.707
+  },
+  {
+   "step": 10,
+   "t": 28.409,
+   "text": "Length: 4 screens (1536 px)",
+   "why": "The spec's level is 1536 px wide.",
+   "selector": "role=radio[name=\"4 screens\"]",
+   "screenshot": "shots/10.jpg",
+   "after": 29.003
+  },
+  {
+   "step": 11,
+   "t": 30.743,
+   "text": "Height: 448 px (2 screens)",
+   "why": "The spec's level is 448 px tall, for the upper dock.",
+   "selector": "role=radio[name~=\"448 px\"]",
+   "screenshot": "shots/11.jpg",
+   "after": 31.348
+  },
+  {
+   "step": 12,
+   "t": 33.064,
+   "text": "Create the game",
+   "why": "Willy Maker makes the level with its dock floor, the two players' starts and an exit.",
+   "selector": "role=button[name=\"Create the game\"]",
+   "screenshot": "shots/12.jpg",
+   "after": 33.634
+  },
+  {
+   "step": 13,
+   "t": 36.178,
+   "text": "Zoom out to see the whole level",
+   "why": "The 1536 × 448 level fits the canvas at about 80 %.",
+   "selector": "role=button[name=\"Zoom out (−)\"]",
+   "screenshot": "shots/13.jpg",
+   "after": 36.864
+  },
+  {
+   "step": 14,
+   "t": 39.389,
+   "text": "Center the view on the level with the map strip",
+   "why": "So every cell of the level is on the canvas.",
+   "selector": "role=slider[name~=\"Level map\"]",
+   "screenshot": "shots/14.jpg",
+   "after": 39.89
+  },
+  {
+   "step": 15,
+   "t": 41.728,
+   "text": "Select the Far background layer",
+   "why": "The spec's night palette and dark sky go on the far layer (scroll3, 32 px tiles).",
+   "selector": ".wm-layer-name:has-text(\"Far background\")",
+   "screenshot": "shots/15.jpg",
+   "after": 42.391
+  },
+  {
+   "step": 16,
+   "t": 44.128,
+   "text": "Open the Tiles parts",
+   "why": "The far layer's tileset is the starter night sky.",
+   "selector": "button:has-text(\"Tiles\")",
+   "screenshot": "shots/16.jpg",
+   "after": 44.772
+  },
+  {
+   "step": 17,
+   "t": 46.534,
+   "text": "Pick the Fill tool",
+   "why": "A rectangle of tiles in one stroke.",
+   "selector": "role=button[name=\"Fill a rectangle (G)\"]",
+   "screenshot": "shots/17.jpg",
+   "after": 47.16
+  },
+  {
+   "step": 18,
+   "t": 48.912,
+   "text": "Pick sky tile 1",
+   "why": "Tile 1 of the night sky: the darkest sky at the top.",
+   "selector": "role=button[name=\"Tile 1\"]",
+   "screenshot": "shots/18.jpg",
+   "after": 49.57
+  },
+  {
+   "step": 19,
+   "t": 51.331,
+   "text": "Fill the far layer's rows 0-4 with it",
+   "why": "A banded night sky, like the prototype's.",
+   "selector": "canvas cells 32px (0,0)-(47,4)",
+   "screenshot": "shots/19.jpg",
+   "after": 53.943
+  },
+  {
+   "step": 20,
+   "t": 55.722,
+   "text": "Pick sky tile 3",
+   "why": "Tile 3 of the night sky: a lighter band in the middle.",
+   "selector": "role=button[name=\"Tile 3\"]",
+   "screenshot": "shots/20.jpg",
+   "after": 56.404
+  },
+  {
+   "step": 21,
+   "t": 58.157,
+   "text": "Fill the far layer's rows 5-9 with it",
+   "why": "A banded night sky, like the prototype's.",
+   "selector": "canvas cells 32px (0,5)-(47,9)",
+   "screenshot": "shots/21.jpg",
+   "after": 60.909
+  },
+  {
+   "step": 22,
+   "t": 62.642,
+   "text": "Pick sky tile 5",
+   "why": "Tile 5 of the night sky: the city glow near the horizon.",
+   "selector": "role=button[name=\"Tile 5\"]",
+   "screenshot": "shots/22.jpg",
+   "after": 63.287
+  },
+  {
+   "step": 23,
+   "t": 65.029,
+   "text": "Fill the far layer's rows 10-13 with it",
+   "why": "A banded night sky, like the prototype's.",
+   "selector": "canvas cells 32px (0,10)-(47,13)",
+   "screenshot": "shots/23.jpg",
+   "after": 67.629
+  },
+  {
+   "step": 24,
+   "t": 69.346,
+   "text": "Back to the Collision layer",
+   "why": "The level's shape is painted as collision tags; the street art follows them (Auto art).",
+   "selector": ".wm-layer-name:has-text(\"Collision\")",
+   "screenshot": "shots/24.jpg",
+   "after": 70.026
+  },
+  {
+   "step": 25,
+   "t": 71.779,
+   "text": "Open the Terrain parts",
+   "why": "Solid, platform, ladder and crate.",
+   "selector": "button:has-text(\"Terrain\")",
+   "screenshot": "shots/25.jpg",
+   "after": 72.334
+  },
+  {
+   "step": 26,
+   "t": 74.088,
+   "text": "Pick the Pencil",
+   "why": "Crates are placed with one click each.",
+   "selector": "role=button[name=\"Pencil: paint the part (B)\"]",
+   "screenshot": "shots/26.jpg",
+   "after": 74.748
+  },
+  {
+   "step": 27,
+   "t": 76.547,
+   "text": "Pick the Crate part",
+   "why": "32 px crates, climbed by pushing.",
+   "selector": ".wm-part:has-text(\"Crate\")",
+   "screenshot": "shots/27.jpg",
+   "after": 77.18
+  },
+  {
+   "step": 28,
+   "t": 78.9,
+   "text": "Place a crate on the dock at x 160",
+   "why": "The first step of the stack: 32 px.",
+   "selector": "canvas cell (10,24)",
+   "screenshot": "shots/28.jpg",
+   "after": 79.428
+  },
+  {
+   "step": 29,
+   "t": 81.161,
+   "text": "Place a crate next to it at x 192",
+   "why": "The bottom of the 64 px stack.",
+   "selector": "canvas cell (12,24)",
+   "screenshot": "shots/29.jpg",
+   "after": 81.68
+  },
+  {
+   "step": 30,
+   "t": 83.441,
+   "text": "Stack a crate on top of it",
+   "why": "The stack is now 64 px: pushed up from the 32 px crate, then a jump.",
+   "selector": "canvas cell (12,22)",
+   "screenshot": "shots/30.jpg",
+   "after": 83.967
+  },
+  {
+   "step": 31,
+   "t": 85.751,
+   "text": "Pick the Fill tool again",
+   "why": "Ledges, ladders and docks are rectangles of tags.",
+   "selector": "role=button[name=\"Fill a rectangle (G)\"]",
+   "screenshot": "shots/31.jpg",
+   "after": 86.384
+  },
+  {
+   "step": 32,
+   "t": 88.148,
+   "text": "Pick the Platform part (one-way)",
+   "why": "Stood on, jumped up through, and down + B1 drops through it.",
+   "selector": ".wm-part:has-text(\"Platform\")",
+   "screenshot": "shots/32.jpg",
+   "after": 88.814
+  },
+  {
+   "step": 33,
+   "t": 90.553,
+   "text": "Draw the one-way ledge 64 px up, x 256-367",
+   "why": "Reached by a jump from the crate stack; down + B1 is its way down.",
+   "selector": "canvas cells (16,22)-(22,22)",
+   "screenshot": "shots/33.jpg",
+   "after": 93.365
+  },
+  {
+   "step": 34,
+   "t": 95.103,
+   "text": "Pick the Ladder part",
+   "why": "The way up to the upper dock.",
+   "selector": ".wm-part:has-text(\"Ladder\")",
+   "screenshot": "shots/34.jpg",
+   "after": 95.7
+  },
+  {
+   "step": 35,
+   "t": 97.425,
+   "text": "Draw the ladder at x 480, 160 px tall",
+   "why": "From the dock floor (y 416) up to the upper dock (y 256).",
+   "selector": "canvas cells (30,16)-(30,25)",
+   "screenshot": "shots/35.jpg",
+   "after": 99.842
+  },
+  {
+   "step": 36,
+   "t": 101.6,
+   "text": "Pick the Solid part",
+   "why": "The upper dock is a solid floor.",
+   "selector": ".wm-part:has-text(\"Solid\")",
+   "screenshot": "shots/36.jpg",
+   "after": 102.288
+  },
+  {
+   "step": 37,
+   "t": 104.042,
+   "text": "Draw the upper dock, x 496-1023 at y 256",
+   "why": "The second floor; its right end is open, so players drop back to the lower dock.",
+   "selector": "canvas cells (31,16)-(63,16)",
+   "screenshot": "shots/37.jpg",
+   "after": 106.782
+  },
+  {
+   "step": 38,
+   "t": 108.529,
+   "text": "Pick the Pencil",
+   "why": "Enemies, civilians and the exit are placed by clicking.",
+   "selector": "role=button[name=\"Pencil: paint the part (B)\"]",
+   "screenshot": "shots/38.jpg",
+   "after": 109.142
+  },
+  {
+   "step": 39,
+   "t": 110.98,
+   "text": "Open the Enemies parts",
+   "why": "The spec's enemy is the Trooper.",
+   "selector": "button:has-text(\"Enemies\")",
+   "screenshot": "shots/39.jpg",
+   "after": 111.639
+  },
+  {
+   "step": 40,
+   "t": 113.417,
+   "text": "Pick the Trooper",
+   "why": "Each Trooper walks a 96 px patrol and turns at its ends.",
+   "selector": ".wm-part:has-text(\"Trooper\")",
+   "screenshot": "shots/40.jpg",
+   "after": 114.103
+  },
+  {
+   "step": 41,
+   "t": 115.849,
+   "text": "Place a Trooper at x 640, on the lower dock, under the upper dock",
+   "why": "The spec's three enemies: lower dock, upper dock, exit.",
+   "selector": "canvas world (640,416)",
+   "screenshot": "shots/41.jpg",
+   "after": 116.393
+  },
+  {
+   "step": 42,
+   "t": 118.136,
+   "text": "Place a Trooper at x 800, on the upper dock",
+   "why": "The spec's three enemies: lower dock, upper dock, exit.",
+   "selector": "canvas world (800,256)",
+   "screenshot": "shots/42.jpg",
+   "after": 118.658
+  },
+  {
+   "step": 43,
+   "t": 120.375,
+   "text": "Place a Trooper at x 1360, guarding the exit",
+   "why": "The spec's three enemies: lower dock, upper dock, exit.",
+   "selector": "canvas world (1360,416)",
+   "screenshot": "shots/43.jpg",
+   "after": 120.896
+  },
+  {
+   "step": 44,
+   "t": 122.64,
+   "text": "Open the Civilians parts",
+   "why": "Two civilians to rescue by touching them.",
+   "selector": "button:has-text(\"Civilians\")",
+   "screenshot": "shots/44.jpg",
+   "after": 123.278
+  },
+  {
+   "step": 45,
+   "t": 125.008,
+   "text": "Pick the Woman",
+   "why": "The first civilian waits on the one-way ledge.",
+   "selector": ".wm-part:has-text(\"Woman\")",
+   "screenshot": "shots/45.jpg",
+   "after": 125.594
+  },
+  {
+   "step": 46,
+   "t": 127.321,
+   "text": "Place her on the ledge at x 320",
+   "why": "Rescued after the jump from the crates.",
+   "selector": "canvas world (320,352)",
+   "screenshot": "shots/46.jpg",
+   "after": 127.837
+  },
+  {
+   "step": 47,
+   "t": 129.561,
+   "text": "Pick the Child",
+   "why": "The second civilian waits on the upper dock.",
+   "selector": ".wm-part:has-text(\"Child\")",
+   "screenshot": "shots/47.jpg",
+   "after": 130.198
+  },
+  {
+   "step": 48,
+   "t": 131.911,
+   "text": "Place the child on the upper dock at x 960",
+   "why": "Past the upper dock's Trooper.",
+   "selector": "canvas world (960,256)",
+   "screenshot": "shots/48.jpg",
+   "after": 132.43
+  },
+  {
+   "step": 49,
+   "t": 134.168,
+   "text": "Open the Helpers parts",
+   "why": "Starts, checkpoints, camera locks and the exit.",
+   "selector": "button:has-text(\"Helpers\")",
+   "screenshot": "shots/49.jpg",
+   "after": 134.806
+  },
+  {
+   "step": 50,
+   "t": 136.573,
+   "text": "Pick the Exit",
+   "why": "The spec's exit is at x 1440-1504 on the lower dock.",
+   "selector": ".wm-part:has-text(\"exit\")",
+   "screenshot": "shots/50.jpg",
+   "after": 137.219
+  },
+  {
+   "step": 51,
+   "t": 138.963,
+   "text": "Place the exit at x 1440 on the lower dock",
+   "why": "A new exit replaces the one the template made at x 1488.",
+   "selector": "canvas world (1440,416)",
+   "screenshot": "shots/51.jpg",
+   "after": 139.492
+  },
+  {
+   "step": 52,
+   "t": 141.226,
+   "text": "Make the exit 64 px wide in the inspector",
+   "why": "x 1440 to 1504, as the spec says.",
+   "selector": "role=spinbutton[name=\"Width\"]",
+   "screenshot": "shots/52.jpg",
+   "after": 141.988
+  },
+  {
+   "step": 53,
+   "t": 143.653,
+   "text": "Check the level with Reach",
+   "why": "Willy Maker shades what players cannot get to; nothing should be left out.",
+   "selector": "role=button[name=\"Reach\"]",
+   "screenshot": "shots/53.jpg",
+   "after": 144.366
+  },
+  {
+   "step": 54,
+   "t": 146.712,
+   "text": "Turn Reach off again",
+   "why": "The level reads better without the shading.",
+   "selector": "role=button[name=\"Reach\"]",
+   "screenshot": "shots/54.jpg",
+   "after": 147.387
+  },
+  {
+   "step": 55,
+   "t": 149.165,
+   "text": "Open the Game tab",
+   "why": "The spec's rules are set in the Rules card.",
+   "selector": "button:has-text(\"Game\")",
+   "screenshot": "shots/55.jpg",
+   "after": 149.779
+  },
+  {
+   "step": 56,
+   "t": 151.569,
+   "text": "Enemies take 3 hits",
+   "why": "The spec: a Trooper takes 3 shots.",
+   "selector": "role=spinbutton[name=\"Hits an enemy takes\"]",
+   "screenshot": "shots/56.jpg",
+   "after": 152.365
+  },
+  {
+   "step": 57,
+   "t": 153.996,
+   "text": "100 points per enemy",
+   "why": "The spec: each Trooper gives 100 points.",
+   "selector": "role=spinbutton[name=\"Points per enemy\"]",
+   "screenshot": "shots/57.jpg",
+   "after": 154.822
+  },
+  {
+   "step": 58,
+   "t": 156.627,
+   "text": "500 points per rescue",
+   "why": "The spec: each civilian gives 500 points.",
+   "selector": "role=spinbutton[name=\"Points per rescue\"]",
+   "screenshot": "shots/58.jpg",
+   "after": 157.466
+  },
+  {
+   "step": 59,
+   "t": 159.167,
+   "text": "Touching an enemy hurts: Yes",
+   "why": "The spec: they hurt a player on touch.",
+   "selector": "radiogroup \"Touching an enemy hurts\" > radio \"Yes\"",
+   "screenshot": "shots/59.jpg",
+   "after": 159.78
+  },
+  {
+   "step": 60,
+   "t": 161.588,
+   "text": "Enemies chase players: No",
+   "why": "The spec's Troopers walk their patrol and turn at its ends.",
+   "selector": "radiogroup \"Enemies chase players\" > radio \"No\"",
+   "screenshot": "shots/60.jpg",
+   "after": 162.284
+  },
+  {
+   "step": 61,
+   "t": 164.061,
+   "text": "Enemies shoot: No",
+   "why": "The spec gives them touch damage only.",
+   "selector": "radiogroup \"Enemies shoot\" > radio \"No\"",
+   "screenshot": "shots/61.jpg",
+   "after": 164.659
+  },
+  {
+   "step": 62,
+   "t": 166.356,
+   "text": "The exit needs every enemy down: Yes",
+   "why": "The spec: reaching the exit with all enemies down shows SECTION CLEAR.",
+   "selector": "radiogroup \"The exit needs every enemy down\" > radio \"Yes\"",
+   "screenshot": "shots/62.jpg",
+   "after": 166.967
+  },
+  {
+   "step": 63,
+   "t": 168.738,
+   "text": "After a hit: blink in place",
+   "why": "The spec: the player blinks and loses 1 of 3 energy.",
+   "selector": "radiogroup \"After a hit\" > radio \"Blink in place\"",
+   "screenshot": "shots/63.jpg",
+   "after": 169.424
+  },
+  {
+   "step": 64,
+   "t": 171.212,
+   "text": "Blink for 1 s (60 frames)",
+   "why": "The spec: the player blinks 1 s.",
+   "selector": "role=slider[name=\"Blinking after a hit\"]",
+   "screenshot": "shots/64.jpg",
+   "after": 172.082
+  },
+  {
+   "step": 65,
+   "t": 173.785,
+   "text": "Keep 3 lives (energy 3)",
+   "why": "The spec: 1 of 3 energy per hit.",
+   "selector": "radiogroup \"Lives\" > radio \"3\"",
+   "screenshot": "shots/65.jpg",
+   "after": 174.366
+  },
+  {
+   "step": 66,
+   "t": 176.062,
+   "text": "Try it at once: Play",
+   "why": "Willy Maker runs the level in the browser with the same rules the ROM gets.",
+   "selector": "role=button[name=\"Play\"]",
+   "screenshot": "shots/66.jpg",
+   "after": 176.635
+  },
+  {
+   "step": 67,
+   "t": 179.876,
+   "text": "Walk right toward the crates (arrow key)",
+   "why": "A quick feel of the start before making the ROM.",
+   "selector": "keyboard ArrowRight",
+   "screenshot": "shots/67.jpg",
+   "after": 182.562
+  },
+  {
+   "step": 68,
+   "t": 184.505,
+   "text": "Back to building",
+   "why": "The texts are next.",
+   "selector": "role=button[name=\"Back to building\"]",
+   "screenshot": "shots/68.jpg",
+   "after": 185.22
+  },
+  {
+   "step": 69,
+   "t": 186.972,
+   "text": "Open the Menus tab",
+   "why": "The title screen and the clear text come from here.",
+   "selector": "button:has-text(\"Menus\")",
+   "screenshot": "shots/69.jpg",
+   "after": 187.62
+  },
+  {
+   "step": 70,
+   "t": 189.344,
+   "text": "Title: WILLY GORKLINGO",
+   "why": "The spec's title screen.",
+   "selector": "#wm-menu-field-title",
+   "screenshot": "shots/70.jpg",
+   "after": 190.793
+  },
+  {
+   "step": 71,
+   "t": 192.531,
+   "text": "Subtitle: THE LAG PROTOCOL",
+   "why": "The spec's second line.",
+   "selector": "#wm-menu-field-subtitle",
+   "screenshot": "shots/71.jpg",
+   "after": 194.075
+  },
+  {
+   "step": 72,
+   "t": 195.831,
+   "text": "Check the prompt says PUSH START",
+   "why": "The spec's prompt; the credits line (C) 2026 GO-LINK is on by default.",
+   "selector": "#wm-menu-field-prompt",
+   "screenshot": "shots/72.jpg",
+   "after": 196.298
+  },
+  {
+   "step": 73,
+   "t": 198.063,
+   "text": "Open the HUD screen",
+   "why": "Its Level clear text is what the section shows at the exit.",
+   "selector": "role=tab[name=\"HUD\"]",
+   "screenshot": "shots/73.jpg",
+   "after": 198.731
+  },
+  {
+   "step": 74,
+   "t": 200.436,
+   "text": "Level clear: SECTION CLEAR",
+   "why": "The spec's text at the exit.",
+   "selector": "#wm-menu-field-cleared",
+   "screenshot": "shots/74.jpg",
+   "after": 201.797
+  },
+  {
+   "step": 75,
+   "t": 203.534,
+   "text": "Look at the Game over screen",
+   "why": "GAME OVER shows when every player is out of energy and there is no credit.",
+   "selector": "role=tab[name=\"Game over\"]",
+   "screenshot": "shots/75.jpg",
+   "after": 204.099
+  },
+  {
+   "step": 76,
+   "t": 205.88,
+   "text": "Open the Export tab",
+   "why": "The review, then Create ROM.",
+   "selector": "button:has-text(\"Export\")",
+   "screenshot": "shots/76.jpg",
+   "after": 206.544
+  },
+  {
+   "step": 77,
+   "t": 209.855,
+   "text": "Create ROM",
+   "why": "Stage 2: the game is packed as data next to the prebuilt engine, as slammast's files, then powered on in the board model.",
+   "selector": "role=button[name=\"Create ROM\"]",
+   "screenshot": "shots/77.jpg",
+   "after": 210.996
+  },
+  {
+   "step": 78,
+   "t": 213.575,
+   "text": "Read the result: every power-on step and the picture",
+   "why": "Validation level 3 ran by itself on the new ROM.",
+   "selector": ".wm-rom-card",
+   "screenshot": "shots/78.jpg",
+   "after": 214.14
+  },
+  {
+   "step": 79,
+   "t": 215.802,
+   "text": "Download the ROM",
+   "why": "slammast.zip: the set the mame2003-plus core and a go-link room run.",
+   "selector": "role=button[name~=\"Download ROM\"]",
+   "screenshot": "shots/79.jpg",
+   "after": 216.396
+  },
+  {
+   "step": 80,
+   "t": 218.064,
+   "text": "Download the symbol map",
+   "why": "symbols.json: where the game keeps its state, for the experiment's harness.",
+   "selector": "role=button[name~=\"Symbol map\"]",
+   "screenshot": "shots/80.jpg",
+   "after": 218.652
+  },
+  {
+   "step": 81,
+   "t": 220.35,
+   "text": "Play on my go-link",
+   "why": "It sends the ROM to the linked go-link; this recording has no device linked, so it says how to link one.",
+   "selector": "role=button[name=\"Play on my go-link\"]",
+   "screenshot": "shots/81.jpg",
+   "after": 220.93
+  },
+  {
+   "step": 82,
+   "t": 223.927,
+   "text": "Done: the level is built, the ROM created, powered on and downloaded",
+   "why": "Next: the harness checks this exact zip (levels 3 and 4, the clear script, the real core).",
+   "selector": ".wm-rom-card",
+   "screenshot": "shots/82.jpg",
+   "after": 224.384
+  }
+ ]
+}

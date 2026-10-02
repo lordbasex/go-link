@@ -1,0 +1,134 @@
+{
+ "name": "case-c-damage",
+ "description": "Case C, spec checklist: one coin, 1P Start, up the crates, onto the ledge and down, then the player stands in the lower Trooper's patrol without shooting: each touch costs 1 of 3 energy and blinks 1 s in place; at 0 energy with no credit the game shows GAME OVER and goes back to the title.",
+ "frames": 1693,
+ "checkpoints": [
+  888,
+  918,
+  1096,
+  1273,
+  1393,
+  1693
+ ],
+ "expect": [
+  {
+   "frame": 887,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 888,
+   "path": "players.0.energy",
+   "equals": 2
+  },
+  {
+   "frame": 888,
+   "path": "players.0.hurt",
+   "min": 59,
+   "max": 60
+  },
+  {
+   "frame": 888,
+   "path": "players.0.x",
+   "equals": 644
+  },
+  {
+   "frame": 888,
+   "path": "flags.damage",
+   "equals": true
+  },
+  {
+   "frame": 918,
+   "path": "players.0.energy",
+   "equals": 2
+  },
+  {
+   "frame": 1096,
+   "path": "players.0.energy",
+   "equals": 1
+  },
+  {
+   "frame": 1273,
+   "path": "players.0.active",
+   "equals": false
+  },
+  {
+   "frame": 1273,
+   "path": "players.0.state",
+   "equals": "dead"
+  },
+  {
+   "frame": 1273,
+   "path": "mode",
+   "equals": "game_over"
+  },
+  {
+   "frame": 1273,
+   "path": "credits",
+   "equals": 0
+  },
+  {
+   "frame": 1573,
+   "path": "mode",
+   "equals": "game_over"
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 156,
+   "to": 407,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 366,
+   "to": 368,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 408,
+   "to": 413,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 409,
+   "to": 410,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 414,
+   "to": 791,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

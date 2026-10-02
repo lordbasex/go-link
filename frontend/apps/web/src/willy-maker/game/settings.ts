@@ -19,6 +19,7 @@ import {
   type Project,
 } from "../model";
 import type { EditorStore } from "../editor/store";
+import type { GameRules } from "../engine/rules";
 import type { MenuScreenId } from "./menus";
 
 export interface ActionRow {
@@ -117,6 +118,13 @@ export function setPlayerSlot(store: EditorStore, index: number, slot: PlayerSlo
 export function setDip(store: EditorStore, patch: Partial<DipSettings>, label: string): void {
   store.editSettings(label, (s) => {
     s.dip = { ...s.dip, ...patch };
+  });
+}
+
+export function setRules(store: EditorStore, patch: Partial<GameRules> | null, label: string): void {
+  store.editSettings(label, (s) => {
+    s.rules = patch === null ? undefined : { ...(s.rules ?? {}), ...patch };
+    if (s.rules === undefined) delete s.rules;
   });
 }
 

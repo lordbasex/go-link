@@ -302,6 +302,24 @@ describe("Game and Menus tabs", () => {
     return { store, view };
   }
 
+  it("sets Game Spec v1's rules in the Rules card, undoes them and goes back to the prototype's", () => {
+    const { store } = mount(newProject({ title: "R", players: 2 }), (s) => <GameScreen store={s} project={s.project} issues={[]} onGo={() => undefined} />);
+    expect(screen.getByRole("heading", { name: gameEn.rules.title })).toBeInTheDocument();
+    const hits = screen.getByRole("spinbutton", { name: gameEn.rules.enemyHp }) as HTMLInputElement;
+    expect(hits.value).toBe("4");
+    act(() => void fireEvent.change(hits, { target: { value: "3" } }));
+    act(() => void fireEvent.change(screen.getByRole("spinbutton", { name: gameEn.rules.enemyScore }), { target: { value: "100" } }));
+    act(() => void fireEvent.click(within(screen.getByRole("radiogroup", { name: gameEn.rules.touchHurts })).getByRole("radio", { name: gameEn.rules.yes })));
+    act(() => void fireEvent.click(within(screen.getByRole("radiogroup", { name: gameEn.rules.respawnOnHurt })).getByRole("radio", { name: gameEn.rules.stay })));
+    expect(store.project.settings.rules).toEqual({ enemyHp: 3, enemyScore: 100, touchHurts: true, respawnOnHurt: false });
+    act(() => void store.undo());
+    expect(store.project.settings.rules?.respawnOnHurt).toBeUndefined();
+    act(() => void fireEvent.click(screen.getByRole("button", { name: gameEn.rules.reset })));
+    expect(store.project.settings.rules).toBeUndefined();
+    expect(Object.keys(gameEs.rules)).toEqual(Object.keys(gameEn.rules));
+    expect(Object.keys(gamePt.rules)).toEqual(Object.keys(gameEn.rules));
+  });
+
   it("renders the Game tab and edits players, labels, characters and switches", () => {
     const project = newProject({ title: "G", players: 2 });
     let gone: unknown = null;

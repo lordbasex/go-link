@@ -62,7 +62,7 @@ export const playEn = {
   sectionLine: " · section {n} {name}",
   locked: " · locked",
   enemiesLine: "enemies {n} · civilians {r}/{t} · time {time}",
-  note: "Plays with the same rules as the ROM: a 64 px jump, 32 px crates, a camera that only moves forward. What you change shows at once.",
+  note: "Plays with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates, a camera that only moves forward. What you change shows at once.",
   touchPad: "On-screen controls",
   more: "More",
   startButton: "Start",
