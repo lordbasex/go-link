@@ -21,9 +21,9 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
   idle: ["idle"],
   run: ["run", "walk", "idle"],
   jump: ["jump", "idle"],
-  knife: ["knife", "fire", "idle"],
-  gun: ["fire", "shoot", "idle"],
-  bazooka: ["bazooka", "fire", "idle"],
+  knife: ["knife", "melee", "shoot", "fire", "idle"],
+  gun: ["shoot", "fire", "machine_gun", "idle"],
+  bazooka: ["bazooka", "special", "shoot", "fire", "idle"],
 };
 
 /** At most this many 16 x 16 tiles in one frame (the engine draws up to 200 sprite entries). */

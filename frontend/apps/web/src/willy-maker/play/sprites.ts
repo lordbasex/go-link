@@ -83,9 +83,10 @@ export async function characterSheet(ch: Character, url: (ref: string) => Promis
 export function heroAnim(sheet: Sheet, anim: string): string {
   const options: Record<string, string[]> = {
     run: ["run", "walk"],
-    machine_gun: ["machine_gun", "fire", "shoot"],
-    knife: ["knife", "melee", "fire"],
-    bazooka: ["bazooka", "fire"],
+    // the Characters tab's names (sprites/presets.ts) first: shoot, knife, special
+    machine_gun: ["shoot", "fire", "machine_gun"],
+    knife: ["knife", "melee", "shoot", "fire"],
+    bazooka: ["bazooka", "special", "shoot", "fire"],
     jump: ["jump"],
   };
   return (options[anim] ?? [anim]).find((n) => sheet.anims[n]?.frames.length) ?? "idle";

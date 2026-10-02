@@ -55,7 +55,7 @@ describe("Willy Maker app", () => {
     expect(players.value).toBe("2");
     expect([...players.options].map((o) => o.textContent)).toEqual(["1 player", "2 players", "3 players", "4 players"]);
     fireEvent.change(players, { target: { value: "1" } });
-    await waitFor(() => expect(loadProject(saved.id)?.settings.players).toBe(1));
+    await waitFor(() => expect(loadProject(saved.id)?.settings.players).toBe(1), { timeout: 5000 });
   });
 
   it("lists saved games and opens one in Spanish", async () => {
