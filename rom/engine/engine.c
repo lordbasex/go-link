@@ -800,6 +800,35 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->rocket.live = 0;
 }
 
+/* where place_near looks, in order */
+static const s8 around[5] = { 0, 24, -24, 48, -48 };
+static const s8 beside[5] = { -24, 24, -48, 48, 0 };
+
+/* a place for a player near x, on screen: x and 24 and 48 px to each side,
+   on the first free floor from y down to max_y; else the old search */
+static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, s32 *ox, s32 *ofy)
+{
+	s32 lo = cam_x + 16, hi = cam_x + SCREEN_W - 16, cx, fy;
+	int i;
+	for (i = 0; i < 5; i++) {
+		cx = x + offs[i];
+		if (cx < lo || cx > hi)
+			continue;
+		fy = ((y + 15) >> 4) << 4;
+		if (fy < 16)
+			fy = 16;
+		for (; fy <= max_y && fy < level_h; fy += 16)
+			if (support(cx, fy, 0) && !body_blocked(cx, fy)) {
+				*ox = cx;
+				*ofy = fy;
+				return;
+			}
+	}
+	cx = x < lo ? lo : x > hi ? hi : x;
+	*ox = cx;
+	*ofy = ground_below(cx, y);
+}
+
 /* a player comes in: at their start, or next to a player already in */
 static void player_join(int k)
 {
@@ -815,14 +844,11 @@ static void player_join(int k)
 		x = D->start_x[k];
 		fy = ground_below(x, D->start_y[k] - 16);
 	} else if (lead >= 0) {
-		x = pl[lead].x - 24;
-		if (x < cam_x + 16)
-			x = pl[lead].x + 24;
-		fy = ground_below(x, (pl[lead].y >> 4) - 48);
-	} else {
-		x = cam_x + 64 + k * 24;
-		fy = ground_below(x, cam_y);
-	}
+		/* beside the player already in, on a floor they can stand on (J-06) */
+		s32 lf = pl[lead].y >> 4;
+		place_near(pl[lead].x, lf - 48, lf + 64, beside, &x, &fy);
+	} else
+		place_near(cam_x + 64 + k * 24, cam_y, cam_y + SCREEN_H, around, &x, &fy);
 	player_spawn(p, x, fy);
 	p->energy = R->energy;
 	p->hurt = R->hurt_frames;
@@ -831,14 +857,15 @@ static void player_join(int k)
 /* back on the ground near the camera's left side */
 static void respawn_near_camera(struct player *p)
 {
-	s32 x = p->x;
+	s32 x = p->x, fy;
 	int energy = p->energy, hurt = p->hurt;
 	u32 score = p->score;
 	if (x < cam_x + 64)
 		x = cam_x + 64;
 	if (x > cam_x + SCREEN_W - 64)
 		x = cam_x + SCREEN_W - 64;
-	player_spawn(p, x, ground_below(x, cam_y));
+	place_near(x, cam_y, cam_y + SCREEN_H, around, &x, &fy);
+	player_spawn(p, x, fy);
 	p->energy = energy;
 	p->hurt = hurt;
 	p->score = score;
@@ -1025,9 +1052,11 @@ static void update_player(struct player *p)
 				p->y = ((fy >> 4) << 4) * 16;
 				p->climbing = 0;
 				p->on_ground = 1;
-			} else if (cell_at(p->x, fy - 1) != T_LADDER && cell_at(p->x, fy) != T_LADDER)
-				p->climbing = 0;
+			}
 		}
+		/* off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04) */
+		if (p->climbing && cell_at(p->x, fy - 1) != T_LADDER && cell_at(p->x, fy) != T_LADDER)
+			p->climbing = 0;
 		if (PRESSED(p, BTN_1)) {
 			p->climbing = 0;
 			p->vy = JUMP_VY / 2;
@@ -1349,22 +1378,51 @@ static void update_civilians(void)
 
 /* ------------------------------------------------------------- camera */
 
+#define VIEW_TOP 24 /* room kept above the highest head */
+#define VIEW_BOTTOM 8 /* and below the lowest feet */
+
 static void update_camera(int snap)
 {
-	s32 sx = 0, sy = 0, tx, ty;
+	s32 sx = 0, sy = 0, tx, ty, fy;
+	s32 min_x = 0x7fffffff, max_x = -0x7fffffff, top = 0x7fffffff, feet = -0x7fffffff;
+	s32 lo_x, hi_x, lo_y, hi_y, before;
 	int n = 0, k;
 	for (k = 0; k < nplayers; k++)
 		if (pl[k].active) {
+			fy = pl[k].y >> 4;
 			sx += pl[k].x;
-			sy += pl[k].y >> 4;
+			sy += fy;
 			n++;
+			if (pl[k].x < min_x)
+				min_x = pl[k].x;
+			if (pl[k].x > max_x)
+				max_x = pl[k].x;
+			if (fy - BODY_H < top)
+				top = fy - BODY_H;
+			if (fy > feet)
+				feet = fy;
 		}
 	if (!n)
 		return;
+	/* the positions that keep every active player in the picture: x from the one
+	   in front (lo_x) to the one behind (hi_x, which wins), y with every head and
+	   every pair of feet on screen (lo_y > hi_y when they do not fit) */
+	hi_x = min_x - 12;
+	lo_x = max_x - SCREEN_W + 12;
+	if (lo_x > hi_x)
+		lo_x = hi_x;
+	lo_y = feet + VIEW_BOTTOM - SCREEN_H;
+	hi_y = top - VIEW_TOP;
 	tx = sx / n - SCREEN_W / 3;
 	if (tx < cam_far - (s32)D->backtrack)
 		tx = cam_far - (s32)D->backtrack;
 	ty = sy / n - 150;
+	if (lo_y <= hi_y) {
+		if (ty < lo_y)
+			ty = lo_y;
+		if (ty > hi_y)
+			ty = hi_y;
+	}
 	if (tx > level_w - SCREEN_W)
 		tx = level_w - SCREEN_W;
 	if (tx < 0)
@@ -1377,8 +1435,28 @@ static void update_camera(int snap)
 		cam_x = (int)tx;
 		cam_y = (int)ty;
 	} else {
+		before = cam_x;
 		cam_x += (int)(tx - cam_x) / 4 + (tx > cam_x) - (tx < cam_x);
 		cam_y += (int)(ty - cam_y) / 6 + (ty > cam_y) - (ty < cam_y);
+		/* it never moves past the player furthest behind, so it does not push anyone
+		   into a wall or a crate (J-05): the one in front waits at the right side */
+		if (cam_x > before) {
+			if (cam_x > hi_x)
+				cam_x = (int)(hi_x > before ? hi_x : before);
+		} else if (cam_x < before) {
+			if (cam_x < lo_x)
+				cam_x = (int)(lo_x < before ? lo_x : before);
+		}
+	}
+	if (lo_y <= hi_y) {
+		if (cam_y < lo_y)
+			cam_y = (int)lo_y;
+		if (cam_y > hi_y)
+			cam_y = (int)hi_y;
+		if (cam_y > level_h - SCREEN_H)
+			cam_y = level_h - SCREEN_H;
+		if (cam_y < 0)
+			cam_y = 0;
 	}
 	if (cam_x > cam_far)
 		cam_far = cam_x;

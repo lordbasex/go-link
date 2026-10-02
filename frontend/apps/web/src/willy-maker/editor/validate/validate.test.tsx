@@ -70,6 +70,16 @@ describe("review: levels", () => {
     items.push({ name: "p1_again", type: "player_start", x: 80, y: 192, player: 1 });
     expect(has(p, "level.start-many")?.target).toMatchObject({ tab: "build", object: "p1_again" });
   });
+  it("warns about a start with no free floor right under it (T-09)", () => {
+    const p = base();
+    expect(has(p, "level.start-floor")).toBeUndefined();
+    const start = objectLayer(p.levels[0]!).items.find((o) => o.type === "player_start")!;
+    start.y = 48; // high in the air: the game drops the player to the floor
+    const c = has(p, "level.start-floor")!;
+    expect(c.severity).toBe("warning");
+    expect(c.target).toMatchObject({ tab: "build", object: start.name });
+    expect(Number(c.params?.d)).toBeGreaterThan(32);
+  });
   it("finds an exit nobody reaches, and points at it", () => {
     const p = base();
     const level = p.levels[0]!;

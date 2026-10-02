@@ -125,6 +125,21 @@ describe("Willy Maker engine", () => {
     expect(feet(g)).toBe(400);
   });
 
+  it("a player taken off the ladder's column stops climbing and falls (L-06)", () => {
+    const g = new Game(flat((set) => {
+      for (let r = 16; r < 25; r++) set(5, r, Tag.Ladder);
+    }));
+    run(g, 20, Input.Right);
+    run(g, 30, Input.Up);
+    const p = g.players[0]!;
+    expect(p.climbing).toBe(true);
+    p.x += 24; // out of the column, as something pushing them would
+    run(g, 1, Input.Up);
+    expect(p.climbing).toBe(false);
+    run(g, 60, 0);
+    expect(feet(g)).toBe(400);
+  });
+
   it("stands on a one-way platform, jumps up through it and drops with down + jump", () => {
     const g = new Game(flat((set) => {
       for (let c = 2; c < 10; c++) set(c, 22, Tag.Oneway);
@@ -210,6 +225,35 @@ describe("Willy Maker engine", () => {
     expect(g.civilians[1]!.trappedIn).toBe("box");
   });
 
+  it("player 2 joins beside player 1 where there is room, never inside a wall (J-06)", () => {
+    const g = new Game(flat((set) => {
+      for (let r = 20; r < 25; r++) set(2, r, Tag.Solid); // a wall 24 px left of player 1
+    }));
+    g.step([0, Input.Start]);
+    const p2 = g.players[1]!;
+    expect(p2.active).toBe(true);
+    expect(p2.x).toBe(88);
+    expect(feet(g, 1)).toBe(400);
+  });
+
+  it("keeps every active player in the picture, up and down", () => {
+    const g = new Game(flat((set) => {
+      for (let c = 0; c < 12; c++) set(c, 16, Tag.Solid); // a high floor at y 256
+    }));
+    g.step([0, Input.Start]);
+    const [p1, p2] = g.players;
+    p2!.x = 96;
+    p2!.y = 256 * 16;
+    p1!.y = 400 * 16;
+    p1!.x = 200;
+    run(g, 120, 0);
+    for (const p of [p1!, p2!]) {
+      const fy = p.y >> 4;
+      expect(fy - 40).toBeGreaterThanOrEqual(g.camY + 24); // the head under the HUD
+      expect(fy).toBeLessThanOrEqual(g.camY + 224 - 8); // the feet on screen
+    }
+  });
+
   it("the camera only goes forward, with 48 px of backtrack", () => {
     const g = new Game(flat());
     run(g, 400, (f) => (f === 0 || f === 2 ? Input.Right : f === 1 ? 0 : Input.Right));
@@ -220,15 +264,19 @@ describe("Willy Maker engine", () => {
     expect(g.players[0]!.x).toBe(g.camX + 12); // held at the screen's side
   });
 
-  it("player 2 joins with a button and the camera drags the one who stays behind", () => {
+  it("player 2 joins with a button and the camera waits for the one who stays behind", () => {
     const g = new Game(flat(undefined, [{ name: "p2", type: "player_start", x: 96, y: 400, player: 2 }]));
     g.step([0, Input.Start]);
     expect(g.players[1]!.active).toBe(true);
+    const p2x = g.players[1]!.x;
     for (let f = 0; f < 600; f++) g.step([Input.Right, 0]);
     const p1 = g.players[0]!;
     const p2 = g.players[1]!;
-    expect(p2.x).toBe(g.camX + 12); // pushed along by the screen's left side
-    expect(p1.x).toBeLessThanOrEqual(g.camX + 384 - 12);
+    expect(p2.x).toBe(p2x); // never pushed by the screen's left side (J-05)
+    expect(g.camX).toBeLessThanOrEqual(p2.x - 12);
+    expect(p1.x).toBe(g.camX + 384 - 12); // the one in front waits at the right side
+    // once the other one walks, the camera goes on
+    for (let f = 0; f < 600; f++) g.step([Input.Right, Input.Right]);
     expect(g.camX).toBeGreaterThan(200);
   });
 

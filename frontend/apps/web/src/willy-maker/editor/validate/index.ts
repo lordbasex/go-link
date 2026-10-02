@@ -12,6 +12,8 @@ import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Projec
 import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { jumpRowsFor, leftBehind, reachability, routes } from "../reach";
 import { rulesWith } from "../../engine/rules";
+import { Game } from "../../engine/game";
+import { levelFromProject } from "../../engine/level";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
 import { supportChecks } from "./support";
 import type { ExportMessages } from "../../i18n/export.en";
@@ -183,6 +185,18 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
         startsOk = false;
         out.push({ id: "level.start", severity: "error", msg: "level.start-many", params: { level: name, player: pl, n: starts.length }, target: go(starts[1]!.x, starts[1]!.y, starts[1]!.name) });
       }
+    }
+    // where the engine really puts each start: on the first free floor under it (T-09)
+    let game: Game | null = null;
+    try {
+      game = new Game(levelFromProject(level));
+    } catch {
+      game = null;
+    }
+    for (const st of game ? items.filter((o) => o.type === "player_start") : []) {
+      const fy = game!.groundBelow(st.x, st.y - 16);
+      if (fy - st.y > 32 || fy >= h - 16)
+        out.push({ id: "level.start-floor", severity: "warning", msg: "level.start-floor", params: { level: name, player: Number(st.player ?? 1), d: Math.max(0, fy - st.y) }, target: go(st.x, st.y, st.name) });
     }
     const exits = items.filter((o) => o.type === "exit");
     if (!exits.length) {

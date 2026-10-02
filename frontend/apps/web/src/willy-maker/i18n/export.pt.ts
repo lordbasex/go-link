@@ -260,6 +260,7 @@ export const exportPt: ExportMessages = {
     "level.start": (p: P) => `${p.level} não tem início para o jogador ${p.player}.`,
     "level.start-many": (p: P) => `${p.level} tem ${p.n} inícios para o jogador ${p.player}. Deixe um.`,
     "level.start-extra": (p: P) => `${p.level} não tem início para o jogador ${p.player}: ele entra ao lado do jogador 1.`,
+    "level.start-floor": (p: P) => `${p.level}: o início do jogador ${p.player} não tem um piso livre logo abaixo, então o jogo o coloca ${p.d} px mais abaixo. Ponha o início sobre um piso.`,
     "level.start.ok": () => "Há início do jogador 1 e saída",
     "level.exit": (p: P) => `${p.level} não tem saída.`,
     "level.exit-many": (p: P) => `${p.level} tem ${p.n} saídas: a primeira alcançada termina a fase.`,

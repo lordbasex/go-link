@@ -352,6 +352,24 @@ export class Game {
     return this.level.height - CELL;
   }
 
+  /**
+   * A place to put a player near x, on screen: x itself, then 24 and 48 px
+   * to each side (`beside` starts 24 px to the left and tries x last), on
+   * the first free floor from y down to maxY. Falls back to the old search.
+   */
+  placeNear(x: number, y: number, maxY: number, beside = false): { x: number; fy: number } {
+    const lo = this.camX + 16;
+    const hi = this.camX + SCREEN_W - 16;
+    for (const d of beside ? BESIDE : AROUND) {
+      const cx = x + d;
+      if (cx < lo || cx > hi) continue;
+      for (let fy = Math.max(CELL, Math.ceil(y / CELL) * CELL); fy <= maxY && fy < this.level.height; fy += CELL)
+        if (this.support(cx, fy, false) && !this.bodyBlocked(cx, fy)) return { x: cx, fy };
+    }
+    const cx = Math.max(lo, Math.min(hi, x));
+    return { x: cx, fy: this.groundBelow(cx, y) };
+  }
+
   /** A hit on a crate or breakable wall at cell (c, r); true if something took it. */
   private hitCell(c: number, r: number, damage: number, by: Player | null): boolean {
     const t = this.cell(c, r);
@@ -415,9 +433,12 @@ export class Game {
     if (start && !lead) {
       x = start.x + (this.startAt ? i * 24 : 0);
       fy = this.groundBelow(x, start.y - CELL);
+    } else if (lead) {
+      // beside the player already in, on a floor they can stand on (J-06)
+      const leadFeet = lead.y >> 4;
+      ({ x, fy } = this.placeNear(lead.x, leadFeet - 48, leadFeet + 64, true));
     } else {
-      x = lead ? lead.x : this.camX + 64;
-      fy = this.groundBelow(x, this.camY);
+      ({ x, fy } = this.placeNear(this.camX + 64 + i * 24, this.camY, this.camY + SCREEN_H));
     }
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
@@ -428,8 +449,8 @@ export class Game {
     if (!p.active || (p.invulnerable && !fell)) return;
     if (p.invulnerable) {
       // fell out while protected: back on the ground, no life lost
-      const x = Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64));
-      spawn(p, x, this.groundBelow(x, this.camY));
+      const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H);
+      spawn(p, at.x, at.fy);
       return;
     }
     p.lives--;
@@ -440,9 +461,9 @@ export class Game {
     }
     p.invulnerable = this.rules.hurtFrames;
     if (!fell && !this.rules.respawnOnHurt) return;
-    const x = Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64));
+    const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H);
     const keep = p.invulnerable;
-    spawn(p, x, this.groundBelow(x, this.camY));
+    spawn(p, at.x, at.fy);
     p.invulnerable = keep;
   }
 
@@ -531,8 +552,10 @@ export class Game {
           p.y = cellTop * 16;
           p.climbing = false;
           p.onGround = true;
-        } else if (this.cellAt(p.x, fy - 1) !== Tag.Ladder && this.cellAt(p.x, fy) !== Tag.Ladder) p.climbing = false; // off the bottom: fall
+        }
       }
+      // off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04)
+      if (p.climbing && this.cellAt(p.x, fy - 1) !== Tag.Ladder && this.cellAt(p.x, fy) !== Tag.Ladder) p.climbing = false;
       if (this.pressed(p, Input.B1)) {
         p.climbing = false;
         p.vy = JUMP_VY / 2;
@@ -841,6 +864,8 @@ export class Game {
     let tx = Math.trunc(sx / n) - Math.trunc(SCREEN_W / 3);
     if (tx < this.camFar - BACKTRACK) tx = this.camFar - BACKTRACK;
     let ty = Math.trunc(sy / n) - 150;
+    const fit = this.cameraFit();
+    if (fit.loY <= fit.hiY) ty = Math.min(fit.hiY, Math.max(fit.loY, ty));
     const lock = this.activeLock();
     let maxX = this.level.width - SCREEN_W;
     if (lock) maxX = Math.min(maxX, Math.max(lock.x, lock.x + lock.w - SCREEN_W));
@@ -850,12 +875,41 @@ export class Game {
       this.camX = tx;
       this.camY = ty;
     } else {
+      const before = this.camX;
       this.camX += Math.trunc((tx - this.camX) / 4) + Math.sign(tx - this.camX);
       this.camY += Math.trunc((ty - this.camY) / 6) + Math.sign(ty - this.camY);
+      // it never moves past the player furthest behind, so it does not push anyone
+      // into a wall or a crate (J-05): the one in front waits at the right side
+      if (this.camX > before) this.camX = Math.max(before, Math.min(this.camX, fit.hiX));
+      else if (this.camX < before) this.camX = Math.min(before, Math.max(this.camX, fit.loX));
     }
+    if (fit.loY <= fit.hiY) this.camY = Math.max(0, Math.min(this.level.height - SCREEN_H, Math.min(fit.hiY, Math.max(fit.loY, this.camY))));
     if (this.camX > this.camFar) this.camFar = this.camX;
     for (const p of this.players)
       if (p.active) p.x = Math.max(this.camX + 12, Math.min(this.camX + SCREEN_W - 12, p.x));
+  }
+
+  /**
+   * The camera positions that keep every active player in the picture:
+   * x from the one in front (loX) to the one behind (hiX, which wins when
+   * they are too far apart), y with every head and every pair of feet on
+   * screen (loY > hiY when they do not fit, then y follows their middle).
+   */
+  private cameraFit(): { loX: number; hiX: number; loY: number; hiY: number } {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let top = Infinity;
+    let feet = -Infinity;
+    for (const p of this.players)
+      if (p.active) {
+        const fy = p.y >> 4;
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        top = Math.min(top, fy - BODY_H);
+        feet = Math.max(feet, fy);
+      }
+    const hiX = minX - 12;
+    return { loX: Math.min(hiX, maxX - SCREEN_W + 12), hiX, loY: feet + VIEW_BOTTOM - SCREEN_H, hiY: top - VIEW_TOP };
   }
 
   // -------------------------------------------------------------- step
@@ -985,6 +1039,14 @@ function newPlayer(index: number, lives: number): Player {
     jetting: false,
   };
 }
+
+/** Room kept above the highest head and below the lowest feet (px). */
+const VIEW_TOP = 24;
+const VIEW_BOTTOM = 8;
+
+/** Where placeNear looks, in order. */
+const AROUND = [0, 24, -24, 48, -48];
+const BESIDE = [-24, 24, -48, 48, 0];
 
 function spawn(p: Player, x: number, fy: number): void {
   p.active = true;

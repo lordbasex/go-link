@@ -198,6 +198,7 @@ export const exportEn = {
     "level.start": (p: P) => `${p.level} has no start for player ${p.player}.`,
     "level.start-many": (p: P) => `${p.level} has ${p.n} starts for player ${p.player}. Keep one.`,
     "level.start-extra": (p: P) => `${p.level} has no start for player ${p.player}: they will join next to player 1.`,
+    "level.start-floor": (p: P) => `${p.level}: player ${p.player}'s start has no free floor right under it, so the game puts them ${p.d} px lower. Put the start on a floor.`,
     "level.start.ok": () => "There is a player 1 start and an exit",
     "level.exit": (p: P) => `${p.level} has no exit.`,
     "level.exit-many": (p: P) => `${p.level} has ${p.n} exits: the first one reached ends the level.`,

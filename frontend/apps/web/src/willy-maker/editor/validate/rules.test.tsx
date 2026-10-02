@@ -356,6 +356,9 @@ describe("level 1: every rule of validation.md", () => {
     const d = base();
     objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
     broken.push(d, specProject());
+    const high = base();
+    objectLayer(high.levels[0]!).items.find((o) => o.type === "player_start")!.y = 48;
+    broken.push(high);
     for (const p of broken) add(reviewProject(p, { extra: EXTRA_RULES }).checks);
     add(reviewProject(base(), { board: { ...CPS1, rom: { ...CPS1.rom, programBytes: 1024 } } }).checks);
     const pics = tiled(picture(16, 16, (x) => [x * 17, 0, 0, 255]));

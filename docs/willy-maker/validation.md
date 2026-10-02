@@ -63,6 +63,7 @@ Rules added by the implementation, beyond the tables: `level.start` also warns w
 | id | Severity | Rule | Message |
 |---|---|---|---|
 | `level.start` | error | there is exactly one P1 start, and starts for P2-P4 when the game has those players | "Level {n} has no start for player {p}." |
+| `level.start-floor` | warning | every player start has a free floor right under it (within 32 px), as the engine drops a player to the first floor under their start | "Player {p}'s start has no free floor right under it, so the game puts them {d} px lower." |
 | `level.exit` | error | there is one exit | "Level {n} has no exit." |
 | `level.reachable` | error | the exit can be reached from the start with the engine's moves: walk, a jump onto ledges up to 48 px (it peaks at 61.9 px), push-climb of up to 32 px (`STEP_UP`), ladders, drop-through platforms. This is a flood fill over the collision grid using the same constants as `engine/`. | "Players cannot reach the exit from the start. The path stops at x {x}." |
 | `level.ledge` | warning | every tagged platform can be reached (same search) | "Nobody can reach the ledge at x {x}: it is {h} px high." |

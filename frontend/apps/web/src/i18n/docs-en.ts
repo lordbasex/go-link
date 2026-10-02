@@ -792,7 +792,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Play** (P) runs the level with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates and a camera that only moves forward.",
+            "**Play** (P) runs the level with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates and a camera that only moves forward, waits for the player furthest behind and keeps everyone in the picture. A player who joins comes in beside the one already playing, on a floor.",
             "**The moves**: **Down** crouches (shots at standing height pass over you, and you fire low); **Left/Right** while crouched crawls, also under a ceiling 32 px over the floor; **Down + B2 in the air** is a jump kick (2 hits); a hero also lands, turns, gives a thumbs up on a rescue, celebrates the clear and yawns after 5 s still. The Rules card adds a **double jump** (B1 again in the air) and a **jet pack** (hold B1 while falling). Each move uses its own animation when your hero has one (the names are in Characters), else the closest one.",
             "Play with the keyboard (arrows, Z, X, C), controllers or the on-screen buttons on touch screens; press a button to join, up to 4 players.",
             "**Edit while playing**: place pieces (crate, platform, ladder, enemy, civilian, weapon) while the game keeps running, or **Pause and edit** and go on **From here** or **From the start**.",
@@ -817,7 +817,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Review before exporting** checks the whole game: starts and exit, reachability, enemies players could leave behind the forward-only camera when the exit needs every enemy down (a warning with the fixes), sizes, names, colors, palettes and the board's limits. Each problem has **Go** to where it is and, when the change is safe, **Fix** (undoable).",
+            "**Review before exporting** checks the whole game: starts (each on a floor) and exit, reachability, enemies players could leave behind the forward-only camera when the exit needs every enemy down (a warning with the fixes), sizes, names, colors, palettes and the board's limits. Each problem has **Go** to where it is and, when the change is safe, **Fix** (undoable).",
             "**1 · Save the project**: **Download project (.zip)** keeps everything (levels, characters, backgrounds and settings); **Open .zip** on the home screen continues it in another browser.",
             "**2 · Pack for an AI**: **Download AI pack** gives the project with a `PROMPT.md` (the board, the rules, the story and the art spec), Tiled maps and pictures in board colors, so an AI or a person can build the ROM. **Copy prompt** copies the brief. Errors in the review must be fixed first.",
             "**Test with bots**: six bots play each level for a minute with your rules, the way people do: a newcomer, two friends pressing everything, one who runs past without firing, one who shoots everything first, one who skips a branch and comes back, and four controllers at random. Every frame is checked, and what they find is listed by how bad it is (a player stuck, for example behind the camera with enemies left; a level cleared with enemies alive; a crate hanging; a player inside a wall, on air or off the screen) with **Go** to the place and **Copy the moves**, the shortest moves that still show it, to replay on the ROM.",

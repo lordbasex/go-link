@@ -92,7 +92,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-06 | **P3 and P4 behaviour** as a setting (join, coming soon, ignore), "coming soon" by default and no credit taken | L-08, J-14 | done |
 | T-07 | **How crates are climbed** as a rule: by jumping (default, as in Super Mario Bros.) or by pushing (the prototype's) | U-01 | done |
 | T-08 | QA run in the acceptance: per-frame invariants, a seeded 4-port fuzz, adversarial players (skipper, newcomer, shooter, masher) and a ddmin minimizer | L-03 | done |
-| T-09 | Camera, ladder and join rules: leaving the ladder column ends the climb, the camera never pushes a player into solid cells, join points checked, every active player kept in the picture vertically | L-06, J-04, J-05, J-06, J-12, J-16 | next |
+| T-09 | Camera, ladder and join rules: leaving the ladder column ends the climb, the camera never pushes a player into solid cells, join points checked, every active player kept in the picture vertically | L-06, J-04, J-05, J-06, J-12, J-16 | done |
 | T-10 | Every rule the engine does not decide goes into the project and the AI pack as a setting; P-01 to P-26 are the checklist | L-08, J-07, J-10 | next |
 | T-11 | Screen text: whole fields cleared, overlays never erase the HUD, prompts follow credits, an HUD safe zone, an automatic on-screen text check | L-09, J-15, J-10, J-16 | next |
 | T-12 | Freeze the world on SECTION CLEAR, then a short tally | L-10, J-08 | next |

@@ -792,7 +792,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança.",
+            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança, espera o jogador mais atrás e mantém todos na tela. Quem entra aparece ao lado de quem já joga, sobre um piso.",
             "**Os movimentos**: **Baixo** agacha (os tiros na altura de alguém em pé passam por cima, e você atira baixo); **Esquerda/Direita** agachado rasteja, também sob um teto a 32 px do chão; **Baixo + B2 no ar** é uma voadora (2 golpes); o herói também aterrissa, vira, faz joinha ao resgatar, comemora ao terminar e boceja após 5 s parado. O cartão Regras soma um **pulo duplo** (B1 de novo no ar) e uma **mochila a jato** (segure B1 ao cair). Cada movimento usa a própria animação se o seu herói tiver (os nomes estão em Personagens), senão a mais parecida.",
             "Jogue com o teclado (setas, Z, X, C), controles ou os botões na tela em telas de toque; aperte um botão para entrar, até 4 jogadores.",
             "**Editar enquanto jogo**: coloque peças (caixa, plataforma, escada, inimigo, civil, arma) enquanto o jogo continua rodando, ou use **Pausar e editar** e continue **Daqui** ou **Do início**.",
@@ -817,7 +817,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Revisão antes de exportar** confere o jogo inteiro: inícios e saída, alcance, inimigos que os jogadores poderiam deixar atrás da câmera (que só avança) quando a saída exige todos os inimigos derrotados (um aviso com as soluções), tamanhos, nomes, cores, paletas e os limites da placa. Cada problema tem **Ir** para ir até onde ele está e, quando a mudança é segura, **Corrigir** (dá para desfazer).",
+            "**Revisão antes de exportar** confere o jogo inteiro: inícios (cada um sobre um piso) e saída, alcance, inimigos que os jogadores poderiam deixar atrás da câmera (que só avança) quando a saída exige todos os inimigos derrotados (um aviso com as soluções), tamanhos, nomes, cores, paletas e os limites da placa. Cada problema tem **Ir** para ir até onde ele está e, quando a mudança é segura, **Corrigir** (dá para desfazer).",
             "**1 · Salvar o projeto**: **Baixar projeto (.zip)** guarda tudo (fases, personagens, fundos e ajustes); **Abrir .zip** na tela inicial continua o jogo em outro navegador.",
             "**2 · Pacote para uma IA**: **Baixar pacote IA** entrega o projeto com um `PROMPT.md` (a placa, as regras, a história e a especificação de arte), mapas do Tiled e imagens nas cores da placa, para que uma IA ou uma pessoa monte a ROM. **Copiar prompt** copia o pedido. Antes é preciso corrigir os erros da revisão.",
             "**Testar com bots**: seis bots jogam cada fase durante um minuto com as suas regras, como as pessoas jogam: um novato, dois amigos apertando tudo, um que passa direto sem atirar, um que primeiro atira em tudo, um que pula um caminho e volta, e quatro controles ao acaso. Cada quadro é verificado e o que eles encontram aparece pela gravidade (um jogador travado, por exemplo atrás da câmera com inimigos pendentes; uma fase terminada com inimigos vivos; uma caixa flutuando; um jogador dentro de uma parede, no ar ou fora da tela), com **Ir** ao lugar e **Copiar os movimentos**, os mais curtos que ainda mostram isso, para repetir na ROM.",
