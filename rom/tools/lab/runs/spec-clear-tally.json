@@ -1,0 +1,294 @@
+{
+ "name": "spec-clear-tally",
+ "description": "Game Spec v1 made with Create ROM (WM_ROM_OUT of rom.test.tsx): case C's clear route; on SECTION CLEAR the world stands still and, 90 frames later, the tally shows the enemies down, the rescued civilians and every player's score (T-12, J-08).",
+ "frames": 2003,
+ "checkpoints": [
+  1883,
+  1973,
+  2003
+ ],
+ "expect": [
+  {
+   "frame": 1883,
+   "path": "sectionClear",
+   "equals": true
+  },
+  {
+   "frame": 1883,
+   "path": "mode",
+   "equals": "clear"
+  },
+  {
+   "frame": 1972,
+   "row": 17,
+   "noText": "ENEMY"
+  },
+  {
+   "frame": 1973,
+   "row": 17,
+   "text": "ENEMY 03/03"
+  },
+  {
+   "frame": 1973,
+   "row": 19,
+   "text": "RESCUED 2/2"
+  },
+  {
+   "frame": 1973,
+   "row": 21,
+   "text": "1P 001300  2P 000000"
+  },
+  {
+   "frame": 1973,
+   "row": 24,
+   "noText": "RESCUED"
+  },
+  {
+   "frame": 2003,
+   "path": "players.0.energy",
+   "equals": 3
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 156,
+   "to": 443,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 366,
+   "to": 368,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 444,
+   "to": 449,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 445,
+   "to": 446,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 456,
+   "to": 461,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 457,
+   "to": 458,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 468,
+   "to": 689,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 690,
+   "to": 694,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 696,
+   "to": 700,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 702,
+   "to": 706,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 708,
+   "to": 712,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 714,
+   "to": 718,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 720,
+   "to": 755,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 756,
+   "to": 863,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 864,
+   "to": 1061,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1062,
+   "to": 1066,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1068,
+   "to": 1072,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1074,
+   "to": 1078,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1080,
+   "to": 1084,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1086,
+   "to": 1090,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1092,
+   "to": 1649,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1650,
+   "to": 1654,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1656,
+   "to": 1660,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1662,
+   "to": 1666,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1668,
+   "to": 1672,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1674,
+   "to": 1678,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1680,
+   "to": 1684,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1686,
+   "to": 1882,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

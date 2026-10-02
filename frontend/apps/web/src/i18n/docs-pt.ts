@@ -792,7 +792,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança, espera o jogador mais atrás e mantém todos na tela. Quem entra aparece ao lado de quem já joga, sobre um piso.",
+            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança, espera o jogador mais atrás e mantém todos na tela. Quem entra aparece ao lado de quem já joga, sobre um piso. Ao completar a fase o mundo para e um resumo mostra os inimigos derrotados, os resgatados e cada pontuação.",
             "**Os movimentos**: **Baixo** agacha (os tiros na altura de alguém em pé passam por cima, e você atira baixo); **Esquerda/Direita** agachado rasteja, também sob um teto a 32 px do chão; **Baixo + B2 no ar** é uma voadora (2 golpes); o herói também aterrissa, vira, faz joinha ao resgatar, comemora ao terminar e boceja após 5 s parado. O cartão Regras soma um **pulo duplo** (B1 de novo no ar) e uma **mochila a jato** (segure B1 ao cair). Cada movimento usa a própria animação se o seu herói tiver (os nomes estão em Personagens), senão a mais parecida.",
             "Jogue com o teclado (setas, Z, X, C), controles ou os botões na tela em telas de toque; aperte um botão para entrar, até 4 jogadores.",
             "**Editar enquanto jogo**: coloque peças (caixa, plataforma, escada, inimigo, civil, arma) enquanto o jogo continua rodando, ou use **Pausar e editar** e continue **Daqui** ou **Do início**.",

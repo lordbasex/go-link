@@ -1848,6 +1848,47 @@ static int title(void)
 /* how a game ended */
 enum { END_CLEAR, END_OVER };
 
+/* the clear's tally (T-12, J-08), under the clear text: the enemies
+   down, the rescued civilians with the HUD's own word, every player's score */
+static void tally(void)
+{
+	struct line l;
+	int pos = 0, k, col, row = 17;
+	/* the tally says it all: the HUD's own rescued line and enemy counter go */
+	while (next_line(WM_SCR_HUD, &pos, &l))
+		if (l.attr & WM_TXT_COUNT)
+			blank(l.col, l.row, l.len + 4);
+	pos = 0;
+	blank(1, 26, 8);
+	if (nen) {
+		col = (48 - 11) / 2;
+		print(col, row, "ENEMY", INK_WHITE);
+		print_num(col + 6, row, (u32)(nen - enemies_left()), 2, INK_WHITE);
+		put_char(col + 8, row, '/', INK_WHITE);
+		print_num(col + 9, row, (u32)nen, 2, INK_WHITE);
+		row += 2;
+	}
+	while (next_line(WM_SCR_HUD, &pos, &l))
+		if ((l.attr & WM_TXT_COUNT) && nciv) {
+			struct line t = l;
+			t.row = row;
+			t.col = (48 - (l.len + 4)) / 2;
+			t.attr &= ~WM_TXT_BIG;
+			draw_line(&t, 1);
+			print_num(t.col + t.len + 1, row, (u32)rescued, 1, INK_WHITE);
+			put_char(t.col + t.len + 2, row, '/', INK_WHITE);
+			print_num(t.col + t.len + 3, row, (u32)nciv, 1, INK_WHITE);
+			row += 2;
+			break;
+		}
+	col = (48 - (nplayers * 9 + (nplayers - 1) * 2)) / 2;
+	for (k = 0; k < nplayers; k++, col += 11) {
+		put_char(col, row, '1' + k, INK_CYAN);
+		put_char(col + 1, row, 'P', INK_CYAN);
+		print_num(col + 3, row, pl[k].score, 6, INK_WHITE);
+	}
+}
+
 /* the Continue screen's prompt follows the credits (J-10): the title's
    prompt (PUSH START) with a credit or free play, else the continue
    screen's own (INSERT COIN), both on the continue prompt's row */
@@ -1903,7 +1944,10 @@ static int play(int first)
 				update_player(&pl[k]);
 			else if (pl[k].active)
 				pl[k].t++;
-		update_enemies(outcome < 0);
+		/* on the clear (and game over) the world stands still: no enemy moves,
+		   no shot flies, nobody is hurt (T-12, J-08) */
+		if (outcome < 0)
+			update_enemies(1);
 		update_civilians();
 		update_camera(0);
 		stream();
@@ -1960,6 +2004,8 @@ static int play(int first)
 		}
 		lab_mode = outcome == END_CLEAR ? LAB_MODE_CLEAR : outcome == END_OVER ? LAB_MODE_GAME_OVER : LAB_MODE_PLAYING;
 		lab_update();
+		if (outcome == END_CLEAR && frame_count - end_t == 90)
+			tally();
 		if (outcome >= 0 && frame_count - end_t > 360)
 			return outcome;
 	}

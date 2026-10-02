@@ -92,7 +92,7 @@ export interface DrawOptions {
   ghost?: Ghost | null;
   fps?: number;
   /** HUD words: the game's own (Menus tab) or the translated defaults. */
-  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string };
+  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string; rescued?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's); by player number when missing. */
   variants?: number[];
   /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
@@ -523,5 +523,16 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     ctx.fillStyle = game.outcome === "cleared" ? colors.players[1] ?? colors.text : colors.players[3] ?? colors.text;
     ctx.fillText(game.outcome === "cleared" ? o.words.cleared : o.words.over, SCREEN_W / 2, SCREEN_H / 2 - 6);
     ctx.textAlign = "start";
+    if (game.outcome === "cleared") drawTally(ctx, game, o);
   }
+}
+
+/** The clear's tally, as the ROM shows it (T-12): the enemies down, the rescued civilians and every player's score. */
+function drawTally(ctx: CanvasRenderingContext2D, game: Game, o: DrawOptions): void {
+  const lines: string[] = [];
+  const two = (n: number) => String(n).padStart(2, "0");
+  if (game.enemies.length) lines.push(`${(o.words.enemies ?? "ENEMY").toUpperCase()} ${two(game.enemies.filter((e) => e.state === "down" || e.state === "off").length)}/${two(game.enemies.length)}`);
+  if (game.civilians.length) lines.push(`${(o.words.rescued ?? "RESCUED").toUpperCase()} ${game.rescued}/${game.civilians.length}`);
+  lines.push(game.players.map((p, i) => `${i + 1}P ${String(p.score).padStart(6, "0")}`).join("  "));
+  lines.forEach((line, i) => drawBoardText(ctx, line, Math.floor((SCREEN_W - boardTextWidth(line)) / 16) * 8, SCREEN_H / 2 + 24 + i * 16, 1, TEXT_INKS.white));
 }

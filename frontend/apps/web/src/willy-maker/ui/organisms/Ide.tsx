@@ -576,6 +576,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
                 start: menuText(p, "hud", "join"),
                 ammo: menuText(p, "hud", "ammo"),
                 cleared: menuText(p, "hud", "cleared"),
+                rescued: menuText(p, "hud", "rescued"),
                 over: menuText(p, "gameOver", "heading"),
                 overLine: menuText(p, "gameOver", "line"),
               }}

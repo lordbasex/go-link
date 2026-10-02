@@ -792,7 +792,7 @@ export const docsEs: Docs = {
         {
           t: "list",
           items: [
-            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px y una cámara que solo avanza, espera al jugador que va más atrás y mantiene a todos en pantalla. Quien se une entra junto al que ya juega, sobre un piso.",
+            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px y una cámara que solo avanza, espera al jugador que va más atrás y mantiene a todos en pantalla. Quien se une entra junto al que ya juega, sobre un piso. Al completar el nivel el mundo se detiene y un resumen muestra los enemigos vencidos, los rescatados y cada puntaje.",
             "**Los movimientos**: **Abajo** te agacha (los disparos a la altura de alguien parado pasan por encima, y disparas bajo); **Izquierda/Derecha** agachado gatea, también bajo un techo a 32 px del suelo; **Abajo + B2 en el aire** es una patada voladora (2 golpes); el héroe además aterriza, gira, levanta el pulgar al rescatar, festeja al terminar y bosteza tras 5 s quieto. La tarjeta Reglas suma un **doble salto** (B1 otra vez en el aire) y una **mochila propulsora** (mantén B1 al caer). Cada movimiento usa su propia animación si tu héroe la tiene (los nombres están en Personajes), si no la más parecida.",
             "Juega con el teclado (flechas, Z, X, C), mandos o los botones en pantalla en pantallas táctiles; aprieta un botón para unirte, hasta 4 jugadores.",
             "**Editar mientras juego**: coloca piezas (caja, plataforma, escalera, enemigo, civil, arma) mientras el juego sigue corriendo, o usa **Pausar y editar** y sigue **Desde aquí** o **Desde el inicio**.",

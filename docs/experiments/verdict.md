@@ -95,7 +95,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-09 | Camera, ladder and join rules: leaving the ladder column ends the climb, the camera never pushes a player into solid cells, join points checked, every active player kept in the picture vertically | L-06, J-04, J-05, J-06, J-12, J-16 | done |
 | T-10 | Every rule the engine does not decide goes into the project and the AI pack as a setting; P-01 to P-26 are the checklist | L-08, J-07, J-10 | done |
 | T-11 | Screen text: whole fields cleared, overlays never erase the HUD, prompts follow credits, an HUD safe zone, an automatic on-screen text check | L-09, J-15, J-10, J-16 | done |
-| T-12 | Freeze the world on SECTION CLEAR, then a short tally | L-10, J-08 | next |
+| T-12 | Freeze the world on SECTION CLEAR, then a short tally | L-10, J-08 | done |
 | T-13 | Show the jump's measured peak and check ledges against it | L-11 | next |
 | T-14 | A headless, one-command project-to-ROM rebuild, the project file kept next to the ROM | L-12 | next |
 | T-15 | Difficulty settings, and the acceptance reports the energy a naive player lost | L-13 | next |
