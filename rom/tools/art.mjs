@@ -220,7 +220,8 @@ function placeFrame(gfx, fr, base) {
 // ---------------------------------------------------------- characters
 
 const CHARACTERS = [
-  { name: "willy", sheet: "player", height: 44, palettes: 4, fillHoles: true, recruit: true, anims: ["idle", "run", "jump", "machine_gun", "bazooka", "knife"] },
+  // moves: the animations of docs/willy-maker/moves.md, converted only for Willy Maker's engine (opts.moves)
+  { name: "willy", sheet: "player", height: 44, palettes: 4, fillHoles: true, recruit: true, anims: ["idle", "run", "jump", "machine_gun", "bazooka", "knife"], moves: ["turn", "jump_kick", "crouch", "crawl", "yawn", "thumbs_up"] },
   { name: "woman", sheet: "npcs", height: 38, palettes: 2, anims: ["woman_worried", "woman_happy"] },
   { name: "child", sheet: "npcs", height: 31, palettes: 2, anims: ["child_worried", "child_happy"] },
   // a Lag android, the enemy of the prototype (the robot sheet)
@@ -475,11 +476,14 @@ const hex4 = (v) => "0x" + (v & 0xffff).toString(16).padStart(4, "0");
  * opts.level (default true): the prototype's backdrop and level; Willy
  * Maker's engine (rom/tools/engine.mjs) reads its level as data and leaves
  * them out. opts.recruits: the recruits' shirt colors, one palette set each
- * after Willy's (the prototype has one, green).
+ * after Willy's (the prototype has one, green). opts.moves: Willy's moves
+ * too (turn, jump kick, crouch, crawl, yawn, thumbs up), for the engine;
+ * the prototype leaves them out, so its ROM stays the same.
  */
 export function addArt(gfx, defs, genDir, opts = {}) {
   const withLevel = opts.level !== false;
   const recruits = opts.recruits ?? [[40, 132, 84]];
+  const withMoves = opts.moves === true;
   const tmp = path.join(genDir, "tmp.png");
   let c = [];
   const h = [];
@@ -488,7 +492,8 @@ export function addArt(gfx, defs, genDir, opts = {}) {
   const sheets = {};
   // every sprite palette of the game, loaded at once (32 exist)
   const objPalettes = [];
-  CHARACTERS.forEach((ch) => {
+  CHARACTERS.forEach((entry) => {
+    const ch = withMoves && entry.moves ? { ...entry, anims: [...entry.anims, ...entry.moves] } : entry;
     if (!sheets[ch.sheet]) {
       sheets[ch.sheet] = {
         img: readImage(path.join(SHEETS, `${ch.sheet}.webp`), tmp),

@@ -86,6 +86,8 @@ export const gamePt: GameMessages = {
     enemiesChase: "Os inimigos perseguem",
     enemiesShoot: "Os inimigos atiram",
     exitNeedsEnemies: "A saída exige todos os inimigos derrotados",
+    doubleJump: "Pulo duplo (B1 de novo no ar)",
+    jetpack: "Mochila a jato (segure B1 ao cair)",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",
     climbPush: "Andando contra ela",

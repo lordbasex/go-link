@@ -37,6 +37,18 @@ import {
   SHOT_SPEED,
   STEP_UP,
   Tag,
+  CROUCH_H,
+  CROUCH_SHOT_Y,
+  DOUBLE_JUMP_VY,
+  JET_FUEL,
+  JET_LIFT,
+  JET_MAX_UP,
+  KICK_FRAMES,
+  KICK_REACH,
+  LAND_AFTER,
+  LAND_FRAMES,
+  THUMBS_FRAMES,
+  TURN_FRAMES,
   cancelOpposites,
   rulesWith,
   type GameRules,
@@ -86,6 +98,19 @@ export interface Player {
   invulnerable: number;
   shots: Shot[];
   rocket: Rocket | null;
+  /** The moves (docs/willy-maker/moves.md). */
+  crouching: boolean;
+  landT: number;
+  turnT: number;
+  kickT: number;
+  kickHit: boolean;
+  thumbsT: number;
+  /** Frames standing on the ground with nothing pressed (a yawn after YAWN_AFTER). */
+  idleT: number;
+  airT: number;
+  airJumps: number;
+  fuel: number;
+  jetting: boolean;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off";
@@ -314,9 +339,9 @@ export class Game {
     return best;
   }
 
-  private bodyBlocked(x: number, fy: number): boolean {
-    for (let y = fy - 1; y > fy - BODY_H; y -= 8) if (this.isSolid(this.cellAt(x, y))) return true;
-    return this.isSolid(this.cellAt(x, fy - BODY_H));
+  private bodyBlocked(x: number, fy: number, h = BODY_H): boolean {
+    for (let y = fy - 1; y > fy - h; y -= 8) if (this.isSolid(this.cellAt(x, y))) return true;
+    return this.isSolid(this.cellAt(x, fy - h));
   }
 
   /** The first place feet can stand at x, searching down from y (px). */
@@ -456,6 +481,13 @@ export class Game {
     p.t++;
     if (p.dropT) p.dropT--;
     if (p.invulnerable) p.invulnerable--;
+    if (p.landT) p.landT--;
+    if (p.turnT) p.turnT--;
+    if (p.thumbsT) p.thumbsT--;
+    if (p.kickT) p.kickT--;
+    p.idleT = p.pad === 0 && p.onGround && !p.climbing ? p.idleT + 1 : 0;
+    const jetWas = p.jetting;
+    p.jetting = false;
     let dir = 0;
     if (p.pad & Input.Left) dir = -1;
     else if (p.pad & Input.Right) dir = 1;
@@ -506,7 +538,21 @@ export class Game {
         p.vy = JUMP_VY / 2;
       }
     } else {
-      if (dir && !p.knifeT && !p.bazookaT) {
+      // crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit
+      if (p.onGround && (p.pad & Input.Down) && !(p.pad & Input.B1)) p.crouching = true;
+      else if (p.crouching && (!p.onGround || !this.bodyBlocked(p.x, fy))) p.crouching = false;
+      if (p.crouching) {
+        p.running = false;
+        p.pushT = 0;
+        if (dir) {
+          if (p.flip !== dir < 0) p.turnT = TURN_FRAMES;
+          p.flip = dir < 0;
+          // crawl: 1 px every 2 frames, under anything 24 px tall
+          const nx = p.x + dir;
+          if (p.t & 1 && !this.bodyBlocked(nx + dir * HALF_W, fy, CROUCH_H)) p.x = nx;
+        }
+      } else if (dir && !p.knifeT && !p.bazookaT) {
+        if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
         p.flip = dir < 0;
         this.walk(p, dir, p.running ? 2 : 1);
       } else p.pushT = 0;
@@ -519,10 +565,21 @@ export class Game {
           p.vy = 0;
           p.y += 16;
         } else {
+          p.crouching = false;
           p.vy = JUMP_VY;
           p.onGround = false;
           this.events.push({ kind: "jump", player: p.index });
         }
+      } else if (!p.onGround && this.pressed(p, Input.B1) && this.rules.doubleJump && !p.airJumps) {
+        p.vy = DOUBLE_JUMP_VY;
+        p.airJumps = 1;
+        this.events.push({ kind: "jump", player: p.index });
+      }
+      // jump kick: Down + B2 in the air
+      if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT) {
+        p.kickT = KICK_FRAMES;
+        p.kickHit = false;
+        this.events.push({ kind: "knife", player: p.index });
       }
       // walking off an edge
       if (p.onGround && !this.support(p.x, fy, false)) {
@@ -531,7 +588,17 @@ export class Game {
       }
       if (!p.onGround) {
         const from = p.y >> 4;
+        const was = p.vy;
+        p.airT++;
         p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
+        // the jet pack, after gravity
+        // it starts while falling (or after the double jump) and goes on while B1 is held
+        if (this.rules.jetpack && (p.pad & Input.B1) && p.fuel > 0 && (jetWas || was >= 0 || p.airJumps > 0)) {
+          // it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's)
+          if (p.vy > JET_MAX_UP) p.vy = Math.max(p.vy - JET_LIFT, JET_MAX_UP);
+          p.fuel--;
+          p.jetting = true;
+        }
         const to = (p.y + p.vy) >> 4;
         if (p.vy > 0) {
           for (let py = from + 1; py <= to; py++)
@@ -539,6 +606,10 @@ export class Game {
               p.y = py * 16;
               p.vy = 0;
               p.onGround = true;
+              if (p.airT >= LAND_AFTER) p.landT = LAND_FRAMES;
+              p.airT = 0;
+              p.airJumps = 0;
+              p.fuel = JET_FUEL;
               this.events.push({ kind: "land", player: p.index });
               break;
             }
@@ -601,12 +672,23 @@ export class Game {
         this.events.push({ kind: "knife", player: p.index });
       }
     }
-    p.firing = (p.pad & Input.B2) !== 0 && !p.knifeT && !p.bazookaT && !p.climbing;
+    p.firing = (p.pad & Input.B2) !== 0 && !p.knifeT && !p.bazookaT && !p.climbing && !p.kickT;
     if (p.fireWait) p.fireWait--;
     if (p.firing && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
-      p.shots.push({ dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -20 : 20), y: fy - 27 });
+      p.shots.push({ dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -20 : 20), y: fy - (p.crouching ? CROUCH_SHOT_Y : 27) });
       p.fireWait = FIRE_EVERY;
       this.events.push({ kind: "shot", player: p.index });
+    }
+    // the kick's first enemy in front, body to body, takes 2 hits once
+    if (p.kickT && !p.kickHit) {
+      const e = this.enemies.find((q) => {
+        const dx = (q.x - p.x) * (p.flip ? -1 : 1);
+        return this.alive(q) && dx >= 0 && dx <= KICK_REACH && q.fy - 40 < fy && q.fy > fy - BODY_H;
+      });
+      if (e) {
+        p.kickHit = true;
+        this.damage(e, 2, p);
+      }
     }
     p.shots = p.shots.filter((b) => {
       b.x += b.dir * SHOT_SPEED;
@@ -697,7 +779,7 @@ export class Game {
       s.x += s.dir * ENEMY_SHOT_SPEED;
       for (const p of this.players) {
         const fy = p.y >> 4;
-        if (p.active && Math.abs(p.x - s.x) < 8 && s.y <= fy && s.y > fy - BODY_H) {
+        if (p.active && Math.abs(p.x - s.x) < 8 && s.y <= fy && s.y > fy - (p.crouching ? CROUCH_H : BODY_H)) {
           this.hurt(p);
           return false;
         }
@@ -718,6 +800,7 @@ export class Game {
           v.t = 0;
           this.rescued++;
           p.score += this.rules.rescueScore;
+          p.thumbsT = THUMBS_FRAMES;
           this.events.push({ kind: "rescue", name: v.name, player: p.index });
           break;
         }
@@ -780,7 +863,11 @@ export class Game {
   /** One frame. `inputs[i]` is player i's `Input` bits; a button press from a player who is out joins them. */
   step(inputs: readonly number[]): void {
     this.events = [];
-    if (this.outcome !== "playing") return;
+    if (this.outcome !== "playing") {
+      // the players keep their victory going on the clear screen
+      if (this.outcome === "cleared") for (const p of this.players) if (p.active) p.t++;
+      return;
+    }
     this.frame++;
     for (const p of this.players) {
       const pad = cancelOpposites(inputs[p.index] ?? 0);
@@ -831,7 +918,7 @@ export class Game {
         active: p.active,
         x: p.x,
         y: p.y >> 4,
-        state: !p.active ? "out" : p.climbing ? "climbing" : !p.onGround ? (p.vy < 0 ? "jumping" : "falling") : p.pushT ? "pushing" : p.knifeT ? "knife" : p.firing ? "firing" : p.running ? "running" : p.pad & (Input.Left | Input.Right) ? "walking" : "standing",
+        state: !p.active ? "out" : p.climbing ? "climbing" : !p.onGround ? (p.vy < 0 ? "jumping" : "falling") : p.crouching ? (p.pad & (Input.Left | Input.Right) ? "crawling" : "crouching") : p.pushT ? "pushing" : p.knifeT ? "knife" : p.firing ? "firing" : p.running ? "running" : p.pad & (Input.Left | Input.Right) ? "walking" : "standing",
         lives: p.lives,
         score: p.score,
         ammo: p.ammo,
@@ -843,7 +930,7 @@ export class Game {
   }
 }
 
-export type PlayerState = "out" | "climbing" | "jumping" | "falling" | "pushing" | "knife" | "firing" | "running" | "walking" | "standing";
+export type PlayerState = "out" | "climbing" | "jumping" | "falling" | "crouching" | "crawling" | "pushing" | "knife" | "firing" | "running" | "walking" | "standing";
 
 export interface GameSnapshot {
   frame: number;
@@ -885,6 +972,17 @@ function newPlayer(index: number, lives: number): Player {
     invulnerable: 0,
     shots: [],
     rocket: null,
+    crouching: false,
+    landT: 0,
+    turnT: 0,
+    kickT: 0,
+    kickHit: false,
+    thumbsT: 0,
+    idleT: 0,
+    airT: 0,
+    airJumps: 0,
+    fuel: JET_FUEL,
+    jetting: false,
   };
 }
 
@@ -904,6 +1002,10 @@ function spawn(p: Player, x: number, fy: number): void {
   p.t = 0;
   p.shots = [];
   p.rocket = null;
+  p.crouching = false;
+  p.landT = p.turnT = p.kickT = p.thumbsT = p.idleT = p.airT = p.airJumps = 0;
+  p.kickHit = p.jetting = false;
+  p.fuel = JET_FUEL;
 }
 
 function num(v: unknown, fallback: number): number {

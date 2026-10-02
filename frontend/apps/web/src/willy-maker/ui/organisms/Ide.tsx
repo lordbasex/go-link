@@ -10,7 +10,8 @@ import { BUILTIN_HERO, cloneProject, findLevel, layerGrid, type Level, type Leve
 import type { LevelView } from "../../engine";
 import { layoutOf } from "../../board/cps1";
 import { EditorStore } from "../../editor/store";
-import { reachability } from "../../editor/reach";
+import { jumpRowsFor, reachability } from "../../editor/reach";
+import { rulesWith } from "../../engine/rules";
 import { applyPlayEdit, deleteObject, type PlayModeEdit } from "../../editor/ops";
 import { partById } from "../../editor/parts";
 import { gameIssues } from "../../editor/validate/game";
@@ -183,7 +184,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
   }, [levelId]);
 
   const reach = useMemo(
-    () => (showReach ? reachability(level) : null),
+    () => (showReach ? reachability(level, jumpRowsFor(rulesWith(p.settings.rules))) : null),
     // the version says when the level changed
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [level, version, showReach],

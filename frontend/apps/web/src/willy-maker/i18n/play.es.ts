@@ -57,6 +57,8 @@ export const playEs: PlayMessages = {
     running: "corriendo",
     walking: "caminando",
     standing: "en el suelo",
+    crouching: "agachado",
+    crawling: "gateando",
   },
   cameraLine: "cámara x {x}",
   sectionLine: " · sección {n} {name}",

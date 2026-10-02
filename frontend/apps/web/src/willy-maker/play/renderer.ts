@@ -5,7 +5,7 @@
 // placeholder tiles until the project has its own art, the characters from
 // their sheets, the HUD, and the debug overlays play mode can switch on.
 
-import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, type Game } from "../engine";
+import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
 import { TEXT_INKS, boardTextWidth, drawBoardText } from "../game/boardText";
@@ -347,27 +347,42 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     const moving = (p.pad & 3) !== 0;
     let anim = "idle";
     let t = p.t;
+    // the moves of docs/willy-maker/moves.md, most specific first
     if (p.climbing) {
       anim = "jump";
       t = (p.y >> 7) & 1 ? 12 : 6;
     } else if (!p.onGround) {
-      anim = "jump";
-      t = p.vy < -60 ? 6 : p.vy < 0 ? 12 : p.vy < 60 ? 18 : 24;
-    } else if (p.knifeT) {
+      if (p.kickT) {
+        anim = "jump_kick";
+        t = 20 - p.kickT;
+      } else if (p.jetting) anim = "jetpack";
+      else if (p.airJumps && p.vy < 0) {
+        anim = "double_jump";
+        t = p.vy < -60 ? 6 : 12;
+      } else {
+        anim = "jump";
+        t = p.vy < -60 ? 6 : p.vy < 0 ? 12 : p.vy < 60 ? 18 : 24;
+      }
+    } else if (p.crouching) anim = moving ? "crawl" : "crouch";
+    else if (p.knifeT) {
       anim = "knife";
       t = 16 - p.knifeT;
     } else if (p.bazookaT) anim = "bazooka";
     else if (p.firing) anim = "machine_gun";
+    else if (p.landT) anim = "land";
+    else if (p.turnT && moving) anim = "turn";
     else if (moving) {
       anim = "run";
       t = p.running ? p.t : p.t / 2;
-    }
+    } else if (game.outcome === "cleared") anim = "victory";
+    else if (p.thumbsT) anim = "thumbs_up";
+    else if (p.idleT >= YAWN_AFTER) anim = "yawn";
     const own = ownHeroes?.[p.index];
     if (own) {
       // an own hero is saved at board scale: its idle frame's feet give its height
       const ref = own.frames[own.anims.idle?.frames[0] ?? ""];
       sheetDraw(ctx, own, heroAnim(own, anim), "idle", t, p.x, fy, ref?.py ?? HEIGHTS.hero, p.flip, 1);
-    } else if (sheet) sheetDraw(ctx, sheet, anim, "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
+    } else if (sheet) sheetDraw(ctx, sheet, heroAnim(sheet, anim), "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
     else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
     for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);

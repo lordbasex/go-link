@@ -215,6 +215,8 @@ Two tabs of the IDE (`src/willy-maker/game/`, texts in `i18n/game.*.ts` and `i18
 
 ### Play mode: building and playing at once
 
+**The moves** ([moves.md](moves.md), T-25): crouch and crawl on Down, firing low, a jump kick (Down + B2 in the air), land, turn, a thumbs up on a rescue, victory on the clear, a yawn after 5 s idle, and the Rules card's double jump and jet pack, the same in play mode and in the ROM; the reach check climbs as far as the rules allow.
+
 - **Play** runs the current level in the browser at the board's resolution (384 × 224), shown at 2×. It uses the same physics, camera, collision and object rules as the ROM engine, written once in the module's `engine/` (see [architecture.md](architecture.md)).
 - **Input**: controllers (Gamepad API, the site's button map), keyboard, and a touch pad on phones. Up to 4 local players.
 - **Debug overlays**: collision tags, hitboxes, the camera window and its locks, object names, frame time.

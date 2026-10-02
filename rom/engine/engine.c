@@ -58,7 +58,12 @@ static void wait_vblank(void)
 #define D_LOOKS ((const u32 *)D->looks)
 
 /* the built-in hero: the engine's own art (gfx.h), shirts from slots[] */
-static const struct wm_look willy_look = { &anim_willy_idle, &anim_willy_run, &anim_willy_jump, &anim_willy_knife, &anim_willy_machine_gun, &anim_willy_bazooka, 0, 0 };
+/* (his sheet has no land, victory, double jump or jet pack: idle, thumbs up and jump stand in, docs/willy-maker/moves.md) */
+static const struct wm_look willy_look = {
+	&anim_willy_idle, &anim_willy_run, &anim_willy_jump, &anim_willy_knife, &anim_willy_machine_gun, &anim_willy_bazooka,
+	&anim_willy_crouch, &anim_willy_crawl, &anim_willy_idle, &anim_willy_turn, &anim_willy_jump_kick,
+	&anim_willy_thumbs_up, &anim_willy_thumbs_up, &anim_willy_yawn, &anim_willy_jump, &anim_willy_jump, 0, 0,
+};
 
 /* player slot k's own look (wm_look), or 0 for Willy */
 static const struct wm_look *own_look(int k)
@@ -436,6 +441,20 @@ static void flush_sprites(void)
 #define MAX_PICKUPS 16
 #define MAX_EN_SHOTS 8
 #define MAX_DAMAGED 32
+/* the moves (docs/willy-maker/moves.md), as play mode's engine/rules.ts */
+#define CROUCH_H 24
+#define CROUCH_SHOT_Y 12
+#define LAND_FRAMES 8
+#define LAND_AFTER 10
+#define TURN_FRAMES 6
+#define KICK_FRAMES 20
+#define KICK_REACH 24
+#define THUMBS_FRAMES 45
+#define YAWN_AFTER 300
+#define DOUBLE_JUMP_VY (-96)
+#define JET_LIFT 10
+#define JET_MAX_UP (-32)
+#define JET_FUEL 90
 
 static int credits;
 static u16 sys_now, sys_last;
@@ -458,6 +477,8 @@ struct player {
 	u32 tap_time;
 	int firing, fire_wait, knife_t, bazooka_t, special, ammo;
 	int energy, hurt;
+	/* the moves: crouched, shown moves' frames left, the kick's one hit, the air rules */
+	int crouch, crouch_t, land_t, turn_t, kick_t, kick_hit, thumbs_t, idle_t, air_t, air_jumps, fuel, jetting;
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -602,13 +623,19 @@ static int support(s32 x, s32 fy, int drop)
 	return best;
 }
 
-static int body_blocked(s32 x, s32 fy)
+/* a body h px tall (BODY_H standing, CROUCH_H crouched) */
+static int body_blocked_h(s32 x, s32 fy, int h)
 {
 	s32 y;
-	for (y = fy - 1; y > fy - BODY_H; y -= 8)
+	for (y = fy - 1; y > fy - h; y -= 8)
 		if (is_solid(cell_at(x, y)))
 			return 1;
-	return is_solid(cell_at(x, fy - BODY_H));
+	return is_solid(cell_at(x, fy - h));
+}
+
+static int body_blocked(s32 x, s32 fy)
+{
+	return body_blocked_h(x, fy, BODY_H);
 }
 
 /* the first place feet can stand at x, searching down from y (px) */
@@ -764,6 +791,9 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->running = p->tap_dir = 0;
 	p->special = 0;
 	p->ammo = p->knife_t = p->bazooka_t = p->fire_wait = p->firing = 0;
+	p->crouch = p->crouch_t = p->land_t = p->turn_t = p->kick_t = p->kick_hit = p->thumbs_t = 0;
+	p->idle_t = p->air_t = p->air_jumps = p->jetting = 0;
+	p->fuel = JET_FUEL;
 	p->t = 0;
 	for (i = 0; i < SHOTS; i++)
 		p->shots[i].live = 0;
@@ -930,7 +960,7 @@ static void walk(struct player *p, int dir, int speed)
 
 static void update_player(struct player *p)
 {
-	int i, dir = 0;
+	int i, dir = 0, jet_was;
 	s32 fy, d;
 	if (!p->active)
 		return;
@@ -939,6 +969,17 @@ static void update_player(struct player *p)
 		p->drop_t--;
 	if (p->hurt)
 		p->hurt--;
+	if (p->land_t)
+		p->land_t--;
+	if (p->turn_t)
+		p->turn_t--;
+	if (p->thumbs_t)
+		p->thumbs_t--;
+	if (p->kick_t)
+		p->kick_t--;
+	p->idle_t = !p->pad && p->on_ground && !p->climbing ? p->idle_t + 1 : 0;
+	jet_was = p->jetting;
+	p->jetting = 0;
 	if (p->pad & BTN_LEFT)
 		dir = -1;
 	else if (p->pad & BTN_RIGHT)
@@ -992,7 +1033,29 @@ static void update_player(struct player *p)
 			p->vy = JUMP_VY / 2;
 		}
 	} else {
-		if (dir && !p->knife_t && !p->bazooka_t) {
+		/* crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit */
+		if (p->on_ground && (p->pad & BTN_DOWN) && !(p->pad & BTN_1)) {
+			if (!p->crouch)
+				p->crouch_t = 0;
+			p->crouch = 1;
+		} else if (p->crouch && (!p->on_ground || !body_blocked(p->x, fy)))
+			p->crouch = 0;
+		if (p->crouch) {
+			p->crouch_t++;
+			p->running = 0;
+			p->push_t = 0;
+			if (dir) {
+				s32 nx = p->x + dir;
+				if (p->flip != (dir < 0))
+					p->turn_t = TURN_FRAMES;
+				p->flip = dir < 0;
+				/* crawl: 1 px every 2 frames, under anything CROUCH_H tall */
+				if ((p->t & 1) && !body_blocked_h(nx + dir * HALF_W, fy, CROUCH_H))
+					p->x = nx;
+			}
+		} else if (dir && !p->knife_t && !p->bazooka_t) {
+			if (p->on_ground && p->flip != (dir < 0))
+				p->turn_t = TURN_FRAMES;
 			p->flip = dir < 0;
 			walk(p, dir, p->running ? 2 : 1);
 		} else
@@ -1005,19 +1068,41 @@ static void update_player(struct player *p)
 				p->vy = 0;
 				p->y += 16;
 			} else {
+				p->crouch = 0;
 				p->vy = JUMP_VY;
 				p->on_ground = 0;
 			}
+		} else if (!p->on_ground && PRESSED(p, BTN_1) && (D->flags & WM_F_DOUBLE_JUMP) && !p->air_jumps) {
+			p->vy = DOUBLE_JUMP_VY;
+			p->air_jumps = 1;
+		}
+		/* jump kick: Down + B2 in the air */
+		if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t) {
+			p->kick_t = KICK_FRAMES;
+			p->kick_hit = 0;
 		}
 		if (p->on_ground && !support(p->x, fy, 0)) {
 			p->on_ground = 0;
 			p->vy = 0;
 		}
 		if (!p->on_ground) {
-			s32 from = p->y >> 4, to, py;
+			s32 from = p->y >> 4, to, py, was = p->vy;
+			p->air_t++;
 			p->vy += GRAVITY;
 			if (p->vy > MAX_FALL)
 				p->vy = MAX_FALL;
+			/* the jet pack, after gravity: B1 held starts it while falling (or after the
+			   double jump) and keeps it going, even rising, until the fuel runs out */
+			if ((D->flags & WM_F_JETPACK) && (p->pad & BTN_1) && p->fuel > 0 && (jet_was || was >= 0 || p->air_jumps)) {
+				/* it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's) */
+				if (p->vy > JET_MAX_UP) {
+					p->vy -= JET_LIFT;
+					if (p->vy < JET_MAX_UP)
+						p->vy = JET_MAX_UP;
+				}
+				p->fuel--;
+				p->jetting = 1;
+			}
 			to = (p->y + p->vy) >> 4;
 			if (p->vy > 0) {
 				for (py = from + 1; py <= to; py++)
@@ -1025,6 +1110,11 @@ static void update_player(struct player *p)
 						p->y = py * 16;
 						p->vy = 0;
 						p->on_ground = 1;
+						if (p->air_t >= LAND_AFTER)
+							p->land_t = LAND_FRAMES;
+						p->air_t = 0;
+						p->air_jumps = 0;
+						p->fuel = JET_FUEL;
 						break;
 					}
 				if (!p->on_ground)
@@ -1101,7 +1191,7 @@ static void update_player(struct player *p)
 			en_damage(ei, 2, p);
 		}
 	}
-	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->bazooka_t && !p->climbing;
+	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->bazooka_t && !p->climbing && !p->kick_t;
 	if (p->fire_wait)
 		p->fire_wait--;
 	if (p->firing && !p->fire_wait)
@@ -1110,10 +1200,20 @@ static void update_player(struct player *p)
 				p->shots[i].live = 1;
 				p->shots[i].dir = p->flip ? -1 : 1;
 				p->shots[i].x = (s16)(p->x + (p->flip ? -20 : 20));
-				p->shots[i].y = (s16)(fy - 27);
+				p->shots[i].y = (s16)(fy - (p->crouch ? CROUCH_SHOT_Y : 27));
 				p->fire_wait = FIRE_EVERY;
 				break;
 			}
+	/* the kick's first enemy in front, body to body, takes 2 hits once */
+	if (p->kick_t && !p->kick_hit)
+		for (i = 0; i < nen; i++) {
+			s32 dx = (en[i].x - p->x) * (p->flip ? -1 : 1);
+			if (en_alive(i) && dx >= 0 && dx <= KICK_REACH && en[i].fy - 40 < fy && en[i].fy > fy - BODY_H) {
+				p->kick_hit = 1;
+				en_damage(i, 2, p);
+				break;
+			}
+		}
 	for (i = 0; i < SHOTS; i++) {
 		struct bullet *b = &p->shots[i];
 		int ei;
@@ -1215,7 +1315,7 @@ static void update_enemies(int playing)
 		for (k = 0; k < nplayers; k++) {
 			struct player *p = &pl[k];
 			s32 fy = p->y >> 4, dx = p->x - s->x;
-			if (p->active && dx > -8 && dx < 8 && s->y <= fy && s->y > fy - BODY_H) {
+			if (p->active && dx > -8 && dx < 8 && s->y <= fy && s->y > fy - (p->crouch ? CROUCH_H : BODY_H)) {
 				hurt(p, 0);
 				s->live = 0;
 				break;
@@ -1240,6 +1340,7 @@ static void update_civilians(void)
 				civ[i].t = 0;
 				rescued++;
 				pl[k].score += R->rescue_score;
+				pl[k].thumbs_t = THUMBS_FRAMES;
 				break;
 			}
 		}
@@ -1300,6 +1401,15 @@ static void set_scroll(void)
 
 /* -------------------------------------------------------------- drawing */
 
+/* a move shown once: frame `t` (frames since it began) at its fps, held on its last frame */
+static void draw_once(const Anim *a, u32 t, int x, int y, int pal, int flip)
+{
+	u32 i = t * a->fps / 60;
+	draw_frame(&a->frames[i < a->count ? i : a->count - 1u], x, y, pal, flip);
+}
+
+static int victory; /* the section is cleared: every player shows its victory */
+
 static void draw_player(struct player *p)
 {
 	int sx = (int)p->x - cam_x;
@@ -1313,17 +1423,37 @@ static void draw_player(struct player *p)
 		draw_frame(&l->jump->frames[1 % l->jump->count], sx, sy, p->pal, f);
 		return;
 	}
-	if (!p->on_ground) {
+	if (victory)
+		draw_anim(l->victory, p->t, sx, sy, p->pal, p->flip);
+	else if (!p->on_ground) {
+		/* the jump's frames by vertical speed, as Willy's sheet has them */
 		int i = p->vy < -60 ? 1 : p->vy < 0 ? 2 : p->vy < 60 ? 3 : 4;
-		draw_frame(&l->jump->frames[i % l->jump->count], sx, sy, p->pal, p->flip);
+		const Anim *a = p->jetting ? l->jetpack : p->air_jumps && p->vy < 0 ? l->double_jump : l->jump;
+		if (p->kick_t)
+			draw_once(l->kick, (u32)(KICK_FRAMES - p->kick_t), sx, sy, p->pal, p->flip);
+		else
+			draw_frame(&a->frames[i % a->count], sx, sy, p->pal, p->flip);
+	} else if (p->crouch) {
+		if (moving)
+			draw_anim(l->crawl, p->t, sx, sy, p->pal, p->flip);
+		else
+			draw_once(l->crouch, (u32)p->crouch_t, sx, sy, p->pal, p->flip);
 	} else if (p->knife_t)
 		draw_frame(&l->knife->frames[(KNIFE_FRAMES - p->knife_t) / 4 % l->knife->count], sx, sy, p->pal, p->flip);
 	else if (p->bazooka_t)
 		draw_anim(l->bazooka, p->t, sx, sy, p->pal, p->flip);
 	else if (p->firing)
 		draw_anim(l->gun, p->t, sx, sy, p->pal, p->flip);
+	else if (p->land_t)
+		draw_once(l->land, (u32)(LAND_FRAMES - p->land_t), sx, sy, p->pal, p->flip);
+	else if (p->turn_t && moving)
+		draw_once(l->turn, (u32)(TURN_FRAMES - p->turn_t), sx, sy, p->pal, p->flip);
 	else if (moving)
 		draw_anim(l->run, p->running ? p->t : p->t / 2, sx, sy, p->pal, p->flip);
+	else if (p->thumbs_t)
+		draw_once(l->thumbs, (u32)(THUMBS_FRAMES - p->thumbs_t), sx, sy, p->pal, p->flip);
+	else if (p->idle_t >= YAWN_AFTER)
+		draw_anim(l->yawn, (u32)(p->idle_t - YAWN_AFTER), sx, sy, p->pal, p->flip);
 	else
 		draw_anim(l->idle, p->t, sx, sy, p->pal, p->flip);
 }
@@ -1447,6 +1577,8 @@ static void lab_update(void)
 			o->state = LAB_PL_CLIMB;
 		else if (!p->on_ground)
 			o->state = LAB_PL_AIR;
+		else if (p->crouch)
+			o->state = p->pad & (BTN_LEFT | BTN_RIGHT) ? LAB_PL_CRAWL : LAB_PL_CROUCH;
 		else if (p->knife_t || p->bazooka_t || p->firing)
 			o->state = LAB_PL_ATTACK;
 		else if (p->pad & (BTN_LEFT | BTN_RIGHT))
@@ -1460,7 +1592,8 @@ static void lab_update(void)
 		o->score = p->score;
 		o->hurt = (u8)(p->hurt > 255 ? 255 : p->hurt);
 		o->pflags = (u8)((p->on_ground ? LAB_PF_GROUND : 0) | (p->climbing ? LAB_PF_CLIMB : 0) |
-				 (p->running ? LAB_PF_RUN : 0) | (p->firing ? LAB_PF_FIRE : 0));
+				 (p->running ? LAB_PF_RUN : 0) | (p->firing ? LAB_PF_FIRE : 0) | (p->kick_t ? LAB_PF_KICK : 0) |
+				 (p->jetting ? LAB_PF_JET : 0) | (p->air_jumps ? LAB_PF_AIR_JUMP : 0));
 		o->vy = (s16)p->vy;
 	}
 	for (i = 0; i < LAB_ENEMIES; i++) {
@@ -1630,6 +1763,7 @@ static int play(int first)
 	int k, outcome = -1, cont = 0;
 	clear_text();
 	game_reset();
+	victory = 0;
 	player_join(first);
 	update_camera(1);
 	stream();
@@ -1650,8 +1784,13 @@ static int play(int first)
 					}
 					player_join(k);
 				}
+		/* on the clear screen the players stand still, showing their victory */
+		victory = outcome == END_CLEAR;
 		for (k = 0; k < nplayers; k++)
-			update_player(&pl[k]);
+			if (!victory)
+				update_player(&pl[k]);
+			else if (pl[k].active)
+				pl[k].t++;
 		update_enemies(outcome < 0);
 		update_civilians();
 		update_camera(0);

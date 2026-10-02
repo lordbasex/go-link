@@ -70,7 +70,7 @@ All fields are big-endian (the 68000's order). Offsets in hex:
 | 20 | 4 | `col_map` | address of the collision map, 0 for none: one byte per 16 × 16 cell, row-major: 0 empty, 1 solid, 2 one-way, 3 ladder, 4 crate |
 | 24 | 2 | `col_cols` | |
 | 26 | 2 | `col_rows` | |
-| 28 | 4 × 16 | `player[4]` | at 0x28 + 16n: `+0` active (u8), `+1` state (u8: 0 off, 1 idle, 2 walk, 3 run, 4 air, 5 climb, 6 attack, 7 hurt, 8 dead), `+2` facing (s8, +1 right, -1 left), `+3` energy (0-3), `+4` x (s16, world px, the body's middle), `+6` y (s16, world px of the feet), `+8` score (u32), `+c` hurt (frames of blinking left), `+d` flags (0x01 on the ground, 0x02 climbing, 0x04 running, 0x08 firing), `+e` vy (s16, 1/16 px per frame) |
+| 28 | 4 × 16 | `player[4]` | at 0x28 + 16n: `+0` active (u8), `+1` state (u8: 0 off, 1 idle, 2 walk, 3 run, 4 air, 5 climb, 6 attack, 7 hurt, 8 dead, 9 crouch, 10 crawl: crouched on the ground, still or moving), `+2` facing (s8, +1 right, -1 left), `+3` energy (0-3), `+4` x (s16, world px, the body's middle), `+6` y (s16, world px of the feet), `+8` score (u32), `+c` hurt (frames of blinking left), `+d` flags (0x01 on the ground, 0x02 climbing, 0x04 running, 0x08 firing, 0x10 a jump kick's frames, 0x20 the jet pack lifts, 0x40 the double jump is used until landing; decoded as `ground`, `climbing`, `running`, `firing`, `kicking`, `jetting`, `airJump`), `+e` vy (s16, 1/16 px per frame) |
 | 68 | 8 × 8 | `enemy[8]` | at 0x68 + 8n: `+0` alive, `+1` hp (hits left), `+2` x, `+4` y (feet), `+6` facing (s8), `+7` state (0 off, 1 walk, 2 hit, 3 down) |
 | a8 | 4 × 8 | `civ[4]` | at 0xa8 + 8n: `+0` rescued, `+1` present, `+2` x, `+4` y (feet), `+6` reserved (0) |
 

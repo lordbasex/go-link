@@ -86,6 +86,8 @@ export const gameEs: GameMessages = {
     enemiesChase: "Los enemigos persiguen",
     enemiesShoot: "Los enemigos disparan",
     exitNeedsEnemies: "La salida pide a todos los enemigos abatidos",
+    doubleJump: "Doble salto (B1 otra vez en el aire)",
+    jetpack: "Mochila propulsora (mantén B1 al caer)",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",
     climbPush: "Caminando contra ella",

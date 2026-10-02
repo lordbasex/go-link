@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 3
+#define WM_VERSION 4
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -68,6 +68,8 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_FREE_PLAY 0x0001
 #define WM_F_PUSH_CLIMB 0x0002 /* a 32 px edge is climbed by walking into it (else by jumping) */
 #define WM_F_SOON 0x0004       /* Start on a port past the game's players shows "nP COMING SOON" */
+#define WM_F_DOUBLE_JUMP 0x0008 /* B1 again in the air jumps once more (docs/willy-maker/moves.md) */
+#define WM_F_JETPACK 0x0010     /* B1 held in the air lifts the player, 90 frames of fuel */
 
 struct wm_data {
 	u32 magic;                /* 00 */
@@ -106,19 +108,24 @@ struct wm_data {
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
 /*
- * A player's own look (a Willy Maker hero drawn in the browser): its six
- * animations, in the engine's own records (Tile, Frame, Anim from gfx.h,
+ * A player's own look (a Willy Maker hero drawn in the browser): its
+ * animations, one per move (docs/willy-maker/moves.md), in the engine's own records (Tile, Frame, Anim from gfx.h,
  * written by the packer in exactly this layout), and its palettes. A tile's
  * pal is relative: the engine adds `pal`, the first sprite palette the look's
  * `npal` palettes are loaded into at startup; their words (npal x 16) follow
  * the struct. Climbing uses a jump frame, as Willy does.
  */
 struct wm_look {
-	const Anim *idle, *run, *jump; /* 00, 04, 08 */
-	const Anim *knife, *gun;       /* 0c, 10 */
-	const Anim *bazooka;           /* 14 */
-	u16 pal;                       /* 18 the first sprite palette (0-31) */
-	u16 npal;                      /* 1a palettes that follow the struct */
+	const Anim *idle, *run, *jump;   /* 00, 04, 08 */
+	const Anim *knife, *gun;         /* 0c, 10 */
+	const Anim *bazooka;             /* 14 */
+	const Anim *crouch, *crawl;      /* 18, 1c */
+	const Anim *land, *turn, *kick;  /* 20, 24, 28 (kick: the jump kick) */
+	const Anim *thumbs, *victory;    /* 2c, 30 (thumbs: the thumbs up) */
+	const Anim *yawn;                /* 34 */
+	const Anim *double_jump, *jetpack; /* 38, 3c */
+	u16 pal;                         /* 40 the first sprite palette (0-31) */
+	u16 npal;                        /* 42 palettes that follow the struct */
 };
 #define WM_LOOK_PALETTES(l) ((const u16 *)((l) + 1))
 
@@ -135,6 +142,7 @@ _Static_assert(sizeof(struct wm_data) == 0x84, "wm_data size");
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");
 _Static_assert(sizeof(Anim) == 8 && __builtin_offsetof(Anim, count) == 4 && __builtin_offsetof(Anim, fps) == 6, "Anim");
-_Static_assert(sizeof(struct wm_look) == 28 && __builtin_offsetof(struct wm_look, pal) == 0x18, "wm_look");
+_Static_assert(sizeof(struct wm_look) == 0x44 && __builtin_offsetof(struct wm_look, pal) == 0x40, "wm_look");
+_Static_assert(__builtin_offsetof(struct wm_look, crouch) == 0x18 && __builtin_offsetof(struct wm_look, kick) == 0x28 && __builtin_offsetof(struct wm_look, jetpack) == 0x3c, "wm_look moves");
 
 #endif

@@ -83,13 +83,17 @@ enum { LAB_CELL_EMPTY, LAB_CELL_SOLID, LAB_CELL_ONEWAY, LAB_CELL_LADDER, LAB_CEL
 
 enum {
 	LAB_PL_OFF, LAB_PL_IDLE, LAB_PL_WALK, LAB_PL_RUN, LAB_PL_AIR,
-	LAB_PL_CLIMB, LAB_PL_ATTACK, LAB_PL_HURT, LAB_PL_DEAD
+	LAB_PL_CLIMB, LAB_PL_ATTACK, LAB_PL_HURT, LAB_PL_DEAD,
+	LAB_PL_CROUCH, LAB_PL_CRAWL /* crouched on the ground, still or crawling (docs/willy-maker/moves.md) */
 };
 
 #define LAB_PF_GROUND 0x01
 #define LAB_PF_CLIMB  0x02
 #define LAB_PF_RUN    0x04
 #define LAB_PF_FIRE   0x08
+#define LAB_PF_KICK   0x10 /* a jump kick's frames */
+#define LAB_PF_JET    0x20 /* the jet pack lifts this frame */
+#define LAB_PF_AIR_JUMP 0x40 /* the double jump is used (until landing) */
 
 enum { LAB_EN_OFF, LAB_EN_WALK, LAB_EN_HIT, LAB_EN_DOWN };
 

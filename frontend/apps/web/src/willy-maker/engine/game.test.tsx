@@ -404,3 +404,87 @@ describe("crates (experiment 1's hanging crate, J-03)", () => {
     expect(g.cell(8, 24)).toBe(Tag.Crate);
   });
 });
+
+describe("the moves (docs/willy-maker/moves.md, T-25)", () => {
+  const top = (g: Game, frames: number, pad: (f: number) => number) => {
+    const y0 = feet(g);
+    let best = y0;
+    for (let f = 0; f < frames; f++) {
+      g.step([pad(f), 0, 0, 0]);
+      best = Math.min(best, feet(g));
+    }
+    return y0 - best;
+  };
+  const tall = (): LevelView => {
+    const cols = 64;
+    const rows = 60;
+    const tags = new Uint8Array(cols * rows);
+    for (let c = 0; c < cols; c++) for (let r = 57; r < rows; r++) tags[r * cols + c] = Tag.Solid;
+    return { name: "tall", width: cols * 16, height: rows * 16, tags, objects: [{ name: "p1", type: "player_start", x: 64, y: 912, player: 1 }] };
+  };
+
+  it("crouches on Down, crawls 1 px every 2 frames, and enemy shots at standing height pass over", () => {
+    const g = new Game(flat());
+    run(g, 1, Input.Down);
+    expect(g.players[0]!.crouching).toBe(true);
+    expect(g.snapshot().players[0]!.state).toBe("crouching");
+    const x = g.players[0]!.x;
+    run(g, 20, Input.Down | Input.Right);
+    expect(g.players[0]!.x - x).toBe(10);
+    expect(g.snapshot().players[0]!.state).toBe("crawling");
+    run(g, 1, 0);
+    expect(g.players[0]!.crouching).toBe(false);
+  });
+
+  it("crawls under a ceiling 32 px over the floor and stays crouched there", () => {
+    const g = new Game(flat((set) => {
+      for (let c = 8; c < 12; c++) set(c, 22, Tag.Solid); // the ceiling's bottom at y 368, 32 px over the floor at 400
+    }));
+    run(g, 60, Input.Right);
+    const stopped = g.players[0]!.x;
+    expect(stopped).toBeLessThan(128);
+    run(g, 60, Input.Down | Input.Right);
+    // under the ceiling (x 128-191) now
+    expect(g.players[0]!.x).toBeGreaterThan(140);
+    expect(g.players[0]!.x).toBeLessThan(185);
+    run(g, 1, 0);
+    expect(g.players[0]!.crouching).toBe(true);
+  });
+
+  it("jump kicks an enemy in front once, for 2 hits", () => {
+    const g = new Game(flat(undefined, [{ name: "e", type: "enemy", x: 84, y: 400, kind: "trooper", facing: "left", patrol: 0, hp: 3 }]), { rules: { enemiesShoot: false, enemiesChase: false } });
+    run(g, 1, Input.B1);
+    run(g, 2, 0);
+    run(g, 1, Input.Down | Input.B2);
+    expect(g.players[0]!.kickT).toBeGreaterThan(0);
+    run(g, 20, Input.Down);
+    expect(g.enemies[0]!.hp).toBe(1);
+  });
+
+  it("lands, turns, yawns after 5 s, and gives a thumbs up on a rescue", () => {
+    const g = new Game(flat(undefined, [{ name: "v", type: "civilian", x: 120, y: 400, kind: "woman" }]));
+    run(g, 1, Input.B1);
+    let landed = false;
+    for (let f = 0; f < 60 && !landed; f++) {
+      run(g, 1, 0);
+      landed = g.players[0]!.landT > 0;
+    }
+    expect(landed).toBe(true);
+    run(g, 1, Input.Left);
+    expect(g.players[0]!.turnT).toBeGreaterThan(0);
+    run(g, 60, Input.Right);
+    expect(g.players[0]!.thumbsT).toBeGreaterThan(0);
+    run(g, 300, 0);
+    expect(g.players[0]!.idleT).toBeGreaterThanOrEqual(300);
+  });
+
+  it("measures the jumps the reach check counts on: 62, 107 and 239 px", () => {
+    expect(top(new Game(tall()), 120, (f) => (f === 0 ? Input.B1 : 0))).toBe(62);
+    expect(top(new Game(tall()), 120, (f) => (f === 0 ? Input.B1 : 0))).toBeGreaterThanOrEqual(48);
+    expect(top(new Game(tall(), { rules: { doubleJump: true } }), 160, (f) => (f === 0 || f === 18 ? Input.B1 : 0))).toBe(107);
+    expect(top(new Game(tall(), { rules: { jetpack: true } }), 400, () => Input.B1)).toBe(239);
+    // without the rules, a second press and a held B1 do nothing more
+    expect(top(new Game(tall()), 160, (f) => (f === 0 || f === 18 ? Input.B1 : 0))).toBe(62);
+    expect(top(new Game(tall()), 400, () => Input.B1)).toBe(62);
+  });
+});

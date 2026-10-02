@@ -88,6 +88,17 @@ export function heroAnim(sheet: Sheet, anim: string): string {
     knife: ["knife", "melee", "shoot", "fire"],
     bazooka: ["bazooka", "special", "shoot", "fire"],
     jump: ["jump"],
+    // the moves (docs/willy-maker/moves.md) and their fallbacks
+    crouch: ["crouch"],
+    crawl: ["crawl", "crouch", "walk", "run"],
+    land: ["land"],
+    turn: ["turn", "run", "walk"],
+    jump_kick: ["jump_kick", "knife", "jump"],
+    thumbs_up: ["thumbs_up"],
+    victory: ["victory", "thumbs_up"],
+    yawn: ["yawn", "bored"],
+    double_jump: ["double_jump", "jump"],
+    jetpack: ["jetpack", "jump"],
   };
   return (options[anim] ?? [anim]).find((n) => sheet.anims[n]?.frames.length) ?? "idle";
 }

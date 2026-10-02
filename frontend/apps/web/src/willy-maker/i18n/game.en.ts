@@ -84,6 +84,8 @@ export const gameEn = {
     enemiesChase: "Enemies chase players",
     enemiesShoot: "Enemies shoot",
     exitNeedsEnemies: "The exit needs every enemy down",
+    doubleJump: "Double jump (B1 again in the air)",
+    jetpack: "Jet pack (hold B1 while falling)",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",
     climbPush: "By walking into it",

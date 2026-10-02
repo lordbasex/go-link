@@ -57,6 +57,8 @@ export const playPt: PlayMessages = {
     running: "correndo",
     walking: "andando",
     standing: "no chão",
+    crouching: "agachado",
+    crawling: "rastejando",
   },
   cameraLine: "câmera x {x}",
   sectionLine: " · seção {n} {name}",

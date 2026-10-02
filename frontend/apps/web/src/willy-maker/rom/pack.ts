@@ -65,7 +65,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 3;
+const WM_VERSION = 4;
 const HEADER = 0x84;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -86,6 +86,8 @@ const ITEM: Record<string, number> = { bazooka: 1, health: 2 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
+const F_DOUBLE_JUMP = 8;
+const F_JETPACK = 16;
 
 /** The first level in play order. */
 export function romLevel(project: Project): Level | undefined {
@@ -572,7 +574,7 @@ export function packGame(
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0));
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);

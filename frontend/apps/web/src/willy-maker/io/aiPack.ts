@@ -283,6 +283,9 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
     ["The exit", `${G.exitNeedsEnemies ? "clears the level only with every enemy down; reaching it earlier shows a message (DEFEAT EVERY ENEMY) and the HUD shows ENEMY n, the enemies left" : "clears the level when a player reaches it"}; a door is drawn on it`],
     ["Start on a port past the game's players", G.extraPorts === "soon" ? "shows \"3P COMING SOON\" (or 4P) for 2 s; no credit is taken" : "does nothing; no credit is taken"],
     ["Opposite directions", "left with right, or up with down, held together count as neither (the core delivers them so)"],
+    ["Moves (docs/willy-maker/moves.md in the repository)", `crouch on Down (a ${R.CROUCH_H} px body that standing-height shots pass over, firing ${R.CROUCH_SHOT_Y} px up), crawl with Left or Right (1 px every 2 frames), a jump kick with Down + B2 in the air (2 hits once, ${R.KICK_REACH} px in front), land, turn, a thumbs up on a rescue, victory on the clear and a yawn after ${R.YAWN_AFTER} frames idle`],
+    ["Double jump", G.doubleJump ? `on: B1 again in the air once per landing, vertical speed ${R.DOUBLE_JUMP_VY}` : "off"],
+    ["Jet pack", G.jetpack ? `on: B1 held while falling (then while held), after gravity vertical speed −${R.JET_LIFT} up to ${R.JET_MAX_UP}, ${R.JET_FUEL} frames of fuel per landing` : "off"],
   ];
   for (const [k, v] of rows) line(`| ${k} | ${v} |`);
   line();

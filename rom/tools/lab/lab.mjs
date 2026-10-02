@@ -24,7 +24,7 @@ export const WRAM_BASE = 0xff0000;
 const WRAM_BYTES = 0x10000;
 const PROGRAM_BYTES = 0x200000; // the board model's program space (cps1-sim PROGRAM_SIZE)
 export const MODES = ["boot", "title", "playing", "clear", "game_over"];
-export const PLAYER_STATES = ["off", "idle", "walk", "run", "air", "climb", "attack", "hurt", "dead"];
+export const PLAYER_STATES = ["off", "idle", "walk", "run", "air", "climb", "attack", "hurt", "dead", "crouch", "crawl"];
 export const ENEMY_STATES = ["off", "walk", "hit", "down"];
 export const CELLS = ".#=HC"; // empty, solid, one-way, ladder, crate (LAB_CELL_*)
 
@@ -352,6 +352,9 @@ export function decodeLab(b, at) {
       climbing: !!(pf & 2),
       running: !!(pf & 4),
       firing: !!(pf & 8),
+      kicking: !!(pf & 0x10),
+      jetting: !!(pf & 0x20),
+      airJump: !!(pf & 0x40),
       vy: s16(b, o + 14),
     });
   }

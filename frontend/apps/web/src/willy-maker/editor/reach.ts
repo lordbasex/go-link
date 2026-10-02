@@ -45,6 +45,8 @@ export interface Reach {
   objects: UnreachedObject[];
   /** The cells the search started from (the players' starts). */
   starts: number[];
+  /** Rows a jump climbs with this game's rules (jumpRowsFor). */
+  jumpRows: number;
 }
 
 /** Can a hero stand with the feet at the bottom of cell (c, r)? */
@@ -88,7 +90,16 @@ function fall(g: CellGrid, c: number, r: number): number {
  * an edge, dropping through a ledge, ladders and jumps. `to` gets every
  * candidate; the caller keeps the ones where a hero can stand.
  */
-export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: number) => void): void {
+/**
+ * Rows a jump climbs with a game's rules (docs/willy-maker/moves.md, measured
+ * on play mode's engine): 62 px plain, 107 px with the double jump, 239 px
+ * with the jet pack, rounded down to rows with room to land.
+ */
+export function jumpRowsFor(rules: { doubleJump?: boolean; jetpack?: boolean }): number {
+  return rules.jetpack ? 14 : rules.doubleJump ? 6 : JUMP_ROWS;
+}
+
+export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: number) => void, jumpRows = JUMP_ROWS): void {
   const rows = g.rows;
   // walk, or walk off an edge and fall
   for (const dc of [-1, 1]) {
@@ -121,7 +132,7 @@ export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: numb
     if (land >= 0) to(c, land);
   }
   // jumps: up to 48 px up, landing anywhere lower within reach
-  for (let up = 1; up <= JUMP_ROWS; up++) {
+  for (let up = 1; up <= jumpRows; up++) {
     // the head must not hit a ceiling on the way up
     if (r - up - BODY + 1 >= 0 && blocks(g.get(c, r - up - BODY + 1))) break;
     const reach = up > 2 ? JUMP_REACH_HIGH : JUMP_REACH_LOW;
@@ -141,7 +152,7 @@ export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: numb
   }
 }
 
-export function reachability(level: Level): Reach {
+export function reachability(level: Level, jumpRows = JUMP_ROWS): Reach {
   const g = tagGrid(level);
   const { cols, rows } = g;
   const reached = new Uint8Array(cols * rows);
@@ -168,7 +179,7 @@ export function reachability(level: Level): Reach {
   while (queue.length) {
     const i = queue.shift()!;
     const c = i % cols;
-    moves(g, c, (i - c) / cols, visit);
+    moves(g, c, (i - c) / cols, visit, jumpRows);
   }
 
   // ledges never reached: runs of standing places on a floor
@@ -200,7 +211,7 @@ export function reachability(level: Level): Reach {
     for (let dr = -2; dr <= 2 && !ok; dr++) for (let dc = -2; dc <= 2 && !ok; dc++) if (reached[(r + dr) * cols + c + dc] && c + dc >= 0 && c + dc < cols && r + dr >= 0 && r + dr < rows) ok = true;
     if (!ok) unreached.push({ name: o.name, type: o.type, x: o.x, y: o.y });
   }
-  return { reached, cols, rows, ledges, objects: unreached, starts: [...new Set(startCells)] };
+  return { reached, cols, rows, ledges, objects: unreached, starts: [...new Set(startCells)], jumpRows };
 }
 
 /** What the route checks found: places with no way on, the camera's limit and the walk's length. */
@@ -246,11 +257,17 @@ function routeGraph(level: Level, reach: Reach): RouteGraph {
   const count = new Int32Array(n + 1);
   const each = (i: number, fn: (j: number) => void) => {
     const c = i % cols;
-    moves(g, c, (i - c) / cols, (tc, tr) => {
-      if (tc < 0 || tc >= cols || tr < 0 || tr >= rows) return;
-      const j = tr * cols + tc;
-      if (j !== i && reached[j]) fn(j);
-    });
+    moves(
+      g,
+      c,
+      (i - c) / cols,
+      (tc, tr) => {
+        if (tc < 0 || tc >= cols || tr < 0 || tr >= rows) return;
+        const j = tr * cols + tc;
+        if (j !== i && reached[j]) fn(j);
+      },
+      reach.jumpRows,
+    );
   };
   for (let i = 0; i < n; i++) if (reached[i]) each(i, () => count[i + 1]!++);
   for (let i = 0; i < n; i++) count[i + 1]! += count[i]!;

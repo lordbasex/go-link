@@ -10,7 +10,7 @@
 
 import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
 import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
-import { leftBehind, reachability, routes } from "../reach";
+import { jumpRowsFor, leftBehind, reachability, routes } from "../reach";
 import { rulesWith } from "../../engine/rules";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
 import { supportChecks } from "./support";
@@ -209,7 +209,7 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     if (!items.some((o) => o.type === "player_start")) return;
     let reach: ReturnType<typeof reachability>;
     try {
-      reach = reachability(level);
+      reach = reachability(level, jumpRowsFor(rulesWith(p.settings.rules)));
     } catch {
       return;
     }

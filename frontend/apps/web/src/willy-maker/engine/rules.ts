@@ -31,6 +31,21 @@ export const BACKTRACK = 48;
 /** Down + jump drops through a ledge for this many frames. */
 export const DROP_FRAMES = 12;
 
+/** The moves (docs/willy-maker/moves.md): a crouched body's height and its crawl, the shown moves' lengths, the kick and the air rules. */
+export const CROUCH_H = 24;
+export const CROUCH_SHOT_Y = 12;
+export const LAND_FRAMES = 8;
+export const LAND_AFTER = 10;
+export const TURN_FRAMES = 6;
+export const KICK_FRAMES = 20;
+export const KICK_REACH = 24;
+export const THUMBS_FRAMES = 45;
+export const YAWN_AFTER = 300;
+export const DOUBLE_JUMP_VY = -96;
+export const JET_LIFT = 10;
+export const JET_MAX_UP = -32;
+export const JET_FUEL = 90;
+
 /** Weapons. */
 export const SHOTS_PER_PLAYER = 6;
 export const SHOT_SPEED = 6;
@@ -88,6 +103,10 @@ export interface GameRules {
   crateClimb: "jump" | "push";
   /** Start on a port past the game's players: a "coming soon" line, or nothing. No credit is taken either way. */
   extraPorts: "soon" | "ignore";
+  /** B1 again in the air jumps once more (docs/willy-maker/moves.md). */
+  doubleJump: boolean;
+  /** B1 held in the air while falling lifts the player for 90 frames of fuel. */
+  jetpack: boolean;
 }
 
 export const DEFAULT_RULES: GameRules = {
@@ -103,6 +122,8 @@ export const DEFAULT_RULES: GameRules = {
   hurtFrames: INVULNERABLE_FRAMES,
   crateClimb: "jump",
   extraPorts: "soon",
+  doubleJump: false,
+  jetpack: false,
 };
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
@@ -123,6 +144,8 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     hurtFrames: int(r.hurtFrames, 0, 600, DEFAULT_RULES.hurtFrames),
     crateClimb: r.crateClimb === "push" ? "push" : "jump",
     extraPorts: r.extraPorts === "ignore" ? "ignore" : "soon",
+    doubleJump: bool(r.doubleJump, false),
+    jetpack: bool(r.jetpack, false),
   };
 }
 

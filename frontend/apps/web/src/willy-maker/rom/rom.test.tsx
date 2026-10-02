@@ -45,8 +45,9 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(3);
+    expect(u16(d, 4)).toBe(4);
     expect(u16(d, 6)).toBe(0x84);
+    expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
     expect([u16(d, 0x74), u16(d, 0x76)]).toEqual([1, 1]);
@@ -80,6 +81,33 @@ describe("Create ROM", () => {
     const end = engine.manifest.sprites.code * 128 + sprites.length;
     expect(gfx.subarray(end, 0x100000).every((b) => b === 0xff)).toBe(true);
   });
+
+  it("packs the double jump and the jet pack as header flags", () => {
+    const flags = (doubleJump: boolean, jetpack: boolean) => {
+      const p = specProject();
+      p.settings.rules = { ...p.settings.rules, doubleJump, jetpack };
+      return u16(packGame(p, engine, (id) => pictures.get(id) ?? null).data, 0x0a) & 0x18;
+    };
+    expect(flags(true, true)).toBe(0x18);
+    expect(flags(true, false)).toBe(0x08);
+    expect(flags(false, true)).toBe(0x10);
+  });
+
+  it("powers on with both air rules (validation level 3)", async () => {
+    const p = specProject();
+    p.settings.rules = { ...p.settings.rules, doubleJump: true, jetpack: true };
+    const zip = await zipSet(packGame(p, engine, (id) => pictures.get(id) ?? null).files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "moves");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    expect(result.ok).toBe(true);
+  }, 30000);
 
   it("draws double-size glyphs as four quarters", () => {
     const q = bigGlyph("A");
@@ -279,15 +307,19 @@ describe("Create ROM with the game's own hero", () => {
     // players 2 to 4: Willy (player 3 is past the game's 2 players)
     expect([u32(d, looks + 4), u32(d, looks + 8), u32(d, looks + 12)]).toEqual([0, 0, 0]);
     const l = at(look);
-    const anims = [0, 1, 2, 3, 4, 5].map((i) => u32(d, l + i * 4));
-    const [idle, run, jump, knife, gun, bazooka] = anims;
+    const anims = [...Array(16)].map((_, i) => u32(d, l + i * 4));
+    const [idle, run, jump, knife, gun, bazooka, crouch, crawl, land, turn, kick, thumbs, victory, yawn, doubleJump, jetpack] = anims;
     expect(run).not.toBe(idle);
     expect(jump).not.toBe(idle);
     expect([knife, gun, bazooka]).toEqual([idle, idle, idle]); // no knife, fire or bazooka: idle
+    // the moves without their own animations take the doc's fallbacks (docs/willy-maker/moves.md)
+    expect([crouch, crawl, land, thumbs, victory, yawn]).toEqual([idle, idle, idle, idle, idle, idle]);
+    expect(turn).toBe(run);
+    expect([kick, doubleJump, jetpack]).toEqual([jump, jump, jump]);
     // the palettes: the first free run that fits (recruit 1 is worn, recruit 2's four are free)
-    expect(u16(d, l + 0x18)).toBe(8);
-    expect(u16(d, l + 0x1a)).toBe(3);
-    const words = [...Array(48)].map((_, i) => u16(d, l + 0x1c + i * 2));
+    expect(u16(d, l + 0x40)).toBe(8);
+    expect(u16(d, l + 0x42)).toBe(3);
+    const words = [...Array(48)].map((_, i) => u16(d, l + 0x44 + i * 2));
     HERO_PALETTES.forEach((p, k) => p.colors.forEach((c, i) => expect(words[k * 16 + i]).toBe(toCps1([parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]).word)));
     expect(words[15]).toBe(0);
     // Anim { frames, count, fps }: idle skips its empty frame
@@ -332,6 +364,35 @@ describe("Create ROM with the game's own hero", () => {
       );
       expect(gfx.subarray(t.code * 128, t.code * 128 + 128)).toEqual(want.data.subarray(t.code * 128, t.code * 128 + 128));
     }
+  });
+
+  it("packs a hero's own moves, and each move's fallback among them", () => {
+    const p = heroProject();
+    // the same frames under the moves' names: each name is an animation of its own
+    p.characters[0]!.anims = {
+      ...p.characters[0]!.anims,
+      crouch: { frames: ["jump_0"], fps: 8, loop: false },
+      jump_kick: { frames: ["run_1"], fps: 14, loop: false },
+      thumbs_up: { frames: ["idle_0"], fps: 7, loop: false },
+      bored: { frames: ["run_0"], fps: 2, loop: true },
+      jetpack: { frames: ["jump_0", "run_0"], fps: 10, loop: true },
+    };
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null, heroPics);
+    expect(r.notes).toEqual([]);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    const l = u32(d, u32(d, 0x70) - WM_DATA_ADDR) - WM_DATA_ADDR;
+    const [idle, run, jump, , , , crouch, crawl, land, turn, kick, thumbs, victory, yawn, doubleJump, jetpack] = [...Array(16)].map((_, i) => u32(d, l + i * 4));
+    const own = [crouch, kick, thumbs, yawn, jetpack];
+    expect(new Set([idle, run, jump, ...own]).size).toBe(8); // each its own record
+    expect(crawl).toBe(crouch); // crawl falls back to crouch
+    expect(victory).toBe(thumbs); // victory to the thumbs up
+    expect(land).toBe(idle);
+    expect(turn).toBe(run);
+    expect(doubleJump).toBe(jump);
+    // the records: Anim { frames, count, fps }
+    expect([u16(d, jetpack! - WM_DATA_ADDR + 4), u16(d, jetpack! - WM_DATA_ADDR + 6)]).toEqual([2, 10]);
+    expect([u16(d, kick! - WM_DATA_ADDR + 4), u16(d, kick! - WM_DATA_ADDR + 6)]).toEqual([1, 14]);
+    expect(u16(d, l + 0x40)).toBe(8);
   });
 
   it("notes a hero it cannot draw and keeps that player Willy", () => {

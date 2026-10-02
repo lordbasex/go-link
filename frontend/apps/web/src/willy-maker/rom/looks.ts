@@ -12,11 +12,11 @@ import { type GfxRegion, type Pens, toCps1 } from "@go-link/cps1";
 import { BUILTIN_HERO, type Character, type Frame, type PlayerSlot, type Project } from "../model";
 import type { Picture } from "./pack";
 
-/** The engine's six animations of a player, in wm_look's order. */
-export const LOOK_ANIMS = ["idle", "run", "jump", "knife", "gun", "bazooka"] as const;
+/** The engine's animations of a player, in wm_look's order: the six it began with, then the moves (docs/willy-maker/moves.md). */
+export const LOOK_ANIMS = ["idle", "run", "jump", "knife", "gun", "bazooka", "crouch", "crawl", "land", "turn", "kick", "thumbs", "victory", "yawn", "double_jump", "jetpack"] as const;
 export type LookAnimId = (typeof LOOK_ANIMS)[number];
 
-/** Where each engine animation comes from: the first of the hero's own that has frames. */
+/** Where each engine animation comes from: the first of the hero's own that has frames (the moves by the doc's names and fallbacks). */
 export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
   idle: ["idle"],
   run: ["run", "walk", "idle"],
@@ -24,7 +24,20 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
   knife: ["knife", "melee", "shoot", "fire", "idle"],
   gun: ["shoot", "fire", "machine_gun", "idle"],
   bazooka: ["bazooka", "special", "shoot", "fire", "idle"],
+  crouch: ["crouch", "idle"],
+  crawl: ["crawl", "crouch", "walk"],
+  land: ["land", "idle"],
+  turn: ["turn", "run"],
+  kick: ["jump_kick", "knife", "jump"],
+  thumbs: ["thumbs_up", "idle"],
+  victory: ["victory", "thumbs_up", "idle"],
+  yawn: ["yawn", "bored", "idle"],
+  double_jump: ["double_jump", "jump"],
+  jetpack: ["jetpack", "jump"],
 };
+
+/** A move whose names all miss takes the engine animation it stands in for (crawl the crouch's, turn the run's, ...). */
+const LOOK_FALLBACK: Partial<Record<LookAnimId, LookAnimId>> = { crawl: "crouch", turn: "run", kick: "jump", double_jump: "jump", jetpack: "jump" };
 
 /** At most this many 16 x 16 tiles in one frame (the engine draws up to 200 sprite entries). */
 export const MAX_FRAME_TILES = 32;
@@ -235,7 +248,8 @@ export function planLooks(
     try {
       for (const id of LOOK_ANIMS) {
         const chain = id === "idle" ? ["idle", "walk", "run", ...Object.keys(ch.anims)] : LOOK_SOURCES[id];
-        const src = chain.find((n) => tryAnim(n)) ?? anims.idle;
+        const fallback = LOOK_FALLBACK[id];
+        const src = chain.find((n) => tryAnim(n)) ?? (fallback ? anims[fallback] : undefined) ?? anims.idle;
         if (!src) {
           note("heroFrames", { name });
           return null;

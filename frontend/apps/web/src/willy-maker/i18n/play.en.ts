@@ -57,6 +57,8 @@ export const playEn = {
     running: "running",
     walking: "walking",
     standing: "on the ground",
+    crouching: "crouching",
+    crawling: "crawling",
   },
   cameraLine: "camera x {x}",
   sectionLine: " · section {n} {name}",

@@ -48,8 +48,8 @@ Big-endian (the 68000's order), at **0x100000**, the second half of the 2 MB pro
 
 | Offset | Field | Meaning |
 |---|---|---|
-| 00 | `magic`, `version`, `size` | `WMD1`, 3, 0x84 |
-| 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play, `0x0002` crates climbed by pushing (else by jumping), `0x0004` Start on a port past the players shows "nP COMING SOON" |
+| 00 | `magic`, `version`, `size` | `WMD1`, 4, 0x84 |
+| 08 | `players`, `flags` | the most players at once (1-4); `0x0001` free play, `0x0002` crates climbed by pushing (else by jumping), `0x0004` Start on a port past the players shows "nP COMING SOON", `0x0008` the double jump, `0x0010` the jet pack ([moves.md](moves.md)) |
 | 0c | `level_w`, `level_h`, `cols`, `rows` | px, and 16 px cells |
 | 14 | `far_cols`, `far_rows` | 32 px cells |
 | 18 | `tags` | `u8[cols × rows]`: Willy Maker's collision tags (0 air, 1 solid, 2 one-way, 3 ladder, 4 crate, 5 breakable, 6 hazard, 7 water) |
@@ -123,7 +123,7 @@ The data: `looks` points to four `u32`, one per player. A look is the engine's o
 | `Tile` | 6 | `code` (u16), `dx`, `dy`, `pal` (u8, relative to the look's first palette), one pad byte |
 | `Frame` | 10 | `tiles` (pointer), `count`, `w` (u8, the box's width), `ax`, `ay` (s16, the feet from the box's top left) |
 | `Anim` | 8 | `frames` (pointer), `count`, `fps` (u16) |
-| `wm_look` | 28 | `idle`, `run`, `jump`, `knife`, `gun`, `bazooka` (pointers to `Anim`), `pal` (the first sprite palette), `npal`; then `npal` × 16 palette words |
+| `wm_look` | 68 (0x44) | `idle`, `run`, `jump`, `knife`, `gun`, `bazooka`, then the moves of [moves.md](moves.md) `crouch`, `crawl`, `land`, `turn`, `kick`, `thumbs`, `victory`, `yawn`, `double_jump`, `jetpack` (pointers to `Anim`, each from the hero's animation of that name or its fallback), `pal` (the first sprite palette), `npal`; then `npal` × 16 palette words. Willy's built-in look has `turn`, `jump_kick`, `crouch`, `crawl`, `yawn` and `thumbs_up` from his sprite sheet (idle stands in for land, thumbs up for victory, the jump for the air moves) |
 
 **Limits**, each with a Create ROM note when a hero does not fit (that player is then drawn as Willy): a picture is needed; a frame takes at most 32 tiles and 15 across (240 px); every zone needs its palette; the hero's palettes must fit one free run; the tiles must fit the room left. A shirt variant on a player who uses an own hero is noted too: every player using that hero wears its own colors.
 

@@ -200,7 +200,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
     { value: "yes", label: t.rules.yes },
     { value: "no", label: t.rules.no },
   ] as const;
-  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies") => (
+  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies" | "doubleJump" | "jetpack") => (
     <div className="wm-game-stack" key={key}>
       <span className="wm-field-label">{t.rules[key]}</span>
       <Segmented label={t.rules[key]} value={r[key] ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ [key]: v === "yes" })} />
@@ -239,6 +239,8 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {flag("enemiesChase")}
       {flag("enemiesShoot")}
       {flag("exitNeedsEnemies")}
+      {flag("doubleJump")}
+      {flag("jetpack")}
       <div className="wm-game-stack">
         <span className="wm-field-label">{t.rules.crateClimb}</span>
         <Segmented
