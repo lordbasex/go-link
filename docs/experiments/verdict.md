@@ -109,7 +109,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |
 | T-25 | The moves of a full sprite sheet, in play mode and in the ROM: crouch and crawl on down, landing, turning, a victory or thumbs up on a rescue and at the clear, a yawn after a long idle, a jump kick, and a double jump and a jet pack as optional rules; effects (muzzle flash, smoke) as their own sprites instead of inside the hero's frames | U-05 | next |
 | T-26 | Toward the CPS-1's real limits (Street Fighter II and Final Fight run on it): heroes taller than 44 px (Final Fight scale is about 2 to 2.5 times taller) with the body, jump and reach checks scaled to the character, more sprite tiles per frame and per screen, the third background layer and row scroll for parallax, and QSound music and effects | U-06 | roadmap |
-| T-27 | A board usage meter: how much of the CPS-1 the game uses (graphics and program memory, sprite and layer palettes with the engine's own, sprites on screen, colors, layers, animations, sound), measured from Create ROM's real result when there is one and estimated live while building, always in sight, warning before a change goes over | U-07 | next (before T-25) |
+| T-27 | A board usage meter: how much of the CPS-1 the game uses (graphics and program memory, sprite and layer palettes with the engine's own, sprites on screen, colors, layers, animations, sound), measured from Create ROM's real result when there is one and estimated live while building, always in sight, warning before a change goes over | U-07 | done |
 
 ## Records
 

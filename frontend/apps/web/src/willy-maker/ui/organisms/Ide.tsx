@@ -18,6 +18,7 @@ import type { Target } from "../../editor/validate";
 import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
 import { playerSlots, runTapMs, setPlayers } from "../../game/settings";
+import { BoardUsageChip } from "./BoardUsage";
 import { issueText, useGameText, useMenusText } from "../../game/texts";
 import { autosaver, saveProject } from "../../io/storage";
 import { useProjectImages } from "../useTileImages";
@@ -314,6 +315,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
             ))}
           </select>
         </label>
+        <BoardUsageChip project={p} version={version} />
         <span className="wm-chip wm-hide-sm" title={t.ide.genre}>
           {t.genres[p.genre]?.name ?? t.genres["platform-shooter"].name}
         </span>

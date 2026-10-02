@@ -744,7 +744,7 @@ export const docsEn: Docs = {
             "**Parts**: pick terrain, objects, enemies, civilians, helpers or tiles and paint with the pencil, or click to place. Everything snaps to the 16 px grid. **Auto art** draws the matching street tiles as you paint collision.",
             "**Objects**: player starts, enemies, civilians, crates, pickups, camera locks, checkpoints, bosses and the exit. Select one to change it in the **Inspector**: its **Reference name** (letters, digits and _, unique; the ROM finds the object by it) and its properties, such as kind, facing, patrol, hits, breakable or contents. The exit is drawn as a door in play mode and in the ROM.",
             "**Layers**: tiles, collision and objects, each with show, lock, rename, order and opacity; **Layer** adds a tile layer.",
-            "**Board limits**: meters for palettes, colors, graphics and sprites on one screen, always visible.",
+            "**Board limits**: meters for palettes, colors, graphics, sprites on one screen, program and sound, counting what go-link's engine already takes. The **CPS-1 · %** chip in the top bar shows the most used one; open it to see every limit as a bar, and **Measure exactly** packs the game as Create ROM does and shows the real numbers, so the game can grow (levels, detail, heroes, sound) without going over.",
             "**Reach** shades what players cannot get to (jumps onto ledges up to 48 px, 32 px crates, ladders), and **Warnings** lists each problem with **Go** to take you there.",
             "Undo and redo every change with Ctrl+Z and Ctrl+Shift+Z (⌘ on a Mac). The top bar shows when the game is saved in this browser.",
           ],

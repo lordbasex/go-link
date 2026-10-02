@@ -744,7 +744,7 @@ export const docsPt: Docs = {
             "**Peças**: escolha terreno, objetos, inimigos, civis, ajudas ou tiles e pinte com o lápis, ou clique para colocar. Tudo se encaixa na grade de 16 px. **Arte automática** desenha os tiles de rua correspondentes enquanto você pinta a colisão.",
             "**Objetos**: inícios de jogador, inimigos, civis, caixas, itens, câmeras fixas, checkpoints, chefes e a saída. Selecione um para mudá-lo no **Inspetor**: o seu **Nome de referência** (letras, números e _, único; a ROM encontra o objeto por esse nome) e as suas propriedades, como o tipo, para onde olha, a patrulha, os golpes, se é quebrável ou o conteúdo. A saída é desenhada como uma porta no modo jogo e na ROM.",
             "**Camadas**: tiles, colisão e objetos, cada uma com mostrar, travar, renomear, ordem e opacidade; **Camada** adiciona uma camada de tiles.",
-            "**Limites da placa**: medidores de paletas, cores, gráficos e sprites numa tela, sempre à vista.",
+            "**Limites da placa**: medidores de paletas, cores, gráficos, sprites numa tela, programa e som, contando o que o motor do go-link já ocupa. O chip **CPS-1 · %** da barra de cima mostra o mais usado; abra-o para ver cada limite como uma barra, e **Medir exato** empacota o jogo como o Criar ROM faz e mostra os números reais, para que o jogo cresça (fases, detalhe, heróis, som) sem passar do limite.",
             "**Alcance** sombreia aonde os jogadores não conseguem chegar (pulos a plataformas de até 48 px, caixas de 32 px, escadas), e **Avisos** lista cada problema com **Ir** para levar você até lá.",
             "Desfaça e refaça cada mudança com Ctrl+Z e Ctrl+Shift+Z (⌘ num Mac). A barra de cima mostra quando o jogo está salvo neste navegador.",
           ],

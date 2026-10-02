@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { cloneProject, newLevel, newProject, objectLayer, tagGrid, TAG_NUMBER, type Character, type Project } from "../../model";
 import { projectFromTemplate } from "../../templates";
-import { CPS1 } from "../../board/cps1";
+import { CPS1, ENGINE_USE } from "../../board/cps1";
 import { exportEn } from "../../i18n/export.en";
 import { exportEs } from "../../i18n/export.es";
 import { exportPt } from "../../i18n/export.pt";
@@ -189,7 +189,12 @@ describe("review: characters and graphics", () => {
     const q = base();
     q.palettes.push({ id: "pal-torso", group: "sprite", colors: Array.from({ length: 17 }, (_, i) => `#${(i * 17).toString(16).padStart(2, "0").repeat(3)}`.toUpperCase()) });
     expect(has(q, "gfx.colors-per-zone")?.params).toMatchObject({ palette: "pal-torso", n: 17, max: 15 });
-    expect(has(q, "gfx.palettes.ok")?.params).toMatchObject({ n: 1, max: 32 });
+    // the engine's own sprite palettes count too (T-27)
+    expect(has(q, "gfx.palettes.ok")?.params).toMatchObject({ n: 1 + ENGINE_USE.spritePalettes, max: 32 });
+    // with the engine's, 8 palettes of the game's own go over: a warning, not an error
+    const r = newProject({ title: "x" });
+    for (let i = 0; i < 8; i++) r.palettes.push({ id: `own-${i}`, group: "sprite", colors: ["#000000"] });
+    expect(has(r, "gfx.palettes")).toMatchObject({ severity: "warning", params: { n: 8 + ENGINE_USE.spritePalettes, max: 32 } });
   });
   it("snaps colors that are not on the board", () => {
     const p = base();

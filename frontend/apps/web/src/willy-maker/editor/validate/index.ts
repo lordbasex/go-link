@@ -9,7 +9,7 @@
 // Messages live in the module's i18n (i18n/export.*.ts), keyed by `msg`.
 
 import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
-import { boardOf, isBoardColor, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
+import { boardOf, ENGINE_USE, isBoardColor, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { leftBehind, reachability, routes } from "../reach";
 import { rulesWith } from "../../engine/rules";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
@@ -338,8 +338,13 @@ function graphicsChecks(p: Project, board: BoardProfile): Check[] {
   ];
   for (const [g, max] of groups) {
     const n = p.palettes.filter((x) => x.group === g).length;
-    if (n > max) out.push({ id: "gfx.palettes", severity: "error", msg: "gfx.palettes", params: { group: g, n, max }, target: g === "sprite" ? { tab: "characters" } : { tab: "build", level: p.levels[0]?.id ?? "" } });
-    else if (g === "sprite") out.push({ id: "gfx.palettes", severity: "ok", msg: "gfx.palettes.ok", params: { n, max } });
+    // the engine's own characters already take sprite palettes (board/cps1.ts ENGINE_USE)
+    const total = g === "sprite" ? n + ENGINE_USE.spritePalettes : n;
+    const target: Target = g === "sprite" ? { tab: "characters" } : { tab: "build", level: p.levels[0]?.id ?? "" };
+    if (n > max) out.push({ id: "gfx.palettes", severity: "error", msg: "gfx.palettes", params: { group: g, n, max }, target });
+    // over with the engine's: Create ROM draws the heroes that do not fit as Willy (a recruit's free slots may still hold them)
+    else if (total > max) out.push({ id: "gfx.palettes", severity: "warning", msg: "gfx.palettes", params: { group: g, n: total, max }, target });
+    else if (g === "sprite") out.push({ id: "gfx.palettes", severity: "ok", msg: "gfx.palettes.ok", params: { n: total, max } });
   }
   // colors per palette zone
   const owner = (pal: string): Target => {

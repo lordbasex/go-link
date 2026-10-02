@@ -6,6 +6,22 @@
 
 import type { LayoutId, Project } from "../model";
 import { objectLayer } from "../model";
+import engineManifest from "../../../public/willy-maker/engine/engine.json";
+
+/**
+ * What go-link's prebuilt engine already takes of the board, read from its
+ * manifest (rom/tools/engine.mjs writes it), so the meters count it too
+ * (experiment 1's verdict, T-27).
+ */
+export const ENGINE_USE = {
+  program: engineManifest.program.size,
+  sprites: engineManifest.sprites.size,
+  spritePalettes: engineManifest.spritePalettes.used,
+  /** The 8 x 8 font and its double size: 63 glyphs, 5 tiles of 64 bytes each. */
+  font: 63 * 5 * 64,
+};
+/** Where the game's data starts in the program ROM (rom/engine/wmdata.h): the engine has the first megabyte, the data the second. */
+export const DATA_ROOM = 1024 * 1024;
 
 export interface SetLayout {
   id: LayoutId;
@@ -29,7 +45,7 @@ export interface LayerSpec {
 export type MeterLevel = "ok" | "warn" | "over";
 
 export interface Meter {
-  id: "spritePalettes" | "playPalettes" | "farPalettes" | "colors" | "graphics" | "sprites";
+  id: "spritePalettes" | "playPalettes" | "farPalettes" | "colors" | "graphics" | "sprites" | "program" | "sound";
   used: number;
   max: number;
   level: MeterLevel;
@@ -45,7 +61,7 @@ export interface BoardProfile {
   layers: LayerSpec[];
   colors: { bits: 12; perPalette: number; snap(hex: string): string; isBoardColor(hex: string): boolean };
   palettes: { sprite: number; play: number; far: number; text: number };
-  rom: { graphicsBytes: number; programBytes: number };
+  rom: { graphicsBytes: number; programBytes: number; soundBytes: number };
   /**
    * `margin`: how far off the screen (px) the engine still draws a sprite;
    * sprite X and Y are 9 bits and wrap at `wrap` (docs/rom/hardware.md).
@@ -101,7 +117,7 @@ export const CPS1: BoardProfile = {
   ],
   colors: { bits: 12, perPalette: 15, snap: snapColor, isBoardColor },
   palettes: { sprite: 32, play: 32, far: 32, text: 32 },
-  rom: { graphicsBytes: 6 * 1024 * 1024, programBytes: 2 * 1024 * 1024 },
+  rom: { graphicsBytes: 6 * 1024 * 1024, programBytes: 2 * 1024 * 1024, soundBytes: 4 * 1024 * 1024 },
   sprites: { perScreen: 256, tile: 16, margin: 64, wrap: 512 },
   heights: { hero: [40, 48], enemy: [16, 64], civilian: [20, 44], boss: [64, 160] },
   levels: { maxW: 16384, maxH: 2048, cell: 16 },
@@ -115,7 +131,7 @@ export const CPS1: BoardProfile = {
     const count = (g: string) => project.palettes.filter((p) => p.group === g).length;
     const maxColors = project.palettes.reduce((m, p) => Math.max(m, p.colors.length), 0);
     // Graphics: every tile of every tileset, plus every character frame in 16 × 16 tiles.
-    let bytes = 0;
+    let bytes = ENGINE_USE.sprites + ENGINE_USE.font;
     for (const ts of project.tilesets) bytes += (ts.count ?? 0) * this.tileBytes(ts.tile);
     for (const ch of project.characters)
       for (const f of ch.frames) bytes += Math.ceil(f.w / 16) * Math.ceil(f.h / 16) * this.tileBytes(16);
@@ -133,13 +149,19 @@ export const CPS1: BoardProfile = {
       // the extra players join the first one
       sprites = Math.max(sprites, project.settings.players * 9);
     }
+    // the game's data next to the engine: each level's cells (tag + tile code) and its objects, roughly
+    let data = 0x400;
+    for (const lv of project.levels) data += Math.ceil(lv.size.w / 16) * Math.ceil(lv.size.h / 16) * 3 + objectLayer(lv).items.length * 12;
     const meters: Meter[] = [
-      { id: "spritePalettes", used: count("sprite"), max: this.palettes.sprite, unit: "count", level: "ok" },
+      { id: "spritePalettes", used: ENGINE_USE.spritePalettes + count("sprite"), max: this.palettes.sprite, unit: "count", level: "ok" },
       { id: "playPalettes", used: count("play"), max: this.palettes.play, unit: "count", level: "ok" },
       { id: "farPalettes", used: count("far"), max: this.palettes.far, unit: "count", level: "ok" },
       { id: "colors", used: maxColors, max: this.colors.perPalette, unit: "count", level: "ok" },
       { id: "graphics", used: bytes, max: this.rom.graphicsBytes, unit: "bytes", level: "ok" },
       { id: "sprites", used: sprites, max: this.sprites.perScreen, unit: "count", level: "ok" },
+      { id: "program", used: ENGINE_USE.program + data, max: this.rom.programBytes, unit: "bytes", level: "ok" },
+      // QSound samples: the engine's sound program is silent for now
+      { id: "sound", used: 0, max: this.rom.soundBytes, unit: "bytes", level: "ok" },
     ];
     // a palette may use all 15 colors; the other meters warn when nearly full
     for (const m of meters) m.level = m.id === "colors" ? (m.used > m.max ? "over" : "ok") : level(m.used, m.max);

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { CPS1, snapColor } from "../board/cps1";
+import { CPS1, ENGINE_USE, snapColor } from "../board/cps1";
 import {
   decodeCells,
   encodeCells,
@@ -79,7 +79,11 @@ describe("board", () => {
     const by = Object.fromEntries(meters.map((m) => [m.id, m]));
     expect(by.playPalettes!.used).toBe(1);
     expect(by.colors!.used).toBeLessThanOrEqual(15);
-    expect(by.graphics!.used).toBe(31 * 128 + 12 * 512);
+    // the engine's own sprites and font, then the template's tiles
+    expect(by.graphics!.used).toBe(ENGINE_USE.sprites + ENGINE_USE.font + 31 * 128 + 12 * 512);
+    expect(by.spritePalettes!.used).toBeGreaterThanOrEqual(ENGINE_USE.spritePalettes);
+    expect(by.program!.used).toBeGreaterThan(ENGINE_USE.program);
+    expect(by.sound!.used).toBe(0);
     expect(meters.every((m) => m.level !== "over")).toBe(true);
   });
   it("flags a palette with too many colors", () => {

@@ -59,7 +59,7 @@ export interface PackResult {
   /** The data block (for tests and the record). */
   data: Uint8Array;
   notes: RomNote[];
-  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number };
+  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number };
 }
 
 // rom/engine/wmdata.h
@@ -552,6 +552,13 @@ export function packGame(
   space.set(data, WM_DATA_ADDR);
   const files = new Map<string, Uint8Array>();
   for (const [name, bytes] of Object.entries(splitProgram(SLAMMAST, space))) files.set(name, bytes);
+  // how much of the graphics region the ROM fills (the board usage meter, T-27): 128-byte tile slots that are not empty
+  let gfxBytes = 0;
+  for (let o = 0; o < gfx.data.length; o += 128) {
+    let used = false;
+    for (let k = o; k < o + 128 && !used; k++) if (gfx.data[k] !== 0xff) used = true;
+    if (used) gfxBytes += 128;
+  }
   for (const [name, bytes] of Object.entries(gfx.split(SLAMMAST.gfx))) files.set(name, bytes);
   // the sound program, encrypted the way the QSound board decrypts it
   const z80 = bin.subarray(manifest.z80.offset, manifest.z80.offset + manifest.z80.size);
@@ -578,6 +585,9 @@ export function packGame(
       dataBytes: data.length,
       looks: looks.looks.length,
       lookTiles: looks.tiles,
+      gfxBytes,
+      // the engine's own, plus the heroes' palettes loaded past them (a hero in a free recruit's slots adds none)
+      spritePalettes: Math.min(32, (manifest.spritePalettes?.used ?? 25) + looks.looks.reduce((n, l) => n + l.palettes.filter((_, i) => l.pal + i >= (manifest.spritePalettes?.used ?? 25)).length, 0)),
     },
   };
 }
