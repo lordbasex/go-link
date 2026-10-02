@@ -23,6 +23,7 @@ import { BoardPanel } from "./ui/BoardPanel";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
 import { rowsOf } from "./rows";
+import { appendSheet } from "./append";
 
 export interface CharactersScreenProps {
   project: Project;
@@ -75,6 +76,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const [dirty, setDirty] = useState(false);
   const [persistent, setPersistent] = useState(true);
   const fileInput = useRef<HTMLInputElement>(null);
+  const appendInput = useRef<HTMLInputElement>(null);
+  const [appended, setAppended] = useState("");
   const sourceBytes = useRef<{ bytes: Uint8Array; type: string } | null>(null);
 
   useEffect(() => {
@@ -130,6 +133,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   );
 
   const openFile = async (file: File) => {
+    setAppended("");
     setBusy("loading");
     setStatus("");
     setLoadWhy(null);
@@ -165,6 +169,50 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
         anims: Object.fromEntries(Object.entries(d.anims).map(([k, a]) => [k, { ...a, frames: [] }])),
       }));
       setSelected(new Set());
+    } catch (e) {
+      setStatus("loadError");
+      setLoadWhy(core.pictureError(inputErrorText(core.inputErrors, e)));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  /** One more picture under the sheet (an image AI's next message): its frames are added, the animations kept. */
+  const appendFile = async (file: File) => {
+    if (!sheet) return void openFile(file);
+    setBusy("loading");
+    setStatus("");
+    setLoadWhy(null);
+    try {
+      if (file.size > SHEET_MAX_BYTES) throw new InputError("file.too-big", { mb: Math.round(file.size / 1048576), max: SHEET_MAX_BYTES / 1048576 });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const type = checkSheetFile(bytes, file.type);
+      let more: Sheet;
+      try {
+        more = await loadSheet(bytes, type, draft.tolerance);
+      } catch {
+        throw new InputError("image.unreadable");
+      }
+      URL.revokeObjectURL(more.url);
+      const { sheet: joined, top } = appendSheet(applyMask(sheet.img, sheet.key.mask), applyMask(more.img, more.key.mask));
+      const png = await encodePng(joined.w, joined.h, joined.rgba);
+      const s = await loadSheet(png, "image/png", draft.tolerance);
+      try {
+        checkSheetImage(s.img, s.key);
+      } catch (e) {
+        URL.revokeObjectURL(s.url);
+        throw e;
+      }
+      // the new picture's own boxes, moved under the sheet, numbered after the ones there
+      const { w, h } = more.img;
+      const boxes = draft.mode === "grid" ? gridBoxes(more.key.mask, w, h, draft.grid.w, draft.grid.h) : detectFigures(more.key.mask, w, h);
+      const added = framesFrom(boxes, more.key.mask, w, nextNumber(draft.frames)).map((f) => ({ ...f, y: f.y + top }));
+      sourceBytes.current = { bytes: png, type: "image/png" };
+      setSheet(s);
+      const ref = await putAsset(png, "image/png");
+      edit((d) => ({ ...d, sheet: ref, file: `${d.file} + ${file.name}`, frames: [...d.frames, ...added] }));
+      setSelected(new Set(added.map((f) => f.id)));
+      setAppended(fmt(t.appended, { n: added.length, file: file.name }));
     } catch (e) {
       setStatus("loadError");
       setLoadWhy(core.pictureError(inputErrorText(core.inputErrors, e)));
@@ -318,7 +366,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
       if (!file) return;
       e.preventDefault();
-      void openFile(file);
+      // with a sheet open, a pasted picture is the character's next one (its animations stay)
+      void (sheet ? appendFile(file) : openFile(file));
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
@@ -373,14 +422,36 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             </span>
             <span className="wms-spacer" />
             {sheet ? (
-              <button type="button" className="wms-cap" onClick={() => fileInput.current?.click()}>
-                ⇪ {t.changeSheet}
-              </button>
+              <>
+                <button type="button" className="wms-cap" data-tip={t.addPictureTip} onClick={() => appendInput.current?.click()}>
+                  + {t.addPicture}
+                </button>
+                <button type="button" className="wms-cap" onClick={() => fileInput.current?.click()}>
+                  ⇪ {t.changeSheet}
+                </button>
+              </>
             ) : null}
+            <input
+              ref={appendInput}
+              type="file"
+              accept="image/png,image/webp,image/gif,image/jpeg"
+              className="wms-sr"
+              aria-label={t.addPicture}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void appendFile(f);
+                e.target.value = "";
+              }}
+            />
           </div>
           {sheet ? (
             <>
               <h2 className="wms-title">{draft.frames.length ? fmt(t.found, { n: draft.frames.length }) : t.foundNone}</h2>
+              {appended ? (
+                <p className="wms-note" role="status">
+                  {appended}
+                </p>
+              ) : null}
               <p className="wms-note">
                 {t.foundHint}
                 {sheet.key.magenta ? ` ${t.magentaKeyed}` : ""}
@@ -572,8 +643,13 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             onHidden={(hidden) => edit((d) => ({ ...d, hidden }))}
             plan={draft.frames.length ? characterSheetPlan(project.settings.imagePrompts?.character, draft.role) : []}
             onRows={(k) => {
-              const plan = characterSheetPlan(project.settings.imagePrompts?.character, draft.role)[k] ?? [];
-              const rows = rowsOf(draft.frames);
+              // the frames no animation has yet (a picture just added) go to the message's animations still empty
+              const used = new Set(Object.values(draft.anims).flatMap((a) => a.frames));
+              const free = draft.frames.filter((f) => !used.has(f.id));
+              const adding = free.length > 0 && free.length < draft.frames.length;
+              const all = characterSheetPlan(project.settings.imagePrompts?.character, draft.role)[k] ?? [];
+              const plan = adding ? all.filter((a) => !draft.anims[a.name]?.frames.length) : all;
+              const rows = rowsOf(adding ? free : draft.frames);
               const n = Math.min(rows.length, plan.length);
               edit((d) => {
                 const anims = { ...d.anims };

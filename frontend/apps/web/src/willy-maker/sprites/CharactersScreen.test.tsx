@@ -92,6 +92,23 @@ describe("CharactersScreen", () => {
     expect(screen.getByRole("button", { name: "Save character" })).toBeDisabled();
   });
 
+  it("adds another picture under the sheet: its frames join, the animations stay", async () => {
+    setup();
+    await drop();
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: /Add the selected frames/ }));
+    expect(screen.getByRole("button", { name: /^Standingidle\s*2 of 4/ })).toBeInTheDocument();
+    const more = new File([new Uint8Array([137, 80, 78, 71])], "walk.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Add another picture", { selector: "input" }), { target: { files: [more] } });
+    });
+    await screen.findByText("Found 4 frames in your sheet");
+    expect(screen.getByText(/Added 2 frames from walk.png/)).toBeInTheDocument();
+    // idle keeps its frames; the new ones are left for the next animations
+    expect(screen.getByRole("button", { name: /^Standingidle\s*2 of 4/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Frame 3" })).toBeInTheDocument();
+  });
+
   it("detects frames, assigns them to idle and saves the character", async () => {
     const { onChange } = setup();
     await drop();
