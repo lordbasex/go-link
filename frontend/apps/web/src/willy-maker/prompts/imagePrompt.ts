@@ -249,9 +249,23 @@ function body(c: PromptChoices): string[] {
   return out;
 }
 
+/**
+ * Designed for the board's own screen: tested against a chat image AI, a picture asked "designed at 384 × 224
+ * game pixels, shown enlarged" came back with big readable shapes that survive the board, where a free one had
+ * fine detail that turned to noise. The AI does not keep an exact pixel grid; Willy Maker scales it anyway.
+ */
+function native(c: PromptChoices, h: number): string {
+  if (c.kind === "background" || (c.kind === "tiles" && c.sub === "set"))
+    return `Design it for the arcade board's real screen, ${SCREEN.w} x ${SCREEN.h} game pixels, shown enlarged with crisp nearest-neighbor pixels: big, simple, readable shapes, no detail smaller than 2 game pixels, and a muted, slightly desaturated distance so the characters stand out in front of it.`;
+  if (c.kind === "character")
+    return `Design every frame for its real size on the arcade board, about ${h} game pixels tall on a ${SCREEN.w} x ${SCREEN.h} screen, shown enlarged with crisp nearest-neighbor pixels, like a 1990s Neo Geo run-and-gun sprite: a bold, readable silhouette, a clean dark outline, no detail smaller than one game pixel.`;
+  return `Design it for its real size on the arcade board (about ${c.cellsW * 16} x ${c.cellsH * 16} game pixels a frame), shown enlarged with crisp nearest-neighbor pixels: bold, readable shapes, no detail smaller than one game pixel.`;
+}
+
 /** The look: what makes 1990s arcade art good, in words an image AI follows. */
 function look(c: PromptChoices): string[] {
   const out = [
+    native(c, Math.max(16, Math.round(c.height || DEFAULT_HEIGHT[(SUBTYPES.character.includes(c.sub) ? c.sub : "hero") as CharacterRole]))),
     c.quality === "blocky"
       ? "Bold, chunky pixel art with big readable pixels and few colors."
       : "Detailed 16-bit arcade pixel art, like the hand-drawn sprites and backgrounds of 1990s arcade games: crisp pixels, dark outlines tinted by the color they surround, shading in a few flat tones with light from the top left, rich but limited colors.",

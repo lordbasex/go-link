@@ -43,6 +43,12 @@ describe("the image AI prompts", () => {
     }
   });
 
+  it("asks for art designed for the board's own screen, which survives it", () => {
+    expect(buildPrompts(defaultChoices("background")).prompts[0]!.text).toContain("384 x 224 game pixels");
+    expect(buildPrompts(defaultChoices("background")).prompts[0]!.text).toContain("no detail smaller than 2 game pixels");
+    expect(buildPrompts(defaultChoices("character")).prompts[0]!.text).toContain("about 44 game pixels tall");
+  });
+
   it("splits a background into one screen per picture, each continuing the last and naming its sections", () => {
     const p = project();
     const play = buildPrompts({ ...defaultChoices("background", p), sub: "play" }, p).prompts;
