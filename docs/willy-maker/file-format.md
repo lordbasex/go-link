@@ -171,12 +171,12 @@ my-game.ai-pack.zip
     willy/<anim>.png      one strip per animation, magenta background, feet on one line
     willy/sheet.json      frames (boxes in the strip), fps, loop, pivots, zones and their palettes, muzzle and hand points
   docs/
-    rom-README.md, art-spec.md, hardware.md, story.md, journal.md
+    rom-README.md, art-spec.md, hardware.md, story.md, journal.md, file-format.md, moves.md
 ```
 
 - Every picture is converted to board colors (each channel to the nearest multiple of 17; alpha is on or off). Layers and tilesets keep transparency; strips use magenta `#FF00FF`.
 - The `.tmj` files point at `../tilesets/*.png` and `<level>/far.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles.
-- The docs are the repository's `docs/rom/*.md`, bundled with the website and loaded when the pack is made.
+- The docs are the repository's `docs/rom/*.md` plus Willy Maker's `file-format.md` (this file, so `project.json` can be read without the repository) and `moves.md`, bundled with the website and loaded when the pack is made.
 - **Deterministic**: the same project gives the same bytes. Entries have a fixed date (2026-01-01 00:00) and a fixed order (`PROMPT.md`, then the rest sorted by name), and PNGs are written without a canvas. Compression uses the browser's own deflate, so two browsers may still differ.
 - A picture the browser no longer has (cleared site data) is left out, and `PROMPT.md` names it.
 
@@ -187,10 +187,11 @@ Filled in from the project and the review, in English, with these sections:
 1. **The brief**: build an arcade ROM for go-link with the tools in `rom/`; the target board (CPS-1, 384 × 224 at 60 Hz, 68000), the set layout (`slammast` 4 × 3 or `captcomm` 4 × 2) and the mame2003-plus core; every byte original; which docs to follow (`docs/` in the pack).
 2. **The game**: title and author, the genre (its name and description; a genre with no engine yet says so and points to [genres.md](genres.md)), players, the levels in play order (id, size, camera, sections, map file), the characters (role, height, animations), the buttons and what each does (with 2 buttons, special is buttons 1 + 2), Start/Coin, the DIP switches and the menus.
 3. **Rules the engine keeps**: a table of the numbers in `engine/rules.ts` with the game's Rules card applied: body, gravity, jump, fall, ladders, how crates are climbed, run tap, drop-through, camera, weapons, enemies (hits, chase, shoot, touch), crates, lives and blinking, score, the exit, ports past the players, opposite directions.
-4. **Board limits**: palettes, colors, graphics and program ROM, sprite table, and what the game uses now (the meters).
-5. **What is in this pack**: the tree above, the collision tags and the object rules.
-6. **Willy Maker's checks at export**: every warning and note, then what passed.
-7. **Build it**: the tools (`brew install m68k-elf-binutils m68k-elf-gcc z80asm`, Node 22.18 or newer), `node rom/tools/build.mjs` first to prove the toolchain, then extend it to read the pack, framelab with `-log` in the core, and `node rom/tools/room-test.mjs` in a go-link room.
-8. **Task**: produce `<layout>.zip`, keep within the budgets, test it, and report changes and open decisions.
+4. **What is already decided** (task T-10 of [experiment 1's verdict](../experiments/verdict.md)): a table answering the 26 questions (P-01 to P-26) case B's builder had to decide alone, with this game's values, each marked as a setting (and where it lives: the Rules card, an object's property, the DIP switches, the menus) or fixed by the engine: the jump's real height, wide levels and column streaming, what the core's log may say (one `WRONG CHECKSUMS` line per file is expected for a set of your own), which crate `hp` wins, what clears a level, the exit's zone, where each object's point is, what hurts, lives and `energy`, enemy patrols and shots, enemy art, the special button, each player's look, menu timings, the credit counter, sound, what the DIP switches change, shared credits, the lab state and symbol map, the device's own sets, the format doc, which play layer copy wins, sections, the 4-player HUD, tile counts with the empty tile, and the optional room test.
+5. **Board limits**: palettes, colors, graphics and program ROM, sprite table, and what the game uses now (the meters).
+6. **What is in this pack**: the tree above, the collision tags and the object rules.
+7. **Willy Maker's checks at export**: every warning and note, then what passed.
+8. **Build it**: the tools (`brew install m68k-elf-binutils m68k-elf-gcc z80asm`, Node 22.18 or newer), `node rom/tools/build.mjs` first to prove the toolchain, then extend it to read the pack, framelab with `-log` in the core, and `node rom/tools/room-test.mjs` in a go-link room.
+9. **Task**: produce `<layout>.zip`, keep within the budgets, test it, and report changes and open decisions.
 
 The Export screen previews its first paragraph and has **Copy prompt**.

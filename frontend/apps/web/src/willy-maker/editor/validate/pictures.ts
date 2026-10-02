@@ -169,7 +169,8 @@ export function* pictureWork(p: Project, board: BoardProfile, pictures: Pictures
     }
   }
   for (const spec of board.layers) {
-    const n = unique.get(spec.id)?.size ?? 0;
+    // the board also needs one empty tile, for transparent cells and broken crates (P-25)
+    const n = unique.has(spec.id) ? unique.get(spec.id)!.size + 1 : 0;
     if (!n) continue;
     const params = { layer: spec.id, n, max: spec.budget, size: spec.tile };
     if (n > spec.budget) out.push({ id: "gfx.unique-tiles", severity: "error", msg: "gfx.unique-tiles-over", params, target: { tab: "build", level: firstLevel } });

@@ -63,8 +63,8 @@ export default defineConfig({
     port: 5180,
     strictPort: true,
     // The skin editor reads the apps' built-in skins from docs/skins/builtin,
-    // and Willy Maker's AI pack carries the ROM docs from docs/rom.
-    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../../../docs/skins/builtin", "../../../docs/rom"] },
+    // and Willy Maker's AI pack carries the ROM docs from docs/rom, plus its own docs from docs/willy-maker.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../../../docs/skins/builtin", "../../../docs/rom", "../../../docs/willy-maker"] },
   },
   // Source maps stay off the published files (the deploy also deletes them).
   build: {

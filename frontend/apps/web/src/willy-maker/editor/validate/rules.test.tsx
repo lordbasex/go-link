@@ -241,17 +241,17 @@ describe("level 1: the pictures", () => {
     const near = tiled(picture(16, 16, (x) => [x < 8 ? 16 + (x % 2) : 120, 0, 0, 255]));
     expect(pictureChecks(near.p, CPS1, near.pics).map((x) => x.msg)).toContain("gfx.tile-colors.ok");
   });
-  it("counts different tiles per board layer against its budget", () => {
+  it("counts different tiles per board layer against its budget, the empty tile included (P-25)", () => {
     const { p, pics } = tiled(picture(64, 16, (x, y) => [((x >> 4) * 17) % 256, y * 17, 0, 255]), 4);
     const play = p.levels[0]!.layers.find((l): l is TileLayer => l.id === "play")!;
     const g = layerGrid(p.levels[0]!, play);
     for (let c = 0; c < 4; c++) g.set(c, 5, c + 1);
     g.commit();
-    const small: BoardProfile = { ...CPS1, layers: CPS1.layers.map((l) => (l.id === "scroll2" ? { ...l, budget: 4 } : l)) };
-    expect(pictureChecks(p, small, pics).find((c) => c.id === "gfx.unique-tiles")).toMatchObject({ severity: "warning", params: { n: 4, max: 4 } });
-    const tiny: BoardProfile = { ...CPS1, layers: CPS1.layers.map((l) => (l.id === "scroll2" ? { ...l, budget: 3 } : l)) };
+    const small: BoardProfile = { ...CPS1, layers: CPS1.layers.map((l) => (l.id === "scroll2" ? { ...l, budget: 5 } : l)) };
+    expect(pictureChecks(p, small, pics).find((c) => c.id === "gfx.unique-tiles")).toMatchObject({ severity: "warning", params: { n: 5, max: 5 } });
+    const tiny: BoardProfile = { ...CPS1, layers: CPS1.layers.map((l) => (l.id === "scroll2" ? { ...l, budget: 4 } : l)) };
     expect(pictureChecks(p, tiny, pics).find((c) => c.id === "gfx.unique-tiles")?.msg).toBe("gfx.unique-tiles-over");
-    expect(pictureChecks(p, CPS1, pics).find((c) => c.id === "gfx.unique-tiles")).toMatchObject({ severity: "ok", params: { layer: "scroll2", n: 4 } });
+    expect(pictureChecks(p, CPS1, pics).find((c) => c.id === "gfx.unique-tiles")).toMatchObject({ severity: "ok", params: { layer: "scroll2", n: 5 } });
   });
   it("needs tileset pictures cut on their grid", () => {
     const { p, pics } = tiled(picture(20, 16, () => [0, 0, 0, 255]));

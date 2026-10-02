@@ -232,9 +232,20 @@ describe("PROMPT.md", () => {
 });
 
 describe("ROM docs", () => {
-  it("bundles the five docs of docs/rom", async () => {
+  it("bundles the five docs of docs/rom and Willy Maker's file format and moves (P-21)", async () => {
     const docs = await loadRomDocs();
-    expect(Object.keys(docs).sort()).toEqual(["art-spec.md", "hardware.md", "journal.md", "rom-README.md", "story.md"]);
+    expect(Object.keys(docs).sort()).toEqual(["art-spec.md", "file-format.md", "hardware.md", "journal.md", "moves.md", "rom-README.md", "story.md"]);
     expect(docs["hardware.md"]).toContain("CPS-1");
+    expect(docs["file-format.md"]).toContain("project.json");
+  });
+  it("answers experiment 1's P-01 to P-26 with this game's settings", () => {
+    const p = newProject({ title: "Dead Air", players: 2 });
+    p.settings.rules = { exitNeedsEnemies: true, touchHurts: true };
+    const prompt = buildPrompt(p, reviewProject(p), {}, { "file-format.md": "", "moves.md": "" });
+    for (let i = 1; i <= 26; i++) expect(prompt).toContain(`(P-${String(i).padStart(2, "0")})`);
+    expect(prompt).toContain("with every enemy down");
+    expect(prompt).toContain("touching an enemy hurts");
+    expect(prompt).toContain("docs/file-format.md in this pack");
+    expect(prompt).not.toMatch(/must have no "WRONG CHECKSUMS"/);
   });
 });
