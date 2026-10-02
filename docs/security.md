@@ -43,7 +43,7 @@ A `<meta>` CSP cannot set everything. Whatever static host or CDN serves the web
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Always HTTPS |
 | `X-Content-Type-Options` | `nosniff` | No content type guessing |
 | `Referrer-Policy` | `no-referrer` | Invitation links do not leak to other sites |
-| `Permissions-Policy` | `microphone=(self), camera=(), geolocation=(), payment=()` | The microphone is for voice between players |
+| `Permissions-Policy` | `microphone=(self), camera=(), geolocation=(), payment=()` | The microphone is for voice between players and for dictation in Willy Maker (Chrome's on-device recognition only) |
 
 If the CSP in `frontend/apps/web/index.html` changes, change it on the host too.
 

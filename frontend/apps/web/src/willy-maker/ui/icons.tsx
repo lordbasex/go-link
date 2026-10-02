@@ -176,3 +176,19 @@ export const IconCircle = () => (
     <circle cx="12" cy="12" r="7" />
   </Svg>
 );
+export const IconMic = () => (
+  <Svg size={16}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+  </Svg>
+);
+export const IconStop = () => (
+  <Svg size={16}>
+    <rect x="7" y="7" width="10" height="10" rx="2" />
+  </Svg>
+);
+export const IconSparkle = () => (
+  <Svg size={16}>
+    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
+  </Svg>
+);

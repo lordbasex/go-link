@@ -81,6 +81,7 @@ select.wm-input { padding-right: 6px; }
 .wm-seg-btn.is-on { background: var(--tint-accent-bg); color: var(--color-accent-text); box-shadow: inset 0 0 0 1px var(--color-accent); }
 
 .wm-note { margin: 0; padding: 10px 14px; border-radius: var(--radius-control); background: var(--color-surface); border: 1px solid var(--color-border); font-size: 13px; }
+.wm-note.is-ok { border-color: var(--color-ok); }
 .wm-note.is-warn { border-color: var(--tint-accent-border); background: var(--tint-accent-bg); }
 .wm-note.is-error { border-color: var(--color-danger-border); background: var(--color-danger-bg); color: var(--color-danger-text); }
 
@@ -392,3 +393,7 @@ input.wm-layer-name { cursor: text; }
 .wm-anim-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; display: flex; flex-direction: column; gap: 4px; width: 230px; padding: 10px; border-radius: 12px; background: var(--color-surface-2); border: 1px solid var(--color-border-strong); box-shadow: 0 10px 30px var(--shadow-strong); color: var(--color-text); font: 500 12px/1.35 var(--font-text); pointer-events: none; }
 .wm-anim-pop canvas { align-self: center; width: 200px; height: auto; image-rendering: pixelated; border-radius: 8px; background: var(--color-video); }
 .wm-anim-none { padding: 18px 8px; text-align: center; border-radius: 8px; background: var(--color-video); color: var(--color-text-muted); }
+.wm-aitext { display: flex; flex-direction: column; gap: 6px; }
+.wm-aitext-bar { align-items: center; gap: 8px; }
+.wm-aitext-sug { display: flex; flex-direction: column; gap: 6px; }
+.wm-aitext-sug p { margin: 0; white-space: pre-wrap; }

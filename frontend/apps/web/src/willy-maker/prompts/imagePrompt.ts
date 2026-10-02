@@ -171,7 +171,7 @@ function body(c: PromptChoices): string[] {
   const words = FLAGS[c.kind].filter((f) => c.flags.includes(f.id)).map((f) => f.words);
   const out: string[] = [];
   if (c.description.trim()) out.push(sentence(c.description));
-  if (words.length) out.push(sentence(`Include ${words.join("; ")}`));
+  if (words.length) out.push(sentence(`Requirements: ${words.join("; ")}`));
   if (c.location.trim()) out.push(sentence(`Place and time period: ${c.location.trim()}`));
   if (c.time || c.weather.trim()) out.push(sentence(`Time of day and weather: ${[c.time, c.weather.trim()].filter(Boolean).join(", ")}`));
   if (c.palette.trim()) out.push(sentence(`Color mood: ${c.palette.trim()}`));

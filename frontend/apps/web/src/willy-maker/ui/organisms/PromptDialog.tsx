@@ -5,7 +5,10 @@
 // in (prompts/imagePrompt.ts). The choices are kept with the project.
 
 import { useId, useMemo, useRef, useState } from "react";
-import { useMessages } from "../../i18n";
+import { useMessages, useWmLang } from "../../i18n";
+import { useEnglish } from "../../ai/useEnglish";
+import { AiTextArea } from "./AiTextArea";
+import { hasBuiltInAi } from "../../ai/chromeAi";
 import { promptEn, type PromptMessages } from "../../i18n/prompt.en";
 import { promptEs } from "../../i18n/prompt.es";
 import { promptPt } from "../../i18n/prompt.pt";
@@ -21,6 +24,11 @@ export const PROMPT = { en: promptEn, es: promptEs, pt: promptPt };
 
 export function usePromptMessages(): PromptMessages {
   return useMessages(PROMPT);
+}
+
+/** What a description is about, in English, for Chrome's richer description. */
+function whatEnglish(c: PromptChoices): string {
+  return `${c.sub === "other" || c.sub === "set" ? "" : `${c.sub} `}${c.kind === "tiles" ? "tile set" : c.kind} for a side-scrolling arcade game`;
 }
 
 const KINDS: PromptKind[] = ["background", "character", "object", "effect", "tiles"];
@@ -89,7 +97,11 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
   const [kind, setKind] = useState<PromptKind>(startKind);
   const c = all[kind] ?? restore(kind, project);
   const set = (patch: Partial<PromptChoices>) => setAll((a) => ({ ...a, [kind]: { ...c, ...patch } }));
-  const result = useMemo(() => buildPrompts(c, project), [c, project]);
+  // the free text in English, translated on this computer when Chrome can (ai/useEnglish.ts)
+  const lang = useWmLang();
+  const english = useEnglish({ description: c.description, location: c.location, weather: c.weather, palette: c.palette, style: c.style }, lang);
+  const result = useMemo(() => buildPrompts({ ...c, ...english.values }, project), [c, english.values, project]);
+  const names = new Intl.DisplayNames([lang], { type: "language" });
   const subs = t.subs[kind] as Record<string, string>;
   const flags = t.flags[kind] as Record<string, string[]>;
   const role = (kind === "character" ? c.sub : "hero") as CharacterRole;
@@ -116,6 +128,7 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
       <div className="wm-picture wm-card wm-promptdlg" role="dialog" aria-modal="true" aria-label={t.title}>
         <h2 className="wm-wizard-q">{t.title}</h2>
         <p className="wm-dim wm-small">{t.lead}</p>
+        {!hasBuiltInAi() && <p className="wm-dim wm-small">{t.ai.none}</p>}
 
         <Segmented label={t.kindQ} value={kind} options={KINDS.map((k) => ({ value: k, label: t.kinds[k] }))} onChange={(k) => {
             setAll((a) => ({ ...a, [k]: a[k] ?? restore(k, project) }));
@@ -177,9 +190,12 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
           )}
         </div>
 
-        <Field label={t.description}>
-          <textarea className="wm-input wm-prompt-desc" rows={4} placeholder={t.descriptionPh} value={c.description} onChange={(e) => set({ description: e.target.value })} />
-        </Field>
+        <div className="wm-field">
+          <label className="wm-field-label" htmlFor={`${peekId}-desc`}>
+            {t.description}
+          </label>
+          <AiTextArea id={`${peekId}-desc`} value={c.description} onChange={(description) => set({ description })} lang={lang} what={whatEnglish(c)} placeholder={t.descriptionPh} t={t.ai} />
+        </div>
 
         <fieldset className="wm-prompt-flags">
           <legend className="wm-field-label">{t.options}</legend>
@@ -257,6 +273,26 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
         )}
 
         <h3 className="wm-field-label">{t.result}</h3>
+        {english.state === "working" && (
+          <p className="wm-dim wm-small" role="status">
+            {t.ai.translating}
+          </p>
+        )}
+        {english.state === "done" && <p className="wm-note is-ok wm-small">{t.ai.translated(english.from.map((x) => names.of(x) ?? x).join(", "))}</p>}
+        {english.state === "needs-download" && (
+          <div className="wm-note is-warn wm-small" role="note">
+            <p>{t.ai.notYet}</p>
+            <p>{t.ai.prepareHelp}</p>
+            <Capsule size="sm" disabled={english.progress !== null} onClick={() => void english.prepare()}>
+              {english.progress !== null ? t.ai.downloading(Math.round(english.progress * 100)) : t.ai.prepare}
+            </Capsule>
+          </div>
+        )}
+        {english.state === "unavailable" && (
+          <p className="wm-note is-warn wm-small" role="note">
+            {t.ai.untranslated}
+          </p>
+        )}
         {result.prompts.map((p, i) => (
           <CopyBox key={i} label={`${subs[c.sub] ?? p.title}${result.prompts.length > 1 ? ` ${i + 1}/${result.prompts.length}` : ""} · ${t.size(p.size.w, p.size.h)}`} text={p.text} t={t} />
         ))}
