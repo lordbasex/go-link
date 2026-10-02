@@ -203,7 +203,7 @@ export const exportEn = {
     "level.exit": (p: P) => `${p.level} has no exit.`,
     "level.exit-many": (p: P) => `${p.level} has ${p.n} exits: the first one reached ends the level.`,
     "level.reachable": (p: P) => `${p.level}: players cannot reach the exit (x ${p.x}).`,
-    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: the ledge at x ${p.x} is out of reach${Number(p.h) ? ` (${p.h} px high)` : ""}.` : `${p.level}: ${p.n} ledges nobody reaches, the first at x ${p.x}.`),
+    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: the ledge at x ${p.x} is out of reach${Number(p.h) ? ` (${p.h} px high; the jump reaches ${p.peak} px)` : ""}.` : `${p.level}: ${p.n} ledges nobody reaches, the first at x ${p.x}.`),
     "level.object-reach": (p: P) => (Number(p.n) === 1 ? `${p.level}: nobody reaches ${p.name}.` : `${p.level}: ${p.n} objects nobody reaches, like ${p.name}.`),
     "level.reachable.ok": () => "The whole path can be walked with jumps, crates and ladders",
     "level.width": (p: P) => `${p.level} is ${p.w} × ${p.h} px. The board's map allows up to ${p.maxW} × ${p.maxH}.`,

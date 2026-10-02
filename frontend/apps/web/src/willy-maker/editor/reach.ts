@@ -6,6 +6,7 @@
 // one-way ledges. Ledges and objects it never reaches become warnings.
 
 import { CELL, objectLayer, tagGrid, TAG_NUMBER, type CellGrid, type Level } from "../model";
+import { measureJump } from "../engine/jump";
 
 /** The hero is 44 px tall: three cells of headroom. */
 const BODY = 3;
@@ -91,12 +92,12 @@ function fall(g: CellGrid, c: number, r: number): number {
  * candidate; the caller keeps the ones where a hero can stand.
  */
 /**
- * Rows a jump climbs with a game's rules (docs/willy-maker/moves.md, measured
- * on play mode's engine): 62 px plain, 107 px with the double jump, 239 px
+ * Rows a jump climbs with a game's rules: measured on play mode's engine
+ * (engine/jump.ts, T-13), 61.9 px plain, 107 px with the double jump, 239 px
  * with the jet pack, rounded down to rows with room to land.
  */
 export function jumpRowsFor(rules: { doubleJump?: boolean; jetpack?: boolean }): number {
-  return rules.jetpack ? 14 : rules.doubleJump ? 6 : JUMP_ROWS;
+  return measureJump(rules).rows;
 }
 
 export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: number) => void, jumpRows = JUMP_ROWS): void {

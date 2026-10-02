@@ -9,6 +9,7 @@ import { layoutOf } from "../board/cps1";
 import type { EditorStore } from "../editor/store";
 import { BUILTIN_HERO, RUN_TAP_MAX, RUN_TAP_MIN, type DipSettings, type Project, type ValidationIssue } from "../model";
 import { rulesWith, type GameRules } from "../engine/rules";
+import { measureJump } from "../engine/jump";
 import { Capsule, Eyebrow, Segmented } from "../ui/atoms";
 import { IconWarn } from "../ui/icons";
 import { StatusBadge } from "../ui/molecules";
@@ -241,6 +242,9 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {flag("exitNeedsEnemies")}
       {flag("doubleJump")}
       {flag("jetpack")}
+      <p className="wm-dim wm-small" role="status">
+        {fill(t.rules.jump, { ...measureJump(r) })}
+      </p>
       <div className="wm-game-stack">
         <span className="wm-field-label">{t.rules.crateClimb}</span>
         <Segmented

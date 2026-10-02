@@ -11,6 +11,7 @@
 import { CELL, DEFAULT_GENRE, genreAvailable, isGenre, layerGrid, TAGS, tagLayer, type AssetRef, type Character, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { boardOf, layoutOf } from "../board/cps1";
 import * as R from "../engine/rules";
+import { measureJump } from "../engine/jump";
 import { checkText, REQUIRED_ANIMS, type Review } from "../editor/validate";
 import { exportEn } from "../i18n/export.en";
 import { coreEn } from "../i18n/core.en";
@@ -218,7 +219,7 @@ export function decisions(p: Project, levels: Level[], G: R.GameRules, has: (doc
   line("| Question | Answer |");
   line("|---|---|");
   const rows: [string, string][] = [
-    ["How high is a jump? (P-01)", `fixed: the feet rise 61.9 px (start speed ${R.JUMP_VY}/16, gravity ${R.GRAVITY}/16 added before the first move), so a ledge 48 px up is reachable and 64 px is not${G.doubleJump ? "; the double jump (setting, Rules card) reaches 107 px" : ""}`],
+    ["How high is a jump? (P-01)", `measured on the engine with this game's rules (T-13): the feet rise ${measureJump(G).peak} px (start speed ${R.JUMP_VY}/16, gravity ${R.GRAVITY}/16 added before the first move${G.doubleJump ? ", the double jump on" : ""}${G.jetpack ? ", the jet pack on" : ""}), so a ledge ${measureJump(G).ledge} px up is reachable and ${measureJump(G).ledge + R.CELL} px is not`],
     ["How wide can a level be? (P-02)", "setting: each level's size in project.json; the prototype writes a 1024 px level once (scroll2's map is 1024 px wide), so a wider level needs the tile columns written around the camera as it moves, as rom/engine/engine.c does"],
     ["What may the core's log say? (P-03)", "fixed: one \"WRONG CHECKSUMS\" line per file is expected for a set of your own bytes; \"NOT FOUND\" or \"INCORRECT LENGTH\" is an error"],
     ["Crate hits when the rules table and an object differ (P-04)", `setting: a crate object's \`hp\` wins; without one, ${R.CRATE_HP} hits`],
@@ -258,6 +259,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   const levels = order.length ? order : p.levels;
   const b = (s.buttons ?? {}) as unknown as Record<string, string>;
   const G = R.rulesWith(s.rules);
+  const J = measureJump(G);
   const L: string[] = [];
   const line = (t = "") => L.push(t);
 
@@ -268,7 +270,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   const has = (name: string) => !docs || name in docs;
   line("Follow docs/rom-README.md, docs/art-spec.md and docs/hardware.md (in this pack). docs/journal.md is the lab journal of the prototype that already runs in the core and in a go-link room: its section \"How to reproduce from zero\" is the build you start from. docs/story.md is the game bible: the world, the heroes and the tone.");
   line();
-  line(`The rules the game must keep (a jump peaks at about 62 px, so ledges up to 48 px; 32 px crates climbed ${G.crateClimb === "push" ? "by walking into them" : "by jumping"}, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers. Where this game's own rules (the Game tab's Rules card) differ from the prototype's rom/src/main.c, this game's win.`);
+  line(`The rules the game must keep (a jump peaks at ${J.peak} px, so ledges up to ${J.ledge} px; 32 px crates climbed ${G.crateClimb === "push" ? "by walking into them" : "by jumping"}, one-way ledges, ladders, double-tap run, automatic knife) are the ones Willy Maker's play mode used; they are listed below with their numbers. Where this game's own rules (the Game tab's Rules card) differ from the prototype's rom/src/main.c, this game's win.`);
   line();
 
   line("## The game");
@@ -322,7 +324,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
     ["Collision grid", `${R.CELL} px`],
     ["Player body", `${R.BODY_H} px tall, ${R.HALF_W} px half width at the feet`],
     ["Gravity", `${R.GRAVITY}/16 px per frame, per frame`],
-    ["Jump", `start speed ${R.JUMP_VY}/16 px per frame (peaks at 61.9 px: a ledge 48 px up is reachable, 64 px is not)`],
+    ["Jump", `start speed ${R.JUMP_VY}/16 px per frame (measured on the engine, the feet rise ${J.peak} px: a ledge ${J.ledge} px up is reachable, ${J.ledge + R.CELL} px is not)`],
     ["Fastest fall", `${R.MAX_FALL}/16 px per frame`],
     ["Ladders", `${R.CLIMB_SPEED}/16 px per frame (up and down on the stick)`],
     ["Climbing a 32 px crate", G.crateClimb === "push" ? `walking into an edge up to ${R.STEP_UP} px climbs it after ${R.PUSH_FRAMES} frames` : "only by jumping: walking into it does nothing"],

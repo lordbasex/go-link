@@ -265,7 +265,7 @@ export const exportEs: ExportMessages = {
     "level.exit": (p: P) => `${p.level} no tiene salida.`,
     "level.exit-many": (p: P) => `${p.level} tiene ${p.n} salidas: la primera que se alcanza termina el nivel.`,
     "level.reachable": (p: P) => `${p.level}: los jugadores no llegan a la salida (x ${p.x}).`,
-    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: nadie llega a la cornisa de x ${p.x}${Number(p.h) ? ` (está a ${p.h} px)` : ""}.` : `${p.level}: ${p.n} cornisas a las que nadie llega, la primera en x ${p.x}.`),
+    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: nadie llega a la cornisa de x ${p.x}${Number(p.h) ? ` (está a ${p.h} px; el salto llega a ${p.peak} px)` : ""}.` : `${p.level}: ${p.n} cornisas a las que nadie llega, la primera en x ${p.x}.`),
     "level.object-reach": (p: P) => (Number(p.n) === 1 ? `${p.level}: nadie llega a ${p.name}.` : `${p.level}: ${p.n} objetos a los que nadie llega, como ${p.name}.`),
     "level.reachable.ok": () => "Todo el camino se puede recorrer con salto, cajas y escaleras",
     "level.width": (p: P) => `${p.level} mide ${p.w} × ${p.h} px. El mapa de la placa admite hasta ${p.maxW} × ${p.maxH}.`,

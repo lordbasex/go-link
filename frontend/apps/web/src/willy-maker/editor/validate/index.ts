@@ -13,6 +13,7 @@ import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapCol
 import { jumpRowsFor, leftBehind, reachability, routes } from "../reach";
 import { rulesWith } from "../../engine/rules";
 import { Game } from "../../engine/game";
+import { measureJump } from "../../engine/jump";
 import { levelFromProject } from "../../engine/level";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
 import { supportChecks } from "./support";
@@ -235,7 +236,7 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     if (reach.ledges.length) {
       reachOk = false;
       const l = reach.ledges[0]!;
-      out.push({ id: "level.ledge", severity: "warning", msg: "level.ledge", params: { level: name, n: reach.ledges.length, x: l.x0, h: l.rise }, target: go((l.x0 + l.x1) / 2, l.y) });
+      out.push({ id: "level.ledge", severity: "warning", msg: "level.ledge", params: { level: name, n: reach.ledges.length, x: l.x0, h: l.rise, peak: measureJump(p.settings.rules).peak }, target: go((l.x0 + l.x1) / 2, l.y) });
     }
     // the routes: places with no way on, the forward-only camera, the timer
     if (!lostExit) {

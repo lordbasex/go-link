@@ -265,7 +265,7 @@ export const exportPt: ExportMessages = {
     "level.exit": (p: P) => `${p.level} não tem saída.`,
     "level.exit-many": (p: P) => `${p.level} tem ${p.n} saídas: a primeira alcançada termina a fase.`,
     "level.reachable": (p: P) => `${p.level}: os jogadores não chegam à saída (x ${p.x}).`,
-    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: ninguém chega à plataforma em x ${p.x}${Number(p.h) ? ` (fica a ${p.h} px)` : ""}.` : `${p.level}: ${p.n} plataformas onde ninguém chega, a primeira em x ${p.x}.`),
+    "level.ledge": (p: P) => (Number(p.n) === 1 ? `${p.level}: ninguém chega à plataforma em x ${p.x}${Number(p.h) ? ` (fica a ${p.h} px; o pulo chega a ${p.peak} px)` : ""}.` : `${p.level}: ${p.n} plataformas onde ninguém chega, a primeira em x ${p.x}.`),
     "level.object-reach": (p: P) => (Number(p.n) === 1 ? `${p.level}: ninguém chega a ${p.name}.` : `${p.level}: ${p.n} objetos onde ninguém chega, como ${p.name}.`),
     "level.reachable.ok": () => "Todo o caminho pode ser percorrido com pulo, caixas e escadas",
     "level.width": (p: P) => `${p.level} mede ${p.w} × ${p.h} px. O mapa da placa aceita até ${p.maxW} × ${p.maxH}.`,

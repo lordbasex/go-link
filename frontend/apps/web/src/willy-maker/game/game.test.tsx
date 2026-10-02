@@ -325,6 +325,10 @@ describe("Game and Menus tabs", () => {
     expect(store.project.settings.rules?.respawnOnHurt).toBeUndefined();
     act(() => void fireEvent.click(screen.getByRole("button", { name: gameEn.rules.reset })));
     expect(store.project.settings.rules).toBeUndefined();
+    // the jump as the engine measures it, with the air rules (T-13)
+    expect(screen.getByText("Measured on the engine, the jump reaches 61.9 px: ledges up to 48 px high.")).toBeInTheDocument();
+    act(() => void fireEvent.click(within(screen.getByRole("radiogroup", { name: gameEn.rules.doubleJump })).getByRole("radio", { name: gameEn.rules.yes })));
+    expect(screen.getByText(/the jump reaches 10\d(\.\d)? px: ledges up to 96 px high/)).toBeInTheDocument();
     expect(Object.keys(gameEs.rules)).toEqual(Object.keys(gameEn.rules));
     expect(Object.keys(gamePt.rules)).toEqual(Object.keys(gameEn.rules));
   });
