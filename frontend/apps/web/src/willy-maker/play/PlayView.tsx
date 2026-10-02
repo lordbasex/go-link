@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button, dpadBits, type GamepadLike } from "@go-link/shared";
-import { CELL, FRAME_MS, Game, Input, SCREEN_H, SCREEN_W, Tag, type GameRules, type GameSnapshot, type LevelObject, type LevelView } from "../engine";
+import { CELL, FRAME_MS, Game, Input, SCREEN_H, SCREEN_W, Tag, type Difficulty, type GameRules, type GameSnapshot, type LevelObject, type LevelView } from "../engine";
 import { useMessages } from "../i18n";
 import { playEn, type PlayMessages } from "../i18n/play.en";
 import { playEs } from "../i18n/play.es";
@@ -42,6 +42,8 @@ export interface PlayViewProps {
   lives?: number;
   /** The game's rules (the Game tab's Rules card). */
   rules?: Partial<GameRules>;
+  /** The DIP switch's difficulty. */
+  difficulty?: Difficulty;
   /** The double-tap window for running, in milliseconds (250 by default). */
   runTapMs?: number;
   /** A 2-button layout: both buttons together are the special. */
@@ -95,7 +97,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -104,11 +106,11 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, run
   const make = useCallback(
     (startAt?: { x: number; y: number }) => {
       const runTapFrames = runTapMs === undefined ? undefined : Math.max(1, Math.round((runTapMs * 60) / 1000));
-      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules });
+      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules, difficulty });
       for (const e of edits.current) applyEdit(g, e);
       return g;
     },
-    [level, players, maxPlayers, lives, runTapMs, rules],
+    [level, players, maxPlayers, lives, runTapMs, rules, difficulty],
   );
   const game = useRef<Game>(null as unknown as Game);
   if (!game.current) game.current = make();

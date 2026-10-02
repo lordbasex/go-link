@@ -61,6 +61,20 @@ export const ENEMY_SIGHT = 170;
 export const ENEMY_FIRE_EVERY = 90;
 export const ENEMY_SHOT_SPEED = 3;
 
+/**
+ * The DIP switch's difficulty (experiment 1, T-15): how often an enemy
+ * fires (frames) and how fast its shot flies (px per frame). Normal is
+ * the prototype's. The ROM reads it from the header's flags (bits 5-6).
+ */
+export type Difficulty = "easy" | "normal" | "hard" | "lag";
+export const DIFFICULTY: Record<Difficulty, { fireEvery: number; shotSpeed: number; bits: number }> = {
+  easy: { fireEvery: 150, shotSpeed: 2, bits: 1 },
+  normal: { fireEvery: ENEMY_FIRE_EVERY, shotSpeed: ENEMY_SHOT_SPEED, bits: 0 },
+  hard: { fireEvery: 60, shotSpeed: 4, bits: 2 },
+  lag: { fireEvery: 40, shotSpeed: 5, bits: 3 },
+};
+export const difficultyOf = (d: unknown) => DIFFICULTY[(typeof d === "string" && d in DIFFICULTY ? d : "normal") as Difficulty];
+
 /** Crates and breakable walls: hits before they break (a rocket counts 9, a knife 2). */
 export const CRATE_HP = 3;
 export const BREAKABLE_HP = 2;

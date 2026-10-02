@@ -247,7 +247,7 @@ node rom/tools/lab/ddmin.mjs ZIP --script FILE.json --kind KIND --out MIN.json [
 
 ### Outputs
 
-In DIR: `qa.json` (the zip, `ok` — no high finding —, the verdict, the options, frames played, whether any run cleared, one entry per player run with its frames, clear, game over, finding counts and time, the findings with their minimization, and the seconds spent playing and minimizing), `qa.md` (the same as tables), `findings/NN-KIND.inputs.json` (every input up to the finding) and `findings/NN-KIND.min.json` (the minimized script). The exit status is 0 whenever the run itself worked; the verdict is in the JSON.
+In DIR: `qa.json` (the zip, `ok` — no high finding —, the verdict, the options, frames played, whether any run cleared, one entry per player run with its frames, clear, game over, the energy its players lost (`energyLost`: every hit, and the last energy of a player who went out), finding counts and time, the findings with their minimization, and the seconds spent playing and minimizing), `qa.md` (the same as tables, ending with what a naive player, the newcomer, lost; the acceptance run copies it as `tests.qa.naive`, task T-15), `findings/NN-KIND.inputs.json` (every input up to the finding) and `findings/NN-KIND.min.json` (the minimized script). The exit status is 0 whenever the run itself worked; the verdict is in the JSON.
 
 To replay a finding, on the simulator and on the real core, and compare the pictures:
 

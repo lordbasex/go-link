@@ -146,6 +146,7 @@ function newGame(project: Project, view: LevelView, players: number): Game {
     maxPlayers: s.players,
     lives: s.dip?.lives,
     rules: s.rules,
+    difficulty: s.dip?.difficulty,
   });
 }
 

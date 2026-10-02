@@ -509,8 +509,10 @@ export async function playOne(zip, def, { frames, symbols, checker, stopOnStuck 
     seen.set(key, f);
     raw.push(f);
   };
-  const sum = { name: def.name, what: def.what, frames: 0, startFrame: null, cleared: false, clearFrame: null, gameOver: false, gameOverFrame: null, error: null };
+  // energyLost: the hits its players took (T-15: how hard the game is on someone who plays it plainly)
+  const sum = { name: def.name, what: def.what, frames: 0, startFrame: null, cleared: false, clearFrame: null, gameOver: false, gameOverFrame: null, energyLost: 0, error: null };
   let lab = null;
+  let energy = [null, null, null, null];
   let stopAt = frames;
   for (let f = 0; f < stopAt; f++) {
     const ports = [new Set(), new Set(), new Set(), new Set()];
@@ -535,6 +537,12 @@ export async function playOne(zip, def, { frames, symbols, checker, stopOnStuck 
       if (x.kind === "stuck" && stopOnStuck) stopAt = Math.min(stopAt, f + 1);
     }
     if (lab) {
+      lab.players.forEach((p, i) => {
+        const was = energy[i];
+        if (p.active && was !== null && p.energy < was) sum.energyLost += was - p.energy;
+        if (!p.active && was !== null && was > 0 && p.state === "dead") sum.energyLost += was;
+        energy[i] = p.active ? p.energy : null;
+      });
       if (lab.mode === "playing" && sum.startFrame === null) sum.startFrame = n;
       if (lab.sectionClear && !sum.cleared) {
         sum.cleared = true;
@@ -666,8 +674,10 @@ function expectFor(x, got) {
 function markdown(r) {
   const L = [];
   L.push(`# QA run`, ``, `\`${r.zip}\``, ``, `**${r.ok ? "OK" : "NOT OK"}**: ${r.verdict}. ${r.framesPlayed} frames played${r.cleared ? ", the section was cleared at least once" : ", no run cleared the section"}; ${r.seconds.total} s (${r.seconds.play} s playing, ${r.seconds.minimize} s minimizing).`, ``);
-  L.push(`## Players`, ``, `| Player | What it does | Frames | Cleared | Findings | Time |`, `|---|---|---|---|---|---|`);
-  for (const x of r.runs) L.push(`| ${x.name} | ${x.what} | ${x.frames} | ${x.cleared ? `frame ${x.clearFrame}` : x.gameOver ? `game over at ${x.gameOverFrame}` : "no"}${x.error ? ` (error: ${x.error})` : ""} | ${Object.entries(x.findings).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} | ${(x.wallMs / 1000).toFixed(1)} s |`);
+  L.push(`## Players`, ``, `| Player | What it does | Frames | Cleared | Energy lost | Findings | Time |`, `|---|---|---|---|---|---|---|`);
+  for (const x of r.runs) L.push(`| ${x.name} | ${x.what} | ${x.frames} | ${x.cleared ? `frame ${x.clearFrame}` : x.gameOver ? `game over at ${x.gameOverFrame}` : "no"}${x.error ? ` (error: ${x.error})` : ""} | ${x.energyLost ?? "-"} | ${Object.entries(x.findings).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} | ${(x.wallMs / 1000).toFixed(1)} s |`);
+  const naive = r.runs.find((x) => x.name === "newcomer");
+  if (naive) L.push(``, `**A naive player** (the newcomer) lost ${naive.energyLost} energy in ${naive.frames} frames${naive.cleared ? " and cleared the section" : naive.gameOver ? " and reached game over" : ""}.`);
   L.push(``, `## Findings`, ``, `Deduplicated by kind and 16 px cell; ${r.counts.high} high, ${r.counts.medium} medium, ${r.counts.low} low.`, ``);
   if (!r.findings.length) L.push(`None.`);
   else {

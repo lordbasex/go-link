@@ -17,8 +17,7 @@ import {
   CLIMB_SPEED,
   CRATE_HP,
   DROP_FRAMES,
-  ENEMY_FIRE_EVERY,
-  ENEMY_SHOT_SPEED,
+  difficultyOf,
   ENEMY_SIGHT,
   FIRE_EVERY,
   GRAVITY,
@@ -51,6 +50,7 @@ import {
   TURN_FRAMES,
   cancelOpposites,
   rulesWith,
+  type Difficulty,
   type GameRules,
 } from "./rules";
 
@@ -195,6 +195,8 @@ export interface GameOptions {
   runTapFrames?: number;
   /** The game's rules (the Game tab's Rules card); the prototype's when missing. */
   rules?: Partial<GameRules>;
+  /** The DIP switch's difficulty (normal when missing). */
+  difficulty?: Difficulty;
 }
 
 export class Game {
@@ -225,6 +227,9 @@ export class Game {
   private readonly startAt?: { x: number; y: number };
   private readonly runTap: number;
   readonly rules: GameRules;
+  /** The difficulty's enemy fire interval (frames) and shot speed (px per frame). */
+  readonly fireEvery: number;
+  readonly shotSpeed: number;
   private readonly cellHp = new Map<number, number>();
 
   constructor(level: LevelView, opts: GameOptions = {}) {
@@ -238,6 +243,8 @@ export class Game {
     this.startAt = opts.startAt;
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
     this.rules = rulesWith(opts.rules);
+    this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
+    this.shotSpeed = difficultyOf(opts.difficulty).shotSpeed;
     for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives));
     this.loadObjects(level.objects);
     const n = Math.max(1, Math.min(this.maxPlayers, opts.players ?? 1));
@@ -287,7 +294,7 @@ export class Game {
             dir: o.facing === "right" ? 1 : -1,
             flip: o.facing !== "right",
             t: this.enemies.length * 11,
-            fireWait: ENEMY_FIRE_EVERY,
+            fireWait: this.fireEvery,
           });
           break;
         }
@@ -779,7 +786,7 @@ export class Game {
           if (e.fireWait) e.fireWait--;
           else if (dx > 40 || dx < -40) {
             this.enemyShots.push({ x: e.x + e.dir * 16, y: e.fy - 26, dir: e.dir });
-            e.fireWait = ENEMY_FIRE_EVERY;
+            e.fireWait = this.fireEvery;
           }
         }
         e.x = Math.max(e.min, Math.min(e.max, e.x));
@@ -799,7 +806,7 @@ export class Game {
         }
     }
     this.enemyShots = this.enemyShots.filter((s) => {
-      s.x += s.dir * ENEMY_SHOT_SPEED;
+      s.x += s.dir * this.shotSpeed;
       for (const p of this.players) {
         const fy = p.y >> 4;
         if (p.active && Math.abs(p.x - s.x) < 8 && s.y <= fy && s.y > fy - (p.crouching ? CROUCH_H : BODY_H)) {

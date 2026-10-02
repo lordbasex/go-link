@@ -70,6 +70,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_SOON 0x0004       /* Start on a port past the game's players shows "nP COMING SOON" */
 #define WM_F_DOUBLE_JUMP 0x0008 /* B1 again in the air jumps once more (docs/willy-maker/moves.md) */
 #define WM_F_JETPACK 0x0010     /* B1 held in the air lifts the player, 90 frames of fuel */
+#define WM_F_DIFFICULTY 0x0060  /* bits 5-6, the DIP switch's difficulty: 0 normal, 1 easy, 2 hard, 3 lag */
 
 struct wm_data {
 	u32 magic;                /* 00 */

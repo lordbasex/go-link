@@ -445,8 +445,13 @@ static void flush_sprites(void)
 #define BAZOOKA_FRAMES 24
 #define BAZOOKA_AMMO 3
 #define ENEMY_SIGHT 170
-#define ENEMY_FIRE_EVERY 90
-#define ENEMY_SHOT_SPEED 3
+/* the difficulty (T-15, engine/rules.ts DIFFICULTY): an enemy's fire interval
+   and its shot's speed, normal = the prototype's 90 frames and 3 px */
+static const u8 fire_every_of[4] = { 90, 150, 60, 40 };
+static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
+#define DIFFICULTY ((D->flags & WM_F_DIFFICULTY) >> 5)
+#define ENEMY_FIRE_EVERY ((int)fire_every_of[DIFFICULTY])
+#define ENEMY_SHOT_SPEED ((int)shot_speed_of[DIFFICULTY])
 #define BREAKABLE_HP 2
 #define MAX_ENEMIES 16
 #define MAX_CIVS 8

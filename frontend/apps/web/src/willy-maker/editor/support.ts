@@ -69,7 +69,7 @@ export const SUPPORT: Record<string, Support> = {
   ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`item:${i}`, i === "bazooka" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
   ...Object.fromEntries(CRATE_CONTENTS.map((c) => [`contents:${c}`, c === "nothing" || c === "bazooka" ? works : c === "civilian" ? soon("crateCivilian") : soon(WEAPON_SOON[c]!)])),
   // settings play mode does not use (the Game tab's switches, a level's timer)
-  "dip:difficulty": romOnly("difficulty"),
+  "dip:difficulty": works,
   "dip:lives": works,
   "dip:freePlay": romOnly("freePlay"),
   "dip:demoSound": romOnly("demoSound"),

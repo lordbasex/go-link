@@ -111,6 +111,8 @@ if (withQa) {
     counts: q.counts,
     framesPlayed: q.framesPlayed,
     cleared: q.cleared,
+    // how hard the game is on someone who plays it plainly (T-15)
+    naive: (({ name, frames, cleared, gameOver, energyLost }) => ({ player: name, frames, cleared, gameOver, energyLost }))(q.runs.find((r) => r.name === "newcomer") ?? { name: null, frames: 0, cleared: false, gameOver: false, energyLost: null }),
     seconds: q.seconds.total,
     findings: q.findings.map((x) => ({ id: x.id, severity: x.severity, kind: x.kind, runs: x.runs, frame: x.frame, x: x.x, y: x.y, why: x.detail?.why ?? null, script: `qa/${x.minimized?.file ?? x.inputsFile}`, steps: x.minimized?.ok ? x.minimized.steps : x.inputSteps })),
     report: "qa/qa.md",

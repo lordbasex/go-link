@@ -11,7 +11,7 @@
 
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
-import { rulesWith } from "../engine/rules";
+import { difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
@@ -88,6 +88,8 @@ const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
 const F_DOUBLE_JUMP = 8;
 const F_JETPACK = 16;
+/** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
+const F_DIFFICULTY_SHIFT = 5;
 
 /** The first level in play order. */
 export function romLevel(project: Project): Level | undefined {
@@ -575,7 +577,7 @@ export function packGame(
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0));
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);

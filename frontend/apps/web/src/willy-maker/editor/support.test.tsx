@@ -46,7 +46,7 @@ describe("parts the engine plays (editor/support.ts)", () => {
     expect(partSupport("checkpoint:checkpoint").status).toBe("soon");
     expect(partSupport("tag:water").status).toBe("soon");
     expect(partSupport("enemy:shield_trooper")).toEqual({ status: "works", shared: true });
-    expect(partSupport("dip:difficulty").status).toBe("rom-only");
+    expect(partSupport("dip:difficulty").status).toBe("works"); // T-15: play mode plays it too
     expect(partSupport("dip:lives").status).toBe("works");
     expect(objectSupport({ name: "c", type: "crate", x: 0, y: 0, contents: "health" }).reason).toBe("health");
   });
