@@ -397,3 +397,4 @@ input.wm-layer-name { cursor: text; }
 .wm-aitext-bar { align-items: center; gap: 8px; }
 .wm-aitext-sug { display: flex; flex-direction: column; gap: 6px; }
 .wm-aitext-sug p { margin: 0; white-space: pre-wrap; }
+.wm-prompt-out pre.is-all { max-height: 160px; border: 1px solid var(--tint-accent-border); }

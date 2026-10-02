@@ -9,7 +9,7 @@ import { newProject } from "../model";
 import { EditorStore } from "../editor/store";
 import { ANIMS } from "../sprites/presets";
 import { PromptDialog } from "../ui/organisms/PromptDialog";
-import { buildPrompts, defaultChoices, FLAGS, mergeChoices, SCALE, SUBTYPES, type PromptKind } from "./imagePrompt";
+import { buildPrompts, chatMessage, defaultChoices, FLAGS, mergeChoices, SCALE, SUBTYPES, type PromptKind } from "./imagePrompt";
 
 afterEach(cleanup);
 
@@ -83,6 +83,20 @@ describe("the image AI prompts", () => {
     expect(o.size).toEqual({ w: 64 * 3 * SCALE, h: 32 * 2 * SCALE });
     expect(o.text).toContain("3 frames in one row");
     expect(o.text).toContain("broken one in the second");
+  });
+
+  it("puts every prompt, its exact size and what to avoid in one chat message", () => {
+    const p = project();
+    const one = buildPrompts(defaultChoices("character"));
+    const msg = chatMessage(one);
+    expect(msg).toContain(one.prompts[0]!.text);
+    expect(msg).toContain(`exactly ${one.prompts[0]!.size.w} x ${one.prompts[0]!.size.h} pixels`);
+    expect(msg).toContain(`Avoid: ${one.negative}.`);
+    const play = buildPrompts({ ...defaultChoices("background", p), sub: "play" }, p);
+    const all = chatMessage(play);
+    expect(all).toContain("Create 2 separate images");
+    expect(all).toContain("Image 2 of 2");
+    for (const x of play.prompts) expect(all).toContain(x.text);
   });
 
   it("keeps only well-typed saved choices (a project file is not trusted)", () => {

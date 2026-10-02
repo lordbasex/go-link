@@ -118,6 +118,8 @@ export const promptPt: PromptMessages = {
   example: "Carregar o exemplo (Puerto Madero à noite)",
   result: "Os prompts",
   size: (w: number, h: number) => `${w} × ${h} px`,
+  all: "Tudo junto (para um chat de IA)",
+  allHelp: "O prompt, o tamanho exato e o que deve evitar numa só mensagem: cole num chat de IA que faça imagens. As partes abaixo são para ferramentas de imagens com um campo à parte para o prompt negativo.",
   negative: "Prompt negativo (o que não deve fazer)",
   copy: "Copiar",
   copied: "Copiado",

@@ -15,7 +15,7 @@ import { promptPt } from "../../i18n/prompt.pt";
 import type { CharacterRole, Project } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { ANIMS, DEFAULT_HEIGHT } from "../../sprites/presets";
-import { buildPrompts, defaultChoices, EXAMPLE, FLAGS, mergeChoices, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
+import { buildPrompts, chatMessage, defaultChoices, EXAMPLE, FLAGS, mergeChoices, SUBTYPES, type PromptChoices, type PromptKind } from "../../prompts/imagePrompt";
 import { Capsule, Field, Segmented } from "../atoms";
 import { IconCopy } from "../icons";
 import { AnimPreview } from "./AnimPreview";
@@ -57,7 +57,7 @@ function Help({ text, label }: { text: string; label: string }) {
   );
 }
 
-function CopyBox({ label, text, t }: { label: string; text: string; t: PromptMessages }) {
+function CopyBox({ label, text, t, hint, primary }: { label: string; text: string; t: PromptMessages; hint?: string; primary?: boolean }) {
   const [copied, setCopied] = useState(false);
   const pre = useRef<HTMLPreElement>(null);
   const copy = async () => {
@@ -80,11 +80,12 @@ function CopyBox({ label, text, t }: { label: string; text: string; t: PromptMes
     <div className="wm-prompt-out">
       <div className="wm-row">
         <span className="wm-field-label">{label}</span>
-        <Capsule size="sm" onClick={() => void copy()} aria-label={`${t.copy}: ${label}`}>
+        <Capsule size="sm" tone={primary ? "primary" : undefined} onClick={() => void copy()} aria-label={`${t.copy}: ${label}`}>
           <IconCopy /> {copied ? t.copied : t.copy}
         </Capsule>
       </div>
-      <pre ref={pre} className="wm-tree-pre wm-mono wm-prompt" aria-label={label}>
+      {hint && <p className="wm-dim wm-small">{hint}</p>}
+      <pre ref={pre} className={`wm-tree-pre wm-mono wm-prompt${primary ? " is-all" : ""}`} aria-label={label}>
         {text}
       </pre>
     </div>
@@ -293,6 +294,7 @@ export function PromptDialog({ store, project, kind: startKind, sub: startSub, o
             {t.ai.untranslated}
           </p>
         )}
+        <CopyBox label={t.all} hint={t.allHelp} text={chatMessage(result)} t={t} primary />
         {result.prompts.map((p, i) => (
           <CopyBox key={i} label={`${subs[c.sub] ?? p.title}${result.prompts.length > 1 ? ` ${i + 1}/${result.prompts.length}` : ""} · ${t.size(p.size.w, p.size.h)}`} text={p.text} t={t} />
         ))}

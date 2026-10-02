@@ -319,3 +319,21 @@ export function buildPrompts(c: PromptChoices, project?: Project): PromptResult 
   ].join(", ");
   return { prompts, negative };
 }
+
+/**
+ * Everything in one message for a chat image AI, which has no separate
+ * negative prompt: each picture with its exact size, then what to avoid.
+ */
+export function chatMessage(r: PromptResult): string {
+  const avoid = `Avoid: ${r.negative}.`;
+  const exact = (p: Prompt) => `The picture must be exactly ${p.size.w} x ${p.size.h} pixels.`;
+  if (r.prompts.length === 1) {
+    const p = r.prompts[0]!;
+    return [`Create one image (${p.title}).`, exact(p), p.text, avoid].join("\n\n");
+  }
+  return [
+    `Create ${r.prompts.length} separate images, one at a time, in this order. They belong together: keep the same style, palette and light in all of them.`,
+    ...r.prompts.map((p, i) => [`Image ${i + 1} of ${r.prompts.length} (${p.title}). ${exact(p)}`, p.text].join("\n")),
+    `For every image. ${avoid}`,
+  ].join("\n\n");
+}

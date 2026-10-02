@@ -119,6 +119,8 @@ export const promptEn = {
   example: "Load the example (Puerto Madero at night)",
   result: "The prompts",
   size: (w: number, h: number) => `${w} × ${h} px`,
+  all: "All in one (for a chat image AI)",
+  allHelp: "The prompt, the exact size and what to avoid in one message: paste it into a chat AI that makes images. The parts below are for image tools with a separate negative prompt.",
   negative: "Negative prompt (what it must not do)",
   copy: "Copy",
   copied: "Copied",
