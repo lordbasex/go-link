@@ -26,6 +26,12 @@ export const COLLISION_TILES = TAGS.slice(1);
 export interface TiledExportOptions {
   /** Paths are relative to the .tmj file. */
   farImage?: string | null;
+  /**
+   * The far layer cut into the board's tiles (T-20): its unique tiles in one
+   * picture and, for each tile of the layer (row by row), 0 for empty or the
+   * tile's number from 1. Each tile sits on the map cell of its bottom-left.
+   */
+  farTiles?: { path: string; w: number; h: number; tile: number; columns: number; count: number; cols: number; rows: number; cells: ArrayLike<number> } | null;
   /** The play layer's tileset picture and its size in pixels. */
   playTileset?: { path: string; w: number; h: number } | null;
   collisionTileset: string;
@@ -58,7 +64,21 @@ export function levelToTiled(level: Level, project: Project, opts: TiledExportOp
   let id = 1;
   let firstgid = 1;
 
-  if (opts.farImage) layers.push({ id: id++, name: "far", type: "imagelayer", image: opts.farImage, x: 0, y: 0, offsetx: 0, offsety: 0, opacity: 1, visible: true, parallaxx: 0.5, parallaxy: 0.5, repeatx: false, repeaty: false });
+  if (opts.farTiles && opts.farTiles.count) {
+    const f = opts.farTiles;
+    const k = f.tile / CELL;
+    tilesets.push({ firstgid, name: "far", tilewidth: f.tile, tileheight: f.tile, columns: f.columns, tilecount: f.count, margin: 0, spacing: 0, image: f.path, imagewidth: f.w, imageheight: f.h });
+    const data = new Array<number>(cols * rows).fill(0);
+    for (let r = 0; r < f.rows; r++)
+      for (let c = 0; c < f.cols; c++) {
+        const v = f.cells[r * f.cols + c] ?? 0;
+        const mc = c * k;
+        const mr = r * k + k - 1;
+        if (v && mc < cols && mr < rows) data[mr * cols + mc] = firstgid + v - 1;
+      }
+    layers.push({ id: id++, name: "far", type: "tilelayer", x: 0, y: 0, width: cols, height: rows, opacity: 1, visible: true, parallaxx: 0.5, parallaxy: 0.5, data });
+    firstgid += f.count;
+  } else if (opts.farImage) layers.push({ id: id++, name: "far", type: "imagelayer", image: opts.farImage, x: 0, y: 0, offsetx: 0, offsety: 0, opacity: 1, visible: true, parallaxx: 0.5, parallaxy: 0.5, repeatx: false, repeaty: false });
 
   const play = playLayer(level);
   if (play) {

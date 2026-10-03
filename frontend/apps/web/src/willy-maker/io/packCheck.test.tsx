@@ -5,7 +5,7 @@ import { reviewProject } from "../editor/validate";
 import { projectFromTemplate } from "../templates";
 import { buildAiPack } from "./aiPack";
 import { checkAiPack, packReport, PackBuildError, promptPaths } from "./packCheck";
-import { decodePng, encodePng } from "./png";
+import { encodePng } from "./png";
 import { readZip } from "./zip";
 
 const DOCS = { "rom-README.md": "# rom", "art-spec.md": "# art", "hardware.md": "# hw", "story.md": "# story", "journal.md": "# journal" };
@@ -98,14 +98,13 @@ describe("AI pack build check (level 2)", { timeout: 30000 }, () => {
     const { project, assets } = sample();
     const files = await packFiles(project, assets);
     files.set("tilesets/ts-city.png", encodePng(30, 16, solid(30, 16, [250, 130, 10, 128])));
-    const play = await decodePng(files.get("levels/level-1/play.png")!);
-    files.set("levels/level-1/play.png", encodePng(play.w - 16, play.h, solid(play.w - 16, play.h, [0, 0, 0, 0])));
+    files.set("tilesets/collision.png", encodePng(100, 16, solid(100, 16, [0, 0, 0, 0])));
     const problems = await checkAiPack(files);
     expect(ids(problems).sort()).toEqual(["pack.maps", "pack.png", "pack.sizes"]);
     const text = problems.map((p) => p.detail).join("\n");
     expect(text).toMatch(/ts-city\.png has 480 pixel\(s\) that are not board colors/);
     expect(text).toMatch(/half-transparent/);
-    expect(text).toMatch(/play\.png is 1520 × 224; the level is 1536 × 224/);
+    expect(text).toMatch(/tilesets\/collision\.png is 100 × 16, not a row of 16 px tiles/);
   });
 
   it("finds a sheet frame outside its strip, and broken JSON", async () => {

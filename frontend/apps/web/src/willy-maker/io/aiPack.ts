@@ -8,7 +8,7 @@
 // deterministic: the same project gives the same bytes (fixed timestamps,
 // sorted entries, a PNG writer without a canvas).
 
-import { CELL, DEFAULT_GENRE, genreAvailable, isGenre, layerGrid, TAGS, tagLayer, type AssetRef, type Character, type Level, type Project, type TileLayer, type Tileset } from "../model";
+import { CELL, DEFAULT_GENRE, genreAvailable, isGenre, layerGrid, TAGS, type AssetRef, type Character, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { boardOf, layoutOf } from "../board/cps1";
 import * as R from "../engine/rules";
 import { measureJump } from "../engine/jump";
@@ -20,6 +20,9 @@ import { decodePng, encodePng, type RgbaImage } from "./png";
 import { COLLISION_TILES, levelToTiled, playLayer, TAG_COLORS } from "./tiledExport";
 import { readZip, writeZip, type ZipEntry } from "./zip";
 import { checkAiPack, PackBuildError } from "./packCheck";
+
+/** The far layer's tile on the board (scroll3). */
+const FAR_TILE = 32;
 
 /** Zip entries get this date, so two exports of the same project are the same bytes. */
 export const PACK_DATE = new Date(2026, 0, 1, 0, 0, 0);
@@ -132,23 +135,58 @@ function drawTiles(dst: RgbaImage, level: Level, layer: TileLayer, ts: Tileset, 
   return drew;
 }
 
-function collisionPicture(level: Level): RgbaImage {
-  const w = level.size.w;
-  const h = level.size.h;
-  const data = new Uint8Array(w * h * 4);
-  const g = layerGrid(level, tagLayer(level));
-  for (let y = 0; y < h; y++) {
-    const r = Math.floor(y / CELL);
-    for (let x = 0; x < w; x++) {
-      const [cr, cg, cb] = TAG_COLORS[TAGS[g.get(Math.floor(x / CELL), r)] ?? "air"] ?? TAG_COLORS.air!;
-      const i = (y * w + x) * 4;
-      data[i] = cr;
-      data[i + 1] = cg;
-      data[i + 2] = cb;
-      data[i + 3] = 255;
+/**
+ * A layer picture cut into the board's tiles, the same ones deduplicated
+ * (T-20, E-03: a whole 8192 px level picture weighed about 22 MB): the
+ * unique tiles in rows of 16 and, per tile of the picture, 0 when it is
+ * empty or the tile's number from 1.
+ */
+export function cutTiles(img: RgbaImage, size: number): { sheet: RgbaImage; cells: Uint32Array; cols: number; rows: number; count: number; columns: number } {
+  const cols = Math.ceil(img.w / size);
+  const rows = Math.ceil(img.h / size);
+  const cells = new Uint32Array(cols * rows);
+  const seen = new Map<string, number>();
+  const tiles: Uint8Array[] = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const t = new Uint8Array(size * size * 4);
+      let any = false;
+      for (let y = 0; y < size; y++) {
+        const sy = r * size + y;
+        if (sy >= img.h) break;
+        for (let x = 0; x < size; x++) {
+          const sx = c * size + x;
+          if (sx >= img.w) break;
+          const o = (sy * img.w + sx) * 4;
+          if (img.data[o + 3]! < 128) continue;
+          const q = (y * size + x) * 4;
+          t[q] = img.data[o]!;
+          t[q + 1] = img.data[o + 1]!;
+          t[q + 2] = img.data[o + 2]!;
+          t[q + 3] = 255;
+          any = true;
+        }
+      }
+      if (!any) continue;
+      let key = "";
+      for (let i = 0; i < t.length; i += 4) key += String.fromCharCode(t[i]!, t[i + 1]!, t[i + 2]!, t[i + 3]!);
+      let n = seen.get(key);
+      if (!n) {
+        tiles.push(t);
+        n = tiles.length;
+        seen.set(key, n);
+      }
+      cells[r * cols + c] = n;
     }
-  }
-  return { w, h, data };
+  const columns = 16;
+  const sheetRows = Math.max(1, Math.ceil(tiles.length / columns));
+  const sheet: RgbaImage = { w: columns * size, h: sheetRows * size, data: new Uint8Array(columns * size * sheetRows * size * 4) };
+  tiles.forEach((t, i) => {
+    const ox = (i % columns) * size;
+    const oy = Math.floor(i / columns) * size;
+    for (let y = 0; y < size; y++) sheet.data.set(t.subarray(y * size * 4, (y + 1) * size * 4), ((oy + y) * sheet.w + ox) * 4);
+  });
+  return { sheet, cells, cols, rows, count: tiles.length, columns };
 }
 
 function collisionTileset(): RgbaImage {
@@ -240,7 +278,7 @@ export function decisions(p: Project, levels: Level[], G: R.GameRules, has: (doc
     ["Does the harness need anything? (P-19)", "fixed: the lab state (rom/src/lab_state.h, filled every frame) and the symbol map that rom/tools/build.mjs writes; keep both"],
     ["Must the set be added to the device's own sets? (P-20)", "fixed: no; the device runs any set its core knows, and backend-device/pkg/ownsets lists only go-link's prototype"],
     ["Where is project.json's format? (P-21)", has("file-format.md") ? "docs/file-format.md in this pack" : "docs/willy-maker/file-format.md in the repository"],
-    ["The play layer comes as tiles and as play.png: which wins? (P-22)", "fixed: the same art twice: the tile layer in levels/<id>.tmj is the source and play.png is a picture of it; the pictures are already in board colors, so a project palette that repeats a color changes nothing"],
+    ["The play layer comes twice: which wins? (P-22)", "fixed: it comes once now, as the tile layer in levels/<id>.tmj over its tileset (and the far layer as its own 32 px tiles); the pictures are already in board colors, so a project palette that repeats a color changes nothing"],
     ["Sections (P-23)", sections ? "setting: the sections listed above, by x range" : "setting: this game has none, so each level is one section"],
     ["The HUD with 4 players, and a player who has not joined (P-24)", "fixed: the top two rows split in one block per player: 1P and the score, the energy as + marks under it and the ammo when they carry the bazooka; a player who has not joined shows the HUD's join text blinking (setting: the menus' texts), or the insert-coin text without credits"],
     ["Tile counts in the review (P-25)", "fixed: they include the empty tile the board needs for transparent cells and broken crates"],
@@ -373,10 +411,8 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   line("PROMPT.md                 this brief");
   line(`project.json              the Willy Maker project (format in ${has("file-format.md") ? "docs/file-format.md" : "docs/willy-maker/file-format.md of the repository"})`);
   line("review.json               Willy Maker's checks at export (below)");
-  line("levels/<id>.tmj           Tiled maps: far (image), play, collision and objects layers");
-  line("levels/<id>/far.png       the far layer (and the middle one merged in) as one picture");
-  line("levels/<id>/play.png      the play layer as one picture");
-  line("levels/<id>/collision.png the collision tags in the colors of docs/art-spec.md, on the 16 px grid");
+  line("levels/<id>.tmj           Tiled maps: far, play and collision tile layers and the objects layer (nothing else repeats the level as a whole picture)");
+  line("levels/<id>/far-tiles.png the far layer (and the middle one merged in) cut into the board's 32 px tiles, each once; the .tmj's far layer places them");
   line("tilesets/<id>.png         each tileset, in board colors; tilesets/collision.png the tag tiles");
   line("characters/<id>/<anim>.png one strip per animation on magenta #FF00FF, feet on one line");
   line("characters/<id>/sheet.json frames (boxes in the strip), pivots, palette zones, fps, loop");
@@ -403,7 +439,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   line("   brew install m68k-elf-binutils m68k-elf-gcc z80asm");
   line("   ```");
   line(`2. Build the prototype once, to prove the toolchain: \`node rom/tools/build.mjs${layout.id === "slammast" ? "" : ` ${layout.id}`}\` writes rom/build/${layout.id}.zip.`);
-  line("3. Extend rom/tools/build.mjs (art.mjs, level.mjs and rom/src/main.c) to read this pack instead of the prototype's level: the maps and collision from levels/*.tmj, the tiles cut from the layer pictures (deduplicated, 15 colors per tile), the characters from their strips and sheet.json, the objects with their properties, the buttons, players and DIP switches above.");
+  line("3. Extend rom/tools/build.mjs (art.mjs, level.mjs and rom/src/main.c) to read this pack instead of the prototype's level: the maps and collision from levels/*.tmj, the tiles from the tilesets and far-tiles.png (already cut and deduplicated; keep 15 colors per tile), the characters from their strips and sheet.json, the objects with their properties, the buttons, players and DIP switches above.");
   line("4. Get the core the device uses (`device core download`), build the frame capture tool and run the set in it:");
   line("   ```sh");
   line("   (cd backend-device && go build -o /tmp/framelab ./cmd/framelab)");
@@ -501,19 +537,15 @@ export async function buildAiPack(p: Project, opts: AiPackOptions): Promise<AiPa
       }
       return any ? img : null;
     };
-    const far = draw(tiles.filter((l) => l.id === "far" || l.id === "mid"));
-    if (far) png(`${dir}/far.png`, far);
+    // the far layer (with the middle one merged in) as the board's 32 px tiles; the play layer is already tiles
+    const farPic = draw(tiles.filter((l) => l.id === "far" || l.id === "mid"));
+    const far = farPic ? cutTiles(farPic, FAR_TILE) : null;
+    if (far) png(`${dir}/far-tiles.png`, far.sheet);
     const play = playLayer(level);
-    const playImg = play ? draw([play]) : null;
-    if (playImg) png(`${dir}/play.png`, playImg);
-    const text = tiles.find((l) => l.id === "text");
-    const textImg = text ? draw([text]) : null;
-    if (textImg) png(`${dir}/text.png`, textImg);
-    png(`${dir}/collision.png`, collisionPicture(level));
     const ts = play ? tilesetOf(play) : undefined;
     const tsImg = ts ? tilesetImages.get(ts.id) : undefined;
     const map = levelToTiled(level, p, {
-      farImage: far ? `${safe(level.id)}/far.png` : null,
+      farTiles: far ? { path: `${safe(level.id)}/far-tiles.png`, w: far.sheet.w, h: far.sheet.h, tile: FAR_TILE, columns: far.columns, count: far.count, cols: far.cols, rows: far.rows, cells: far.cells } : null,
       playTileset: ts && tsImg ? { path: `../tilesets/${safe(ts.id)}.png`, w: tsImg.w, h: tsImg.h } : null,
       collisionTileset: "../tilesets/collision.png",
     });

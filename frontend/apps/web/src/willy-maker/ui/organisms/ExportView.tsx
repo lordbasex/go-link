@@ -107,8 +107,8 @@ export function ExportView({ project, version, store, onGo, onPrompt }: { projec
     }
   };
 
-  // the preview starts at the brief's first paragraph
-  const preview = prompt.split("\n").slice(2, 3).join("\n");
+  // the preview is the brief's first section: what the pack can and cannot do (T-19)
+  const preview = prompt.split("\n\n## ")[1]?.split("\n\n").slice(0, 2).join("\n\n").replace(/^/, "## ") ?? "";
 
   return (
     <div className="wm-export">

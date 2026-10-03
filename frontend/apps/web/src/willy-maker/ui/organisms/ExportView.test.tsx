@@ -85,7 +85,7 @@ describe("Export tab", () => {
     expect(screen.getByText(exportEs.review.checking)).toBeInTheDocument();
     expect(screen.getByText(exportEs.ai.checking)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: new RegExp(exportEs.ai.download) })).toBeEnabled());
-    expect(screen.getByLabelText(exportEs.ai.preview).textContent).toMatch(/^You are building an arcade game ROM/);
+    expect(screen.getByLabelText(exportEs.ai.preview).textContent).toMatch(/^## Before you start[\s\S]*A browser is not enough/);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: new RegExp(exportEs.ai.copy) })));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("node rom/tools/build.mjs"));
     expect(screen.getByRole("button", { name: new RegExp(exportEs.ai.copied) })).toBeInTheDocument();

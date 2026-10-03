@@ -159,11 +159,8 @@ my-game.ai-pack.zip
   project.json            the same project file
   review.json             the Export review: ready, errors, warnings, every check with its English message
   levels/
-    level-1.tmj           Tiled map: far (image layer), play, collision and objects layers
-    level-1/far.png       the far layer, with the middle one merged in, as one picture
-    level-1/play.png      the play layer as one picture
-    level-1/text.png      the text layer, only when it has tiles
-    level-1/collision.png the tag colors of art-spec.md, on the 16 px grid
+    level-1.tmj           Tiled map: far, play and collision tile layers and the objects layer
+    level-1/far-tiles.png the far layer, with the middle one merged in, cut into the board's 32 px tiles, each once
   tilesets/
     ts-city.png           each tileset picture
     collision.png         the collision tileset: one 16 px tile per tag, typed (solid, oneway…)
@@ -175,7 +172,8 @@ my-game.ai-pack.zip
 ```
 
 - Every picture is converted to board colors (each channel to the nearest multiple of 17; alpha is on or off). Layers and tilesets keep transparency; strips use magenta `#FF00FF`.
-- The `.tmj` files point at `../tilesets/*.png` and `<level>/far.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles.
+- **No whole-level pictures** (task T-20, lesson E-03: an outside AI found 22 MB per 8192 px level picture, 70 MB unpacked for two levels; the PNGs are written without compression): the play and collision layers are the maps' tile layers over their tilesets, and the far layer is cut into its unique 32 px tiles (`far-tiles.png`), each placed on the map cell of its bottom-left with a 0.5 parallax. Buenos Aires (8192 × 672) packs into about 0.7 MB unpacked, 54 KB zipped.
+- The `.tmj` files point at `../tilesets/*.png` and `<level>/far-tiles.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles.
 - The docs are the repository's `docs/rom/*.md` plus Willy Maker's `file-format.md` (this file, so `project.json` can be read without the repository) and `moves.md`, bundled with the website and loaded when the pack is made.
 - **Deterministic**: the same project gives the same bytes. Entries have a fixed date (2026-01-01 00:00) and a fixed order (`PROMPT.md`, then the rest sorted by name), and PNGs are written without a canvas. Compression uses the browser's own deflate, so two browsers may still differ.
 - A picture the browser no longer has (cleared site data) is left out, and `PROMPT.md` names it.

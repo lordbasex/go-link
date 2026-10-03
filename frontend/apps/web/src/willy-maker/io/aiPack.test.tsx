@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { layerGrid, newProject, objectLayer, tagGrid, TAG_NUMBER, type Project, type TileLayer } from "../model";
 import { reviewProject } from "../editor/validate";
 import * as R from "../engine/rules";
-import { aiPackName, buildAiPack, buildPrompt, loadRomDocs } from "./aiPack";
+import { aiPackName, buildAiPack, buildPrompt, cutTiles, loadRomDocs } from "./aiPack";
 import { decodePng, encodePng } from "./png";
 import { exportProjectZip, importProjectZip } from "./projectZip";
 import { levelFromTiled } from "./tiled";
@@ -86,8 +86,6 @@ describe("AI pack", { timeout: 30000 }, () => {
         "project.json",
         "review.json",
         "levels/level-1.tmj",
-        "levels/level-1/play.png",
-        "levels/level-1/collision.png",
         "tilesets/ts-city.png",
         "tilesets/collision.png",
         "characters/willy/idle.png",
@@ -130,10 +128,10 @@ describe("AI pack", { timeout: 30000 }, () => {
     const tiles = await decodePng(files.get("tilesets/ts-city.png")!);
     expect(Array.from(tiles.data.subarray(0, 4))).toEqual([255, 136, 17, 255]);
     expect(tiles.data[16 * 4 + 3]).toBe(0);
-    const play = await decodePng(files.get("levels/level-1/play.png")!);
-    expect(play.w).toBe(project.levels[0]!.size.w);
-    const row = play.h - 32;
-    expect(Array.from(play.data.subarray(row * play.w * 4, row * play.w * 4 + 4))).toEqual([255, 136, 17, 255]);
+    // no whole-level pictures of tile layers (T-20): the play layer is the .tmj's tiles
+    expect(files.has("levels/level-1/play.png")).toBe(false);
+    expect(files.has("levels/level-1/far.png")).toBe(false);
+    expect(files.has("levels/level-1/collision.png")).toBe(false); // the .tmj's collision layer, over tilesets/collision.png
     const walk = await decodePng(files.get("characters/willy/walk.png")!);
     expect(walk.w).toBe(40);
     expect(walk.h).toBe(44);
@@ -146,11 +144,11 @@ describe("AI pack", { timeout: 30000 }, () => {
       [20, 4],
     ]);
     expect(sheet.palettes[0]).toMatchObject({ id: "pal-willy" });
-    const collision = await decodePng(files.get("levels/level-1/collision.png")!);
-    const at = (x: number, y: number) => Array.from(collision.data.subarray((y * collision.w + x) * 4, (y * collision.w + x) * 4 + 3));
-    expect(at(0, collision.h - 1)).toEqual([0, 0, 0]);
-    expect(at(10 * 16 + 3, collision.h - 3 * 16 + 3)).toEqual([0, 0, 255]);
-    expect(at(0, 0)).toEqual([255, 255, 255]);
+    // the collision tags live in the map's collision layer (no whole-level picture, T-20)
+    const map = JSON.parse(new TextDecoder().decode(files.get("levels/level-1.tmj")));
+    const col = map.layers.find((l: { name: string }) => l.name === "collision");
+    const gid = map.tilesets.find((s: { name: string }) => s.name === "collision").firstgid;
+    expect(col.data[(map.height - 3) * map.width + 10]).toBe(gid + TAG_NUMBER.ladder - 1);
   });
 
   it("writes Tiled maps that read back to the same collision and objects", async () => {
@@ -191,7 +189,7 @@ describe("project .zip and the review", { timeout: 90000 }, () => {
     // project.json gets the loader's defaults; the maps and pictures stay the same
     const one = await readZip((await build(project, assets)).zip);
     const two = await readZip((await build(back, assets)).zip);
-    for (const name of ["levels/level-1.tmj", "levels/level-1/play.png", "characters/willy/sheet.json", "review.json"]) expect(two.get(name), name).toEqual(one.get(name));
+    for (const name of ["levels/level-1.tmj", "tilesets/collision.png", "characters/willy/sheet.json", "review.json"]) expect(two.get(name), name).toEqual(one.get(name));
   });
 });
 
@@ -228,6 +226,44 @@ describe("PROMPT.md", () => {
     const prompt = buildPrompt(p, reviewProject(p));
     expect(prompt).toContain("Buttons 1 + 2 together: special");
     expect(prompt).toContain("node rom/tools/build.mjs captcomm");
+  });
+});
+
+describe("a lighter pack (T-20)", () => {
+  it("cuts a picture into tiles, each once, empty ones left out", () => {
+    const img = { w: 96, h: 32, data: new Uint8Array(96 * 32 * 4) };
+    const paint = (x0: number, rgb: number[]) => {
+      for (let y = 0; y < 32; y++) for (let x = x0; x < x0 + 32; x++) img.data.set([...rgb, 255], (y * 96 + x) * 4);
+    };
+    paint(0, [255, 0, 0]);
+    paint(64, [255, 0, 0]);
+    const cut = cutTiles(img, 32);
+    expect(cut.count).toBe(1);
+    expect(Array.from(cut.cells)).toEqual([1, 0, 1]);
+    expect([cut.sheet.w, cut.sheet.h]).toEqual([16 * 32, 32]);
+  });
+  it("puts the far layer in the map as its own 32 px tiles, not a whole picture", async () => {
+    const { project, assets } = sample();
+    const sky = solid(32, 32, [17, 34, 68, 255]);
+    assets.set("sha256:sky", { bytes: encodePng(32, 32, sky), type: "image/png" });
+    project.tilesets.push({ id: "ts-sky", tile: 32, image: "sha256:sky", palettes: [], columns: 1, count: 1 });
+    const level = project.levels[0]!;
+    const farLayer = level.layers.find((l): l is TileLayer => l.id === "far")!;
+    farLayer.tileset = "ts-sky";
+    const g = layerGrid(level, farLayer);
+    for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) g.set(c, r, 1);
+    g.commit();
+    const files = await readZip((await build(project, assets)).zip);
+    expect(files.has("levels/level-1/far.png")).toBe(false);
+    const sheet = await decodePng(files.get("levels/level-1/far-tiles.png")!);
+    expect([sheet.w, sheet.h]).toEqual([512, 32]); // one tile, however wide the level
+    const map = JSON.parse(new TextDecoder().decode(files.get("levels/level-1.tmj")));
+    const far = map.layers.find((l: { name: string }) => l.name === "far");
+    expect(far.type).toBe("tilelayer");
+    expect(map.tilesets[0]).toMatchObject({ name: "far", tilewidth: 32, tilecount: 1, image: "level-1/far-tiles.png" });
+    // each 32 px tile on the map cell of its bottom-left
+    expect(far.data[1 * map.width + 0]).toBe(1);
+    expect(far.data[0]).toBe(0);
   });
 });
 

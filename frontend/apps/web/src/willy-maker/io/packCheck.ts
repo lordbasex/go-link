@@ -158,7 +158,8 @@ export async function checkAiPack(files: Map<string, Uint8Array>): Promise<PackP
         const img = pngs.get(`${dir}/${pic}.png`);
         if (img && (img.w !== level.size.w || img.h !== level.size.h)) add("pack.sizes", `${dir}/${pic}.png is ${img.w} × ${img.h}; the level is ${level.size.w} × ${level.size.h}`);
       }
-      if (!files.has(`${dir}/collision.png`)) add("pack.files", `${dir}/collision.png is missing`);
+      const farTiles = pngs.get(`${dir}/far-tiles.png`);
+      if (farTiles && (farTiles.w % 32 || farTiles.h % 32)) add("pack.sizes", `${dir}/far-tiles.png (${farTiles.w} × ${farTiles.h}) is not cut into 32 px tiles`);
     }
     for (const ts of project.tilesets) {
       const img = pngs.get(`tilesets/${safe(ts.id)}.png`);
