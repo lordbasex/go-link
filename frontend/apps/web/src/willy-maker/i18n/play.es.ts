@@ -71,5 +71,5 @@ export const playEs: PlayMessages = {
   more: "Más",
   startButton: "Start",
   dir: { up: "Arriba", down: "Abajo", left: "Izquierda", right: "Derecha" },
-  hud: { start: "PRESS START", cleared: "MISIÓN CUMPLIDA", over: "GAME OVER", ammo: "MUNICIÓN", enemies: "ENEMIGOS", exitClosed: "DERROTA A TODOS LOS ENEMIGOS", rescued: "RESCATADOS" },
+  hud: { start: "PRESS START", cleared: "MISIÓN CUMPLIDA", over: "GAME OVER", ammo: "MUNICIÓN", enemies: "ENEMIGOS", exitClosed: "DERROTA A TODOS LOS ENEMIGOS", rescued: "RESCATADOS", coins: "MONEDAS" },
 };

@@ -550,3 +550,33 @@ describe("the moves (docs/willy-maker/moves.md, T-25)", () => {
     expect(top(new Game(tall()), 400, () => Input.B1)).toBe(62);
   });
 });
+
+describe("the platformer (T-22)", () => {
+  const level = (objects: LevelObject[]) => flat(undefined, objects);
+  const rules = { weapons: false, stomp: true, touchHurts: true, enemiesShoot: false, enemiesChase: false };
+  it("takes coins and counts them", () => {
+    const g = new Game(level([{ name: "c1", type: "pickup", x: 100, y: 400, item: "coin" }, { name: "c2", type: "pickup", x: 140, y: 400, item: "coin" }]), { rules });
+    expect(g.coinTotal).toBe(2);
+    run(g, 120, Input.Right);
+    expect(g.coins).toBe(2);
+    expect(g.players[0]!.score).toBe(200);
+  });
+  it("throws the player up from a spring", () => {
+    const g = new Game(level([{ name: "s1", type: "pickup", x: 100, y: 400, item: "spring" }]), { rules });
+    let top = 400;
+    for (let f = 0; f < 120; f++) {
+      run(g, 1, f < 40 ? Input.Right : 0);
+      top = Math.min(top, g.players[0]!.y >> 4);
+    }
+    expect(400 - top).toBeGreaterThan(120); // far over a plain jump's 62 px
+  });
+  it("stomps an enemy from above and has no weapons", () => {
+    const g = new Game(level([{ name: "e1", type: "enemy", x: 100, y: 400, kind: "trooper", patrol: 0 }]), { rules, lives: 3 });
+    run(g, 30, Input.B2); // no gun
+    expect(g.players[0]!.shots).toHaveLength(0);
+    run(g, 1, Input.B1 | Input.Right);
+    run(g, 60, Input.Right);
+    expect(g.players[0]!.lives).toBe(3);
+    expect(g.enemies[0]!.state === "down" || g.enemies[0]!.state === "off").toBe(true);
+  });
+});

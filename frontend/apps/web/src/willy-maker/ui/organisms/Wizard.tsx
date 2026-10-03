@@ -5,6 +5,7 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PLATFORMER_RULES } from "../../engine/rules";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
 import { projectFromTemplate, addStarterTilesets, type TemplateId } from "../../templates";
@@ -130,6 +131,8 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
       if (exit) exit.x = Math.max(exit.x, level.size.w - 64);
     } else p = projectFromTemplate(start === "tiled" || start === "picture" ? "empty" : start, { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens, height });
     p.genre = genre;
+    // a platformer starts with its own rules (no weapons, stomping), changeable in the Rules card
+    if (genre === "platformer") p.settings.rules = { ...(p.settings.rules ?? {}), ...PLATFORMER_RULES };
     await attachStarterImages(p);
     setBusy(false);
     reset();

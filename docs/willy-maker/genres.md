@@ -1,6 +1,6 @@
 # Willy Maker: game genres
 
-The genres Willy Maker plans, as a roadmap. Today there is **one engine, the platform shooter**: the rules of `frontend/apps/web/src/willy-maker/engine/` (the same as the ROM prototype's `rom/src/main.c`). The new game wizard lists every genre below, in this order; only the platform shooter can be chosen, the others show "Coming soon" with a one-line description. Overview: [README.md](README.md). The project stores its genre in `genre` ([file-format.md](file-format.md), format 3).
+The genres Willy Maker plans, as a roadmap. Today there is **one engine, the platform shooter**, and the **platformer** runs on it with its own rules (below): the rules of `frontend/apps/web/src/willy-maker/engine/` (the same as the ROM prototype's `rom/src/main.c`). The new game wizard lists every genre below, in this order; only the platform shooter can be chosen, the others show "Coming soon" with a one-line description. Overview: [README.md](README.md). The project stores its genre in `genre` ([file-format.md](file-format.md), format 3).
 
 The order is by **how much of today's engine a genre reuses**: the first ones keep the side view, the scrolling camera, the collision grid, the objects and the 4-player join; the last ones need a new engine and new editors. Sizes are rough: **S** (days, mostly rules and parts), **M** (a few weeks: new movement or camera), **L** (a new engine on the same editor), **XL** (a new engine and new editors).
 
@@ -21,7 +21,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** stick moves and climbs, B1 jump, B2 fire (knife when an enemy is adjacent), B3 special; double tap to run.
 - **Size:** done; finishing the coming-soon parts is **S** each.
 
-## 2. Platformer
+## 2. Platformer (available, first version)
+
+**Built** (task T-22 of [experiment 1's verdict](../experiments/verdict.md)): the platform shooter's engine with the rules `weapons` off and `stomp` on (play mode and the ROM alike: landing on an enemy's head takes it down and bounces, touching one hurts), **coins** (pickup `coin`: 100 points, a `COINS n/m` counter in the HUD) and **springs** (pickup `spring`: standing on one throws the player up, about 165 px). The wizard offers it, and a new platformer starts with those rules in its Rules card. Still to come: moving and falling platforms, and the free camera.
 
 - **The player:** jumps, times moving platforms and avoids hazards, with no guns; the level is the challenge. Stomps or simple enemies, collectibles, a goal.
 - **Engine:** today's movement and camera without the weapons; new: moving and falling platforms, springs, stomping enemies, collectibles and a counter, a free camera (up and down as well as forward).

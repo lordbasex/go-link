@@ -86,6 +86,8 @@ export const gameEn = {
     exitNeedsEnemies: "The exit needs every enemy down",
     doubleJump: "Double jump (B1 again in the air)",
     jetpack: "Jet pack (hold B1 while falling)",
+    weapons: "Weapons (gun, knife, kick, bazooka)",
+    stomp: "Landing on an enemy takes it down",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",

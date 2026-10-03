@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // The game genres Willy Maker plans (docs/willy-maker/genres.md), in the
-// roadmap's order: the ones that reuse most of today's engine first. Only
-// the platform shooter has an engine today; the others are listed as
-// "coming soon". Names and descriptions live in the core i18n (`genres`).
+// roadmap's order: the ones that reuse most of today's engine first. The
+// platform shooter and the platformer (T-22: the same engine with no
+// weapons, stomping, coins and springs) can be made today; the others are
+// listed as "coming soon". Names and descriptions live in the core i18n (`genres`).
 
 export const GENRES = [
   "platform-shooter",
@@ -27,7 +28,7 @@ export type GenreId = (typeof GENRES)[number];
 export const DEFAULT_GENRE: GenreId = "platform-shooter";
 
 /** The genres the engine can play and build today. */
-export const AVAILABLE_GENRES: ReadonlySet<GenreId> = new Set<GenreId>(["platform-shooter"]);
+export const AVAILABLE_GENRES: ReadonlySet<GenreId> = new Set<GenreId>(["platform-shooter", "platformer"]);
 
 export function isGenre(v: unknown): v is GenreId {
   return typeof v === "string" && (GENRES as readonly string[]).includes(v);

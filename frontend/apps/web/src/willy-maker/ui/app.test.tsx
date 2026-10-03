@@ -27,11 +27,11 @@ describe("Willy Maker app", () => {
     let opened: string | null = null;
     render(<WillyMakerApp lang="en" onProjectId={(id) => (opened = id)} />);
     expect(screen.getByText("No games yet. Start one with “New game”.")).toBeInTheDocument();
-    // step 1: the genre, only the platform shooter can be chosen today
+    // step 1: the genre, the platform shooter and the platformer can be chosen today (T-22)
     const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
     expect(genres).toHaveLength(13);
-    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter")]);
-    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(12);
+    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer")]);
+    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(11);
     expect(genres[0]).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("radio", { name: /Beat 'em up/ }));
     expect(genres[0]).toHaveAttribute("aria-checked", "true");

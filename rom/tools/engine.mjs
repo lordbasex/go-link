@@ -44,7 +44,7 @@ fs.mkdirSync(GEN, { recursive: true });
 // 1. The engine's sprites and their C tables.
 const gfx = new GfxRegion(0x600000);
 const defs = ["#define FONT_CODE(ch) ((u16)(ch)) /* 8x8 tile code = ASCII */"];
-const { spriteEnd } = addArt(gfx, defs, GEN, { level: false, recruits: RECRUIT_SHIRTS, moves: true });
+const { spriteEnd } = addArt(gfx, defs, GEN, { level: false, recruits: RECRUIT_SHIRTS, moves: true, platformer: true });
 // the sprite palettes the engine's art takes (32 exist): a game's own heroes use the rest
 const define = (name) => {
   const m = defs.map((l) => new RegExp(`^#define ${name} (\\d+)`).exec(l)).find(Boolean);

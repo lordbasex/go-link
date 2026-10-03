@@ -88,6 +88,8 @@ export const gamePt: GameMessages = {
     exitNeedsEnemies: "A saída exige todos os inimigos derrotados",
     doubleJump: "Pulo duplo (B1 de novo no ar)",
     jetpack: "Mochila a jato (segure B1 ao cair)",
+    weapons: "Armas (arma, faca, chute, bazuca)",
+    stomp: "Cair sobre um inimigo o derruba",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

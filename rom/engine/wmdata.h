@@ -55,7 +55,7 @@ struct wm_object {
 /* civilian: a = 1 for a child */
 /* crate:    a = size in cells (1 or 2), b = hits (0: never breaks from shots), c = contents (WM_ITEM_*) */
 /* pickup:   a = item (WM_ITEM_*) */
-enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH };
+enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING };
 
 /* text screens */
 enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER, WM_SCR_JOIN, WM_SCR_AMMO, WM_SCR_COIN, WM_SCR_END = 0xff };
@@ -71,6 +71,8 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_DOUBLE_JUMP 0x0008 /* B1 again in the air jumps once more (docs/willy-maker/moves.md) */
 #define WM_F_JETPACK 0x0010     /* B1 held in the air lifts the player, 90 frames of fuel */
 #define WM_F_DIFFICULTY 0x0060  /* bits 5-6, the DIP switch's difficulty: 0 normal, 1 easy, 2 hard, 3 lag */
+#define WM_F_NO_WEAPONS 0x0080  /* the platformer (T-22): no gun, knife, kick or bazooka */
+#define WM_F_STOMP 0x0100       /* landing on an enemy from above takes it down */
 
 struct wm_data {
 	u32 magic;                /* 00 */

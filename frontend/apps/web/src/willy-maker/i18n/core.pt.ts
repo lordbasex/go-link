@@ -227,6 +227,8 @@ export const corePt: CoreMessages = {
     grenades: "Granadas",
     health: "Saúde",
     lattenza_page: "Página de Lattenza",
+    coin: "Moeda",
+    spring: "Mola",
     nothing: "Nada",
     weapon: "Arma",
     civilian: "Civil",

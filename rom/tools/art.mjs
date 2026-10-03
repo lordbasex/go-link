@@ -602,10 +602,37 @@ export function addArt(gfx, defs, genDir, opts = {}) {
   for (let t = 0; t < 2; t++) gfx.tile16(code + t, rocket.map((row) => row.slice(t * 16, t * 16 + 16)));
   h.push(`#define TILE_ROCKET ${hex4(code)} /* 2x1 block */`, `#define PAL_ROCKET ${objPalettes.length}`);
   objPalettes.push([0xf000, 0xf7a8, 0xfcdc, 0xfe54, 0xffb3, ...new Array(10).fill(0xf000), 0x0000]);
+  code += 2;
+  if (opts.platformer) {
+    // the platformer's pickups (Willy Maker, docs/willy-maker/genres.md): a coin and a spring, one palette
+    const coin = Array.from({ length: 16 }, (_, y) =>
+      Array.from({ length: 16 }, (_, x) => {
+        const dx = x - 7.5;
+        const dy = y - 7.5;
+        const d = Math.sqrt(dx * dx * 1.6 + dy * dy);
+        if (d > 7) return 15;
+        if (d > 5.8) return 1; // rim
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 4) return 3; // the mark
+        return dx + dy < -3 ? 4 : 2; // face, with a shine
+      }),
+    );
+    gfx.tile16(code, coin);
+    const spring = Array.from({ length: 16 }, (_, y) =>
+      Array.from({ length: 16 }, (_, x) => {
+        if (y >= 13) return x >= 1 && x <= 14 ? 5 : 15; // base
+        if (y <= 2) return x >= 1 && x <= 14 ? 6 : 15; // top plate
+        const coil = Math.abs(((y + x * 0.5) % 4) - 2) < 0.9;
+        return x >= 3 && x <= 12 && coil ? 7 : 15;
+      }),
+    );
+    gfx.tile16(code + 1, spring);
+    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, ...new Array(7).fill(0xf000), 0x0000]);
+    code += 2;
+  }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));
   h.push(`#define OBJ_PALETTES ${objPalettes.length}`, `extern const u16 obj_palettes[${objPalettes.length * 16}];`);
-  code += 2;
   h.push(`/* sprite tiles used: 0x1000-${hex4(code)} */`);
   if (withLevel) addLevelArt(gfx, c, h, code);
   else console.log(`art: sprites up to tile ${hex4(code)}`);

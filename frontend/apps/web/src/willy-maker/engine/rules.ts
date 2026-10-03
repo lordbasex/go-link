@@ -174,7 +174,16 @@ export interface GameRules {
   doubleJump: boolean;
   /** B1 held in the air while falling lifts the player for 90 frames of fuel. */
   jetpack: boolean;
+  /** The guns, the knife, the kick and the bazooka (off: the platformer, T-22). */
+  weapons: boolean;
+  /** Landing on an enemy's head takes it down and bounces the player (the platformer). */
+  stomp: boolean;
 }
+
+/** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
+export const COIN_SCORE = 100;
+export const SPRING_VY = -180;
+export const STOMP_VY = -80;
 
 export const DEFAULT_RULES: GameRules = {
   enemyHp: ENEMY_HP,
@@ -191,7 +200,12 @@ export const DEFAULT_RULES: GameRules = {
   extraPorts: "soon",
   doubleJump: false,
   jetpack: false,
+  weapons: true,
+  stomp: false,
 };
+
+/** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
+export const PLATFORMER_RULES: Partial<GameRules> = { weapons: false, stomp: true, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false };
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
 export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
@@ -213,6 +227,8 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     extraPorts: r.extraPorts === "ignore" ? "ignore" : "soon",
     doubleJump: bool(r.doubleJump, false),
     jetpack: bool(r.jetpack, false),
+    weapons: bool(r.weapons, true),
+    stomp: bool(r.stomp, false),
   };
 }
 

@@ -71,5 +71,5 @@ export const playPt: PlayMessages = {
   more: "Mais",
   startButton: "Start",
   dir: { up: "Cima", down: "Baixo", left: "Esquerda", right: "Direita" },
-  hud: { start: "PRESS START", cleared: "MISSÃO CUMPRIDA", over: "GAME OVER", ammo: "MUNIÇÃO", enemies: "INIMIGOS", exitClosed: "DERROTE TODOS OS INIMIGOS", rescued: "RESGATADOS" },
+  hud: { start: "PRESS START", cleared: "MISSÃO CUMPRIDA", over: "GAME OVER", ammo: "MUNIÇÃO", enemies: "INIMIGOS", exitClosed: "DERROTE TODOS OS INIMIGOS", rescued: "RESGATADOS", coins: "MOEDAS" },
 };

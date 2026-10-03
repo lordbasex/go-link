@@ -85,12 +85,15 @@ const TXT_BIG = 0x10;
 const TXT_COUNT = 0x20;
 const TXT_BLINK = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
-const ITEM: Record<string, number> = { bazooka: 1, health: 2 };
+const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
 const F_DOUBLE_JUMP = 8;
 const F_JETPACK = 16;
+/** The platformer (T-22): no weapons, stomping. */
+const F_NO_WEAPONS = 0x80;
+const F_STOMP = 0x100;
 /** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
 const F_DIFFICULTY_SHIFT = 5;
 
@@ -512,7 +515,7 @@ export function packGame(
   for (const k of far.table) out.u8(k);
   out.align();
   const objAt = out.addr;
-  for (const row of [...enemies.slice(0, 16), ...civs.slice(0, 8), ...crates.slice(0, 32), ...pickups.slice(0, 16)]) for (const v of row) out.u16(v & 0xffff);
+  for (const row of [...enemies.slice(0, 16), ...civs.slice(0, 8), ...crates.slice(0, 32), ...pickups.slice(0, 64)]) for (const v of row) out.u16(v & 0xffff);
   const textAt = out.addr;
   for (const { scr, line, attr } of textLines(project)) {
     const text = [...line.text].map((ch) => (unsupportedChars(ch).length ? " " : ch)).join("").slice(0, 48);
@@ -600,7 +603,7 @@ export function packGame(
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT));
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT) | (rules.weapons ? 0 : F_NO_WEAPONS) | (rules.stomp ? F_STOMP : 0));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);
@@ -616,7 +619,7 @@ export function packGame(
   w16(Math.min(16, enemies.length));
   w16(Math.min(8, civs.length));
   w16(Math.min(32, crates.length));
-  w16(Math.min(16, pickups.length));
+  w16(Math.min(64, pickups.length));
   startX.forEach((v) => w16(v));
   startY.forEach((v) => w16(v));
   exit.forEach((v) => w16(v));

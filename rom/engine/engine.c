@@ -522,7 +522,7 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define MAX_ENEMIES 16
 #define MAX_CIVS 8
 #define MAX_CRATES 32
-#define MAX_PICKUPS 16
+#define MAX_PICKUPS 64 /* the platformer's coins (T-22): was 16 */
 #define MAX_EN_SHOTS 8
 #define MAX_DAMAGED 32
 /* the moves (docs/willy-maker/moves.md), as play mode's engine/rules.ts */
@@ -606,6 +606,11 @@ static struct pickup {
 	int item, live;
 } pickup[MAX_PICKUPS];
 static int npickups;
+/* the platformer (T-22): coins taken and in the level, a spring's and a stomp's bounce (1/16 px per frame) */
+static int coins, ncoins;
+#define COIN_SCORE 100
+#define SPRING_VY (-180)
+#define STOMP_VY (-80)
 
 static struct {
 	s16 cell;
@@ -1063,8 +1068,12 @@ static void game_reset(void)
 	}
 	o = D_OBJ + D->n_enemies + D->n_civs + D->n_crates;
 	npickups = 0;
-	for (i = 0; i < D->n_pickups; i++, o++)
+	coins = ncoins = 0;
+	for (i = 0; i < D->n_pickups; i++, o++) {
 		spawn_pickup(o->x, o->y, o->a);
+		if (o->a == WM_ITEM_COIN)
+			ncoins++;
+	}
 	for (i = 0; i < MAX_EN_SHOTS; i++)
 		en_shots[i].live = 0;
 	rescued = 0;
@@ -1224,7 +1233,7 @@ static void update_player(struct player *p)
 			p->air_jumps = 1;
 		}
 		/* jump kick: Down + B2 in the air */
-		if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t) {
+		if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t && !(D->flags & WM_F_NO_WEAPONS)) {
 			p->kick_t = KICK_FRAMES;
 			p->kick_hit = 0;
 			sfx(SFX_KICK, p->x);
@@ -1291,9 +1300,23 @@ static void update_player(struct player *p)
 	for (i = 0; i < npickups; i++) {
 		struct pickup *k = &pickup[i];
 		d = k->x - p->x;
+		if (k->item == WM_ITEM_SPRING) {
+			/* a spring: standing on it throws the player up (the platformer, T-22) */
+			if (k->live && d > -12 && d < 12 && p->on_ground && fy == k->fy) {
+				p->vy = SPRING_VY;
+				p->on_ground = 0;
+				p->air_jumps = 0;
+				sfx(SFX_JUMP, p->x);
+			}
+			continue;
+		}
 		if (k->live && d > -14 && d < 14 && fy - k->fy > -8 && fy - k->fy < 8) {
 			k->live = 0;
 			sfx(SFX_PICKUP, p->x);
+			if (k->item == WM_ITEM_COIN) {
+				coins++;
+				p->score += COIN_SCORE;
+			}
 			if (k->item == WM_ITEM_BAZOOKA) {
 				p->special = WM_ITEM_BAZOOKA;
 				p->ammo = BAZOOKA_AMMO;
@@ -1305,7 +1328,7 @@ static void update_player(struct player *p)
 	/* special (B3): the picked-up weapon while it has ammo; nothing without one */
 	if (p->bazooka_t)
 		p->bazooka_t--;
-	if (PRESSED(p, BTN_3) && p->special == WM_ITEM_BAZOOKA && p->ammo > 0 && !p->rocket.live && p->on_ground) {
+	if (PRESSED(p, BTN_3) && p->special == WM_ITEM_BAZOOKA && p->ammo > 0 && !p->rocket.live && p->on_ground && !(D->flags & WM_F_NO_WEAPONS)) {
 		p->rocket.live = 1;
 		sfx(SFX_ROCKET, p->x);
 		p->rocket.dir = p->flip ? -1 : 1;
@@ -1339,7 +1362,7 @@ static void update_player(struct player *p)
 	/* fire (B2): the knife if an enemy stands right in front, else the machine gun */
 	if (p->knife_t)
 		p->knife_t--;
-	if (PRESSED(p, BTN_2) && p->on_ground && !p->climbing) {
+	if (PRESSED(p, BTN_2) && p->on_ground && !p->climbing && !(D->flags & WM_F_NO_WEAPONS)) {
 		int ei = enemy_at(p->x + (p->flip ? -p->look->knife_reach : p->look->knife_reach), fy - p->look->knife_y, 16);
 		if (ei >= 0) {
 			p->knife_t = KNIFE_FRAMES;
@@ -1347,7 +1370,7 @@ static void update_player(struct player *p)
 			en_damage(ei, 2, p);
 		}
 	}
-	p->firing = (p->pad & BTN_2) && !p->knife_t && !p->bazooka_t && !p->climbing && !p->kick_t;
+	p->firing = !(D->flags & WM_F_NO_WEAPONS) && (p->pad & BTN_2) && !p->knife_t && !p->bazooka_t && !p->climbing && !p->kick_t;
 	if (p->fire_wait)
 		p->fire_wait--;
 	if (p->firing && !p->fire_wait)
@@ -1457,6 +1480,17 @@ static void update_enemies(int playing)
 				e->state = EN_OFF;
 			break;
 		}
+		/* stomping: landing on an enemy's head takes it down and bounces (the platformer, T-22) */
+		if (playing && (D->flags & WM_F_STOMP) && en_alive(i))
+			for (k = 0; k < nplayers; k++) {
+				struct player *p = &pl[k];
+				s32 dx = p->x - e->x, fy = p->y >> 4;
+				if (p->active && p->vy > 0 && dx > -16 && dx < 16 && fy >= e->fy - 44 && fy <= e->fy - 28) {
+					en_damage(i, 99, p);
+					p->vy = STOMP_VY;
+					break;
+				}
+			}
 		/* touching an enemy hurts */
 		if (playing && R->touch_hurts && en_alive(i))
 			for (k = 0; k < nplayers; k++) {
@@ -1748,9 +1782,17 @@ static void draw_civilians(void)
 static void draw_pickups(void)
 {
 	int i;
-	for (i = 0; i < npickups; i++)
-		if (pickup[i].live && (frame_count & 16))
-			put_sprite((int)pickup[i].x - cam_x - 16, (int)pickup[i].fy - cam_y - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
+	for (i = 0; i < npickups; i++) {
+		int sx = (int)pickup[i].x - cam_x, sy = (int)pickup[i].fy - cam_y;
+		if (!pickup[i].live)
+			continue;
+		if (pickup[i].item == WM_ITEM_COIN)
+			put_sprite(sx - 8, sy - 16 - ((frame_count >> 3) & 1), TILE_COIN, PAL_PICKUPS);
+		else if (pickup[i].item == WM_ITEM_SPRING)
+			put_sprite(sx - 8, sy - 16, TILE_SPRING, PAL_PICKUPS);
+		else if (frame_count & 16)
+			put_sprite(sx - 16, sy - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
+	}
 }
 
 static void draw_world(void)
@@ -1926,6 +1968,13 @@ static void hud(void)
 	if (!free_play()) {
 		print(37, 26, "CREDITS", INK_WHITE);
 		print_num(45, 26, (u32)credits, 1, INK_WHITE);
+	}
+	/* the coins taken (the platformer) */
+	if (ncoins) {
+		print(12, 26, "COINS", INK_WHITE);
+		print_num(18, 26, (u32)coins, 2, INK_WHITE);
+		put_char(20, 26, '/', INK_WHITE);
+		print_num(21, 26, (u32)ncoins, 2, INK_WHITE);
 	}
 	/* what the exit still needs */
 	if (R->exit_needs_enemies && D->exit_w > 0) {

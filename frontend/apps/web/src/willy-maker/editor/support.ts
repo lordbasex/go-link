@@ -54,7 +54,7 @@ export const SUPPORT: Record<string, Support> = {
   "tag:hazard": works,
   "tag:water": soon("water"),
   "crate:object": works,
-  ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`pickup:${i}`, i === "bazooka" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
+  ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`pickup:${i}`, i === "bazooka" || i === "coin" || i === "spring" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
   ...Object.fromEntries(ENEMY_KINDS.map((k) => [`enemy:${k}`, { status: "works", shared: true } satisfies Support])),
   ...Object.fromEntries(BOSS_KINDS.map((k) => [`boss:${k}`, soon("boss")])),
   ...Object.fromEntries(CIVILIAN_KINDS.map((k) => [`civilian:${k}`, works])),
@@ -66,7 +66,7 @@ export const SUPPORT: Record<string, Support> = {
   "camera_lock:camera_lock": works,
   "exit:exit": works,
   // the inspector's options
-  ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`item:${i}`, i === "bazooka" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
+  ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`item:${i}`, i === "bazooka" || i === "coin" || i === "spring" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
   ...Object.fromEntries(CRATE_CONTENTS.map((c) => [`contents:${c}`, c === "nothing" || c === "bazooka" ? works : c === "civilian" ? soon("crateCivilian") : soon(WEAPON_SOON[c]!)])),
   // settings play mode does not use (the Game tab's switches, a level's timer)
   "dip:difficulty": works,

@@ -93,7 +93,7 @@ export interface DrawOptions {
   ghost?: Ghost | null;
   fps?: number;
   /** HUD words: the game's own (Menus tab) or the translated defaults. */
-  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string; rescued?: string };
+  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string; rescued?: string; coins?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's); by player number when missing. */
   variants?: number[];
   /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
@@ -321,6 +321,33 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   const f = game.frame;
   for (const k of game.pickups) {
     if (!k.live) continue;
+    if (k.item === "coin") {
+      // the platformer's coin, as the ROM draws it (gold, bobbing a pixel)
+      const y = k.fy - 8 - ((f >> 3) & 1);
+      ctx.fillStyle = "#b86010";
+      ctx.beginPath();
+      ctx.ellipse(k.x, y, 5.5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffcc22";
+      ctx.beginPath();
+      ctx.ellipse(k.x, y, 4.2, 5.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#7a3300";
+      ctx.fillRect(k.x - 1, y - 4, 2, 8);
+      continue;
+    }
+    if (k.item === "spring") {
+      ctx.fillStyle = "#555555";
+      ctx.fillRect(k.x - 7, k.fy - 3, 14, 3);
+      ctx.strokeStyle = "#aaaaaa";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++) ctx.lineTo(k.x + (i % 2 ? 5 : -5), k.fy - 3 - i * 2.5);
+      ctx.stroke();
+      ctx.fillStyle = "#ee4444";
+      ctx.fillRect(k.x - 7, k.fy - 16, 14, 3);
+      continue;
+    }
     const bob = Math.round(Math.sin(f / 8) * 2);
     ctx.fillStyle = ART.pickup;
     ctx.fillRect(k.x - 9, k.fy - 12 + bob, 18, 8);
@@ -497,6 +524,12 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
     for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
+  }
+  // the platformer's coins taken (T-22)
+  if (game.coinTotal) {
+    ctx.fillStyle = colors.text;
+    const two = (n: number) => String(n).padStart(2, "0");
+    ctx.fillText(`${(o.words.coins ?? "COINS").toUpperCase()} ${two(game.coins)}/${two(game.coinTotal)}`, 96, SCREEN_H - 10);
   }
   // what the exit still needs, and why it does not open yet (experiment 1, J-11)
   if (game.rules.exitNeedsEnemies && game.exits.length && game.outcome === "playing") {

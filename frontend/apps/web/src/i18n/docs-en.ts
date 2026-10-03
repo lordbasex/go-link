@@ -719,7 +719,7 @@ export const docsEn: Docs = {
           t: "steps",
           items: [
             "Open [Tools › Willy Maker](/tools/willy-maker) and press **New game**.",
-            "Pick the genre (today the **Platform shooter**), the board (CPS-1), how the emulator will see it (**4 players · 3 buttons** or **4 players · 2 buttons**) and where to start from, then give it a title and a first level.",
+            "Pick the genre (today the **Platform shooter** or the **Platformer**), the board (CPS-1), how the emulator will see it (**4 players · 3 buttons** or **4 players · 2 buttons**) and where to start from, then give it a title and a first level.",
             "In **Build**, paint the floor with the pencil, place a **Start** and an **Exit**, and press **Play** (P) to try it.",
             "Bring in your hero in **Characters**, set the players and buttons in **Game**, and the screens in **Menus**.",
             "Open **Export**, fix what the review lists and download the project (.zip) to keep a backup.",
@@ -729,7 +729,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Genre**: the first step lists the genres Willy Maker plans: platform shooter, platformer, beat 'em up, light gun, horizontal and vertical shooters, top-down run and gun, maze action, versus fighting, puzzle, quiz and party, sports and racing. Today only the **Platform shooter** (run and gun seen from the side) has an engine; the others show **Coming soon** with a line on what they will be. The genre is saved with the game and shows in the top bar.",
+            "**Genre**: the first step lists the genres Willy Maker plans: platform shooter, platformer, beat 'em up, light gun, horizontal and vertical shooters, top-down run and gun, maze action, versus fighting, puzzle, quiz and party, sports and racing. Today the **Platform shooter** (run and gun seen from the side) and the **Platformer** (the same engine with no weapons: enemies are stomped, **Coin** and **Spring** in Parts › Objects, a coin counter in the HUD; its Rules card starts with weapons off and stomping on) can be made; the others show **Coming soon** with a line on what they will be. The genre is saved with the game and shows in the top bar.",
             "**Board**: CPS-1, with its limits on the card (16 × 16 sprites with 15 colors per block, 32 sprite palettes, 3 layers, 6 MB of graphics, no BIOS). Other boards come later.",
             "**Layout**: **4 players · 3 buttons** (jump, fire and special) or **4 players · 2 buttons**, where special is jump + fire together.",
             "**Start from**: the **Buenos Aires template** (Mission 1's five sections: docks, cranes, lobby, servers and helipad, about 21 screens), **Empty** (just the grid and the floor), **A Tiled map** (.tmj, .json or .tmx) or **Your own picture**: any picture becomes the level's background (the level as wide as the picture at the height you choose), with nothing drawn yet; then mark on it with the pencil, on the Collision layer, what is floor, a ledge, a ladder or a crate.",

@@ -227,6 +227,8 @@ export const coreEn = {
     grenades: "Grenades",
     health: "Health",
     lattenza_page: "Lattenza page",
+    coin: "Coin",
+    spring: "Spring",
     nothing: "Nothing",
     weapon: "Weapon",
     civilian: "Civilian",

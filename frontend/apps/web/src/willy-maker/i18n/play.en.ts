@@ -71,7 +71,7 @@ export const playEn = {
   more: "More",
   startButton: "Start",
   dir: { up: "Up", down: "Down", left: "Left", right: "Right" },
-  hud: { start: "PRESS START", cleared: "MISSION CLEAR", over: "GAME OVER", ammo: "AMMO", enemies: "ENEMY", exitClosed: "DEFEAT EVERY ENEMY", rescued: "RESCUED" },
+  hud: { start: "PRESS START", cleared: "MISSION CLEAR", over: "GAME OVER", ammo: "AMMO", enemies: "ENEMY", exitClosed: "DEFEAT EVERY ENEMY", rescued: "RESCUED", coins: "COINS" },
 };
 
 export type PlayMessages = typeof playEn;

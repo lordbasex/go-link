@@ -44,6 +44,9 @@ import {
   TURN_FRAMES,
   cancelOpposites,
   rulesWith,
+  COIN_SCORE,
+  SPRING_VY,
+  STOMP_VY,
   bodyFor,
   WILLY_BODY,
   type Body,
@@ -219,6 +222,9 @@ export class Game {
   camFar = 0;
   frame = 0;
   rescued = 0;
+  /** The platformer's coins taken, and in the level. */
+  coins = 0;
+  coinTotal = 0;
   /** Frames left of the "defeat every enemy" message after the exit was reached too early. */
   exitClosed = 0;
   outcome: GameOutcome = "playing";
@@ -312,6 +318,7 @@ export class Game {
         }
         case "pickup":
           this.pickups.push({ name: o.name, item: str(o.item, "bazooka"), x: o.x, fy: o.y, live: true });
+          if (o.item === "coin") this.coinTotal++;
           break;
         case "camera_lock":
           this.cameraLocks.push({ name: o.name, x: o.x, y: o.y, w: num(o.w, SCREEN_W), h: num(o.h, SCREEN_H), done: false });
@@ -607,7 +614,7 @@ export class Game {
         this.events.push({ kind: "jump", player: p.index });
       }
       // jump kick: Down + B2 in the air
-      if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT) {
+      if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT && this.rules.weapons) {
         p.kickT = KICK_FRAMES;
         p.kickHit = false;
         this.events.push({ kind: "knife", player: p.index });
@@ -661,8 +668,22 @@ export class Game {
     // pickups
     for (const k of this.pickups) {
       const d = k.x - p.x;
+      if (k.item === "spring") {
+        // a spring: standing on it throws the player up (the platformer, T-22)
+        if (k.live && d > -12 && d < 12 && p.onGround && fy === k.fy) {
+          p.vy = SPRING_VY;
+          p.onGround = false;
+          p.airJumps = 0;
+          this.events.push({ kind: "jump", player: p.index });
+        }
+        continue;
+      }
       if (k.live && d > -14 && d < 14 && fy - k.fy > -8 && fy - k.fy < 8) {
         k.live = false;
+        if (k.item === "coin") {
+          this.coins++;
+          p.score += COIN_SCORE;
+        }
         if (k.item === "bazooka") {
           p.special = "bazooka";
           p.ammo = BAZOOKA_AMMO;
@@ -673,7 +694,7 @@ export class Game {
 
     // special: the picked-up weapon while it has ammo
     if (p.bazookaT) p.bazookaT--;
-    if (this.pressed(p, Input.B3) && p.special === "bazooka" && p.ammo > 0 && !p.rocket && p.onGround) {
+    if (this.pressed(p, Input.B3) && p.special === "bazooka" && p.ammo > 0 && !p.rocket && p.onGround && this.rules.weapons) {
       p.rocket = { dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -30 : 10), y: fy - p.body.rocketY, speed: 2 };
       p.bazookaT = BAZOOKA_FRAMES;
       this.events.push({ kind: "rocket", player: p.index });
@@ -695,7 +716,7 @@ export class Game {
 
     // fire: the knife if an enemy stands right in front, else the machine gun
     if (p.knifeT) p.knifeT--;
-    if (this.pressed(p, Input.B2) && p.onGround && !p.climbing) {
+    if (this.pressed(p, Input.B2) && p.onGround && !p.climbing && this.rules.weapons) {
       const e = this.enemyAt(p.x + (p.flip ? -p.body.knifeReach : p.body.knifeReach), fy - p.body.knifeY, 16);
       if (e) {
         p.knifeT = KNIFE_FRAMES;
@@ -703,7 +724,7 @@ export class Game {
         this.events.push({ kind: "knife", player: p.index });
       }
     }
-    p.firing = (p.pad & Input.B2) !== 0 && !p.knifeT && !p.bazookaT && !p.climbing && !p.kickT;
+    p.firing = this.rules.weapons && (p.pad & Input.B2) !== 0 && !p.knifeT && !p.bazookaT && !p.climbing && !p.kickT;
     if (p.fireWait) p.fireWait--;
     if (p.firing && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
       p.shots.push({ dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -20 : 20), y: fy - (p.crouching ? p.body.crouchShotY : p.body.shotY) });
@@ -800,6 +821,17 @@ export class Game {
           e.t = 0;
         }
       } else if (e.state === "down" && e.t > 90) e.state = "off";
+      // stomping: landing on an enemy's head takes it down and bounces (the platformer, T-22)
+      if (this.rules.stomp && this.alive(e))
+        for (const p of this.players) {
+          const dx = p.x - e.x;
+          const fy = p.y >> 4;
+          if (p.active && p.vy > 0 && dx > -16 && dx < 16 && fy >= e.fy - 44 && fy <= e.fy - 28) {
+            this.damage(e, 99, p);
+            p.vy = STOMP_VY;
+            break;
+          }
+        }
       // touching an enemy hurts
       if (this.rules.touchHurts && this.alive(e))
         for (const p of this.players) {

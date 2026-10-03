@@ -105,7 +105,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-19 | The AI pack's `PROMPT.md` states its limits first: the tools it needs and that `build.mjs` builds only the prototype | E-02 | done |
 | T-20 | A lighter AI pack: level pictures cut into the board's tiles instead of 22 MB pictures | E-03 | done |
 | T-21 | A project or AI pack is not a ROM: the export page says so, and a `.willy.zip` dropped on the device gets a message | E-04 | done |
-| T-22 | Other genres, in the order of [genres.md](../willy-maker/genres.md) | E-05, U-04 | roadmap |
+| T-22 | Other genres, in the order of [genres.md](../willy-maker/genres.md) | E-05, U-04 | the platformer (the next in the order) done in a first version: no weapons, stomping, coins and springs, in play mode and the ROM; moving platforms, the free camera and the later genres stay on the roadmap |
 | T-23 | The number of players in plain sight (one or two, up to four) in the wizard and the Game tab | U-02 | done |
 | T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |
 | T-25 | The moves of a full sprite sheet, in play mode and in the ROM: crouch and crawl on down, landing, turning, a victory or thumbs up on a rescue and at the clear, a yawn after a long idle, a jump kick, and a double jump and a jet pack as optional rules; effects (muzzle flash, smoke) as their own sprites instead of inside the hero's frames | U-05 | done (effects as their own sprites: with T-26) |

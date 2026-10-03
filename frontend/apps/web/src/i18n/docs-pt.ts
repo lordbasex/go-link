@@ -719,7 +719,7 @@ export const docsPt: Docs = {
           t: "steps",
           items: [
             "Abra [Ferramentas › Willy Maker](/tools/willy-maker) e clique em **Novo jogo**.",
-            "Escolha o gênero (hoje **Plataforma com tiros**), a placa (CPS-1), como o emulador vai ver (**4 jogadores · 3 botões** ou **4 jogadores · 2 botões**) e de onde começar; depois dê um título e uma primeira fase.",
+            "Escolha o gênero (hoje **Plataforma com tiros** ou **Plataforma**), a placa (CPS-1), como o emulador vai ver (**4 jogadores · 3 botões** ou **4 jogadores · 2 botões**) e de onde começar; depois dê um título e uma primeira fase.",
             "Em **Construir**, pinte o chão com o lápis, coloque um **Início** e uma **Saída**, e clique em **Jogar** (P) para testar.",
             "Traga o seu herói em **Personagens**, defina os jogadores e botões em **Jogo**, e as telas em **Menus**.",
             "Abra **Exportar**, corrija o que a revisão apontar e baixe o projeto (.zip) para ter uma cópia.",
@@ -729,7 +729,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Gênero**: o primeiro passo lista os gêneros que o Willy Maker planeja: plataforma com tiros, plataforma, beat 'em up, pistola de luz, nave horizontal e vertical, tiro visto de cima, labirinto, luta um contra um, quebra-cabeça, perguntas e festa, esportes e corrida. Hoje só **Plataforma com tiros** (correr e atirar visto de lado) tem motor; os outros mostram **Em breve** com uma linha sobre o que serão. O gênero é salvo com o jogo e aparece na barra superior.",
+            "**Gênero**: o primeiro passo lista os gêneros que o Willy Maker planeja: plataforma com tiros, plataforma, beat 'em up, pistola de luz, nave horizontal e vertical, tiro visto de cima, labirinto, luta um contra um, quebra-cabeça, perguntas e festa, esportes e corrida. Hoje dá para fazer **Plataforma com tiros** (correr e atirar visto de lado) e **Plataforma** (o mesmo motor sem armas: os inimigos são pisados, **Moeda** e **Mola** em Peças › Objetos, um contador de moedas no HUD; o cartão de Regras começa com as armas desligadas e as pisadas ligadas); os outros mostram **Em breve** com uma linha sobre o que serão. O gênero é salvo com o jogo e aparece na barra superior.",
             "**Placa**: CPS-1, com os seus limites no cartão (sprites de 16 × 16 com 15 cores por bloco, 32 paletas de sprites, 3 camadas, 6 MB de gráficos, sem BIOS). Outras placas virão depois.",
             "**Layout**: **4 jogadores · 3 botões** (pulo, tiro e especial) ou **4 jogadores · 2 botões**, onde o especial é pulo + tiro juntos.",
             "**Começar de**: o **Modelo Buenos Aires** (as cinco seções da missão 1: docas, guindastes, saguão, servidores e heliponto, cerca de 21 telas), **Vazio** (só a grade e o chão), **Um mapa do Tiled** (.tmj, .json ou .tmx) ou **A sua própria imagem**: qualquer imagem vira o fundo da fase (a fase tão larga quanto a imagem na altura que você escolher), ainda sem nada desenhado; depois você marca por cima com o lápis, na camada Colisão, o que é chão, beiral, escada ou caixa.",
