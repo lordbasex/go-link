@@ -1,31 +1,46 @@
 {
- "name": "street-fight",
- "description": "The beat 'em up, phase 2 (WM_ROM_OUT/street of rom.test.tsx, rom/streetFixture.ts): two enemies come for player 1, stand beside it and hit; player 1 chains punch, punch and the knocking kick on the nearer one, hops and flying-kicks, and punches on until it is down; the second enemy stays behind the spec level's crates, which enemies cannot walk through (phase 3). Play mode gives the same places and states every frame.",
- "frames": 1500,
+ "name": "street-wave",
+ "description": "The beat 'em up, phase 3 (WM_ROM_OUT/wave of rom.test.tsx, rom/streetFixture.ts waveProject): player 1 picks up the pipe, walks into an enemy and grabs it, knees it twice and throws it behind, beats it with the pipe, then walks to the camera lock, where the screen stops until the wave of two enemies is down, and goes on. Play mode gives the same places and states every frame.",
+ "frames": 2220,
  "checkpoints": [
-  230,
-  300,
-  420,
-  600,
-  900,
+  216,
+  247,
+  330,
+  1100,
   1200,
-  1490
+  1280,
+  2200
  ],
  "expect": [
   {
-   "frame": 268,
-   "path": "enemies.3.state",
+   "frame": 216,
+   "path": "enemies.0.state",
+   "equals": "held"
+  },
+  {
+   "frame": 247,
+   "path": "enemies.0.state",
    "equals": "fall"
   },
   {
-   "frame": 348,
-   "path": "enemies.3.state",
+   "frame": 247,
+   "path": "enemies.0.x",
+   "equals": 49
+  },
+  {
+   "frame": 1200,
+   "path": "cam.x",
+   "equals": 600
+  },
+  {
+   "frame": 1278,
+   "path": "enemies.2.state",
    "equals": "down"
   },
   {
-   "frame": 900,
-   "path": "enemies.4.state",
-   "equals": "walk"
+   "frame": 2200,
+   "path": "cam.x",
+   "equals": 910
   }
  ],
  "steps": [
@@ -46,34 +61,35 @@
    ]
   },
   {
-   "from": 220,
-   "to": 220,
+   "from": 165,
+   "to": 215,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 225,
+   "to": 225,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 240,
-   "to": 240,
+   "from": 235,
+   "to": 235,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 260,
-   "to": 260,
+   "from": 245,
+   "to": 245,
    "port": 1,
    "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 280,
-   "to": 280,
-   "port": 1,
-   "buttons": [
+    "left",
     "b1"
    ]
   },
@@ -118,275 +134,27 @@
    ]
   },
   {
+   "from": 400,
+   "to": 400,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
    "from": 420,
-   "to": 421,
-   "port": 1,
-   "buttons": [
-    "b2"
-   ]
-  },
-  {
-   "from": 432,
-   "to": 432,
+   "to": 420,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 470,
-   "to": 470,
+   "from": 430,
+   "to": 1100,
    "port": 1,
    "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 490,
-   "to": 490,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 510,
-   "to": 510,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 530,
-   "to": 530,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 550,
-   "to": 550,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 570,
-   "to": 570,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 590,
-   "to": 590,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 610,
-   "to": 610,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 630,
-   "to": 630,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 650,
-   "to": 650,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 670,
-   "to": 670,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 690,
-   "to": 690,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 710,
-   "to": 710,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 730,
-   "to": 730,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 750,
-   "to": 750,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 770,
-   "to": 770,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 790,
-   "to": 790,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 810,
-   "to": 810,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 830,
-   "to": 830,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 850,
-   "to": 850,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 870,
-   "to": 870,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 890,
-   "to": 890,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 910,
-   "to": 910,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 930,
-   "to": 930,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 950,
-   "to": 950,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 970,
-   "to": 970,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 990,
-   "to": 990,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 1010,
-   "to": 1010,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 1030,
-   "to": 1030,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 1050,
-   "to": 1050,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 1070,
-   "to": 1070,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 1090,
-   "to": 1090,
-   "port": 1,
-   "buttons": [
-    "b1"
+    "right"
    ]
   },
   {
@@ -398,24 +166,32 @@
    ]
   },
   {
-   "from": 1130,
-   "to": 1130,
+   "from": 1126,
+   "to": 1126,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1150,
-   "to": 1150,
+   "from": 1142,
+   "to": 1142,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1170,
-   "to": 1170,
+   "from": 1158,
+   "to": 1158,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1174,
+   "to": 1174,
    "port": 1,
    "buttons": [
     "b1"
@@ -430,24 +206,32 @@
    ]
   },
   {
-   "from": 1210,
-   "to": 1210,
+   "from": 1206,
+   "to": 1206,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1230,
-   "to": 1230,
+   "from": 1222,
+   "to": 1222,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1250,
-   "to": 1250,
+   "from": 1238,
+   "to": 1238,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1254,
+   "to": 1254,
    "port": 1,
    "buttons": [
     "b1"
@@ -462,24 +246,32 @@
    ]
   },
   {
-   "from": 1290,
-   "to": 1290,
+   "from": 1286,
+   "to": 1286,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1310,
-   "to": 1310,
+   "from": 1302,
+   "to": 1302,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1330,
-   "to": 1330,
+   "from": 1318,
+   "to": 1318,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1334,
+   "to": 1334,
    "port": 1,
    "buttons": [
     "b1"
@@ -494,24 +286,32 @@
    ]
   },
   {
-   "from": 1370,
-   "to": 1370,
+   "from": 1366,
+   "to": 1366,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1390,
-   "to": 1390,
+   "from": 1382,
+   "to": 1382,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1410,
-   "to": 1410,
+   "from": 1398,
+   "to": 1398,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1414,
+   "to": 1414,
    "port": 1,
    "buttons": [
     "b1"
@@ -523,6 +323,246 @@
    "port": 1,
    "buttons": [
     "b1"
+   ]
+  },
+  {
+   "from": 1446,
+   "to": 1446,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1462,
+   "to": 1462,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1478,
+   "to": 1478,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1494,
+   "to": 1494,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1510,
+   "to": 1510,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1526,
+   "to": 1526,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1542,
+   "to": 1542,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1558,
+   "to": 1558,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1574,
+   "to": 1574,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1590,
+   "to": 1590,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1606,
+   "to": 1606,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1622,
+   "to": 1622,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1638,
+   "to": 1638,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1654,
+   "to": 1654,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1670,
+   "to": 1670,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1686,
+   "to": 1686,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1702,
+   "to": 1702,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1718,
+   "to": 1718,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1734,
+   "to": 1734,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1750,
+   "to": 1750,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1766,
+   "to": 1766,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1782,
+   "to": 1782,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1798,
+   "to": 1798,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1814,
+   "to": 1814,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1830,
+   "to": 1830,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1846,
+   "to": 1846,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1862,
+   "to": 1862,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1878,
+   "to": 1878,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1894,
+   "to": 1894,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1910,
+   "to": 2200,
+   "port": 1,
+   "buttons": [
+    "right"
    ]
   }
  ]

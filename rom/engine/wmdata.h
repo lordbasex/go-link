@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 10
+#define WM_VERSION 11
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -55,9 +55,10 @@ struct wm_object {
 /* civilian: a = 1 for a child */
 /* crate:    a = size in cells (1 or 2), b = hits (0: never breaks from shots), c = contents (WM_ITEM_*) */
 /* pickup:   a = item (WM_ITEM_*) */
+/* lock:     (x, y) its top left, a = width, b = height: the camera stops there while enemies stand in its x range */
 /* platform: (x, y) its top left at frame 0, a = width px (32-128, 16s), b = axis (0 across, 1 up and down),
              c = range px (0-512), d = speed px per frame (1-4); it goes there and back */
-enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING };
+enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING, WM_ITEM_PIPE };
 
 /* text screens */
 enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER, WM_SCR_JOIN, WM_SCR_AMMO, WM_SCR_COIN, WM_SCR_END = 0xff };
@@ -122,6 +123,9 @@ struct wm_data {
 	u16 pad;                  /* ac */
 	u32 pickup_looks;         /* ae u32[n_pickups]: a pickup's own look (its idle animation), 0 = the engine's icon */
 	u16 walk_y0, walk_y1;     /* b2, b4 the beat 'em up's walkable band: feet y, px (WM_F_DEPTH) */
+	u32 locks;                /* b6 wm_object[n_locks]: the camera locks (a beat 'em up's waves) */
+	u16 n_locks;              /* ba 0-8 */
+	u16 pad2;                 /* bc */
 };
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
@@ -165,7 +169,8 @@ _Static_assert(WM_OFF(enemy_looks) == 0x9e && WM_OFF(civ_looks) == 0xa2, "wm_dat
 _Static_assert(WM_OFF(platforms) == 0xa6 && WM_OFF(n_platforms) == 0xaa, "wm_data platforms");
 _Static_assert(WM_OFF(pickup_looks) == 0xae, "wm_data pickup looks");
 _Static_assert(WM_OFF(walk_y0) == 0xb2 && WM_OFF(walk_y1) == 0xb4, "wm_data walk band");
-_Static_assert(sizeof(struct wm_data) == 0xb6, "wm_data size");
+_Static_assert(WM_OFF(locks) == 0xb6 && WM_OFF(n_locks) == 0xba, "wm_data camera locks");
+_Static_assert(sizeof(struct wm_data) == 0xbe, "wm_data size");
 /* the records the packer writes for a look: 68000 alignment (2), big-endian */
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");

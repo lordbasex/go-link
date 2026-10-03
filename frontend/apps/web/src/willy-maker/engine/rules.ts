@@ -238,6 +238,19 @@ export const ENEMY_ATTACK_FRAMES = 28;
 export const ENEMY_REACH = 34;
 export const ENEMY_REST = 50;
 export const FALL_FRAMES = 60;
+/**
+ * The beat 'em up's phase 3: walking into an enemy within GRAB_REACH px in
+ * front and GRAB_DEPTH px of depth grabs it; B1 knees it, B1 with the stick
+ * away throws it THROW_DIST px behind (2 hits, knocked down); it slips away
+ * after GRAB_FRAMES. A pipe adds PIPE_REACH px and a hit to punches for
+ * PIPE_USES blows that land.
+ */
+export const GRAB_REACH = 18;
+export const GRAB_DEPTH = 8;
+export const GRAB_FRAMES = 90;
+export const THROW_DIST = 40;
+export const PIPE_USES = 12;
+export const PIPE_REACH = 10;
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
 export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {

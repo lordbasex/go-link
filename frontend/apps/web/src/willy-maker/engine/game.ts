@@ -51,6 +51,12 @@ import {
   PUNCH_FRAMES,
   PUNCH_REACH,
   STRIKE_AT,
+  GRAB_DEPTH,
+  GRAB_FRAMES,
+  GRAB_REACH,
+  PIPE_REACH,
+  PIPE_USES,
+  THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
   THUMBS_FRAMES,
@@ -105,7 +111,7 @@ export interface Player {
   fireWait: number;
   knifeT: number;
   bazookaT: number;
-  special: "" | "bazooka";
+  special: "" | "bazooka" | "pipe";
   ammo: number;
   t: number;
   score: number;
@@ -133,9 +139,12 @@ export interface Player {
   combo: number;
   comboT: number;
   struck: boolean;
+  /** The enemy held (its index + 1, 0 for none) and frames held. */
+  grabbed: number;
+  grabT: number;
 }
 
-export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall";
+export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held";
 
 export interface Enemy {
   name: string;
@@ -673,6 +682,7 @@ export class Game {
     const walk = this.walkBand!;
     const fy = p.y >> 4;
     p.crouching = false;
+    if (p.grabbed) return this.holdEnemy(p, dir);
     // the fight (phase 2): a punch holds the player still until it ends
     if (p.punchT) {
       p.punchT--;
@@ -680,7 +690,7 @@ export class Game {
       if (!p.struck && p.punchT === len - STRIKE_AT) {
         p.struck = true;
         if (p.combo === 3) this.strike(p, FIGHT_KICK_REACH, 2, true);
-        else this.strike(p, PUNCH_REACH, 1, false);
+        else this.strike(p, PUNCH_REACH, 1, false, p.special === "pipe");
       }
       if (!p.punchT) p.comboT = p.combo < 3 ? COMBO_WINDOW : 0;
       return;
@@ -701,6 +711,22 @@ export class Game {
       this.events.push({ kind: "kick", player: p.index });
     }
     if (p.kickT && !p.kickHit && this.strike(p, FIGHT_KICK_REACH, 2, true)) p.kickHit = true;
+    // walking into an enemy grabs it (phase 3)
+    if (dir && p.onGround)
+      for (let i = 0; i < this.enemies.length; i++) {
+        const e = this.enemies[i]!;
+        if (e.state !== "walk" && e.state !== "attack") continue;
+        const dx = (e.x - p.x) * dir;
+        if (dx < 0 || dx > GRAB_REACH || Math.abs(e.fy - fy) > GRAB_DEPTH) continue;
+        p.grabbed = i + 1;
+        p.grabT = 0;
+        p.flip = dir < 0;
+        e.state = "held";
+        e.t = 0;
+        e.dir = -dir;
+        e.flip = e.dir < 0;
+        return;
+      }
     if (dir) {
       if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
       p.flip = dir < 0;
@@ -739,12 +765,16 @@ export class Game {
    * DEPTH_REACH px of depth takes `n` hits; a knocking blow throws it down
    * (FALL_FRAMES on the floor, 8 px back). Fallen enemies are not hit.
    */
-  private strike(p: Player, reach: number, n: number, knock: boolean): boolean {
+  private strike(p: Player, reach: number, n: number, knock: boolean, pipe = false): boolean {
     const fy = p.y >> 4;
     const dir = p.flip ? -1 : 1;
+    if (pipe) {
+      reach += PIPE_REACH;
+      n += 1;
+    }
     let hit = false;
     for (const e of this.enemies) {
-      if (e.state !== "walk" && e.state !== "hit" && e.state !== "attack") continue;
+      if (e.state !== "walk" && e.state !== "hit" && e.state !== "attack" && e.state !== "held") continue;
       const dx = (e.x - p.x) * dir;
       if (dx < 0 || dx > reach || Math.abs(e.fy - fy) > DEPTH_REACH) continue;
       this.damage(e, n, p);
@@ -757,7 +787,54 @@ export class Game {
       }
       hit = true;
     }
+    // a pipe wears out with the blows that land
+    if (pipe && hit && --p.ammo <= 0) {
+      p.special = "";
+      p.ammo = 0;
+    }
     return hit;
+  }
+
+  /**
+   * Holding an enemy (phase 3): it stays in front; B1 knees it, B1 with the
+   * stick away throws it behind, and it slips away after GRAB_FRAMES.
+   */
+  private holdEnemy(p: Player, dir: number): void {
+    const e = this.enemies[p.grabbed - 1];
+    if (!e || e.state !== "held") {
+      p.grabbed = 0;
+      return;
+    }
+    p.grabT++;
+    const face = p.flip ? -1 : 1;
+    e.x = p.x + face * 16;
+    e.fy = p.y >> 4;
+    if (this.pressed(p, Input.B1)) {
+      this.lastHit = e;
+      this.lastHitT = 120;
+      if (dir === -face) {
+        e.x = Math.max(0, Math.min(this.level.width, p.x - face * THROW_DIST));
+        this.damage(e, 2, p);
+        if ((e.state as EnemyState) === "hit") {
+          e.state = "fall";
+          e.t = 0;
+        }
+        p.grabbed = 0;
+        p.flip = !p.flip;
+        this.events.push({ kind: "kick", player: p.index });
+        return;
+      }
+      this.damage(e, 1, p);
+      if ((e.state as EnemyState) === "hit") e.state = "held";
+      else p.grabbed = 0;
+      return;
+    }
+    if (p.grabT > GRAB_FRAMES) {
+      e.state = "walk";
+      e.t = 0;
+      e.fireWait = ENEMY_REST;
+      p.grabbed = 0;
+    }
   }
 
   /** A feet y inside the walkable band. */
@@ -972,6 +1049,10 @@ export class Game {
           p.special = "bazooka";
           p.ammo = BAZOOKA_AMMO;
         }
+        if (k.item === "pipe") {
+          p.special = "pipe";
+          p.ammo = PIPE_USES;
+        }
         this.events.push({ kind: "pickup", item: k.item, player: p.index });
       }
     }
@@ -1045,7 +1126,7 @@ export class Game {
   // ------------------------------------------------------------ actors
 
   private alive(e: Enemy): boolean {
-    return e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall";
+    return e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall" || e.state === "held";
   }
 
   /** The enemy last hit and frames left to show its health (the beat 'em up's bar). */
@@ -1159,6 +1240,8 @@ export class Game {
     if (this.lastHitT) this.lastHitT--;
     for (const e of this.enemies) {
       e.t++;
+      // an enemy off the screen waits: the camera's next stretch (a lock: a wave) wakes it
+      if (e.state === "walk" && (e.x < this.camX - 16 || e.x > this.camX + SCREEN_W + 16)) continue;
       if (e.state === "walk") {
         let target: Player | undefined;
         let best = Infinity;
@@ -1175,8 +1258,15 @@ export class Game {
         const side = e.x < target.x ? -1 : 1;
         const tx = target.x + side * ENEMY_GAP;
         const tz = this.inWalk(pf + e.lane * 6);
-        if (e.t & 1) e.x += Math.sign(tx - e.x);
-        else e.fy += Math.sign(tz - e.fy);
+        // solid cells stop it (phase 3)
+        // it closes in to ENEMY_GAP but never backs away from a player walking up to it
+        if (e.t & 1) {
+          const nx = Math.abs(target.x - e.x) > ENEMY_GAP ? e.x + Math.sign(tx - e.x) : e.x;
+          if (!this.isSolid(this.cellAt(nx, e.fy - 1))) e.x = nx;
+        } else {
+          const nf = e.fy + Math.sign(tz - e.fy);
+          if (!this.isSolid(this.cellAt(e.x, nf - 1))) e.fy = nf;
+        }
         e.dir = target.x >= e.x ? 1 : -1;
         e.flip = e.dir < 0;
         if (e.fireWait) e.fireWait--;
@@ -1444,6 +1534,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     combo: 0,
     comboT: 0,
     struck: false,
+    grabbed: 0,
+    grabT: 0,
   };
 }
 
@@ -1480,6 +1572,7 @@ function spawn(p: Player, x: number, fy: number): void {
   p.hop = 0;
   p.punchT = p.combo = p.comboT = 0;
   p.struck = false;
+  p.grabbed = p.grabT = 0;
 }
 
 function num(v: unknown, fallback: number): number {

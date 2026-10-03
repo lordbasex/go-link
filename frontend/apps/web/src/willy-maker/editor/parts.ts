@@ -17,7 +17,7 @@ export type Part =
 export const ENEMY_KINDS = ["trooper", "shield_trooper", "spinner", "pinger", "glitch9", "vera", "jitter"] as const;
 export const CIVILIAN_KINDS = ["woman", "child", "baby", "elder"] as const;
 export const BOSS_KINDS = ["armored_truck", "gunship"] as const;
-export const PICKUP_ITEMS = ["bazooka", "flamethrower", "spread", "grenades", "health", "lattenza_page", "coin", "spring"] as const;
+export const PICKUP_ITEMS = ["bazooka", "flamethrower", "spread", "grenades", "health", "lattenza_page", "coin", "spring", "pipe"] as const;
 export const CRATE_CONTENTS = ["nothing", "bazooka", "flamethrower", "spread", "grenades", "health", "civilian"] as const;
 
 const obj = (group: PartGroup, type: ObjectType, label: string, props: Record<string, unknown> = {}): Part => ({

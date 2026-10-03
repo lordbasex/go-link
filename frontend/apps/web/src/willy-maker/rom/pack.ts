@@ -69,8 +69,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 10;
-const HEADER = 0xb6;
+const WM_VERSION = 11;
+const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -86,7 +86,7 @@ const TXT_BIG = 0x10;
 const TXT_COUNT = 0x20;
 const TXT_BLINK = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
-const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4 };
+const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
@@ -408,6 +408,7 @@ export function packGame(
   const pickups: Row[] = [];
   const pickupLooks: string[] = [];
   const platforms: Row[] = [];
+  const locks: Row[] = [];
   const startX = [-1, -1, -1, -1];
   const startY = [-1, -1, -1, -1];
   let exit: [number, number, number, number] = [0, 0, 0, 0];
@@ -460,7 +461,8 @@ export function packGame(
         exit = [o.x, o.y, num(o.w, 2 * CELL), num(o.h, level.size.h)];
         break;
       case "camera_lock":
-        note("camera_lock");
+        // the camera stops there while enemies stand in its x range (play mode's activeLock)
+        locks.push([o.x, o.y, num(o.w, 384), num(o.h, 224), 0, 0]);
         break;
       case "checkpoint":
         note("checkpoint");
@@ -531,6 +533,8 @@ export function packGame(
   out.align();
   const objAt = out.addr;
   for (const row of [...enemies.slice(0, 16), ...civs.slice(0, 8), ...crates.slice(0, 32), ...pickups.slice(0, 64)]) for (const v of row) out.u16(v & 0xffff);
+  const lockAt = out.addr;
+  for (const row of locks.slice(0, 8)) for (const v of row) out.u16(v & 0xffff);
   const platAt = out.addr;
   for (const row of platforms.slice(0, MAX_PLATFORMS)) for (const v of row) out.u16(v & 0xffff);
   const textAt = out.addr;
@@ -687,6 +691,9 @@ export function packGame(
   const walk = walkBandOf(rows * CELL, level.walk);
   w16(walk.y0);
   w16(walk.y1);
+  w32(locks.length ? lockAt : 0);
+  w16(Math.min(8, locks.length));
+  w16(0);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

@@ -11,7 +11,7 @@ import { bigGlyph, packGame, romSymbols, WM_DATA_ADDR, type Engine, type Picture
 import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { tallProject } from "./tallFixture";
-import { streetProject } from "./streetFixture";
+import { streetProject, waveProject } from "./streetFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -48,8 +48,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(10);
-    expect(u16(d, 6)).toBe(0xb6);
+    expect(u16(d, 4)).toBe(11);
+    expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -185,6 +185,16 @@ describe("Create ROM", () => {
     }
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    if (out) {
+      // phase 3: a pipe, a grab and a wave held by a camera lock (rom/tools/lab/runs/street-wave.json)
+      const wave = packGame(waveProject(), engine, (id) => pictures.get(id) ?? null);
+      const wd = assembleProgram(SLAMMAST, wave.files).subarray(WM_DATA_ADDR);
+      expect(u16(wd, 0xba)).toBe(1);
+      const dir = resolve(out, "wave");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), await zipSet(wave.files));
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
   }, 30000);
 
   it("draws double-size glyphs as four quarters", () => {
@@ -205,9 +215,11 @@ describe("Create ROM", () => {
   it("notes what the engine leaves out", () => {
     const p = specProject();
     p.levels[0]!.layers.find((l) => l.kind === "objects")!.kind === "objects" &&
-      (p.levels[0]!.layers.find((l) => l.kind === "objects") as { items: unknown[] }).items.push({ name: "lock_1", type: "camera_lock", x: 0, y: 0, w: 384, h: 224 });
+      (p.levels[0]!.layers.find((l) => l.kind === "objects") as { items: unknown[] }).items.push({ name: "cp_1", type: "checkpoint", x: 400, y: 416 }, { name: "lock_1", type: "camera_lock", x: 0, y: 0, w: 384, h: 224 });
     const r = packGame(p, engine, () => null);
-    expect(r.notes.map((n) => n.id)).toEqual(expect.arrayContaining(["camera_lock", "tileset"]));
+    expect(r.notes.map((n) => n.id)).toEqual(expect.arrayContaining(["checkpoint", "tileset"]));
+    // camera locks are in the ROM since wm_data 11 (the beat 'em up's waves)
+    expect(r.notes.map((n) => n.id)).not.toContain("camera_lock");
   });
 
   it("powers on in the board model (validation level 3)", async () => {

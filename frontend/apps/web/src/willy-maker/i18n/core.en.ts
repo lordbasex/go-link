@@ -230,6 +230,7 @@ export const coreEn = {
     lattenza_page: "Lattenza page",
     coin: "Coin",
     spring: "Spring",
+    pipe: "Pipe",
     nothing: "Nothing",
     weapon: "Weapon",
     civilian: "Civilian",

@@ -219,9 +219,37 @@ function placeFrame(gfx, fr, base) {
 
 // ---------------------------------------------------------- characters
 
+/**
+ * Willy's punch for the beat 'em up (genres.md, phase 3), made from his knife
+ * frames: the guard (knife_0) and the stab with the arm out (knife_3) with
+ * the blade's swoosh taken off: in the frame's upper 62 % (his jeans are
+ * below), everything past the fist (72 % of the width), bright blue (at
+ * least 136 and 24 over red) and the swoosh's navy outline right of the
+ * arm (from 64 %, blue 40 over red). Play mode
+ * makes the same frames (play/sprites.ts withPunch). The sheet grows by the
+ * new frame on its right; its file is untouched.
+ */
+function withPunch({ img, json }) {
+  const k = json.frames.knife_3;
+  const w = img.w + k.w;
+  const rgba = Buffer.alloc(w * img.h * 4);
+  for (let y = 0; y < img.h; y++) img.rgba.copy(rgba, y * w * 4, y * img.w * 4, (y + 1) * img.w * 4);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++) {
+      const s = ((k.y + y) * img.w + k.x + x) * 4;
+      const d = (y * w + img.w + x) * 4;
+      const [r, , b] = [img.rgba[s], img.rgba[s + 1], img.rgba[s + 2]];
+      const blade = y < k.h * 0.62 && (x >= k.w * 0.72 || (b >= 136 && b >= r + 24) || (x >= k.w * 0.64 && b >= r + 40));
+      for (let c = 0; c < 4; c++) rgba[d + c] = blade ? 0 : img.rgba[s + c];
+    }
+  const frames = { ...json.frames, punch_1: { ...k, x: img.w, y: 0 } };
+  const anims = { ...json.anims, punch: { frames: ["knife_0", "punch_1", "punch_1", "knife_0"], fps: 16, loop: false } };
+  return { img: { w, h: img.h, rgba }, json: { ...json, frames, anims } };
+}
+
 const CHARACTERS = [
   // moves: the animations of docs/willy-maker/moves.md, converted only for Willy Maker's engine (opts.moves)
-  { name: "willy", sheet: "player", height: 44, palettes: 4, fillHoles: true, recruit: true, anims: ["idle", "run", "jump", "machine_gun", "bazooka", "knife"], moves: ["turn", "jump_kick", "crouch", "crawl", "yawn", "thumbs_up"] },
+  { name: "willy", sheet: "player", height: 44, palettes: 4, fillHoles: true, recruit: true, anims: ["idle", "run", "jump", "machine_gun", "bazooka", "knife"], moves: ["turn", "jump_kick", "crouch", "crawl", "yawn", "thumbs_up", "punch"] },
   { name: "woman", sheet: "npcs", height: 38, palettes: 2, anims: ["woman_worried", "woman_happy"] },
   { name: "child", sheet: "npcs", height: 31, palettes: 2, anims: ["child_worried", "child_happy"] },
   // a Lag android, the enemy of the prototype (the robot sheet)
@@ -500,6 +528,7 @@ export function addArt(gfx, defs, genDir, opts = {}) {
         json: JSON.parse(fs.readFileSync(path.join(SHEETS, `${ch.sheet}.json`), "utf8")),
       };
     }
+    if (ch.anims.includes("punch") && !sheets[ch.sheet].json.anims.punch) sheets[ch.sheet] = withPunch(sheets[ch.sheet]);
     const { img, json } = sheets[ch.sheet];
     const first = json.frames[json.anims[ch.anims[0]].frames[0]];
     const s = ch.height / first.h;
@@ -655,9 +684,14 @@ export function addArt(gfx, defs, genDir, opts = {}) {
           }),
         ),
       );
-    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define PAL_PICKUPS ${objPalettes.length}`);
+    // the beat 'em up's pipe lying on the floor (play/renderer.ts): a steel bar, lit on top
+    gfx.tile16(
+      code + 8,
+      Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => (x >= 1 && x <= 14 ? (y === 12 ? 7 : y === 13 || y === 14 ? 5 : 15) : 15))),
+    );
+    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define TILE_PIPE ${hex4(code + 8)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, 0xf843, 0xfc85, 0xf311, 0x0000]);
-    code += 8;
+    code += 9;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

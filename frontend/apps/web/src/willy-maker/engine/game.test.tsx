@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { BEATEMUP_RULES, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, PUNCH_FRAMES, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { BEATEMUP_RULES, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -803,5 +803,71 @@ describe("the beat 'em up: the fight (genres.md, phase 2)", () => {
     run(g, 400, 0);
     expect(g.players[0]!.lives).toBeLessThan(lives);
     expect(Math.abs(g.enemies[0]!.x - g.players[0]!.x)).toBeLessThanOrEqual(ENEMY_GAP + 6);
+  });
+});
+
+describe("the beat 'em up: grabs, throws, the pipe and waves (genres.md, phase 3)", () => {
+  const street = (objects: LevelObject[], build?: Parameters<typeof flat>[0]) => {
+    const view = flat(build, objects);
+    view.walk = { y0: 336, y1: 400 };
+    view.objects[0] = { name: "p1", type: "player_start", x: 80, y: 380, player: 1 };
+    return new Game(view, { rules: BEATEMUP_RULES });
+  };
+  const thug = (x: number, y = 380): LevelObject => ({ name: `t${x}`, type: "enemy", x, y, kind: "trooper", facing: "left", patrol: 0 } as LevelObject);
+
+  it("walking into an enemy grabs it; B1 knees, B1 away throws it behind", () => {
+    const g = street([thug(120)]);
+    const e = g.enemies[0]!;
+    for (let f = 0; f < 60 && !g.players[0]!.grabbed; f++) run(g, 1, Input.Right);
+    expect(g.players[0]!.grabbed).toBe(1);
+    expect(e.state).toBe("held");
+    run(g, 1, Input.Right | Input.B1);
+    run(g, 2, Input.Right);
+    expect(e.hp).toBe(5);
+    expect(e.state).toBe("held");
+    const px = g.players[0]!.x;
+    run(g, 1, Input.Left | Input.B1);
+    expect(e.state).toBe("fall");
+    expect(e.hp).toBe(3);
+    expect(e.x).toBe(px - THROW_DIST);
+    expect(g.players[0]!.grabbed).toBe(0);
+  });
+
+  it("a held enemy slips away after a while", () => {
+    const g = street([thug(120)]);
+    for (let f = 0; f < 60 && !g.players[0]!.grabbed; f++) run(g, 1, Input.Right);
+    run(g, GRAB_FRAMES + 2, 0);
+    expect(g.players[0]!.grabbed).toBe(0);
+    expect(g.enemies[0]!.state).not.toBe("held");
+  });
+
+  it("a pipe reaches farther, hits harder and wears out", () => {
+    const g = street([thug(80 + PUNCH_REACH + 6), { name: "pipe", type: "pickup", x: 80, y: 380, item: "pipe" }]);
+    run(g, 1, 0);
+    const p = g.players[0]!;
+    expect([p.special, p.ammo]).toEqual(["pipe", PIPE_USES]);
+    run(g, 1, Input.B1);
+    run(g, PUNCH_FRAMES + 1, 0);
+    expect(g.enemies[0]!.hp).toBe(4);
+    expect(p.ammo).toBe(PIPE_USES - 1);
+  });
+
+  it("enemies off the screen wait, and solid cells stop them", () => {
+    const g = street([thug(900)]);
+    run(g, 120, 0);
+    expect(g.enemies[0]!.x).toBe(900);
+    // a wall between the player and an enemy on the screen
+    const walled = street([thug(300)], (set) => {
+      for (let r = 20; r < 25; r++) set(12, r, Tag.Solid);
+    });
+    run(walled, 400, 0);
+    expect(walled.enemies[0]!.x).toBeGreaterThanOrEqual(12 * 16 + 16);
+  });
+
+  it("a camera lock holds the screen until its wave is down", () => {
+    const g = street([thug(500), { name: "lock", type: "camera_lock", x: 320, y: 224, w: 384, h: 224 }]);
+    for (let f = 0; f < 600; f++) run(g, 1, Input.Right);
+    expect(g.activeLock()?.name).toBe("lock");
+    expect(g.camX).toBeLessThanOrEqual(320);
   });
 });

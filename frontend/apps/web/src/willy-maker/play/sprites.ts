@@ -56,7 +56,8 @@ async function loadSheet(base: string, name: string): Promise<Sheet> {
 /** The built-in sheets (missing ones stay null; the view still plays). */
 export async function loadPlaySprites(base: string): Promise<PlaySprites> {
   const [hero, enemy, civilians] = await Promise.all(["player", "robot", "npcs"].map((n) => loadSheet(base, n).catch(() => null)));
-  const heroes = hero ? PLAYER_SHIFTS.map((s) => (s ? recolor(hero, s) : hero)) : [];
+  const willy = hero ? withPunch(hero) : null;
+  const heroes = willy ? PLAYER_SHIFTS.map((s) => (s ? recolor(willy, s) : willy)) : [];
   return { heroes, enemy: enemy ?? null, civilians: civilians ?? null };
 }
 
@@ -79,12 +80,50 @@ export async function characterSheet(ch: Character, url: (ref: string) => Promis
   return { image, frames, anims };
 }
 
+/**
+ * Willy's punch for the beat 'em up, made from his knife frames as the ROM's
+ * art does (rom/tools/art.mjs withPunch): the guard and the stab with the
+ * blade's bright blue swoosh taken off, drawn on a copy of the sheet.
+ */
+export function withPunch(sheet: Sheet): Sheet {
+  const k = sheet.frames.knife_3;
+  const img = sheet.image as HTMLImageElement | HTMLCanvasElement;
+  if (!k || !sheet.frames.knife_0 || typeof document === "undefined" || !img.width) return sheet;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width + k.w;
+  canvas.height = img.height;
+  let ctx: CanvasRenderingContext2D | null = null;
+  try {
+    ctx = canvas.getContext("2d");
+  } catch {
+    ctx = null;
+  }
+  if (!ctx) return sheet;
+  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, k.x, k.y, k.w, k.h, img.width, 0, k.w, k.h);
+  const data = ctx.getImageData(img.width, 0, k.w, k.h);
+  for (let y = 0; y < k.h * 0.62; y++)
+    for (let x = 0; x < k.w; x++) {
+      const i = (y * k.w + x) * 4;
+      const r = data.data[i]!;
+      const b = data.data[i + 2]!;
+      if (x >= k.w * 0.72 || (b >= 136 && b >= r + 24) || (x >= k.w * 0.64 && b >= r + 40)) data.data[i + 3] = 0;
+    }
+  ctx.putImageData(data, img.width, 0);
+  return {
+    image: canvas,
+    frames: { ...sheet.frames, punch_1: { ...k, x: img.width, y: 0 } },
+    anims: { ...sheet.anims, punch: { frames: ["knife_0", "punch_1", "punch_1", "knife_0"], fps: 16, loop: false } },
+  };
+}
+
 /** The animation a hero sheet has for a move play mode asks for: an own character may name it differently or not have it. */
 export function heroAnim(sheet: Sheet, anim: string): string {
   const options: Record<string, string[]> = {
     run: ["run", "walk"],
     // the Characters tab's names (sprites/presets.ts) first: shoot, knife, special
     machine_gun: ["shoot", "fire", "machine_gun"],
+    punch: ["punch", "melee", "knife"],
     knife: ["knife", "melee", "shoot", "fire"],
     bazooka: ["bazooka", "special", "shoot", "fire"],
     jump: ["jump"],

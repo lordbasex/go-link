@@ -230,6 +230,7 @@ export const coreEs: CoreMessages = {
     lattenza_page: "Página de Lattenza",
     coin: "Moneda",
     spring: "Resorte",
+    pipe: "Caño",
     nothing: "Nada",
     weapon: "Arma",
     civilian: "Civil",

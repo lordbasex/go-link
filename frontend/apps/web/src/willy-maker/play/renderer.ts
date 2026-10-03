@@ -366,6 +366,14 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       ctx.fillRect(k.x - 1, y - 4, 2, 8);
       continue;
     }
+    if (k.item === "pipe") {
+      // the beat 'em up's pipe, as the ROM draws it: a steel bar lying on the floor
+      ctx.fillStyle = "#555555";
+      ctx.fillRect(k.x - 7, k.fy - 4, 14, 3);
+      ctx.fillStyle = "#aaaaaa";
+      ctx.fillRect(k.x - 7, k.fy - 4, 14, 1);
+      continue;
+    }
     if (k.item === "spring") {
       ctx.fillStyle = "#555555";
       ctx.fillRect(k.x - 7, k.fy - 3, 14, 3);
@@ -399,7 +407,7 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   const en = sprites?.enemy;
   for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
     if (e.state === "off") return;
-    const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
+    const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" || e.state === "held" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
     if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
@@ -435,9 +443,13 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
         anim = "jump";
         t = p.vy < -60 ? 6 : p.vy < 0 ? 12 : p.vy < 60 ? 18 : 24;
       }
+    } else if (p.grabbed) {
+      // holding an enemy: the guard pose
+      anim = "knife";
+      t = 0;
     } else if (p.punchT) {
       // the beat 'em up's punches, and the combo's kick
-      anim = p.combo === 3 ? "jump_kick" : "knife";
+      anim = p.combo === 3 ? "jump_kick" : "punch";
       t = (p.combo === 3 ? 20 : 16) - p.punchT;
     } else if (p.crouching) anim = moving ? "crawl" : "crouch";
     else if (p.knifeT) {

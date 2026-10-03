@@ -1,6 +1,6 @@
 {
  "name": "street-walk",
- "description": "The beat 'em up, phase 1 (WM_ROM_OUT/street of rom.test.tsx, rom/streetFixture.ts: the spec level as a street, band 352-416, an enemy standing in it at x 110): player 1 walks right, goes up behind the enemy (drawn in front of the player), comes down in front of it (drawn behind the player), hops with B2, then walks to the crates and up to the back edge of the band. Play mode gives the same places every frame.",
+ "description": "The beat 'em up, phase 1 (WM_ROM_OUT/street of rom.test.tsx, rom/streetFixture.ts: the spec level as a street, band 352-416, enemies in it): player 1 walks right short of the first enemy, goes up behind it (drawn in front of the player), comes down in front of it (drawn behind the player), hops with B2, then walks left and up to the back edge of the band. Play mode gives the same places every frame.",
  "frames": 620,
  "checkpoints": [
   200,
@@ -29,7 +29,7 @@
   {
    "frame": 420,
    "path": "players.0.x",
-   "equals": 154
+   "equals": 16
   },
   {
    "frame": 600,
@@ -56,7 +56,7 @@
   },
   {
    "from": 165,
-   "to": 200,
+   "to": 175,
    "port": 1,
    "buttons": [
     "right"
@@ -91,7 +91,7 @@
    "to": 420,
    "port": 1,
    "buttons": [
-    "right"
+    "left"
    ]
   },
   {

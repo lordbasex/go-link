@@ -628,6 +628,12 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define ENEMY_REACH 34
 #define ENEMY_REST 50
 #define FALL_FRAMES 60
+#define GRAB_REACH 18
+#define GRAB_DEPTH 8
+#define GRAB_FRAMES 90
+#define THROW_DIST 40
+#define PIPE_USES 12
+#define PIPE_REACH 10
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -661,6 +667,7 @@ struct player {
 	int crouch, crouch_t, land_t, turn_t, kick_t, kick_hit, thumbs_t, idle_t, air_t, air_jumps, fuel, jetting;
 	s32 hop; /* the beat 'em up's hop over the floor, 1/16 px, 0 or less */
 	int punch_t, combo, combo_t, struck; /* the beat 'em up's fight: the punch, its place in the combo, the window to chain, landed */
+	int grabbed, grab_t;                 /* the enemy held (index + 1, 0 none) and frames held */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -669,6 +676,9 @@ static struct player pl[MAX_PLAYERS];
 /* the beat 'em up (WM_F_DEPTH, engine/game.ts moveInDepth): its walkable band, feet y px */
 static int depth;
 static s32 walk_y0, walk_y1;
+/* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
+#define MAX_LOCKS 8
+static u8 lock_done[MAX_LOCKS];
 /* the enemy last hit and frames left to show its health (the beat 'em up's bar) */
 static int last_hit = -1, last_hit_t;
 
@@ -678,7 +688,7 @@ static s32 in_walk(s32 fy)
 }
 static u16 start_now, start_last; /* bit k: port k's Start */
 
-enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN, EN_ATTACK, EN_FALL };
+enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN, EN_ATTACK, EN_FALL, EN_HELD };
 static struct enemy {
 	s32 x, fy, min, max;
 	int state, hp, flip, dir, fire_wait;
@@ -1009,7 +1019,7 @@ static int hit_cell(int c, int r, int damage, struct player *by)
 
 static int en_alive(int i)
 {
-	return en[i].state == EN_WALK || en[i].state == EN_HIT || en[i].state == EN_ATTACK || en[i].state == EN_FALL;
+	return en[i].state == EN_WALK || en[i].state == EN_HIT || en[i].state == EN_ATTACK || en[i].state == EN_FALL || en[i].state == EN_HELD;
 }
 
 static int enemies_left(void)
@@ -1056,6 +1066,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->y = fy * 16;
 	p->hop = 0;
 	p->punch_t = p->combo = p->combo_t = p->struck = 0;
+	p->grabbed = p->grab_t = 0;
 	p->vy = 0;
 	p->flip = 0;
 	p->on_ground = 1;
@@ -1194,6 +1205,8 @@ static void game_reset(void)
 			loaded_band[b][i] = -1;
 	}
 	depth = (D->flags & WM_F_DEPTH) != 0;
+	for (i = 0; i < MAX_LOCKS; i++)
+		lock_done[i] = 0;
 	last_hit = -1;
 	last_hit_t = 0;
 	walk_y0 = D->walk_y0;
@@ -1425,14 +1438,18 @@ static s32 iabs(s32 v)
  * within reach px and DEPTH_REACH px of depth takes n hits; a knocking blow
  * throws it down (FALL_FRAMES on the floor, 8 px back).
  */
-static int strike(struct player *p, int reach, int n, int knock)
+static int strike(struct player *p, int reach, int n, int knock, int pipe)
 {
 	s32 fy = p->y >> 4;
 	int dir = p->flip ? -1 : 1, i, hit = 0;
+	if (pipe) {
+		reach += PIPE_REACH;
+		n += 1;
+	}
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
 		s32 dx = (e->x - p->x) * dir;
-		if (e->state != EN_WALK && e->state != EN_HIT && e->state != EN_ATTACK)
+		if (e->state != EN_WALK && e->state != EN_HIT && e->state != EN_ATTACK && e->state != EN_HELD)
 			continue;
 		if (dx < 0 || dx > reach || iabs(e->fy - fy) > DEPTH_REACH)
 			continue;
@@ -1446,7 +1463,55 @@ static int strike(struct player *p, int reach, int n, int knock)
 		}
 		hit = 1;
 	}
+	/* a pipe wears out with the blows that land */
+	if (pipe && hit && --p->ammo <= 0) {
+		p->special = 0;
+		p->ammo = 0;
+	}
 	return hit;
+}
+
+/* holding an enemy (engine/game.ts holdEnemy): B1 knees it, B1 with the stick away throws it behind */
+static void hold_enemy(struct player *p, int dir)
+{
+	struct enemy *e = p->grabbed ? &en[p->grabbed - 1] : 0;
+	int face = p->flip ? -1 : 1;
+	if (!e || e->state != EN_HELD) {
+		p->grabbed = 0;
+		return;
+	}
+	p->grab_t++;
+	e->x = p->x + face * 16;
+	e->fy = p->y >> 4;
+	if (PRESSED(p, BTN_1)) {
+		last_hit = p->grabbed - 1;
+		last_hit_t = 120;
+		if (dir == -face) {
+			s32 x = p->x - face * THROW_DIST;
+			e->x = x < 0 ? 0 : x > level_w ? level_w : x;
+			en_damage(p->grabbed - 1, 2, p);
+			if (e->state == EN_HIT) {
+				e->state = EN_FALL;
+				e->t = 0;
+			}
+			p->grabbed = 0;
+			p->flip = !p->flip;
+			sfx(SFX_KICK, p->x);
+			return;
+		}
+		en_damage(p->grabbed - 1, 1, p);
+		if (e->state == EN_HIT)
+			e->state = EN_HELD;
+		else
+			p->grabbed = 0;
+		return;
+	}
+	if (p->grab_t > GRAB_FRAMES) {
+		e->state = EN_WALK;
+		e->t = 0;
+		e->fire_wait = ENEMY_REST;
+		p->grabbed = 0;
+	}
 }
 
 /*
@@ -1459,6 +1524,10 @@ static void move_in_depth(struct player *p, int dir)
 	s32 fy = p->y >> 4;
 	int n, dz = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
 	p->crouch = 0;
+	if (p->grabbed) {
+		hold_enemy(p, dir);
+		return;
+	}
 	/* the fight (phase 2): a punch holds the player still until it ends */
 	if (p->punch_t) {
 		int len = p->combo == 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
@@ -1466,9 +1535,9 @@ static void move_in_depth(struct player *p, int dir)
 		if (!p->struck && p->punch_t == len - STRIKE_AT) {
 			p->struck = 1;
 			if (p->combo == 3)
-				strike(p, FIGHT_KICK_REACH, 2, 1);
+				strike(p, FIGHT_KICK_REACH, 2, 1, 0);
 			else
-				strike(p, PUNCH_REACH, 1, 0);
+				strike(p, PUNCH_REACH, 1, 0, p->special == WM_ITEM_PIPE);
 		}
 		if (!p->punch_t)
 			p->combo_t = p->combo < 3 ? COMBO_WINDOW : 0;
@@ -1490,8 +1559,26 @@ static void move_in_depth(struct player *p, int dir)
 		p->kick_hit = 0;
 		sfx(SFX_KICK, p->x);
 	}
-	if (p->kick_t && !p->kick_hit && strike(p, FIGHT_KICK_REACH, 2, 1))
+	if (p->kick_t && !p->kick_hit && strike(p, FIGHT_KICK_REACH, 2, 1, 0))
 		p->kick_hit = 1;
+	/* walking into an enemy grabs it (phase 3) */
+	if (dir && p->on_ground)
+		for (n = 0; n < nen; n++) {
+			struct enemy *e = &en[n];
+			s32 dx = (e->x - p->x) * dir;
+			if (e->state != EN_WALK && e->state != EN_ATTACK)
+				continue;
+			if (dx < 0 || dx > GRAB_REACH || iabs(e->fy - fy) > GRAB_DEPTH)
+				continue;
+			p->grabbed = n + 1;
+			p->grab_t = 0;
+			p->flip = dir < 0;
+			e->state = EN_HELD;
+			e->t = 0;
+			e->dir = -dir;
+			e->flip = e->dir < 0;
+			return;
+		}
 	if (dir) {
 		if (p->on_ground && p->flip != (dir < 0))
 			p->turn_t = TURN_FRAMES;
@@ -1748,6 +1835,9 @@ static void update_player(struct player *p)
 			if (k->item == WM_ITEM_BAZOOKA) {
 				p->special = WM_ITEM_BAZOOKA;
 				p->ammo = BAZOOKA_AMMO;
+			} else if (k->item == WM_ITEM_PIPE) {
+				p->special = WM_ITEM_PIPE;
+				p->ammo = PIPE_USES;
 			} else if (k->item == WM_ITEM_HEALTH && p->energy < R->energy)
 				p->energy++;
 		}
@@ -1853,6 +1943,9 @@ static void update_enemies_in_depth(void)
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
 		e->t++;
+		/* an enemy off the screen waits: the camera's next stretch (a lock: a wave) wakes it */
+		if (e->state == EN_WALK && (e->x < cam_x - 16 || e->x > cam_x + SCREEN_W + 16))
+			continue;
 		if (e->state == EN_WALK) {
 			struct player *target = 0;
 			s32 best = 0x7fffffff, pf, tx, tz;
@@ -1871,10 +1964,16 @@ static void update_enemies_in_depth(void)
 			pf = target->y >> 4;
 			tx = target->x + (e->x < target->x ? -1 : 1) * ENEMY_GAP;
 			tz = in_walk(pf + e->lane * 6);
-			if (e->t & 1)
-				e->x += tx > e->x ? 1 : tx < e->x ? -1 : 0;
-			else
-				e->fy += tz > e->fy ? 1 : tz < e->fy ? -1 : 0;
+			/* it closes in to ENEMY_GAP but never backs away; solid cells stop it */
+			if (e->t & 1) {
+				s32 nx = iabs(target->x - e->x) > ENEMY_GAP ? e->x + (tx > e->x ? 1 : tx < e->x ? -1 : 0) : e->x;
+				if (!is_solid(cell_at(nx, e->fy - 1)))
+					e->x = nx;
+			} else {
+				s32 nf = e->fy + (tz > e->fy ? 1 : tz < e->fy ? -1 : 0);
+				if (!is_solid(cell_at(e->x, nf - 1)))
+					e->fy = nf;
+			}
 			e->dir = target->x >= e->x ? 1 : -1;
 			e->flip = e->dir < 0;
 			if (e->fire_wait)
@@ -2052,6 +2151,33 @@ static void update_civilians(void)
 #define VIEW_TOP 24 /* room kept above the highest head */
 #define VIEW_BOTTOM 8 /* and below the lowest feet */
 
+/*
+ * The camera lock in force (engine/game.ts activeLock), or -1: the first not
+ * done whose x range the screen reaches past its middle while an enemy still
+ * stands in it; reached with nobody in it, it is done for good.
+ */
+static int active_lock(void)
+{
+	const struct wm_object *l = (const struct wm_object *)D->locks;
+	int i, k, n = D->n_locks < MAX_LOCKS ? D->n_locks : MAX_LOCKS;
+	for (i = 0; i < n; i++, l++) {
+		int inside = 0;
+		if (lock_done[i])
+			continue;
+		/* camX + SCREEN_W < x + w / 2 in play mode, in whole numbers */
+		if (2 * (cam_x + SCREEN_W) < 2 * l->x + l->a || cam_x > l->x + l->a)
+			continue;
+		for (k = 0; k < nen && !inside; k++)
+			inside = en_alive(k) && en[k].x >= l->x && en[k].x <= l->x + l->a;
+		if (!inside) {
+			lock_done[i] = 1;
+			continue;
+		}
+		return i;
+	}
+	return -1;
+}
+
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
@@ -2094,8 +2220,19 @@ static void update_camera(int snap)
 		if (ty > hi_y)
 			ty = hi_y;
 	}
-	if (tx > level_w - SCREEN_W)
-		tx = level_w - SCREEN_W;
+	{
+		/* a camera lock stops it at the lock's end (a beat 'em up's wave) */
+		s32 max_cx = level_w - SCREEN_W;
+		int lk = active_lock();
+		if (lk >= 0) {
+			const struct wm_object *l = (const struct wm_object *)D->locks + lk;
+			s32 end = l->x + l->a - SCREEN_W > l->x ? l->x + l->a - SCREEN_W : l->x;
+			if (end < max_cx)
+				max_cx = end;
+		}
+		if (tx > max_cx)
+			tx = max_cx;
+	}
 	if (tx < 0)
 		tx = 0;
 	if (ty > level_h - SCREEN_H)
@@ -2192,12 +2329,18 @@ static void draw_player(struct player *p)
 			draw_once(l->kick, (u32)(KICK_FRAMES - p->kick_t), sx, sy, p->pal, p->flip);
 		else
 			draw_frame(&a->frames[i % a->count], sx, sy, p->pal, p->flip);
+	} else if (p->grabbed) {
+		/* holding an enemy: the guard pose */
+		draw_frame(&l->knife->frames[0], sx, sy, p->pal, p->flip);
 	} else if (p->punch_t) {
 		/* the beat 'em up's punches, and the combo's kick */
 		if (p->combo == 3)
 			draw_once(l->kick, (u32)(COMBO_KICK_FRAMES - p->punch_t), sx, sy, p->pal, p->flip);
-		else
-			draw_frame(&l->knife->frames[(PUNCH_FRAMES - p->punch_t) / 4 % l->knife->count], sx, sy, p->pal, p->flip);
+		else {
+			/* Willy has a punch of his own (art.mjs withPunch); an own hero punches with its knife */
+			const Anim *a = l == &willy_look ? &anim_willy_punch : l->knife;
+			draw_frame(&a->frames[(PUNCH_FRAMES - p->punch_t) / 4 % a->count], sx, sy, p->pal, p->flip);
+		}
 	} else if (p->crouch) {
 		if (moving)
 			draw_anim(l->crawl, p->t, sx, sy, p->pal, p->flip);
@@ -2263,7 +2406,7 @@ static void draw_enemy(int i)
 			if (e->state == EN_FALL || e->t < 70 || (e->t & 4))
 				draw_frame(&a->frames[f], sx, sy, l->pal, e->flip);
 		} else
-			draw_anim(e->state == EN_HIT ? l->land : e->state == EN_ATTACK || e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
+			draw_anim(e->state == EN_HIT || e->state == EN_HELD ? l->land : e->state == EN_ATTACK || e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
 		return;
 	}
 	if (e->state == EN_DOWN || e->state == EN_FALL) {
@@ -2274,7 +2417,7 @@ static void draw_enemy(int i)
 			draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, e->flip);
 		return;
 	}
-	draw_anim(e->state == EN_HIT ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, 0, e->flip);
+	draw_anim(e->state == EN_HIT || e->state == EN_HELD ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, 0, e->flip);
 }
 
 static void draw_civilian(int i);
@@ -2318,6 +2461,8 @@ static void draw_pickups(void)
 			put_sprite(sx - 8, sy - 16 - ((frame_count >> 3) & 1), TILE_COIN, PAL_PICKUPS);
 		else if (pickup[i].item == WM_ITEM_SPRING)
 			put_sprite(sx - 8, sy - 16, TILE_SPRING, PAL_PICKUPS);
+		else if (pickup[i].item == WM_ITEM_PIPE)
+			put_sprite(sx - 8, sy - 16, TILE_PIPE, PAL_PICKUPS);
 		else if (frame_count & 16)
 			put_sprite(sx - 16, sy - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
 	}
@@ -2516,7 +2661,7 @@ static void hud(void)
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			for (e = 0; e < 9 && e < room; e++)
 				put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
-			if (p->special == WM_ITEM_BAZOOKA && has_ammo && room > 12) {
+			if ((p->special == WM_ITEM_BAZOOKA || p->special == WM_ITEM_PIPE) && has_ammo && room > 12) {
 				print_n(col + 3 + 4, 1, ammo.s, ammo.len < room - 6 ? ammo.len : room - 6, INK_WHITE);
 				put_char(col + 3 + 4 + (ammo.len < room - 6 ? ammo.len : room - 6) + 1, 1, '0' + p->ammo, INK_WHITE);
 			}
