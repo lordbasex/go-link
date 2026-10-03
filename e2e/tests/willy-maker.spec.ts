@@ -106,7 +106,7 @@ test("Willy Maker: create, paint, place, play, undo, reload and export", async (
   expect(pack.suggestedFilename()).toBe("dead-air.ai-pack.zip");
   const packFiles = zipNames(readFileSync((await pack.path())!));
   expect(packFiles[0]).toBe("PROMPT.md");
-  expect(packFiles).toEqual(expect.arrayContaining(["project.json", "review.json", "levels/level-1.tmj", "levels/level-1/collision.png", "tilesets/ts-city.png", "docs/art-spec.md"]));
+  expect(packFiles).toEqual(expect.arrayContaining(["project.json", "review.json", "levels/level-1.tmj", "tilesets/collision.png", "tilesets/ts-city.png", "docs/art-spec.md"]));
   await expect(page.getByText("Downloaded dead-air.ai-pack.zip")).toBeVisible();
   expect(problems).toEqual([]);
 });
