@@ -775,7 +775,9 @@ export class Game {
         if (target && this.rules.enemiesChase) {
           const dx = target.x - e.x;
           e.dir = dx > 0 ? 1 : -1;
-          if ((dx > 22 || dx < -22) && e.t & 1) e.x += e.dir;
+          // with touch damage it walks into the player (it used to stop 22 px away, out of the 14 px reach, J-09)
+          const gap = this.rules.touchHurts ? 8 : 22;
+          if ((dx > gap || dx < -gap) && e.t & 1) e.x += e.dir;
         } else if (e.t & 1) {
           e.x += e.dir;
           if (e.x <= e.min || e.x >= e.max) e.dir = -e.dir;

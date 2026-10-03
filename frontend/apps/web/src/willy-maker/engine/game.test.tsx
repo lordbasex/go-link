@@ -406,6 +406,20 @@ describe("the Rules card (Game Spec v1's numbers)", () => {
     expect(g.players[0]!.invulnerable).toBe(60);
   });
 
+  for (const chase of [false, true])
+    it(`an enemy touching a still player keeps patrolling or holds on, and keeps hurting (T-16, J-09${chase ? ", chasing" : ""})`, () => {
+      const g = new Game(flat(undefined, [trooper(100)]), { rules: { ...SPEC_RULES, enemiesChase: chase }, lives: 9 });
+      run(g, 61, 0);
+      const xs = new Set<number>();
+      for (let f = 0; f < 900; f++) {
+        run(g, 1, 0);
+        if (f >= 600) xs.add(g.enemies[0]!.x);
+      }
+      expect(g.players[0]!.lives).toBeLessThanOrEqual(9 - 3); // hurt again after every blink
+      // a patrol goes on through the player; a chaser stays on them, hurting after every blink
+      if (!chase) expect(xs.size).toBeGreaterThan(1);
+    });
+
   it("the exit clears only with every enemy down", () => {
     const view = flat(undefined, [trooper(900), { name: "exit", type: "exit", x: 70, y: 400, w: 64 }]);
     const g = new Game(view, { rules: SPEC_RULES });
