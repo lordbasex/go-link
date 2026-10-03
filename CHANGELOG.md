@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first.
 
 ### Added (lab)
 
+- **go-link HD picks its size and codec per computer**: `--test-room-hd auto` (and `device hdprobe`) asks ffmpeg for its encoders and tries, two seconds each, 4K with x264 on Apple Silicon, 1080p with the hardware encoder, 1080p with x264 or VP8, then 720p VP8, keeping the first that streams at 60 fps (the Mac Pro picks 1080p with VideoToolbox).
 - **go-link HD: an H.264 track.** The HD test room can send H.264 instead of VP8 (`--hd-codec h264 --hd-h264 x264|videotoolbox`), encoded by ffmpeg running as its own process, so go-link stays MIT whatever ffmpeg was built with. On the Intel Mac Pro, Chrome shows 1080p at 60 fps with the Mac's hardware encoder using under half a core (VP8 used about two); 4K reached 39 fps with x264 and 33 with the hardware encoder there, and **4K at 60 fps from the M1** to Chrome on the Mac Pro over the home network with x264 (about a quarter of its cores). Measured picture quality at 1080p and 8 Mbps is 40-54 dB PSNR on the HD scene and on real photos. `hd.spec.ts` now counts ffmpeg's CPU and can drive a device on another computer ([hd-streaming.md](docs/experiments/hd-streaming.md#an-h264-track-2026-10-03)).
 - **go-link HD on Apple Silicon:** the HD experiment measured on the M1 ([hd-streaming.md](docs/experiments/hd-streaming.md#the-same-on-apple-silicon-m1)): its media engine encodes 1080p60 H.264 with half a core but stays at 54-63 fps at 4K, while x264 does 4K at 110-149 fps with about half the cores; the way to 4K is an H.264 track encoded with x264.
 
@@ -15,6 +16,7 @@ All notable changes to go-link. Newest first.
 
 ### Added (website)
 
+- **The room's Connection details name the video codec** the browser decodes (VP8, or H.264 from go-link HD's test room).
 - **Willy Maker: tall levels in the ROM.** Create ROM no longer refuses a level taller than 1024 px: the engine streams a level's rows as well as its columns, keeping a window of 64 rows (the board's tilemap) around the camera and sliding it a row at a time, so towers and climbs up to the editor's 8192 px work with the camera following up and down (parallax bands stay for levels up to 1024 px, with a note otherwise). A 4096 px tower climbed from the floor to the top matches the real core at tolerance 0 and play mode on every frame, and every earlier run is unchanged.
 - **Willy Maker: falling platforms.** A platform's new **Falls** makes it shake for half a second once someone stands on it, fall with its rider and come back 3 seconds later, drawn rusty and cracked, in play mode and the ROM alike. A rider going down with a platform now stops at the ground on the way (it went through the floor before). Checked on the real core at tolerance 0 on every frame and against play mode on every frame.
 - **Willy Maker ROMs start play at a fixed frame**: 10 frames after Start, however long setting the level up takes, since some levels ended their setup so close to a vblank that the real core and the board model started a frame apart. The engine's lab scripts moved by 6 frames (the spec level now clears at frame 1889).

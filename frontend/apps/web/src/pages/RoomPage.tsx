@@ -1316,6 +1316,7 @@ export function RoomPage() {
                   sentFps={demo ? 60 : live.sentFps}
                   receivedFps={demo ? 60 : live.stats.fps}
                   path={demo ? "direct" : live.stats.path}
+                  codec={demo ? "VP8" : live.stats.codec}
                   video={demo ? null : live.video}
                   picture={
                     pictureOn && renderer

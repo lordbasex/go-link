@@ -65,7 +65,7 @@ func run() error {
 		debug      = flag.Bool("debug", false, "verbose logs")
 		testRoom   = flag.Bool("test-room", true, "open the test pattern room (or the game given with --game)")
 		testPause  = flag.Bool("test-room-pause", false, "let the host pause the test pattern room (to try the pause and its requests without a game)")
-		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p or 2160p) made of --hd-far and --hd-play")
+		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p, 2160p, or auto: the best this computer streams at 60 fps, checked) made of --hd-far and --hd-play")
 		hdFar      = flag.String("hd-far", "", "the HD scene's far picture (with --test-room-hd)")
 		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
 		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
@@ -152,6 +152,31 @@ func run() error {
 		return err
 	}
 	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger}
+	if *testHD == "auto" {
+		// go-link HD picks the size and codec this computer streams at 60 fps (hdAuto)
+		if *hdFar == "" {
+			return errors.New("--test-room-hd needs --hd-far")
+		}
+		farImg, err := loadPicture(*hdFar)
+		if err != nil {
+			return err
+		}
+		var playImg image.Image
+		if *hdPlay != "" {
+			if playImg, err = loadPicture(*hdPlay); err != nil {
+				return err
+			}
+		}
+		choice, tries := hdAuto(farImg, playImg)
+		for _, t := range tries {
+			logger.Info("HD check", "size", t.Size, "codec", t.Codec, "h264", t.H264, "max_fps", fmt.Sprintf("%.0f", t.MaxFPS), "p95_ms", fmt.Sprintf("%.1f", t.P95Ms), "fits", t.Fits, "why", t.Why)
+		}
+		logger.Info("HD choice", "size", choice.Size, "codec", choice.Codec, "h264", choice.H264)
+		*testHD, *hdCodec = choice.Size, choice.Codec
+		if choice.H264 != "" {
+			*hdH264 = choice.H264
+		}
+	}
 	if *testHD != "" {
 		streamCfg.EncoderThreads = *hdThreads
 		switch *hdCodec {

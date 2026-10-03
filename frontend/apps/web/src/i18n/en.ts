@@ -497,6 +497,7 @@ export const en = {
     statsRelay: "Through the relay (TURN)",
     statsSent: "Sent",
     statsReceived: "Received",
+    statsCodec: "Codec",
     chatTurnOff: "Turn the chat off for everyone",
     chatTurnOn: "Turn the chat on for everyone",
     chatOffNote: "The host turned the chat off for this room.",

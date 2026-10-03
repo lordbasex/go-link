@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { codecName } from "@go-link/shared";
 import { StreamInfo, videoRows } from "./StreamInfo";
 
 afterEach(cleanup);
@@ -29,5 +30,13 @@ describe("stream details", () => {
     ]);
     // The test pattern room: its own size, no quality.
     expect(videoRows({ scale: 1, width: 640, height: 480 })).toEqual([["Video", "640×480"]]);
+  });
+
+  it("names the codec the browser decodes", async () => {
+    render(<StreamInfo rttMs={3} sentFps={60} receivedFps={60} path="direct" codec="H.264" />);
+    await userEvent.click(screen.getByRole("button", { name: "Connection details" }));
+    expect(screen.getByText("Codec")).toBeInTheDocument();
+    expect(screen.getByText("H.264")).toBeInTheDocument();
+    expect([codecName("video/H264"), codecName("video/VP8"), codecName("video/AV1")]).toEqual(["H.264", "VP8", "AV1"]);
   });
 });

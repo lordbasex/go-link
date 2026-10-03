@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -171,4 +172,27 @@ func splitAccessUnits(r io.ByteReader, onFrame func([]byte)) {
 		}
 		zeros = 0
 	}
+}
+
+// H264Support says which H.264 encoders the installed ffmpeg has (none
+// without ffmpeg). A listed hardware encoder can still refuse a size or be
+// busy: the device tries an encoder before it relies on it.
+type H264Support struct {
+	FFmpeg       string `json:"ffmpeg,omitempty"`
+	X264         bool   `json:"x264"`
+	VideoToolbox bool   `json:"videotoolbox"`
+}
+
+// ProbeH264 asks ffmpeg for its encoders.
+func ProbeH264() H264Support {
+	path, err := FFmpegPath()
+	if err != nil {
+		return H264Support{}
+	}
+	out, err := exec.Command(path, "-hide_banner", "-encoders").Output()
+	if err != nil {
+		return H264Support{FFmpeg: path}
+	}
+	s := string(out)
+	return H264Support{FFmpeg: path, X264: strings.Contains(s, " libx264 "), VideoToolbox: strings.Contains(s, " h264_videotoolbox ")}
 }

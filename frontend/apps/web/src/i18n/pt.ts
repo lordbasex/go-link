@@ -490,6 +490,7 @@ export const pt: Messages = {
     statsRelay: "Pelo relay (TURN)",
     statsSent: "Enviados",
     statsReceived: "Recebidos",
+    statsCodec: "Codec",
     chatTurnOff: "Desligar o chat para todos",
     chatTurnOn: "Ligar o chat para todos",
     chatOffNote: "O anfitrião desligou o chat desta sala.",

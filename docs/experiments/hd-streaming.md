@@ -112,6 +112,12 @@ On this Intel Mac H.264 already pays at 1080p: the hardware encoder streams 1080
 
 **Picture quality** (the same encoders and settings, 1080p at 8 Mbps, each decoded frame against its original, luma PSNR): the HD scene 39.8-40.8 dB on average with any of the three; a real photograph with fine lines (a cutting mat) 42-47 dB still and 42-45 dB panning; a portrait 45-54 dB still and 47-54 dB panning, never under 41 dB. Over 40 dB the difference does not show to the eye; x264 `ultrafast` has the lowest single frames (30 dB on the HD scene right after a big change), so 4K with x264 should get more bitrate or a slower preset first. A guest's screen recording looks worse than this, from recompressing the screen, not from the stream.
 
+## Chosen per computer (2026-10-03)
+
+`--test-room-hd auto` (and `device hdprobe`, which only prints it) picks what this computer streams at 60 fps, from the numbers above: it asks ffmpeg for its encoders and tries, two seconds each with the HD scene, best first: 4K with x264 on Apple Silicon, 1080p with the hardware encoder, 1080p with x264 or VP8 with 8 cores or more, and 720p VP8, which every host streams. VP8, in the device's own process, must keep its 95th percentile within 60 % of a frame (the device's rule for a room's encoder); ffmpeg, a process of its own, must reach 66 fps. The device logs each check and its choice. The Mac Pro chooses 1080p with VideoToolbox (147 fps measured), and a room showed 59.9 fps. The room's **Connection details** now name the codec the browser decodes (H.264, VP8).
+
+Still to come: per viewer (a phone needs no 4K). Every viewer of a room gets the same stream today; sending each the size it needs takes simulcast (several encodings at once), and game rooms keep VP8 (their recordings are VP8 in WebM, and CPS-1 games are 384 x 224, which the browser scales).
+
 ## Tools added for it
 
 - `backend-device/pkg/hdscene`: the HD test scene, composed in I420 (tests and a 1080p benchmark).
@@ -120,3 +126,4 @@ On this Intel Mac H.264 already pays at 1080p: the hardware encoder streams 1080
 - `pkg/encoder` `Config.Threads` and `StreamConfig.EncoderThreads`: libvpx's thread count (the streaming default stays 2; VP8 shares the work with token partitions above 2).
 - `e2e/tests/hd.spec.ts`: the end-to-end measurement, skipped unless `E2E_HD` names the output file (`E2E_DEVICE_ARGS` passes the device's flags). With `E2E_DEVICE_COMMAND` the device runs on another computer, the host, through ssh with the test signalhub and panel tunnelled, while this computer's Chrome is the guest (`E2E_HD_PS` and `E2E_HD_MATCH` read its CPU there).
 - `pkg/encoder` `H264` and `device --test-room-hd SIZE --hd-codec h264 --hd-h264 x264|videotoolbox`: the H.264 track through ffmpeg.
+- `device --test-room-hd auto` and `device hdprobe --far PICTURE [--play PICTURE] [--json]`: the size and codec chosen per computer (`pkg/encoder` `ProbeH264`, `hdCandidates`, `hdAuto`).

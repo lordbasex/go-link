@@ -14,6 +14,7 @@ export function StreamInfo({
   sentFps,
   receivedFps,
   path,
+  codec = null,
   picture,
   video = null,
 }: {
@@ -21,6 +22,8 @@ export function StreamInfo({
   sentFps: number | null;
   receivedFps: number | null;
   path: "direct" | "relay" | null;
+  /** The video codec the browser decodes ("H.264", "VP8"). */
+  codec?: string | null;
   /** How the picture is drawn ("Sharp · WebGL 2", or the browser's own). */
   picture?: string;
   /** The picture the device sends (stream_stats video). */
@@ -51,6 +54,7 @@ export function StreamInfo({
     [t.room.statsReceived, receivedFps === null ? "–" : `${Math.round(receivedFps)} fps`],
     [t.picture.screen, hz === null ? "–" : t.picture.hz(hz)],
     ...(video ? videoRows(video) : []),
+    ...(codec ? [[t.room.statsCodec, codec] as [string, string]] : []),
     ...(picture ? [[t.picture.renderer, picture] as [string, string]] : []),
   ];
   return (

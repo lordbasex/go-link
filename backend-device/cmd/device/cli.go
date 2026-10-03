@@ -40,6 +40,7 @@ Usage:
                                          power a set on with the exact core: picture, sound,
                                          inputs (the website's "Test on my go-link")
   device hdbench --far PICTURE [--play PICTURE] [--res 720p,1080p,2160p] [--encoder vp8|videotoolbox|x264]
+  device hdprobe --far PICTURE [--play PICTURE] [--json]   (what go-link HD streams here at 60 fps)
                                          go-link HD's experiment: encode an HD test scene and
                                          measure the time per frame, bitrate and CPU
   device thumbnails check [--json]       count the thumbnails of the ROM sets
@@ -80,6 +81,9 @@ func runCommand(args []string) (handled bool, err error) {
 	// go-link HD's streaming experiment (T-31): no config either.
 	if args[0] == "hdbench" {
 		return true, cmdHDBench(args[1:])
+	}
+	if args[0] == "hdprobe" {
+		return true, cmdHDProbe(args[1:])
 	}
 	key := args[0]
 	if len(args) > 1 {

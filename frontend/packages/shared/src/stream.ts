@@ -93,6 +93,12 @@ export function encodeInput(seq: number, player: number, pad: Pad): ArrayBuffer 
   return buf;
 }
 
+/** "video/H264" -> "H.264", "video/VP8" -> "VP8". */
+export function codecName(mime: string): string {
+  const name = mime.replace(/^video\//i, "");
+  return /^h264$/i.test(name) ? "H.264" : /^h265$/i.test(name) ? "H.265" : name.toUpperCase();
+}
+
 export interface StreamStats {
   /** Frames per second being decoded. */
   fps: number | null;
@@ -100,6 +106,8 @@ export interface StreamStats {
   rttMs: number | null;
   /** How the media flows: straight to the device, or through the TURN relay. */
   path: "direct" | "relay" | null;
+  /** The video codec in use ("H.264", "VP8"), from the inbound stream's codec. */
+  codec?: string | null;
 }
 
 export type StreamState = "connecting" | "connected" | "failed" | "closed";
@@ -293,14 +301,16 @@ export class HostStream {
   }
 
   async stats(): Promise<StreamStats> {
-    const result: StreamStats = { fps: null, rttMs: null, path: null };
+    const result: StreamStats = { fps: null, rttMs: null, path: null, codec: null };
     if (!this.pc) return result;
     const report = await this.pc.getStats();
     const byId = new Map<string, Record<string, unknown>>();
     let selected: Record<string, unknown> | undefined;
+    let codecId: string | undefined;
     report.forEach((s: Record<string, unknown>) => {
       byId.set(String(s.id), s);
       if (s.type === "inbound-rtp" && s.kind === "video" && typeof s.framesPerSecond === "number") result.fps = s.framesPerSecond;
+      if (s.type === "inbound-rtp" && s.kind === "video" && typeof s.codecId === "string") codecId = s.codecId;
       if (s.type === "candidate-pair" && s.nominated && typeof s.currentRoundTripTime === "number") result.rttMs = Math.round(s.currentRoundTripTime * 1000);
     });
     // The pair in use: the transport names it (Chrome, Safari), else the
@@ -311,6 +321,8 @@ export class HostStream {
     if (!selected) report.forEach((s: Record<string, unknown>) => {
       if (s.type === "candidate-pair" && s.nominated && s.state === "succeeded") selected = s;
     });
+    const mime = codecId ? byId.get(codecId)?.mimeType : undefined;
+    if (typeof mime === "string") result.codec = codecName(mime);
     if (selected) {
       const kind = (id: unknown) => byId.get(String(id))?.candidateType;
       result.path = kind(selected.localCandidateId) === "relay" || kind(selected.remoteCandidateId) === "relay" ? "relay" : "direct";

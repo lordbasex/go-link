@@ -272,3 +272,128 @@ func hdRaw(file string, size hdSize, far, play image.Image, frames int) error {
 	}
 	return f.Close()
 }
+
+// hdChoice is what go-link HD streams on this computer: a size and a codec.
+type hdChoice struct {
+	Size   string  `json:"size"`
+	Codec  string  `json:"codec"`          // vp8 or h264
+	H264   string  `json:"h264,omitempty"` // with h264: x264 or videotoolbox
+	MaxFPS float64 `json:"max_fps"`        // what the check measured
+	P95Ms  float64 `json:"p95_ms"`
+}
+
+// hdCheck is one candidate's try.
+type hdCheck struct {
+	hdChoice
+	Fits bool   `json:"fits"`
+	Why  string `json:"why,omitempty"`
+}
+
+// hdCandidates are the choices to try on this computer, best first: 4K
+// with x264 on Apple Silicon (the experiment's 4K60), 1080p with the
+// hardware encoder (half a core), 1080p with x264 or VP8 with enough cores,
+// and 720p VP8, which every host can stream.
+func hdCandidates(h264 encoder.H264Support, cores int, appleSilicon bool) []hdChoice {
+	var c []hdChoice
+	if h264.X264 && appleSilicon {
+		c = append(c, hdChoice{Size: "2160p", Codec: "h264", H264: "x264"})
+	}
+	if h264.VideoToolbox {
+		c = append(c, hdChoice{Size: "1080p", Codec: "h264", H264: "videotoolbox"})
+	}
+	if h264.X264 && cores >= 8 {
+		c = append(c, hdChoice{Size: "1080p", Codec: "h264", H264: "x264"})
+	}
+	if cores >= 8 {
+		c = append(c, hdChoice{Size: "1080p", Codec: "vp8"})
+	}
+	return append(c, hdChoice{Size: "720p", Codec: "vp8"})
+}
+
+// hdFits says whether a check's numbers stream at 60 fps: VP8 in the
+// device's own process needs its 95th percentile within 60 % of a frame
+// (the device's rule for a room's encoder); ffmpeg, in a process of its own,
+// needs room for 66 frames a second.
+func hdFits(r hdResult, codec string) (bool, string) {
+	if codec == "vp8" {
+		if r.Realtime {
+			return true, ""
+		}
+		return false, fmt.Sprintf("p95 %.1f ms is over 10 ms", r.EncodeP95Ms)
+	}
+	if r.MaxFPS >= 66 {
+		return true, ""
+	}
+	return false, fmt.Sprintf("%.0f fps is under 66", r.MaxFPS)
+}
+
+// hdAuto tries the candidates for two seconds each, in order, and returns
+// the first that fits (720p VP8 when none does), with every try.
+func hdAuto(far, play image.Image) (hdChoice, []hdCheck) {
+	appleSilicon := runtime.GOOS == "darwin" && runtime.GOARCH == "arm64"
+	var tries []hdCheck
+	for _, c := range hdCandidates(encoder.ProbeH264(), runtime.NumCPU(), appleSilicon) {
+		enc, threads := c.Codec, 8
+		if c.Codec == "h264" {
+			enc = c.H264
+		}
+		r, err := hdRun(hdSizes[c.Size], enc, far, play, 120, 60, threads, 0)
+		check := hdCheck{hdChoice: c}
+		if err != nil {
+			check.Why = err.Error()
+		} else {
+			check.MaxFPS, check.P95Ms = r.MaxFPS, r.EncodeP95Ms
+			check.Fits, check.Why = hdFits(r, c.Codec)
+		}
+		tries = append(tries, check)
+		if check.Fits {
+			return check.hdChoice, tries
+		}
+	}
+	return hdChoice{Size: "720p", Codec: "vp8"}, tries
+}
+
+// cmdHDProbe prints what this computer can stream for go-link HD and what
+// `--test-room-hd auto` would choose.
+func cmdHDProbe(args []string) error {
+	fs := flag.NewFlagSet("hdprobe", flag.ContinueOnError)
+	far := fs.String("far", "", "the HD scene's far picture (PNG or JPEG)")
+	play := fs.String("play", "", "the HD scene's play picture (#FF00FF is transparent)")
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *far == "" {
+		return errors.New("usage: device hdprobe --far PICTURE [--play PICTURE] [--json]")
+	}
+	farImg, err := loadPicture(*far)
+	if err != nil {
+		return err
+	}
+	var playImg image.Image
+	if *play != "" {
+		if playImg, err = loadPicture(*play); err != nil {
+			return err
+		}
+	}
+	h264 := encoder.ProbeH264()
+	choice, tries := hdAuto(farImg, playImg)
+	if *asJSON {
+		e := json.NewEncoder(os.Stdout)
+		e.SetIndent("", "  ")
+		return e.Encode(map[string]any{"type": "hd_probe", "cpus": runtime.NumCPU(), "goos": runtime.GOOS, "goarch": runtime.GOARCH, "h264": h264, "tries": tries, "choice": choice})
+	}
+	fmt.Printf("computer: %s/%s, %d CPUs; ffmpeg: %s (x264 %v, VideoToolbox %v)\n", runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), orNone(h264.FFmpeg), h264.X264, h264.VideoToolbox)
+	for _, t := range tries {
+		fmt.Printf("  %-5s %-4s %-12s max %6.1f fps, p95 %5.1f ms  %s\n", t.Size, t.Codec, t.H264, t.MaxFPS, t.P95Ms, map[bool]string{true: "fits", false: "no: " + t.Why}[t.Fits])
+	}
+	fmt.Printf("choice: %s %s %s\n", choice.Size, choice.Codec, choice.H264)
+	return nil
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
+}
