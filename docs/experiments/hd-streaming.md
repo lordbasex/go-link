@@ -79,7 +79,7 @@ On the M1 the picture changes: VP8 is faster than on the Intel Mac Pro at every 
 ## Decision
 
 - **go-link HD, first version: 1920 × 1080 at 60 fps**, streamed as VP8 with 8 encoder threads (what the experiment proved end to end), with **1280 × 720** as the fallback, to be chosen by the same encoder check the device already runs between 2x and saver for the CPS-1 (`video_quality.go`; not built for HD yet). The own 2D "chip" can therefore draw a 1080p picture (for example a 480 × 270 or 640 × 360 pixel-art screen scaled 4x or 3x by the device, or real HD art).
-- **4K is a second step and needs H.264:** WebRTC carries it in every browser. The M1 measurement says the way there is x264 in software (110-149 fps at 4K on Apple Silicon, about half its cores), not the M1's media engine (54-63 fps for H.264); on Intel hosts neither reaches it. Next step: an H.264 track in the device's WebRTC stream (x264, with the hardware encoder for 1080p, where it costs half a core), then `hd.spec.ts` end to end at 4K.
+- **4K is a second step and needs H.264:** WebRTC carries it in every browser. The M1 measurement says the way there is x264 in software (110-149 fps at 4K on Apple Silicon, about half its cores), not the M1's media engine (54-63 fps for H.264); on Intel hosts neither reaches it. Done since: the device's H.264 track (below) streams **4K at 60 fps from the M1** to Chrome on another computer with x264, and 1080p60 with half a core using the hardware encoder; what is left is choosing the codec and size per host (Apple Silicon with x264 for 4K, the hardware encoder for 1080p, VP8 where ffmpeg is missing) and per viewer.
 - **Viewers:** 8 Mbps for 1080p fits home connections; phones get 720p (4 Mbps). Adapting the size to each viewer is future work: today every viewer of a room gets the same stream.
 
 ## An H.264 track (2026-10-03)
@@ -98,6 +98,19 @@ End to end in Chrome on the Mac Pro (the same `hd.spec.ts`, which now adds ffmpe
 | 4K | H.264, VideoToolbox | 32.6 fps | 33 / 33 | 0.55 + 0.3 = 0.9 cores |
 
 On this Intel Mac H.264 already pays at 1080p: the hardware encoder streams 1080p60 with less than half a core, a quarter of VP8's CPU, leaving the host's cores to the emulator. 4K stays out of reach here, as the encoders alone predicted (and Chrome decoding 4K on the same computer takes cores too).
+
+**The M1 as the host, over the home network** (2026-10-03): the device on the MacBook Pro M1, Chrome on the Mac Pro as the guest, the test signalhub and panel tunnelled through ssh (`E2E_DEVICE_COMMAND`), the video straight between the two computers (the Mac Pro behind a second router):
+
+| Size | Codec | Shown by Chrome | Sent / received | M1 CPU (device + ffmpeg) |
+|---|---|---|---|---|
+| 4K | H.264, x264 | **60.0 fps** | 60 / 59 | 0.33 + 1.9 = 2.2 of 8 cores |
+| 4K | H.264, VideoToolbox | 56.1 fps | 56 / 56 | 0.35 + 0.24 = 0.6 cores |
+| 1080p | H.264, x264 | 60.0 fps | 60 / 60 | 0.26 + 0.9 = 1.2 cores |
+| 1080p | H.264, VideoToolbox | 59.8 fps | 60 / 60 | 0.35 + 0.18 = 0.5 cores |
+
+**4K at 60 fps works end to end** with x264 on Apple Silicon, using about a quarter of the M1's cores, as the encoders alone said (110-149 fps); its media engine stays just under (56 fps). 1080p60 takes half a core with the hardware encoder.
+
+**Picture quality** (the same encoders and settings, 1080p at 8 Mbps, each decoded frame against its original, luma PSNR): the HD scene 39.8-40.8 dB on average with any of the three; a real photograph with fine lines (a cutting mat) 42-47 dB still and 42-45 dB panning; a portrait 45-54 dB still and 47-54 dB panning, never under 41 dB. Over 40 dB the difference does not show to the eye; x264 `ultrafast` has the lowest single frames (30 dB on the HD scene right after a big change), so 4K with x264 should get more bitrate or a slower preset first. A guest's screen recording looks worse than this, from recompressing the screen, not from the stream.
 
 ## Tools added for it
 
