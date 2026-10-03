@@ -1,0 +1,60 @@
+{
+ "name": "tall-climb",
+ "description": "A level taller than the tilemap (WM_ROM_OUT/tall of rom.test.tsx, rom/tallFixture.ts: 4096 px, 256 rows): player 1 climbs the ladder from the floor to the top while the camera follows, so the engine slides both layers' row windows the whole way (engine.c slide). Ledges on both sides at many heights and a far layer whose rows all differ show a row streamed into the wrong place.",
+ "frames": 3300,
+ "checkpoints": [
+  200,
+  500,
+  900,
+  1300,
+  1700,
+  2100,
+  2500,
+  2900,
+  3100,
+  3290
+ ],
+ "expect": [
+  {
+   "frame": 3290,
+   "path": "players.0.y",
+   "equals": 96
+  },
+  {
+   "frame": 3290,
+   "path": "players.0.climbing",
+   "equals": false
+  },
+  {
+   "frame": 3290,
+   "path": "cam.y",
+   "equals": 0
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 165,
+   "to": 3150,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  }
+ ]
+}

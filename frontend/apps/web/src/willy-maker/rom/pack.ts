@@ -316,7 +316,8 @@ export function packGame(
   if (project.levels.length > 1) note("levels", { n: project.levels.length });
   const cols = Math.ceil(level.size.w / CELL);
   const rows = Math.ceil(level.size.h / CELL);
-  if (cols * rows > MAX_CELLS || rows > 64) throw new Error(`the level is too big for the engine: ${level.size.w} x ${level.size.h} px (at most ${MAX_CELLS} cells of 16 px and 1024 px tall)`);
+  // a level taller than the tilemap's 64 rows (1024 px) is streamed a row at a time (engine.c slide)
+  if (cols * rows > MAX_CELLS) throw new Error(`the level is too big for the engine: ${level.size.w} x ${level.size.h} px (at most ${MAX_CELLS} cells of 16 px)`);
 
   // the collision tags (crates from their objects, as play mode adds them)
   const tags = new Uint8Array(cols * rows);
@@ -665,7 +666,9 @@ export function packGame(
   w16(play.table.length);
   w16(far.table.length);
   // the parallax bands of the play layer (T-26): rows r0-r1 and their speed in %
-  const bands = parallaxBands(level).slice(0, 4);
+  // parallax bands need the whole level in the tilemap: up to 64 rows
+  const bands = rows > 64 ? [] : parallaxBands(level).slice(0, 4);
+  if (rows > 64 && parallaxBands(level).length) note("tallBands", { h: level.size.h });
   w16(bands.length);
   for (let i = 0; i < 4; i++) {
     const b = bands[i];

@@ -259,6 +259,16 @@ static s16 loaded_band[4][64];
 static s32 band_x[4];       /* where each band's view starts, world px */
 static int nbands;
 static u8 col_map[24576]; /* the collision map in RAM: crates and walls break */
+/*
+ * Tall levels: a tilemap holds 64 rows (scroll2 1024 px, scroll3 2048 px) and
+ * its rows wrap like the scroll does, so level row r lives in tilemap row
+ * r & 63. Each layer keeps a window of up to 64 level rows around the camera
+ * (top: its first row, win: its height); a loaded column holds the window's
+ * rows, and when the camera goes up or down the window slides a row at a
+ * time, loading the row that comes in across the loaded columns. A level of
+ * 64 rows or fewer has the window [0, rows) for good, as before.
+ */
+static int top2, win2, top3, win3;
 
 /*
  * Each tile code's palette within its layer's bank (wm_data play_pal and
@@ -268,18 +278,18 @@ static u8 col_map[24576]; /* the collision map in RAM: crates and walls break */
  */
 static void load_col2(int c)
 {
-	int r, n = rows < 64 ? rows : 64;
+	int r, n = top2 + win2;
 	const u8 *pal = (const u8 *)D->play_pal;
 	u16 npal = pal ? D->n_play_codes : 0;
-	const u16 *src = D_PLAY + c;
-	const u8 *tag = D_TAGS + c;
-	const u8 *col = col_map + c;
+	const u16 *src = D_PLAY + top2 * cols + c;
+	const u8 *tag = D_TAGS + top2 * cols + c;
+	const u8 *col = col_map + top2 * cols + c;
 	volatile u16 *p = 0;
 	const u8 *band = nbands ? band_of_row : 0; /* no check at all without bands: the first frame streams every column */
-	for (r = 0; r < n; r++, src += cols, tag += cols, col += cols, p += 2) {
+	for (r = top2; r < n; r++, src += cols, tag += cols, col += cols, p += 2) {
 		u16 code = *src, k;
 		u8 t = *tag;
-		if (!(r & 15)) /* the tilemap is laid out in blocks of 16 rows */
+		if (!(r & 15) || r == top2) /* the tilemap is laid out in blocks of 16 rows */
 			p = scroll2_cell(c, r);
 		if (band && band[r])
 			continue; /* a parallax band's row: loaded with its band */
@@ -310,19 +320,89 @@ static void load_band_col(int b, int c)
 
 static void load_col3(int c)
 {
-	int r, fc = D->far_cols, fr = D->far_rows < 64 ? D->far_rows : 64;
+	int r, fc = D->far_cols, fr = top3 + win3;
 	const u8 *pal = (const u8 *)D->far_pal;
 	u16 npal = pal ? D->n_far_codes : 0;
-	const u16 *src = D_FAR + c;
+	const u16 *src = D_FAR + top3 * fc + c;
 	volatile u16 *p = 0;
-	for (r = 0; r < fr; r++, src += fc, p += 2) {
+	for (r = top3; r < fr; r++, src += fc, p += 2) {
 		u16 code = *src, k = (u16)(code - WM_FAR_TILES);
-		if (!(r & 7)) /* blocks of 8 rows */
+		if (!(r & 7) || r == top3) /* blocks of 8 rows */
 			p = scroll3_cell(c, r);
 		p[0] = code;
 		p[1] = k < npal ? pal[k] : 0;
 	}
 	loaded3[c & 63] = (s16)c;
+}
+
+/* level row r of the play layer across the loaded columns (a tall level's window slid onto it) */
+static void load_row2(int r)
+{
+	const u8 *pal = (const u8 *)D->play_pal;
+	u16 npal = pal ? D->n_play_codes : 0;
+	int s;
+	for (s = 0; s < 64; s++) {
+		int c = loaded2[s];
+		u16 code, k;
+		u8 t;
+		if (c < 0)
+			continue;
+		code = D_PLAY[r * cols + c];
+		t = D_TAGS[r * cols + c];
+		if ((t == T_CRATE || t == T_BREAKABLE) && col_map[r * cols + c] == T_AIR)
+			code = WM_EMPTY16;
+		k = (u16)(code - WM_PLAY_TILES);
+		scroll2_cell(c, r)[0] = code;
+		scroll2_cell(c, r)[1] = k < npal ? pal[k] : 0;
+	}
+}
+
+/* far row r across the loaded far columns */
+static void load_row3(int r)
+{
+	const u8 *pal = (const u8 *)D->far_pal;
+	u16 npal = pal ? D->n_far_codes : 0;
+	int s;
+	for (s = 0; s < 64; s++) {
+		int c = loaded3[s];
+		u16 code, k;
+		if (c < 0)
+			continue;
+		code = D_FAR[r * D->far_cols + c];
+		k = (u16)(code - WM_FAR_TILES);
+		scroll3_cell(c, r)[0] = code;
+		scroll3_cell(c, r)[1] = k < npal ? pal[k] : 0;
+	}
+}
+
+/*
+ * Slides a tall layer's window (n rows in all, view: the first row on screen)
+ * toward the camera: 24 rows of room above the view, a row or two a frame.
+ * A view outside the window (the first frame) moves it at once and drops the
+ * loaded columns, which then load again with the new window. Returns the new top.
+ */
+static int slide(int top, int n, int view, s16 *loaded, void (*load_row)(int))
+{
+	int target = view - 24, k;
+	if (n <= 64)
+		return 0;
+	if (target > n - 64)
+		target = n - 64;
+	if (target < 0)
+		target = 0;
+	/* out of the window, unless the window already touches that end of the level */
+	if (top < 0 || (view - 1 < top && top > 0) || (view + 18 >= top + 64 && top + 64 < n)) {
+		for (k = 0; k < 64; k++)
+			loaded[k] = -1;
+		return target;
+	}
+	for (k = 0; k < 2 && top != target; k++) {
+		if (target < top)
+			load_row(--top);
+		else
+			load_row(top++ + 64);
+	}
+	return top;
 }
 
 static int cam_x, cam_y, cam_far;
@@ -362,6 +442,8 @@ static void sfx(int id, s32 x)
 static void stream(void)
 {
 	int b, c, c0 = cam_x / 16 - 2, c1 = cam_x / 16 + SCREEN_W / 16 + 3;
+	top2 = slide(top2, rows, cam_y / 16, loaded2, load_row2);
+	top3 = slide(top3, D->far_rows, cam_y / 2 / 32, loaded3, load_row3);
 	for (c = c0; c <= c1; c++)
 		if (c >= 0 && c < cols && loaded2[c & 63] != c)
 			load_col2(c);
@@ -809,7 +891,7 @@ static s32 ground_below(s32 x, s32 y)
 static void clear_cell(int c, int r)
 {
 	col_map[r * cols + c] = T_AIR;
-	if (loaded2[c & 63] == c)
+	if (loaded2[c & 63] == c && r >= top2 && r < top2 + win2)
 		scroll2_cell(c, r)[0] = WM_EMPTY16;
 }
 
@@ -1067,8 +1149,13 @@ static void game_reset(void)
 		for (b = 0; b < 4; b++)
 			loaded_band[b][i] = -1;
 	}
-	/* the parallax bands' rows, and the row scroll on when there are any */
-	nbands = D->n_bands < 4 ? D->n_bands : 4;
+	/* a tall level's windows come to the camera on the first stream() */
+	win2 = rows < 64 ? rows : 64;
+	top2 = rows > 64 ? -1 : 0;
+	win3 = D->far_rows < 64 ? D->far_rows : 64;
+	top3 = D->far_rows > 64 ? -1 : 0;
+	/* the parallax bands' rows (a level of 64 rows at most), and the row scroll on when there are any */
+	nbands = rows > 64 ? 0 : D->n_bands < 4 ? D->n_bands : 4;
 	for (i = 0; i < nbands; i++) {
 		int r;
 		for (r = D->bands[i].r0; r < D->bands[i].r1 && r < 64; r++)
@@ -2400,7 +2487,7 @@ static int play(int first)
 
 int main(void)
 {
-	if (D->magic != WM_MAGIC || D->version != WM_VERSION || (u32)D->cols * D->rows > sizeof col_map || D->rows > 64 || D->far_rows > 64) {
+	if (D->magic != WM_MAGIC || D->version != WM_VERSION || (u32)D->cols * D->rows > sizeof col_map) {
 		CPSA_SCROLL1_BASE = GFX_SCROLL1 >> 8;
 		CPSA_PALETTE_BASE = GFX_PALETTE >> 8;
 		CPSA_VIDEO_CTRL = 0x000e;

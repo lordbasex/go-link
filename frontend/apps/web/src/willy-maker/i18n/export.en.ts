@@ -107,6 +107,7 @@ export const exportEn = {
       contents: (p: P) => `Crates with ${p.item} drop nothing yet (bazooka and health work).`,
       item: (p: P) => `The ${p.item} pickup is left out (bazooka and health work).`,
       camera_lock: () => "Camera locks are left out.",
+      tallBands: (p: P) => `Parallax bands are left out: they work on levels up to 1024 px tall, this one is ${p.h} px.`,
       checkpoint: () => "Checkpoints are left out.",
       boss: () => "Bosses are left out.",
       enemies: (p: P) => `${p.n} enemies: the engine takes ${p.max}.`,

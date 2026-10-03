@@ -121,6 +121,7 @@ export const exportEs: ExportMessages = {
       contents: (p: P) => `Las cajas con ${p.item} todavía no sueltan nada (bazooka y salud sí).`,
       item: (p: P) => `El objeto ${p.item} queda afuera (bazooka y salud sí).`,
       camera_lock: () => "Los bloqueos de cámara quedan afuera.",
+      tallBands: (p: P) => `Las bandas parallax quedan afuera: funcionan en niveles de hasta 1024 px de alto, y este mide ${p.h} px.`,
       checkpoint: () => "Los puntos de control quedan afuera.",
       boss: () => "Los jefes quedan afuera.",
       enemies: (p: P) => `${p.n} enemigos: el motor admite ${p.max}.`,

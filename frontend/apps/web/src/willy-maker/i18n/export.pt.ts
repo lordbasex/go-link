@@ -121,6 +121,7 @@ export const exportPt: ExportMessages = {
       contents: (p: P) => `Caixas com ${p.item} ainda não soltam nada (bazuca e vida sim).`,
       item: (p: P) => `O item ${p.item} fica de fora (bazuca e vida sim).`,
       camera_lock: () => "Os travamentos de câmera ficam de fora.",
+      tallBands: (p: P) => `As faixas de parallax ficam de fora: funcionam em níveis de até 1024 px de altura, e este tem ${p.h} px.`,
       checkpoint: () => "Os checkpoints ficam de fora.",
       boss: () => "Os chefes ficam de fora.",
       enemies: (p: P) => `${p.n} inimigos: o motor aceita ${p.max}.`,

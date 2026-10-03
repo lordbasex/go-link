@@ -10,6 +10,7 @@ import { CITY_TILESET, SKY_TILESET } from "../templates/tiles";
 import { bigGlyph, packGame, romSymbols, WM_DATA_ADDR, type Engine, type Picture } from "./pack";
 import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
+import { tallProject } from "./tallFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -140,6 +141,23 @@ describe("Create ROM", () => {
     const zip = await zipSet(r.files);
     if (out) {
       const dir = resolve(out, "platforms");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    expect(result.ok).toBe(true);
+  }, 30000);
+
+  it("packs a level taller than the tilemap and powers it on (validation level 3)", async () => {
+    const p = tallProject();
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null);
+    expect(r.stats.rows).toBe(256);
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "tall");
       mkdirSync(dir, { recursive: true });
       writeFileSync(resolve(dir, "slammast.zip"), zip);
       writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
