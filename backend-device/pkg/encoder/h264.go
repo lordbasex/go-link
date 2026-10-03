@@ -72,6 +72,9 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 	}
 	rate := strconv.Itoa(cfg.BitrateKbps) + "k"
 	gop := strconv.Itoa(cfg.FPS * 2)
+	if cfg.GOPFrames > 0 {
+		gop = strconv.Itoa(cfg.GOPFrames)
+	}
 	var codec []string
 	switch kind {
 	case "x264":

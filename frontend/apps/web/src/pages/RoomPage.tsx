@@ -608,6 +608,42 @@ export function RoomPage() {
   // undefined: not tried yet; null: this browser cannot (plain <video>).
   const [renderer, setRenderer] = useState<RendererKind | null | undefined>(undefined);
   const fullscreen = useFullscreen(stageRef);
+  // go-link HD: tell the device how big the picture is on this screen (device
+  // pixels, at most 2 per CSS pixel), so it sends the size that fills it; again
+  // when the window, the phone's turn or full screen changes it
+  const sentWant = useRef<[number, number]>([0, 0]);
+  const setVideoWant = live.setVideoWant;
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !live.controlOpen) return;
+    let timer = 0;
+    const measure = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const r = stage.getBoundingClientRect();
+        const v = videoRef.current;
+        const aspect = v && v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 16 / 9;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.round(Math.min(r.width, r.height * aspect) * dpr);
+        const h = Math.round(w / aspect);
+        const [pw, ph] = sentWant.current;
+        if (w > 0 && h > 0 && (Math.abs(w - pw) > pw * 0.1 || Math.abs(h - ph) > ph * 0.1)) {
+          sentWant.current = [w, h];
+          setVideoWant(w, h);
+        }
+      }, 300);
+    };
+    sentWant.current = [0, 0];
+    measure();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(stage);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearTimeout(timer);
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [live.controlOpen, setVideoWant]);
   const [helpOpen, setHelpOpen] = useState(false);
   // Phones and tablets get the on-screen gamepad instead of the keyboard map.
   const [touch] = useState(() => isTouchDevice());

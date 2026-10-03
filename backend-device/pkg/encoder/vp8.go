@@ -112,6 +112,9 @@ type Config struct {
 	// Threads is libvpx's thread count; zero keeps the streaming default (2).
 	// HD sizes need more (go-link HD, experiment T-31).
 	Threads int
+	// GOPFrames is H264's keyframe interval (0: two seconds); a viewer
+	// switched onto a stream starts at its next keyframe.
+	GOPFrames int
 }
 
 // Encoder defaults, used when Config leaves the tuning fields at zero.

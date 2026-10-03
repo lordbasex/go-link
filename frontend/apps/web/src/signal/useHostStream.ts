@@ -62,6 +62,8 @@ export interface HostStreamView {
   chat: ChatLine[];
   controlOpen: boolean;
   sendChat: (text: string) => void;
+  /** Tells the device the size the video is shown at (device pixels): go-link HD sends the picture that fills it. */
+  setVideoWant: (width: number, height: number) => void;
   /** Pauses or resumes the game for everyone (the host only: the device refuses anyone else). */
   setPaused: (paused: boolean) => void;
   /** Asks the host for a pause, or withdraws the request (cancel). */
@@ -397,6 +399,7 @@ export function useHostStream(
     chat,
     controlOpen,
     sendChat: (text) => send({ type: "chat", text }),
+    setVideoWant: (width, height) => send({ type: "video_want", width, height }),
     setPaused: (paused) => send({ type: "pause", paused }),
     requestPause: (cancel) => send(cancel ? { type: "pause_request", cancel: true } : { type: "pause_request" }),
     answerPause: (from, accept) => send({ type: "pause_answer", from, accept }),

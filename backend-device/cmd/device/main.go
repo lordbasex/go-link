@@ -179,6 +179,7 @@ func run() error {
 	}
 	if *testHD != "" {
 		streamCfg.EncoderThreads = *hdThreads
+		streamCfg.Tiers = true // each guest gets the size its screen shows
 		switch *hdCodec {
 		case "vp8":
 		case "h264":

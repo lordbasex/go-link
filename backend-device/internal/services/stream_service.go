@@ -65,6 +65,9 @@ type StreamConfig struct {
 	// ffmpeg instead of VP8 (go-link HD, docs/experiments/hd-streaming.md):
 	// the HD test room only, without recordings or the 2x encoder check.
 	H264Encoder string
+	// Tiers sends each viewer the picture size it needs: the source and its
+	// halves, chosen from the viewer's video_want (video_tiers.go).
+	Tiers bool
 }
 
 // h264Fmtp is the H.264 the device offers: Constrained Baseline, which
@@ -107,6 +110,12 @@ type viewer struct {
 	// voice[i] carries the voice of the player at port i+1 to this viewer.
 	voice [4]*webrtc.TrackLocalStaticRTP
 
+	// The video tier this viewer gets and the size it shows the video at
+	// (device pixels, video_want), and its own video track; under s.mu.
+	tier         int
+	wantW, wantH int
+	video        *webrtc.TrackLocalStaticSample
+
 	mu        sync.Mutex
 	remoteSet bool
 	pending   []webrtc.ICECandidateInit
@@ -146,6 +155,8 @@ type StreamService struct {
 	vp8W, vp8H int
 	vp8Kbps    int
 	h264       *encoder.H264
+	tiers      []*videoTier // with StreamConfig.Tiers
+	tierLevels int          // tiers the current source size has (under mu)
 	// frames and bytes the H.264 reader goroutine sent since the last count
 	h264Sent, h264Bytes atomic.Int64
 	opus                *encoder.Opus
@@ -449,6 +460,9 @@ func NewStreamService(cfg StreamConfig, ice *ICEStore) (*StreamService, error) {
 	}
 	s.kbps.Store(int64(cfg.BitrateKbps))
 	s.scale.Store(1)
+	if cfg.Tiers {
+		s.newTiers()
+	}
 	return s, nil
 }
 
@@ -600,6 +614,9 @@ func (s *StreamService) Run(ctx context.Context) error {
 		if s.h264 != nil {
 			s.h264.Close()
 		}
+		for _, t := range s.tiers {
+			t.close()
+		}
 	}()
 	go func() {
 		t := time.NewTicker(2 * time.Second)
@@ -665,6 +682,10 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.sent, s.sentBytes, s.window = 0, 0, time.Now()
 	}
 	kbps := s.Bitrate()
+	if s.tiers != nil {
+		s.tieredFrame(i420, w, h, kbps, dur)
+		return
+	}
 	if s.cfg.H264Encoder != "" {
 		s.h264Frame(i420, w, h, kbps, dur)
 		return
@@ -935,17 +956,30 @@ func abs(n int) int {
 // sendStreamStats tells viewers what the device is sending, so the web
 // can compare sent and received frames.
 func (s *StreamService) sendStreamStats() {
+	type target struct {
+		dc  *webrtc.DataChannel
+		msg []byte
+	}
 	s.mu.Lock()
-	msg, _ := json.Marshal(s.streamStatsLocked())
-	var targets []*webrtc.DataChannel
+	all, _ := json.Marshal(s.streamStatsLocked())
+	var targets []target
 	for _, v := range s.viewers {
 		if v.kind == KindViewer && v.control != nil && v.control.ReadyState() == webrtc.DataChannelStateOpen {
-			targets = append(targets, v.control)
+			msg := all
+			if s.tiers != nil {
+				// each viewer hears of its own tier's picture
+				st := s.streamStatsLocked()
+				l := s.tierOfLocked(v)
+				st.Width, st.Height = s.vp8W>>l, s.vp8H>>l
+				st.Video = &StreamVideo{Scale: 1, Width: st.Width, Height: st.Height}
+				msg, _ = json.Marshal(st)
+			}
+			targets = append(targets, target{v.control, msg})
 		}
 	}
 	s.mu.Unlock()
-	for _, dc := range targets {
-		_ = dc.SendText(string(msg))
+	for _, t := range targets {
+		_ = t.dc.SendText(string(t.msg))
 	}
 }
 
@@ -1085,7 +1119,21 @@ func (s *StreamService) AddPeer(peerID string, kind PeerKind) error {
 // losing a seat never renegotiates the connection.
 func (s *StreamService) addMedia(v *viewer) error {
 	pc := v.pc
-	rtpSender, err := pc.AddTrack(s.track)
+	track := s.track
+	if s.tiers != nil {
+		// a tiered stream gives every viewer its own track, one size down
+		// until the viewer says what it shows (video_tiers.go)
+		own, err := webrtc.NewTrackLocalStaticSample(s.track.Codec(), "video", "go-link")
+		if err != nil {
+			return err
+		}
+		s.mu.Lock()
+		v.tier = min(1, max(s.tierLevels-1, 0))
+		v.video = own
+		s.mu.Unlock()
+		track = own
+	}
+	rtpSender, err := pc.AddTrack(track)
 	if err != nil {
 		return err
 	}
@@ -1105,6 +1153,12 @@ func (s *StreamService) addMedia(v *viewer) error {
 			for _, p := range pkts {
 				switch p.(type) {
 				case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
+					if s.tiers != nil {
+						s.mu.Lock()
+						l := s.tierOfLocked(v)
+						s.mu.Unlock()
+						s.tiers[l].keyframe.Store(true)
+					}
 					s.keyframe.Store(true)
 				}
 			}
@@ -1290,6 +1344,16 @@ type controlMessage struct {
 func (s *StreamService) handleControl(v *viewer, data []byte) {
 	var msg controlMessage
 	if json.Unmarshal(data, &msg) != nil {
+		return
+	}
+	if msg.Type == "video_want" && v.kind == KindViewer {
+		var want struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		}
+		if json.Unmarshal(data, &want) == nil {
+			s.setVideoWant(v, want.Width, want.Height)
+		}
 		return
 	}
 	if msg.Type != "pong" {

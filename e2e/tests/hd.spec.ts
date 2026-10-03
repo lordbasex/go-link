@@ -15,7 +15,9 @@ import { pairingCode, stack } from "../stack";
 
 test.skip(!process.env.E2E_HD, "go-link HD's experiment runs only with E2E_HD");
 // E2E_HD_VIDEO=1 also records what the guest sees (Playwright's screencast, about 25 fps), in test-results/
-test.use(process.env.E2E_HD_VIDEO ? { viewport: { width: 1600, height: 900 }, video: { mode: "on", size: { width: 1600, height: 900 } } } : {});
+// E2E_HD_VIEWPORT=WxH sizes the guest's window (the tier it gets follows it)
+const [vw, vh] = (process.env.E2E_HD_VIEWPORT ?? "1600x900").split("x").map(Number);
+test.use({ viewport: { width: vw!, height: vh! }, ...(process.env.E2E_HD_VIDEO ? { video: { mode: "on" as const, size: { width: vw!, height: vh! } } } : {}) });
 
 test("the HD scene reaches a room: frames, size and the device's CPU", async ({ page }) => {
   test.setTimeout(180_000);
