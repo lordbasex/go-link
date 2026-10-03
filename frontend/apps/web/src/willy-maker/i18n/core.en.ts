@@ -298,6 +298,8 @@ export const coreEn = {
     distance: "Distance (px)",
     speed: "Speed (px per frame)",
     platformHelp: "Goes back and forth along this distance; players stand on it from above and ride it.",
+    falls: "Falls",
+    fallsHelp: "It shakes for half a second once someone stands on it, falls out of the level and is back 3 seconds later. A falling platform does not travel.",
     delete: "Delete",
     cell: (tag: string, col: number, row: number) => `${tag} · cell ${col},${row}`,
     level: "Level",

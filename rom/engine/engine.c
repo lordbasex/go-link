@@ -615,7 +615,15 @@ static struct platform {
 	s32 x0, y0, w, axis, range, speed;
 	s32 x, y; /* the top left now */
 	s32 dy;   /* how far the top moved this frame */
+	/* a falling platform (engine/game.ts fallStep): rest, shake, fall, gone; frames in it, speed and top in 1/16 px */
+	int falls, state;
+	s32 t, vy, y16;
 } plat[MAX_PLATFORMS];
+enum { PL_REST, PL_SHAKE, PL_FALL, PL_GONE };
+#define FALL_SHAKE 30
+#define FALL_GRAVITY 4
+#define FALL_MAX 64
+#define FALL_BACK 180
 static int nplat;
 static u32 plat_t;
 
@@ -632,7 +640,7 @@ static int platform_rose(s32 x, s32 from, int half)
 {
 	int i;
 	for (i = 0; i < nplat; i++)
-		if (plat[i].dy <= 0 && from >= plat[i].y && from <= plat[i].y - plat[i].dy && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
+		if (plat[i].state != PL_GONE && plat[i].dy <= 0 && from >= plat[i].y && from <= plat[i].y - plat[i].dy && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
 			return i;
 	return -1;
 }
@@ -642,7 +650,7 @@ static int platform_under(s32 x, s32 fy, int half)
 {
 	int i;
 	for (i = 0; i < nplat; i++)
-		if (fy == plat[i].y && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
+		if (plat[i].state != PL_GONE && fy == plat[i].y && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
 			return i;
 	return -1;
 }
@@ -746,12 +754,12 @@ static int is_ledge(int c, int r)
 	return t == T_ONEWAY || (t == T_LADDER && cell(c, r - 1) != T_LADDER);
 }
 
-static int support_w(s32 x, s32 fy, int drop, int half)
+/* support_w from the cells alone (no platform) */
+static int cell_support(s32 x, s32 fy, int drop, int half)
 {
 	int r, c0, c1, best = 0, c;
-	int on = !drop && platform_under(x, fy, half) >= 0;
 	if (fy & 15)
-		return on;
+		return 0;
 	r = (int)(fy >> 4);
 	c0 = (int)((x - half) >> 4);
 	c1 = (int)((x + half) >> 4);
@@ -761,6 +769,13 @@ static int support_w(s32 x, s32 fy, int drop, int half)
 		if (!drop && is_ledge(c, r))
 			best = 1;
 	}
+	return best;
+}
+
+static int support_w(s32 x, s32 fy, int drop, int half)
+{
+	int best = cell_support(x, fy, drop, half);
+	int on = !drop && platform_under(x, fy, half) >= 0;
 	return best > on ? best : on;
 }
 
@@ -1125,7 +1140,10 @@ static void game_reset(void)
 		plat[i].x0 = o->x;
 		plat[i].y0 = o->y;
 		plat[i].w = o->a;
-		plat[i].axis = o->b;
+		plat[i].axis = o->b & 1;
+		plat[i].falls = (o->b >> 1) & 1;
+		plat[i].state = PL_REST;
+		plat[i].t = plat[i].vy = plat[i].y16 = 0;
 		plat[i].range = o->c;
 		plat[i].speed = o->d;
 		plat[i].dy = 0;
@@ -1135,6 +1153,37 @@ static void game_reset(void)
 		en_shots[i].live = 0;
 	rescued = 0;
 	cam_x = cam_y = cam_far = 0;
+}
+
+/* a falling platform's frame: at rest until stood on, then it shakes, falls out of the level and comes back */
+static void fall_step(struct platform *q, int ridden)
+{
+	if (q->state == PL_REST) {
+		if (ridden) {
+			q->state = PL_SHAKE;
+			q->t = 0;
+		}
+	} else if (q->state == PL_SHAKE) {
+		if (++q->t >= FALL_SHAKE) {
+			q->state = PL_FALL;
+			q->vy = 0;
+			q->y16 = q->y * 16;
+		}
+	} else if (q->state == PL_FALL) {
+		q->vy += FALL_GRAVITY;
+		if (q->vy > FALL_MAX)
+			q->vy = FALL_MAX;
+		q->y16 += q->vy;
+		q->y = q->y16 >> 4;
+		/* it breaks on solid ground (its top's middle in a solid cell) or once out of the level */
+		if (is_solid(cell_at(q->x + (q->w >> 1), q->y)) || q->y > level_h + 16) {
+			q->state = PL_GONE;
+			q->t = 0;
+		}
+	} else if (++q->t >= FALL_BACK) {
+		q->state = PL_REST;
+		q->y = q->y0;
+	}
 }
 
 /* moves the platforms to this frame's place, carrying whoever stands on them (engine/game.ts movePlatforms) */
@@ -1148,9 +1197,16 @@ static void move_platforms(void)
 		int ride[MAX_PLAYERS];
 		for (k = 0; k < nplayers; k++)
 			ride[k] = pl[k].active && pl[k].on_ground && !pl[k].climbing && platform_under(pl[k].x, pl[k].y >> 4, pl[k].look->half_w) == i;
-		place_platform(q, plat_t);
+		if (q->falls) {
+			int ridden = 0;
+			for (k = 0; k < nplayers; k++)
+				ridden |= ride[k];
+			fall_step(q, ridden);
+		} else
+			place_platform(q, plat_t);
 		dx = q->x - wx;
-		dy = q->y - wy;
+		/* a falling platform coming back is not a move (it carries nobody and catches nobody) */
+		dy = q->falls && q->state == PL_REST ? 0 : q->y - wy;
 		q->dy = dy;
 		for (k = 0; k < nplayers; k++) {
 			struct player *p = &pl[k];
@@ -1165,7 +1221,14 @@ static void move_platforms(void)
 			}
 			if (dy < 0 && body_blocked_h(p->x, (p->y >> 4) + dy, p->look->body_h))
 				continue;
-			p->y += dy * 16;
+			/* going down, ground on the way stops the rider (the platform goes on alone) */
+			{
+				s32 py, ground = 0;
+				for (py = (p->y >> 4) + 1; py <= (p->y >> 4) + dy && !ground; py++)
+					if (cell_support(p->x, py, 0, p->look->half_w))
+						ground = py;
+				p->y = ground ? ground * 16 : p->y + dy * 16;
+			}
 		}
 	}
 }
@@ -1175,8 +1238,13 @@ static void draw_platforms(void)
 	int i, x;
 	for (i = 0; i < nplat; i++) {
 		int sx = (int)plat[i].x - cam_x, sy = (int)plat[i].y - cam_y;
+		u16 base = plat[i].falls ? TILE_PLATFORM + 3 : TILE_PLATFORM; /* a falling one: rusty and cracked */
+		if (plat[i].state == PL_GONE)
+			continue;
+		if (plat[i].state == PL_SHAKE)
+			sx += (plat[i].t & 2) ? 1 : -1;
 		for (x = 0; x < plat[i].w; x += 16)
-			put_sprite(sx + x, sy, x == 0 ? TILE_PLATFORM : x + 16 >= plat[i].w ? TILE_PLATFORM + 2 : TILE_PLATFORM + 1, PAL_PICKUPS);
+			put_sprite(sx + x, sy, x == 0 ? base : x + 16 >= plat[i].w ? base + 2 : base + 1, PAL_PICKUPS);
 	}
 }
 
@@ -2215,9 +2283,11 @@ static void continue_prompt(int on)
 	draw_line(&coin, on);
 }
 
+#define SETUP_FRAMES 10 /* more than setting up any level takes */
+
 static int play(int first)
 {
-	u32 end_t = 0;
+	u32 end_t = 0, entry = frame_count;
 	int k, outcome = -1, cont = 0;
 	clear_text();
 	game_reset();
@@ -2227,6 +2297,10 @@ static int play(int first)
 	stream();
 	draw_screen(WM_SCR_HUD, 1);
 	MUSIC(MUSIC_PLAY);
+	/* setting the level up takes a few frames, ending near a vblank on some levels, where the real
+	   core and the board model could disagree by one: play always starts SETUP_FRAMES after Start */
+	while (frame_count - entry < SETUP_FRAMES)
+		;
 	for (;;) {
 		int alive = 0;
 		wait_vblank();

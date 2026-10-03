@@ -118,6 +118,19 @@ describe("Create ROM", () => {
     Object.assign(items.items.find((o) => o.type === "player_start" && o.player === 1)!, { x: 64, y: 384 });
     items.items.push({ name: "lift_a", type: "platform", x: 40, y: 384, w: 48, axis: "x", range: 96, speed: 1 });
     items.items.push({ name: "lift_b", type: "platform", x: 232, y: 320, w: 64, axis: "y", range: 64, speed: 1 });
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      // the same level with player 1 on a falling platform instead (rom/tools/lab/runs/platforms-fall.json)
+      const fall = specProject();
+      const fi = fall.levels[0]!.layers.find((l) => l.kind === "objects")!;
+      if (fi.kind !== "objects") throw new Error("objects");
+      Object.assign(fi.items.find((o) => o.type === "player_start" && o.player === 1)!, { x: 64, y: 384 });
+      fi.items.push({ name: "crumbly", type: "platform", x: 40, y: 384, w: 48, falls: true });
+      const dir = resolve(out, "falling");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), await zipSet(packGame(fall, engine, (id) => pictures.get(id) ?? null).files));
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
     const r = packGame(p, engine, (id) => pictures.get(id) ?? null);
     expect(r.stats.platforms).toBe(2);
     const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
@@ -125,7 +138,6 @@ describe("Create ROM", () => {
     const at = u32(d, 0xa6) - WM_DATA_ADDR;
     expect([0, 2, 4, 6, 8, 10].map((k) => u16(d, at + 12 + k))).toEqual([232, 320, 64, 1, 64, 1]);
     const zip = await zipSet(r.files);
-    const out = process.env.WM_ROM_OUT;
     if (out) {
       const dir = resolve(out, "platforms");
       mkdirSync(dir, { recursive: true });

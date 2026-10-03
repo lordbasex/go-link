@@ -641,9 +641,23 @@ export function addArt(gfx, defs, genDir, opts = {}) {
           }),
         ),
       );
-    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end */`, `#define PAL_PICKUPS ${objPalettes.length}`);
-    objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, ...new Array(3).fill(0xf000), 0x0000]);
-    code += 5;
+    // the falling platform: the same girder, rusty and cracked (play/renderer.ts drawPlatforms), right after it
+    for (let part = 0; part < 3; part++)
+      gfx.tile16(
+        code + 5 + part,
+        Array.from({ length: 16 }, (_, y) =>
+          Array.from({ length: 16 }, (_, x) => {
+            if (y >= 8) return 15;
+            if (y === 7 || (part === 0 && x === 0) || (part === 2 && x === 15)) return 10;
+            if ((x === 5 + part * 2 && y >= 2 && y <= 6) || (x === 6 + part * 2 && (y === 3 || y === 6)) || (x === 11 && y === 4)) return 14; // cracks
+            if (y < 2) return 13;
+            return 12;
+          }),
+        ),
+      );
+    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define PAL_PICKUPS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, 0xf843, 0xfc85, 0xf311, 0x0000]);
+    code += 8;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

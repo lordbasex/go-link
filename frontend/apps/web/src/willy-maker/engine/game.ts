@@ -187,14 +187,28 @@ export interface Platform {
   y: number;
   /** How far the top moved up or down this frame. */
   dy: number;
+  /** A falling platform: it shakes once stood on, falls, and comes back later (it has no track). */
+  falls: boolean;
+  state: "rest" | "shake" | "fall" | "gone";
+  /** Frames in its state, and its falling speed (1/16 px a frame) and top (1/16 px). */
+  t: number;
+  vy: number;
+  y16: number;
 }
 
+/** A falling platform shakes this many frames once stood on, falls (gaining FALL_GRAVITY up to FALL_MAX, 1/16 px), and is back FALL_BACK frames after leaving the level. */
+export const FALL_SHAKE = 30;
+export const FALL_GRAVITY = 4;
+export const FALL_MAX = 64;
+export const FALL_BACK = 180;
+
 /** A platform's limits (the ROM's too): width 32-128 px in 16s, range 0-512 px, speed 1-4 px a frame. */
-export function platformOf(o: { name: string; x: number; y: number; w?: unknown; axis?: unknown; range?: unknown; speed?: unknown }): Platform {
+export function platformOf(o: { name: string; x: number; y: number; w?: unknown; axis?: unknown; range?: unknown; speed?: unknown; falls?: unknown }): Platform {
   const w = Math.max(2, Math.min(8, Math.round(num(o.w, 48) / CELL))) * CELL;
-  const range = Math.max(0, Math.min(512, Math.round(num(o.range, 96))));
+  const falls = o.falls === true;
+  const range = falls ? 0 : Math.max(0, Math.min(512, Math.round(num(o.range, 96))));
   const speed = Math.max(1, Math.min(4, Math.round(num(o.speed, 1))));
-  const p: Platform = { name: o.name, x0: Math.round(o.x), y0: Math.round(o.y), w, axis: o.axis === "y" ? "y" : "x", range, speed, x: 0, y: 0, dy: 0 };
+  const p: Platform = { name: o.name, x0: Math.round(o.x), y0: Math.round(o.y), w, axis: o.axis === "y" ? "y" : "x", range, speed, x: 0, y: 0, dy: 0, falls, state: "rest", t: 0, vy: 0, y16: 0 };
   placePlatform(p, 0);
   return p;
 }
@@ -395,7 +409,12 @@ export class Game {
   /** Can feet at y (px, on a cell top) stand at x? 2 = solid, 1 = ledge, 0 = no. */
   support(x: number, fy: number, drop: boolean, halfW = HALF_W): number {
     const on = !drop && this.platformUnder(x, fy, halfW) ? 1 : 0;
-    if (fy % CELL !== 0) return on;
+    return Math.max(this.cellSupport(x, fy, drop, halfW), on);
+  }
+
+  /** support() from the cells alone (no platform). */
+  private cellSupport(x: number, fy: number, drop: boolean, halfW: number): number {
+    if (fy % CELL !== 0) return 0;
     const r = fy / CELL;
     const c0 = Math.floor((x - halfW) / CELL);
     const c1 = Math.floor((x + halfW) / CELL);
@@ -404,19 +423,47 @@ export class Game {
       if (this.isSolid(this.cell(c, r))) return 2;
       if (!drop && this.isLedge(c, r)) best = 1;
     }
-    return Math.max(best, on);
+    return best;
   }
 
   /** The moving platform whose top is at fy under feet at x, if any. */
   platformUnder(x: number, fy: number, halfW = HALF_W): Platform | undefined {
-    for (const pl of this.platforms) if (fy === pl.y && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
+    for (const pl of this.platforms) if (pl.state !== "gone" && fy === pl.y && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
     return undefined;
   }
 
   /** A platform that rose to or past falling feet this frame (from: the feet before the fall), if any. */
   private platformRose(x: number, from: number, halfW: number): Platform | undefined {
-    for (const pl of this.platforms) if (pl.dy <= 0 && from >= pl.y && from <= pl.y - pl.dy && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
+    for (const pl of this.platforms) if (pl.state !== "gone" && pl.dy <= 0 && from >= pl.y && from <= pl.y - pl.dy && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
     return undefined;
+  }
+
+  /** A falling platform's frame: at rest until stood on, then it shakes, falls out of the level and comes back. */
+  private fallStep(pl: Platform, ridden: boolean): void {
+    if (pl.state === "rest") {
+      if (ridden) {
+        pl.state = "shake";
+        pl.t = 0;
+      }
+    } else if (pl.state === "shake") {
+      if (++pl.t >= FALL_SHAKE) {
+        pl.state = "fall";
+        pl.vy = 0;
+        pl.y16 = pl.y * 16;
+      }
+    } else if (pl.state === "fall") {
+      pl.vy = Math.min(pl.vy + FALL_GRAVITY, FALL_MAX);
+      pl.y16 += pl.vy;
+      pl.y = pl.y16 >> 4;
+      // it breaks on solid ground (its top's middle in a solid cell) or once out of the level
+      if (this.isSolid(this.cellAt(pl.x + (pl.w >> 1), pl.y)) || pl.y > this.level.height + 16) {
+        pl.state = "gone";
+        pl.t = 0;
+      }
+    } else if (++pl.t >= FALL_BACK) {
+      pl.state = "rest";
+      pl.y = pl.y0;
+    }
   }
 
   /** Moves the platforms to this frame's place, carrying whoever stands on them. */
@@ -424,9 +471,11 @@ export class Game {
     for (const pl of this.platforms) {
       const was = { x: pl.x, y: pl.y };
       const riders = this.players.filter((p) => p.active && p.onGround && !p.climbing && this.platformUnder(p.x, p.y >> 4, p.body.halfW) === pl);
-      placePlatform(pl, this.frame);
+      if (pl.falls) this.fallStep(pl, riders.length > 0);
+      else placePlatform(pl, this.frame);
       const dx = pl.x - was.x;
-      const dy = pl.y - was.y;
+      // a falling platform coming back is not a move (it carries nobody and catches nobody)
+      const dy = pl.falls && pl.state === "rest" ? 0 : pl.y - was.y;
       pl.dy = dy;
       for (const p of riders) {
         // sideways one pixel at a time, stopped by walls; up or down with the top
@@ -436,7 +485,10 @@ export class Game {
           p.x += step;
         }
         if (dy < 0 && this.bodyBlocked(p.x, (p.y >> 4) + dy, p.body.h)) continue;
-        p.y += dy * 16;
+        // going down, ground on the way stops the rider (the platform goes on alone)
+        let ground = 0;
+        for (let py = (p.y >> 4) + 1; py <= (p.y >> 4) + dy && !ground; py++) if (this.cellSupport(p.x, py, false, p.body.halfW)) ground = py;
+        p.y = ground ? ground * 16 : p.y + dy * 16;
       }
     }
   }

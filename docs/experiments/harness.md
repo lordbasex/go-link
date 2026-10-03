@@ -82,7 +82,7 @@ The header checks every offset at compile time (`_Static_assert`). A case that w
 
 ## Input scripts
 
-One JSON format for the simulator, the real core and every recorded run (`inputs.json`):
+One JSON format for the simulator, the real core and every recorded run (`inputs.json`). Frames count from power on, so a script's steps after Start depend on when play begins: since 2026-10-03 the go-link engine starts play a fixed `SETUP_FRAMES` (10) frames after Start, whatever setting the level up took (it took about 4 frames and ended near a vblank on some levels, where the real core and the board model could start a frame apart). The engine's own scripts (`spec-*.json`, `platforms-*.json`) were shifted by those 6 frames then: play begins at frame 163 and the spec level clears at frame 1889 (1883 before). The prototype's and experiment 1's recorded runs keep their own ROMs and frames.
 
 ```json
 {

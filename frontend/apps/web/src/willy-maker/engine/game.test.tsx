@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { Game, Input, Tag, decodeCells, levelFromProject, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -664,6 +664,28 @@ describe("moving platforms (the platformer)", () => {
       if (g.players[0]!.onGround && feet(g) === g.platforms[0]!.y) ridden++;
     }
     expect(ridden).toBeGreaterThan(10);
+  });
+
+  it("a falling platform shakes once stood on, falls with its rider and comes back", () => {
+    const g = onIt({ falls: true, range: 96 });
+    const pl = g.platforms[0]!;
+    expect([pl.state, pl.range]).toEqual(["rest", 0]); // a falling platform does not travel
+    run(g, 1, 0);
+    expect(pl.state).toBe("shake");
+    run(g, FALL_SHAKE - 1, 0);
+    expect([pl.state, pl.y, feet(g)]).toEqual(["shake", 352, 352]);
+    run(g, 1, 0);
+    expect(pl.state).toBe("fall");
+    run(g, 10, 0);
+    expect(pl.y).toBeGreaterThan(352);
+    expect(feet(g)).toBe(pl.y); // the rider goes down with it
+    // the floor at 400 stops the player, not the platform: it falls out of the level
+    run(g, 120, 0);
+    expect(feet(g)).toBe(400);
+    expect(pl.state).toBe("gone");
+    expect(g.platformUnder(216, pl.y)).toBeUndefined();
+    run(g, FALL_BACK, 0);
+    expect([pl.state, pl.y, pl.dy]).toEqual(["rest", 352, 0]);
   });
 
   it("a wall stops the ride but not the platform", () => {

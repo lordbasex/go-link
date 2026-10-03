@@ -450,7 +450,8 @@ export function packGame(
       case "platform": {
         // the same limits play mode applies (engine/game.ts platformOf)
         const pl = platformOf(o);
-        platforms.push([pl.x0, pl.y0, pl.w, pl.axis === "y" ? 1 : 0, pl.range, pl.speed]);
+        // b: bit 0 the axis (up and down), bit 1 a falling platform
+        platforms.push([pl.x0, pl.y0, pl.w, (pl.axis === "y" ? 1 : 0) | (pl.falls ? 2 : 0), pl.range, pl.speed]);
         break;
       }
       case "exit":

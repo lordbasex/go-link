@@ -1,53 +1,53 @@
 {
  "name": "platforms-ride",
  "description": "Moving platforms (WM_ROM_OUT/platforms of rom.test.tsx: the spec level, player 1 starting on a lift going across, a second lift going up and down): player 1 rides the first lift there and back without touching the controls, drops through it with down and jump, walks under the second lift, jumps through it from below, is caught by it while it rises and rides it. Play mode's engine gives the same place every frame (inputs 2 frames later, the board's input delay).",
- "frames": 820,
+ "frames": 826,
  "checkpoints": [
-  300,
-  420,
-  520,
-  600,
-  700,
-  800
+  306,
+  426,
+  526,
+  606,
+  706,
+  806
  ],
  "expect": [
   {
-   "frame": 299,
+   "frame": 305,
    "path": "players.0.ground",
    "equals": true
   },
   {
-   "frame": 299,
+   "frame": 305,
    "path": "players.0.x",
    "equals": 113
   },
   {
-   "frame": 299,
+   "frame": 305,
    "path": "players.0.y",
    "equals": 384
   },
   {
-   "frame": 340,
+   "frame": 346,
    "path": "players.0.y",
    "equals": 416
   },
   {
-   "frame": 540,
+   "frame": 546,
    "path": "players.0.ground",
    "equals": true
   },
   {
-   "frame": 540,
+   "frame": 546,
    "path": "players.0.y",
    "equals": 320
   },
   {
-   "frame": 700,
+   "frame": 706,
    "path": "players.0.y",
    "equals": 352
   },
   {
-   "frame": 800,
+   "frame": 806,
    "path": "players.0.y",
    "equals": 324
   }
@@ -70,8 +70,8 @@
    ]
   },
   {
-   "from": 300,
-   "to": 301,
+   "from": 306,
+   "to": 307,
    "port": 1,
    "buttons": [
     "down",
@@ -79,16 +79,16 @@
    ]
   },
   {
-   "from": 341,
-   "to": 490,
+   "from": 347,
+   "to": 496,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 500,
-   "to": 512,
+   "from": 506,
+   "to": 518,
    "port": 1,
    "buttons": [
     "b1"

@@ -388,6 +388,15 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
             <PropRow label={t.inspector.w}>
               <NumberInput label={t.inspector.w} value={Number(o.w ?? 48)} min={2 * CELL} max={8 * CELL} step={CELL} onChange={(w) => set({ w })} />
             </PropRow>
+            <PropRow label={t.inspector.falls}>
+              <input type="checkbox" aria-label={t.inspector.falls} title={t.inspector.fallsHelp} checked={o.falls === true} onChange={(e) => set({ falls: e.target.checked || undefined })} />
+            </PropRow>
+          </div>
+          {o.falls === true ? (
+            <div className="wm-dim wm-small">{t.inspector.fallsHelp}</div>
+          ) : (
+          <>
+          <div className="wm-grid2 is-tight">
             <PropRow label={t.inspector.moves}>
               <select className="wm-input is-sm" aria-label={t.inspector.moves} value={o.axis === "y" ? "y" : "x"} onChange={(e) => set({ axis: e.target.value })}>
                 <option value="x">{t.inspector.across}</option>
@@ -404,6 +413,8 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
             </PropRow>
           </div>
           <div className="wm-dim wm-small">{t.inspector.platformHelp}</div>
+          </>
+          )}
         </>
       )}
       {(o.type === "camera_lock" || o.type === "boss") && (

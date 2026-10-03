@@ -1,0 +1,47 @@
+{
+ "name": "platforms-fall",
+ "description": "A falling platform (WM_ROM_OUT/falling of rom.test.tsx: the spec level, player 1 starting on it): it shakes once stood on, falls with player 1, who stops on the floor while it goes on out of the level, and is back at its place 3 seconds later. Play mode's engine gives the same places every frame.",
+ "frames": 526,
+ "checkpoints": [
+  181,
+  206,
+  236,
+  306,
+  506
+ ],
+ "expect": [
+  {
+   "frame": 186,
+   "path": "players.0.y",
+   "equals": 384
+  },
+  {
+   "frame": 236,
+   "path": "players.0.y",
+   "equals": 416
+  },
+  {
+   "frame": 236,
+   "path": "players.0.ground",
+   "equals": true
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  }
+ ]
+}

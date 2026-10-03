@@ -319,19 +319,22 @@ function drawExits(ctx: CanvasRenderingContext2D, game: Game): void {
   }
 }
 
-/** The moving platforms, as the ROM draws them: a steel girder 8 px tall with a bolt every 16 px. */
+/** The moving platforms, as the ROM draws them: a steel girder 8 px tall with a bolt every 16 px; a falling one rusty and cracked, shaking before it falls. */
 function drawPlatforms(ctx: CanvasRenderingContext2D, game: Game): void {
   for (const pl of game.platforms) {
-    ctx.fillStyle = "#3a4a66";
-    ctx.fillRect(pl.x, pl.y, pl.w, 8);
-    ctx.fillStyle = "#8fb3e8";
-    ctx.fillRect(pl.x, pl.y, pl.w, 2);
+    if (pl.state === "gone") continue;
+    const x0 = pl.x + (pl.state === "shake" ? (pl.t & 2 ? 1 : -1) : 0);
+    ctx.fillStyle = pl.falls ? "#884433" : "#3a4a66";
+    ctx.fillRect(x0, pl.y, pl.w, 8);
+    ctx.fillStyle = pl.falls ? "#cc8855" : "#8fb3e8";
+    ctx.fillRect(x0, pl.y, pl.w, 2);
     ctx.fillStyle = "#1c2433";
-    ctx.fillRect(pl.x, pl.y + 7, pl.w, 1);
-    ctx.fillRect(pl.x, pl.y, 1, 8);
-    ctx.fillRect(pl.x + pl.w - 1, pl.y, 1, 8);
-    ctx.fillStyle = "#d8e6ff";
-    for (let x = pl.x + 7; x < pl.x + pl.w; x += 16) ctx.fillRect(x, pl.y + 4, 2, 2);
+    ctx.fillRect(x0, pl.y + 7, pl.w, 1);
+    ctx.fillRect(x0, pl.y, 1, 8);
+    ctx.fillRect(x0 + pl.w - 1, pl.y, 1, 8);
+    ctx.fillStyle = pl.falls ? "#331111" : "#d8e6ff";
+    if (pl.falls) for (let x = x0 + 5; x < x0 + pl.w; x += 16) ctx.fillRect(x, pl.y + 2, 1, 5);
+    else for (let x = x0 + 7; x < x0 + pl.w; x += 16) ctx.fillRect(x, pl.y + 4, 2, 2);
   }
 }
 
