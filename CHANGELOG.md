@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (lab)
+
+- **Recorded sessions** (task T-17 of [experiment 1's verdict](docs/experiments/verdict.md), lesson L-15): `rom/tools/lab/session.mjs` records a user session with Playwright for every future case: fixed step numbers from the script, a caption in a fixed place that moves out of a control's way, the control outlined and a "Why" card in the corner farthest from it, then an MP4 with one chapter per step and the captions as a subtitle track, WebVTT chapters and captions, a timeline and `session.md`, whose links open the MP4 at each step ([docs/experiments/harness.md](docs/experiments/harness.md#recorded-sessions)).
+
 ### Added (website)
 
 - **Willy Maker › Enemies keep hurting a player who stands still** (task T-16 of [experiment 1's verdict](docs/experiments/verdict.md), lessons L-14 and J-09): the new engine test found J-09 in Willy Maker's own engine: with touch damage and chasing on, an enemy stopped 22 px from the player, outside the 14 px touch reach, and stood there without hurting. Now it walks into the player, in play mode and the ROM alike; tests keep a patrolling and a chasing enemy hurting after every blink, and on the real core a still player is hurt until game over (tolerance 0).

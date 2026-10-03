@@ -100,7 +100,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-14 | A headless, one-command project-to-ROM rebuild, the project file kept next to the ROM | L-12 | done |
 | T-15 | Difficulty settings, and the acceptance reports the energy a naive player lost | L-13 | done |
 | T-16 | Engine test: an enemy touching a still player keeps patrolling and hurting | L-14, J-09 | done |
-| T-17 | Recordings: fixed numbered captions with "Why" cards away from the control, chapters linked to the MP4 | L-15 | next |
+| T-17 | Recordings: fixed numbered captions with "Why" cards away from the control, chapters linked to the MP4 | L-15 | done (`rom/tools/lab/session.mjs`) |
 | T-18 | The jury process (case names out of the arena files, ROM hashes out of what jurors read before part 1, the second-agent HOWTO run required, newcomer and run-past scripts for every juror) | L-16, J-18 | done in the `experiment-jury` skill |
 | T-19 | The AI pack's `PROMPT.md` states its limits first: the tools it needs and that `build.mjs` builds only the prototype | E-02 | next |
 | T-20 | A lighter AI pack: level pictures cut into the board's tiles instead of 22 MB pictures | E-03 | next |

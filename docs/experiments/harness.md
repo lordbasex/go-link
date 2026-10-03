@@ -281,6 +281,17 @@ No medium or low finding came up in these runs. The medium invariants were check
 - The patrol check knows only where an enemy appeared, not its patrol range; enemies that chase players (Z's troopers) leave it by design.
 - Two minutes of fuzz found nothing on these ROMs; the jury's 2-player fuzz reached J-01 after 87 to 91 s and its 30-minute 4-port runs found J-05 and J-06. Longer fuzz (`--fuzz-minutes 30`, about 35 s of play) and other seeds find more, at the cost of minimization time.
 
+## Recorded sessions
+
+```js
+import { recordSession } from "./rom/tools/lab/session.mjs";
+const s = await recordSession({ out: "DIR", url: "http://localhost:5180/tools/willy-maker", title: "Case C: Game Spec v1" });
+await s.step(1, "New game", "Every game starts from the wizard", "button:has-text('New game')", (l) => l.click());
+await s.finish();
+```
+
+Task T-17 of [the verdict](verdict.md) (lesson L-15): the recorder every case's session should use. Each step has a **fixed number** given by the script (inserting or removing a step never renumbers the others; a number used twice is an error), a caption in a fixed place (top center, bottom center when the control is right under it), the control outlined, and a **Why** card in the screen corner farthest from the control, so it never covers what is clicked. `finish()` writes `session.mp4` (H.264) with **one chapter per step** and the captions as a subtitle track, `chapters.vtt`, `captions.vtt`, `timeline.json` (each step's number, title, why, time, box and screenshot) and `session.md`, whose links open the MP4 at each step (`session.mp4#t=SECONDS`). It needs Playwright (`e2e/node_modules`, or `PLAYWRIGHT=`) and ffmpeg; it loads nothing else from the harness, so plain `node` runs it.
+
 ## One command: the acceptance run
 
 ```sh
