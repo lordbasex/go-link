@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { BEATEMUP_RULES, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { BEATEMUP_RULES, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, PUNCH_FRAMES, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -749,5 +749,59 @@ describe("the beat 'em up: walking in depth (genres.md, phase 1)", () => {
     expect(feet(plain)).toBe(400);
     run(g, 10, Input.Left);
     expect(g.players[0]!.x).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe("the beat 'em up: the fight (genres.md, phase 2)", () => {
+  const street = (enemy: Partial<LevelObject> = {}) => {
+    const view = flat(undefined, [{ name: "thug", type: "enemy", x: 100, y: 380, kind: "trooper", facing: "left", patrol: 0, ...enemy } as LevelObject]);
+    view.walk = { y0: 336, y1: 400 };
+    view.objects[0] = { name: "p1", type: "player_start", x: 80, y: 380, player: 1 };
+    return new Game(view, { rules: BEATEMUP_RULES });
+  };
+  // B1 pressed for one frame, then released for `wait` frames
+  const tap = (g: Game, wait: number) => {
+    run(g, 1, Input.B1);
+    run(g, wait, 0);
+  };
+
+  it("chains punch, punch and a kick that knocks down", () => {
+    const g = street();
+    const e = g.enemies[0]!;
+    expect(e.hp).toBe(6);
+    tap(g, PUNCH_FRAMES + 2);
+    expect(e.hp).toBe(5);
+    tap(g, PUNCH_FRAMES + 2);
+    expect(e.hp).toBe(4);
+    tap(g, 10);
+    expect(e.hp).toBe(2);
+    expect(e.state).toBe("fall");
+    expect(g.lastHit).toBe(e);
+    // it gets up later and comes back
+    run(g, FALL_FRAMES + 30, 0);
+    expect(e.state === "walk" || e.state === "attack").toBe(true);
+  });
+
+  it("starts the combo again after a pause", () => {
+    const g = street();
+    tap(g, PUNCH_FRAMES + 2);
+    tap(g, PUNCH_FRAMES + COMBO_WINDOW + 5);
+    tap(g, PUNCH_FRAMES + 2);
+    expect(g.players[0]!.combo).toBe(1);
+    expect(g.enemies[0]!.state).not.toBe("fall");
+  });
+
+  it("misses an enemy at another depth", () => {
+    const g = street({ y: 352 });
+    tap(g, PUNCH_FRAMES + 2);
+    expect(g.enemies[0]!.hp).toBe(6);
+  });
+
+  it("enemies come to the player's side, wind up and hit", () => {
+    const g = street({ x: 260 });
+    const lives = g.players[0]!.lives;
+    run(g, 400, 0);
+    expect(g.players[0]!.lives).toBeLessThan(lives);
+    expect(Math.abs(g.enemies[0]!.x - g.players[0]!.x)).toBeLessThanOrEqual(ENEMY_GAP + 6);
   });
 });

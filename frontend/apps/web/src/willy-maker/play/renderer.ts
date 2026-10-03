@@ -399,7 +399,7 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   const en = sprites?.enemy;
   for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
     if (e.state === "off") return;
-    const anim = e.state === "down" ? "defeated" : e.state === "hit" ? "hit" : e.fireWait > 80 ? "shoot" : "walk";
+    const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
     if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
@@ -435,6 +435,10 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
         anim = "jump";
         t = p.vy < -60 ? 6 : p.vy < 0 ? 12 : p.vy < 60 ? 18 : 24;
       }
+    } else if (p.punchT) {
+      // the beat 'em up's punches, and the combo's kick
+      anim = p.combo === 3 ? "jump_kick" : "knife";
+      t = (p.combo === 3 ? 20 : 16) - p.punchT;
     } else if (p.crouching) anim = moving ? "crawl" : "crouch";
     else if (p.knifeT) {
       anim = "knife";
@@ -575,13 +579,18 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
   }
   // what the exit still needs, and why it does not open yet (experiment 1, J-11)
   if (game.rules.exitNeedsEnemies && game.exits.length && game.outcome === "playing") {
-    const left = game.enemies.filter((e) => e.state === "walk" || e.state === "hit").length;
+    const left = game.enemies.filter((e) => e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall").length;
     ctx.fillStyle = colors.text;
     ctx.fillText(`${o.words.enemies ?? "ENEMY"} ${left}`, 6, SCREEN_H - 10);
     if (game.exitClosed && (game.frame >> 4) & 1) {
       const line = (o.words.exitClosed ?? "DEFEAT EVERY ENEMY").toUpperCase();
       drawBoardText(ctx, line, Math.floor((SCREEN_W - boardTextWidth(line)) / 16) * 8, 128, 1, TEXT_INKS.white);
     }
+  }
+  // the beat 'em up: the health of the enemy last hit, for two seconds (as the ROM prints it, column 24)
+  if (game.lastHit && game.lastHitT && game.lastHit.hp > 0) {
+    ctx.fillStyle = "#ff4c4c";
+    for (let k = 0; k < Math.min(12, game.lastHit.hp); k++) ctx.fillRect(192 + k * 8 + 2, SCREEN_H - 9, 4, 4);
   }
   if (o.overlays.fps && o.fps !== undefined) {
     ctx.fillStyle = colors.accent;

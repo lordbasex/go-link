@@ -29,7 +29,7 @@ const WRAM_BYTES = 0x10000;
 const PROGRAM_BYTES = 0x200000; // the board model's program space (cps1-sim PROGRAM_SIZE)
 export const MODES = ["boot", "title", "playing", "clear", "game_over"];
 export const PLAYER_STATES = ["off", "idle", "walk", "run", "air", "climb", "attack", "hurt", "dead", "crouch", "crawl"];
-export const ENEMY_STATES = ["off", "walk", "hit", "down"];
+export const ENEMY_STATES = ["off", "walk", "hit", "down", "attack", "fall"]; // the engine's EN_*, the beat 'em up's last
 export const CELLS = ".#=HC"; // empty, solid, one-way, ladder, crate (LAB_CELL_*)
 
 /** The files of a zip (name -> bytes), read with the system's unzip. */

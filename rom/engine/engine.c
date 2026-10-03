@@ -614,6 +614,20 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define LAND_AFTER 10
 #define TURN_FRAMES 6
 #define KICK_FRAMES 20
+/* the beat 'em up's fight (engine/rules.ts PUNCH_FRAMES and the rest) */
+#define PUNCH_FRAMES 14
+#define COMBO_KICK_FRAMES 20
+#define STRIKE_AT 6
+#define COMBO_WINDOW 18
+#define PUNCH_REACH 26
+#define FIGHT_KICK_REACH 30
+#define DEPTH_REACH 8
+#define ENEMY_GAP 26
+#define ENEMY_STRIKE 16
+#define ENEMY_ATTACK_FRAMES 28
+#define ENEMY_REACH 34
+#define ENEMY_REST 50
+#define FALL_FRAMES 60
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -646,6 +660,7 @@ struct player {
 	/* the moves: crouched, shown moves' frames left, the kick's one hit, the air rules */
 	int crouch, crouch_t, land_t, turn_t, kick_t, kick_hit, thumbs_t, idle_t, air_t, air_jumps, fuel, jetting;
 	s32 hop; /* the beat 'em up's hop over the floor, 1/16 px, 0 or less */
+	int punch_t, combo, combo_t, struck; /* the beat 'em up's fight: the punch, its place in the combo, the window to chain, landed */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -654,6 +669,8 @@ static struct player pl[MAX_PLAYERS];
 /* the beat 'em up (WM_F_DEPTH, engine/game.ts moveInDepth): its walkable band, feet y px */
 static int depth;
 static s32 walk_y0, walk_y1;
+/* the enemy last hit and frames left to show its health (the beat 'em up's bar) */
+static int last_hit = -1, last_hit_t;
 
 static s32 in_walk(s32 fy)
 {
@@ -661,10 +678,11 @@ static s32 in_walk(s32 fy)
 }
 static u16 start_now, start_last; /* bit k: port k's Start */
 
-enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN };
+enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN, EN_ATTACK, EN_FALL };
 static struct enemy {
 	s32 x, fy, min, max;
 	int state, hp, flip, dir, fire_wait;
+	int lane; /* the beat 'em up: its depth offset beside a player (-1, 0, 1) */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -991,7 +1009,7 @@ static int hit_cell(int c, int r, int damage, struct player *by)
 
 static int en_alive(int i)
 {
-	return en[i].state == EN_WALK || en[i].state == EN_HIT;
+	return en[i].state == EN_WALK || en[i].state == EN_HIT || en[i].state == EN_ATTACK || en[i].state == EN_FALL;
 }
 
 static int enemies_left(void)
@@ -1037,6 +1055,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->x = x;
 	p->y = fy * 16;
 	p->hop = 0;
+	p->punch_t = p->combo = p->combo_t = p->struck = 0;
 	p->vy = 0;
 	p->flip = 0;
 	p->on_ground = 1;
@@ -1175,6 +1194,8 @@ static void game_reset(void)
 			loaded_band[b][i] = -1;
 	}
 	depth = (D->flags & WM_F_DEPTH) != 0;
+	last_hit = -1;
+	last_hit_t = 0;
 	walk_y0 = D->walk_y0;
 	walk_y1 = D->walk_y1;
 	/* a tall level's windows come to the camera on the first stream() */
@@ -1215,6 +1236,7 @@ static void game_reset(void)
 		en[i].state = EN_WALK;
 		en[i].t = (u32)i * 11;
 		en[i].fire_wait = ENEMY_FIRE_EVERY;
+		en[i].lane = (i % 3) - 1;
 		en[i].look = actor_look(D->enemy_looks, i);
 	}
 	o = D_OBJ + D->n_enemies;
@@ -1393,6 +1415,40 @@ static void walk(struct player *p, int dir, int speed)
 	}
 }
 
+static s32 iabs(s32 v)
+{
+	return v < 0 ? -v : v;
+}
+
+/*
+ * A beat 'em up blow (engine/game.ts strike): every enemy standing in front
+ * within reach px and DEPTH_REACH px of depth takes n hits; a knocking blow
+ * throws it down (FALL_FRAMES on the floor, 8 px back).
+ */
+static int strike(struct player *p, int reach, int n, int knock)
+{
+	s32 fy = p->y >> 4;
+	int dir = p->flip ? -1 : 1, i, hit = 0;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		s32 dx = (e->x - p->x) * dir;
+		if (e->state != EN_WALK && e->state != EN_HIT && e->state != EN_ATTACK)
+			continue;
+		if (dx < 0 || dx > reach || iabs(e->fy - fy) > DEPTH_REACH)
+			continue;
+		en_damage(i, n, p);
+		last_hit = i;
+		last_hit_t = 120;
+		if (knock && e->state == EN_HIT) {
+			e->state = EN_FALL;
+			e->t = 0;
+			e->x += dir * 8;
+		}
+		hit = 1;
+	}
+	return hit;
+}
+
 /*
  * The beat 'em up's moves (WM_F_DEPTH, engine/game.ts moveInDepth): left and
  * right stopped by solid cells at the feet, up and down a pixel a frame
@@ -1403,6 +1459,39 @@ static void move_in_depth(struct player *p, int dir)
 	s32 fy = p->y >> 4;
 	int n, dz = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
 	p->crouch = 0;
+	/* the fight (phase 2): a punch holds the player still until it ends */
+	if (p->punch_t) {
+		int len = p->combo == 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+		p->punch_t--;
+		if (!p->struck && p->punch_t == len - STRIKE_AT) {
+			p->struck = 1;
+			if (p->combo == 3)
+				strike(p, FIGHT_KICK_REACH, 2, 1);
+			else
+				strike(p, PUNCH_REACH, 1, 0);
+		}
+		if (!p->punch_t)
+			p->combo_t = p->combo < 3 ? COMBO_WINDOW : 0;
+		return;
+	}
+	if (p->combo_t)
+		p->combo_t--;
+	if (p->on_ground && PRESSED(p, BTN_1)) {
+		p->combo = p->combo_t ? p->combo + 1 : 1;
+		p->combo_t = 0;
+		p->punch_t = p->combo == 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+		p->struck = 0;
+		sfx(p->combo == 3 ? SFX_KICK : SFX_KNIFE, p->x);
+		return;
+	}
+	/* a flying kick: B1 in the air knocks down what it meets */
+	if (!p->on_ground && PRESSED(p, BTN_1) && !p->kick_t) {
+		p->kick_t = KICK_FRAMES;
+		p->kick_hit = 0;
+		sfx(SFX_KICK, p->x);
+	}
+	if (p->kick_t && !p->kick_hit && strike(p, FIGHT_KICK_REACH, 2, 1))
+		p->kick_hit = 1;
 	if (dir) {
 		if (p->on_ground && p->flip != (dir < 0))
 			p->turn_t = TURN_FRAMES;
@@ -1750,9 +1839,87 @@ static void update_player(struct player *p)
 	}
 }
 
+/*
+ * The beat 'em up's enemies (engine/game.ts updateEnemiesInDepth): each walks
+ * to stand ENEMY_GAP px beside the nearest player, on its own side and its
+ * lane's depth, winds up and hits a player in reach, rests, and gets up after
+ * a knock-down.
+ */
+static void update_enemies_in_depth(void)
+{
+	int i, k;
+	if (last_hit_t)
+		last_hit_t--;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		e->t++;
+		if (e->state == EN_WALK) {
+			struct player *target = 0;
+			s32 best = 0x7fffffff, pf, tx, tz;
+			for (k = 0; k < nplayers; k++) {
+				s32 d;
+				if (!pl[k].active)
+					continue;
+				d = iabs(pl[k].x - e->x) + iabs((pl[k].y >> 4) - e->fy);
+				if (d < best) {
+					best = d;
+					target = &pl[k];
+				}
+			}
+			if (!target)
+				continue;
+			pf = target->y >> 4;
+			tx = target->x + (e->x < target->x ? -1 : 1) * ENEMY_GAP;
+			tz = in_walk(pf + e->lane * 6);
+			if (e->t & 1)
+				e->x += tx > e->x ? 1 : tx < e->x ? -1 : 0;
+			else
+				e->fy += tz > e->fy ? 1 : tz < e->fy ? -1 : 0;
+			e->dir = target->x >= e->x ? 1 : -1;
+			e->flip = e->dir < 0;
+			if (e->fire_wait)
+				e->fire_wait--;
+			else if (iabs(target->x - e->x) <= ENEMY_GAP + 6 && iabs(pf - e->fy) <= 6) {
+				e->state = EN_ATTACK;
+				e->t = 0;
+			}
+		} else if (e->state == EN_ATTACK) {
+			if (e->t == ENEMY_STRIKE)
+				for (k = 0; k < nplayers; k++) {
+					struct player *p = &pl[k];
+					s32 dx = (p->x - e->x) * e->dir;
+					if (p->active && !p->hurt && p->hop > -16 * 16 && dx >= 0 && dx <= ENEMY_REACH && iabs((p->y >> 4) - e->fy) <= DEPTH_REACH)
+						hurt(p, 0);
+				}
+			if (e->t >= ENEMY_ATTACK_FRAMES) {
+				e->state = EN_WALK;
+				e->t = 0;
+				e->fire_wait = ENEMY_REST;
+			}
+		} else if (e->state == EN_HIT) {
+			if (e->t > 14) {
+				e->state = EN_WALK;
+				e->t = 0;
+				e->fire_wait = ENEMY_REST;
+			}
+		} else if (e->state == EN_FALL) {
+			if (e->t > FALL_FRAMES) {
+				e->state = EN_WALK;
+				e->t = 0;
+				e->fire_wait = ENEMY_REST;
+			}
+		} else if (e->state == EN_DOWN && e->t > 90)
+			e->state = EN_OFF;
+	}
+}
+
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (depth) {
+		update_enemies_in_depth();
+		return;
+	}
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
 		e->t++;
@@ -2025,6 +2192,12 @@ static void draw_player(struct player *p)
 			draw_once(l->kick, (u32)(KICK_FRAMES - p->kick_t), sx, sy, p->pal, p->flip);
 		else
 			draw_frame(&a->frames[i % a->count], sx, sy, p->pal, p->flip);
+	} else if (p->punch_t) {
+		/* the beat 'em up's punches, and the combo's kick */
+		if (p->combo == 3)
+			draw_once(l->kick, (u32)(COMBO_KICK_FRAMES - p->punch_t), sx, sy, p->pal, p->flip);
+		else
+			draw_frame(&l->knife->frames[(PUNCH_FRAMES - p->punch_t) / 4 % l->knife->count], sx, sy, p->pal, p->flip);
 	} else if (p->crouch) {
 		if (moving)
 			draw_anim(l->crawl, p->t, sx, sy, p->pal, p->flip);
@@ -2081,22 +2254,23 @@ static void draw_enemy(int i)
 	if (e->look) {
 		/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
 		const struct wm_look *l = e->look;
-		if (e->state == EN_DOWN) {
+		if (e->state == EN_DOWN || e->state == EN_FALL) {
+			/* down for good blinks out; knocked down (the beat 'em up) lies still */
 			const Anim *a = l->victory;
 			u32 f = e->t * a->fps / 60;
 			if (f >= a->count)
 				f = a->count - 1;
-			if (e->t < 70 || (e->t & 4))
+			if (e->state == EN_FALL || e->t < 70 || (e->t & 4))
 				draw_frame(&a->frames[f], sx, sy, l->pal, e->flip);
 		} else
-			draw_anim(e->state == EN_HIT ? l->land : e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
+			draw_anim(e->state == EN_HIT ? l->land : e->state == EN_ATTACK || e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
 		return;
 	}
-	if (e->state == EN_DOWN) {
+	if (e->state == EN_DOWN || e->state == EN_FALL) {
 		u32 f = e->t * anim_robot_defeated.fps / 60;
 		if (f >= anim_robot_defeated.count)
 			f = anim_robot_defeated.count - 1;
-		if (e->t < 70 || (e->t & 4))
+		if (e->state == EN_FALL || e->t < 70 || (e->t & 4))
 			draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, e->flip);
 		return;
 	}
@@ -2368,6 +2542,12 @@ static void hud(void)
 	if (!free_play()) {
 		print(37, 26, "CREDITS", INK_WHITE);
 		print_num(45, 26, (u32)credits, 1, INK_WHITE);
+	}
+	/* the beat 'em up: the health of the enemy last hit, for two seconds */
+	if (depth) {
+		int hp = last_hit >= 0 && last_hit_t ? en[last_hit].hp : 0;
+		for (k = 0; k < 12; k++)
+			put_char(24 + k, 26, k < hp ? '+' : ' ', INK_RED);
 	}
 	/* the coins taken (the platformer) */
 	if (ncoins) {

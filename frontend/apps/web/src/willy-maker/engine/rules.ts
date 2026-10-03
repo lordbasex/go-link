@@ -214,8 +214,30 @@ export const DEFAULT_RULES: GameRules = {
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
 export const PLATFORMER_RULES: Partial<GameRules> = { weapons: false, stomp: true, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false };
 
-/** A new beat 'em up's rules (genres.md, phase 1): walking in depth, no guns, enemies that come for the players, an exit after every enemy is down. */
-export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true };
+/** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
+export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
+
+/**
+ * The beat 'em up's fight (genres.md, phase 2), the ROM's numbers too: B1
+ * punches, again within COMBO_WINDOW frames chains up to a third hit, a kick
+ * that knocks down; the hit lands STRIKE_AT frames in, on enemies in front
+ * within the reach and DEPTH_REACH px of depth. Enemies stand ENEMY_GAP px
+ * beside a player, wind up ENEMY_STRIKE frames, rest ENEMY_REST, and lie
+ * FALL_FRAMES when knocked down.
+ */
+export const PUNCH_FRAMES = 14;
+export const COMBO_KICK_FRAMES = 20;
+export const STRIKE_AT = 6;
+export const COMBO_WINDOW = 18;
+export const PUNCH_REACH = 26;
+export const FIGHT_KICK_REACH = 30;
+export const DEPTH_REACH = 8;
+export const ENEMY_GAP = 26;
+export const ENEMY_STRIKE = 16;
+export const ENEMY_ATTACK_FRAMES = 28;
+export const ENEMY_REACH = 34;
+export const ENEMY_REST = 50;
+export const FALL_FRAMES = 60;
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
 export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {

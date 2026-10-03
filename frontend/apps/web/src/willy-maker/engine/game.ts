@@ -38,6 +38,19 @@ import {
   JET_LIFT,
   JET_MAX_UP,
   KICK_FRAMES,
+  COMBO_KICK_FRAMES,
+  COMBO_WINDOW,
+  DEPTH_REACH,
+  ENEMY_ATTACK_FRAMES,
+  ENEMY_GAP,
+  ENEMY_REACH,
+  ENEMY_REST,
+  ENEMY_STRIKE,
+  FALL_FRAMES,
+  FIGHT_KICK_REACH,
+  PUNCH_FRAMES,
+  PUNCH_REACH,
+  STRIKE_AT,
   LAND_AFTER,
   LAND_FRAMES,
   THUMBS_FRAMES,
@@ -115,9 +128,14 @@ export interface Player {
   jetting: boolean;
   /** The beat 'em up's hop (the depth rule): height over the floor, 1/16 px, 0 or less. */
   hop: number;
+  /** The beat 'em up's fight: frames left of the punch, its place in the combo (1-3), frames left to chain the next, and whether it landed. */
+  punchT: number;
+  combo: number;
+  comboT: number;
+  struck: boolean;
 }
 
-export type EnemyState = "walk" | "hit" | "down" | "off";
+export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall";
 
 export interface Enemy {
   name: string;
@@ -133,6 +151,9 @@ export interface Enemy {
   flip: boolean;
   t: number;
   fireWait: number;
+  /** The beat 'em up: its hits at the start, and its depth offset beside a player (-1, 0, 1: they spread out). */
+  maxHp: number;
+  lane: number;
 }
 
 export interface Civilian {
@@ -372,6 +393,8 @@ export class Game {
             flip: o.facing !== "right",
             t: this.enemies.length * 11,
             fireWait: this.fireEvery,
+            maxHp: num(o.hp, this.rules.enemyHp),
+            lane: (this.enemies.length % 3) - 1,
           });
           break;
         }
@@ -650,6 +673,34 @@ export class Game {
     const walk = this.walkBand!;
     const fy = p.y >> 4;
     p.crouching = false;
+    // the fight (phase 2): a punch holds the player still until it ends
+    if (p.punchT) {
+      p.punchT--;
+      const len = p.combo === 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+      if (!p.struck && p.punchT === len - STRIKE_AT) {
+        p.struck = true;
+        if (p.combo === 3) this.strike(p, FIGHT_KICK_REACH, 2, true);
+        else this.strike(p, PUNCH_REACH, 1, false);
+      }
+      if (!p.punchT) p.comboT = p.combo < 3 ? COMBO_WINDOW : 0;
+      return;
+    }
+    if (p.comboT) p.comboT--;
+    if (p.onGround && this.pressed(p, Input.B1)) {
+      p.combo = p.comboT ? p.combo + 1 : 1;
+      p.comboT = 0;
+      p.punchT = p.combo === 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+      p.struck = false;
+      this.events.push({ kind: p.combo === 3 ? "kick" : "knife", player: p.index });
+      return;
+    }
+    // a flying kick: B1 in the air knocks down what it meets
+    if (!p.onGround && this.pressed(p, Input.B1) && !p.kickT) {
+      p.kickT = KICK_FRAMES;
+      p.kickHit = false;
+      this.events.push({ kind: "kick", player: p.index });
+    }
+    if (p.kickT && !p.kickHit && this.strike(p, FIGHT_KICK_REACH, 2, true)) p.kickHit = true;
     if (dir) {
       if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
       p.flip = dir < 0;
@@ -681,6 +732,32 @@ export class Game {
         this.events.push({ kind: "land", player: p.index });
       }
     }
+  }
+
+  /**
+   * A beat 'em up blow: every enemy standing in front within `reach` px and
+   * DEPTH_REACH px of depth takes `n` hits; a knocking blow throws it down
+   * (FALL_FRAMES on the floor, 8 px back). Fallen enemies are not hit.
+   */
+  private strike(p: Player, reach: number, n: number, knock: boolean): boolean {
+    const fy = p.y >> 4;
+    const dir = p.flip ? -1 : 1;
+    let hit = false;
+    for (const e of this.enemies) {
+      if (e.state !== "walk" && e.state !== "hit" && e.state !== "attack") continue;
+      const dx = (e.x - p.x) * dir;
+      if (dx < 0 || dx > reach || Math.abs(e.fy - fy) > DEPTH_REACH) continue;
+      this.damage(e, n, p);
+      this.lastHit = e;
+      this.lastHitT = 120;
+      if (knock && e.state === "hit") {
+        e.state = "fall";
+        e.t = 0;
+        e.x += dir * 8;
+      }
+      hit = true;
+    }
+    return hit;
   }
 
   /** A feet y inside the walkable band. */
@@ -968,8 +1045,12 @@ export class Game {
   // ------------------------------------------------------------ actors
 
   private alive(e: Enemy): boolean {
-    return e.state === "walk" || e.state === "hit";
+    return e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall";
   }
+
+  /** The enemy last hit and frames left to show its health (the beat 'em up's bar). */
+  lastHit: Enemy | null = null;
+  lastHitT = 0;
 
   /** The enemy hit by a point (x, y), if any. */
   enemyAt(x: number, y: number, reach: number): Enemy | undefined {
@@ -994,6 +1075,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.walkBand) return this.updateEnemiesInDepth();
     for (const e of this.enemies) {
       e.t++;
       if (e.state === "walk") {
@@ -1065,6 +1147,68 @@ export class Game {
       }
       return !this.isSolid(this.cellAt(s.x, s.y)) && s.x >= this.camX - 32 && s.x <= this.camX + SCREEN_W + 32;
     });
+  }
+
+  /**
+   * The beat 'em up's enemies (phase 2): each walks to stand ENEMY_GAP px
+   * beside the nearest player, on its own side and its lane's depth (they
+   * spread out), winds up and hits a player in reach, rests, and gets up
+   * after a knock-down.
+   */
+  private updateEnemiesInDepth(): void {
+    if (this.lastHitT) this.lastHitT--;
+    for (const e of this.enemies) {
+      e.t++;
+      if (e.state === "walk") {
+        let target: Player | undefined;
+        let best = Infinity;
+        for (const p of this.players) {
+          if (!p.active) continue;
+          const d = Math.abs(p.x - e.x) + Math.abs((p.y >> 4) - e.fy);
+          if (d < best) {
+            best = d;
+            target = p;
+          }
+        }
+        if (!target) continue;
+        const pf = target.y >> 4;
+        const side = e.x < target.x ? -1 : 1;
+        const tx = target.x + side * ENEMY_GAP;
+        const tz = this.inWalk(pf + e.lane * 6);
+        if (e.t & 1) e.x += Math.sign(tx - e.x);
+        else e.fy += Math.sign(tz - e.fy);
+        e.dir = target.x >= e.x ? 1 : -1;
+        e.flip = e.dir < 0;
+        if (e.fireWait) e.fireWait--;
+        else if (Math.abs(target.x - e.x) <= ENEMY_GAP + 6 && Math.abs(pf - e.fy) <= 6) {
+          e.state = "attack";
+          e.t = 0;
+        }
+      } else if (e.state === "attack") {
+        if (e.t === ENEMY_STRIKE)
+          for (const p of this.players) {
+            const dx = (p.x - e.x) * e.dir;
+            if (p.active && !p.invulnerable && p.hop > -16 * 16 && dx >= 0 && dx <= ENEMY_REACH && Math.abs((p.y >> 4) - e.fy) <= DEPTH_REACH) this.hurt(p);
+          }
+        if (e.t >= ENEMY_ATTACK_FRAMES) {
+          e.state = "walk";
+          e.t = 0;
+          e.fireWait = ENEMY_REST;
+        }
+      } else if (e.state === "hit") {
+        if (e.t > 14) {
+          e.state = "walk";
+          e.t = 0;
+          e.fireWait = ENEMY_REST;
+        }
+      } else if (e.state === "fall") {
+        if (e.t > FALL_FRAMES) {
+          e.state = "walk";
+          e.t = 0;
+          e.fireWait = ENEMY_REST;
+        }
+      } else if (e.state === "down" && e.t > 90) e.state = "off";
+    }
   }
 
   private updateCivilians(): void {
@@ -1296,6 +1440,10 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     fuel: JET_FUEL,
     jetting: false,
     hop: 0,
+    punchT: 0,
+    combo: 0,
+    comboT: 0,
+    struck: false,
   };
 }
 
@@ -1330,6 +1478,8 @@ function spawn(p: Player, x: number, fy: number): void {
   p.kickHit = p.jetting = false;
   p.fuel = JET_FUEL;
   p.hop = 0;
+  p.punchT = p.combo = p.comboT = 0;
+  p.struck = false;
 }
 
 function num(v: unknown, fallback: number): number {
