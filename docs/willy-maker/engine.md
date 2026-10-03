@@ -156,7 +156,7 @@ The data: `looks` points to four `u32`, one per player. A look is the engine's o
 Create ROM lists these as notes under its result; none of them stops it.
 
 - Only the **first level** in play order goes into the ROM.
-- Every **enemy kind** is drawn as the Lag android, and the civilians as the prototype's woman and child: the engine carries the prototype's art for them. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
+- **Own enemies and civilians** (T-30): an enemy kind with an enemy character whose id is the kind (a civilian kind likewise) is drawn from it, through a look like a hero's (`wm_data` version 7: `enemy_looks` and `civ_looks`, one look address per packed object; an enemy walks with its walk, shows its shoot right after firing, its hit when hit and its death when down; a civilian is worried until rescued, then thanks); other kinds are the Lag android, and the civilians the prototype's woman and child, with a Create ROM note naming the kinds. Pickups keep the engine's icons. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
 - **Bosses, camera locks and checkpoints** are left out; **water** plays as air; civilians trapped in crates start free; crates and pickups give only the bazooka and health.
 - The **mid layer** and extra tile layers are left out (the board has one far layer); each layer loads the palettes its tiles use, up to 32 ([layer palettes](#layer-palettes)).
 - **Sound** (T-26): see [Sound](#sound-qsound): QSound effects and music; play mode stays silent for now.

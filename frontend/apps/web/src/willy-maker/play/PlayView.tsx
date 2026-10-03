@@ -7,6 +7,8 @@
 // and goes to the editor through `onEdit`, as a command it can undo.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { PictureCanvas } from "../../picture/PictureCanvas";
+import { PICTURE_STYLES, readPictureSettings, readSavedPicture, writePictureSettings, type PictureStyle } from "../../picture/settings";
 import { Button, dpadBits, type GamepadLike } from "@go-link/shared";
 import { CELL, FRAME_MS, Game, Input, SCREEN_H, SCREEN_W, Tag, type Difficulty, type GameRules, type GameSnapshot, type LevelObject, type LevelView } from "../engine";
 import { useMessages } from "../i18n";
@@ -141,6 +143,16 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   const [touch, setTouch] = useState(false);
   const [ghost, setGhost] = useState<Ghost | null>(null);
   const [scale, setScale] = useState(2);
+  // the display style (T-30), the same choice as the rooms' picture: sharp draws the canvas itself,
+  // the others draw it at 1x and let the rooms' GPU renderer present it (smooth, CRT, edges)
+  const [display, setDisplay] = useState<PictureStyle>(() => readSavedPicture().style ?? "sharp");
+  const [gpu, setGpu] = useState(true);
+  const viaGpu = display !== "sharp" && gpu;
+  const chooseDisplay = (style: PictureStyle) => {
+    setDisplay(style);
+    setGpu(true);
+    writePictureSettings({ ...readPictureSettings(), style });
+  };
   const [more, setMore] = useState(false);
 
   // a new level from the editor (edits made here are in it now)
@@ -192,8 +204,9 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
 
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
-  const state = useRef({ paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes, art });
-  state.current = { paused, slow, overlays, ghost, scale, sprites, words, variants, ownHeroes, art };
+  const drawScale = viaGpu ? 1 : scale;
+  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art });
+  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -297,7 +310,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
     <div className="wm-play-stage">
       <canvas
         ref={canvasRef}
-        className={`wm-play-canvas${editing ? " is-editing" : ""}`}
+        className={`wm-play-canvas${editing ? " is-editing" : ""}${viaGpu ? " is-source" : ""}`}
         width={SCREEN_W * 2}
         height={SCREEN_H * 2}
         role="img"
@@ -306,6 +319,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
         onPointerLeave={() => setGhost(null)}
         onPointerDown={onPlace}
       />
+      {viaGpu && <PictureCanvas source={canvasRef} aspect={SCREEN_W / SCREEN_H} style={display} bands="black" className="wm-play-picture" onRenderer={(k) => k === null && setGpu(false)} />}
       {loading && <div className="wm-play-loading">{t.loading}</div>}
       {editing && ghost && <span className="wm-play-placing">{fill(t.placing, { piece: ghost.label })}</span>}
     </div>
@@ -335,6 +349,12 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
       <button type="button" className={`wm-cap${slow ? " is-on" : ""}`} aria-pressed={slow} onClick={() => setSlow((v) => !v)}>
         {t.overlay.slow}
       </button>
+      <span className="wm-play-h">{t.display}</span>
+      {PICTURE_STYLES.map((s) => (
+        <button key={s} type="button" className={`wm-cap${display === s ? " is-on" : ""}`} aria-pressed={display === s} onClick={() => chooseDisplay(s)}>
+          {t.displayStyles[s]}
+        </button>
+      ))}
     </div>
   );
 

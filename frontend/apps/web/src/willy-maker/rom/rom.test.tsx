@@ -46,8 +46,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(6);
-    expect(u16(d, 6)).toBe(0x9e);
+    expect(u16(d, 4)).toBe(7);
+    expect(u16(d, 6)).toBe(0xa6);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -411,6 +411,20 @@ describe("Create ROM with the game's own hero", () => {
     const big = heroProject();
     big.characters[0]!.frames[0]!.w = 16 * 17; // 17 tiles across: wider than a Frame record holds
     expect(packGame(big, engine, (id) => pictures.get(id) ?? null, heroPics).notes.map((n) => n.id)).toEqual(["heroBig"]);
+  });
+
+  it("draws the game's own enemy kind with its character, the rest as the android (T-30)", () => {
+    const p = heroProject();
+    p.characters.push({ ...heroCharacter(), id: "trooper", name: "Trooper", role: "enemy" });
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null, (id) => (id === HERO_ID || id === "trooper" ? heroPicture() : null));
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    const table = u32(d, 0x9e);
+    expect(table).toBeGreaterThan(WM_DATA_ADDR);
+    const n = u16(d, 0x30);
+    const looks = [...Array(n)].map((_, i) => u32(d, table - WM_DATA_ADDR + i * 4));
+    expect(looks.every((a) => a > WM_DATA_ADDR)).toBe(true); // every trooper of the spec level
+    expect(u32(d, 0xa2)).toBe(0); // no civilian of its own
+    expect(r.notes.map((x) => x.id)).not.toContain("enemyArt");
   });
 
   it("powers on in the board model with the hero (validation level 3)", async () => {

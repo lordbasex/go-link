@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Button } from "@go-link/shared";
 import { Game, Input, Tag, sampleLevel } from "../engine";
@@ -58,6 +58,22 @@ describe("Willy Maker play mode", () => {
     expect(crate?.edit).toMatchObject({ kind: "object", object: { type: "crate", y: 400 - 32 } });
     applyEdit(g, crate!.edit);
     expect(g.crates.some((k) => k.name === "crate_9")).toBe(true);
+  });
+
+  it("offers the rooms' display styles and keeps the choice, drawing itself without a GPU (T-30)", async () => {
+    localStorage.removeItem("go-link.picture-style");
+    render(
+      <LangProvider value="es">
+        <PlayView level={sampleLevel()} onBack={() => {}} />
+      </LangProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Nítida" })).toHaveAttribute("aria-pressed", "true");
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "CRT arcade" })));
+    expect(localStorage.getItem("go-link.picture-style")).toBe("crt");
+    // jsdom has no WebGL: the canvas draws the game itself again
+    expect(screen.getByRole("img", { name: "Pantalla del juego" }).className).not.toContain("is-source");
+    localStorage.removeItem("go-link.picture-style");
+    cleanup();
   });
 
   it("shows the play screen with its controls in the active language", async () => {

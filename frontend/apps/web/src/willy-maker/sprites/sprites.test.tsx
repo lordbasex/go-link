@@ -130,6 +130,26 @@ describe("detectFigures", () => {
     ]);
   });
 
+  it("cuts a box twice as wide as its row's others: two poses drawn touching (T-30)", () => {
+    const W = 200;
+    const H = 40;
+    const mask = new Uint8Array(W * H);
+    const body = (x0: number) => {
+      for (let y = 5; y < 35; y++) for (let x = x0; x < x0 + 14; x++) mask[y * W + x] = 1;
+    };
+    body(4);
+    body(30);
+    body(56);
+    // two poses touching: the second one's arm reaches over into the first for half the height
+    body(90);
+    body(106);
+    for (let y = 5; y < 20; y++) for (let x = 100; x < 110; x++) mask[y * W + x] = 1;
+    body(140);
+    const boxes = detectFigures(mask, W, H);
+    expect(boxes.map((b) => b.w <= 16)).toEqual(boxes.map(() => true));
+    expect(boxes).toHaveLength(6);
+  });
+
   it("joins a muzzle flash that nearly touches its figure", () => {
     const img = sheet(80, 50, [0, 0, 0], () => undefined);
     const data = img.data;

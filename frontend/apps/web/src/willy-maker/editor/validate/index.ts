@@ -8,7 +8,7 @@
 // automatically, a fix. Errors block the AI pack; warnings do not.
 // Messages live in the module's i18n (i18n/export.*.ts), keyed by `msg`.
 
-import { cleanBands, objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
+import { cleanBands, layerGrid, objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project, type TileLayer } from "../../model";
 import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { leftBehind, reachability, routes, rowsForHeroes } from "../reach";
 import { heroHeights, levelHeroes } from "../../game/settings";
@@ -186,6 +186,23 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
       } else if (starts.length > 1) {
         startsOk = false;
         out.push({ id: "level.start", severity: "error", msg: "level.start-many", params: { level: name, player: pl, n: starts.length }, target: go(starts[1]!.x, starts[1]!.y, starts[1]!.name) });
+      }
+    }
+    // art that ends before the screen does (T-30: a 384 px picture on a 416 px level left the far layer's last 32 px empty)
+    for (const layer of level.layers) {
+      if (layer.kind !== "tiles" || (layer.id !== "far" && layer.id !== "play")) continue;
+      try {
+        const g = layerGrid(level, layer as TileLayer);
+        let last = -1;
+        for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) if (g.get(c, r)) { last = Math.max(last, c); break; }
+        if (last < 0) continue;
+        const end = (last + 1) * (layer as TileLayer).grid;
+        // the far layer moves at half speed: it shows up to half the level's scroll plus a screen
+        const need = layer.id === "far" ? Math.ceil((level.size.w - board.screen.w) / 2) + board.screen.w : level.size.w;
+        if (end < need - 8)
+          out.push({ id: "level.art-short", severity: "warning", msg: "level.art-short", params: { level: name, layer: layer.name?.trim() || layer.id, end, need }, target: go(end, 0) });
+      } catch {
+        // a broken layer is reported elsewhere
       }
     }
     // parallax bands (T-26): they scroll apart from the playfield, so nothing to stand on or meet may sit in them

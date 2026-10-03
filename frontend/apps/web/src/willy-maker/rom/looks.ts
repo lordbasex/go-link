@@ -37,6 +37,17 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
   jetpack: ["jetpack", "jump"],
 };
 
+/**
+ * The game's own enemies and civilians (T-30) use a look too, its slots
+ * meaning what the engine draws them with: an enemy walks (run), has just
+ * fired (gun), is hit (land) and goes down (victory); a civilian waits
+ * worried (land) and thanks the player (thumbs). Every other slot is idle.
+ */
+export const ACTOR_SOURCES: Record<"enemy" | "civilian", Partial<Record<LookAnimId, string[]>>> = {
+  enemy: { idle: ["idle", "walk"], run: ["walk", "run", "idle"], gun: ["shoot", "fire", "attack", "idle"], knife: ["melee", "attack", "shoot", "idle"], land: ["hit", "hurt", "idle"], victory: ["death", "die", "hit", "idle"] },
+  civilian: { idle: ["idle"], run: ["follow", "walk", "idle"], land: ["worried", "idle"], thumbs: ["thanks", "happy", "idle"], victory: ["thanks", "idle"] },
+};
+
 /** A move whose names all miss takes the engine animation it stands in for (crawl the crouch's, turn the run's, ...). */
 const LOOK_FALLBACK: Partial<Record<LookAnimId, LookAnimId>> = { crawl: "crouch", turn: "run", kick: "jump", double_jump: "jump", jetpack: "jump" };
 
@@ -86,6 +97,9 @@ export interface LooksPlan {
   looks: Look[];
   /** Per player slot: the index in `looks`, or -1 for Willy. */
   slots: number[];
+  /** Per packed enemy and civilian (T-30): the index in `looks`, or -1 for the engine's own. */
+  enemies: number[];
+  civilians: number[];
   /** Tiles written into the graphics region. */
   tiles: number;
 }
@@ -198,6 +212,7 @@ export function planLooks(
   pictures: (characterId: string) => Picture | null,
   budget: LooksBudget,
   note: (id: string, params: Record<string, string | number>) => void,
+  actors: { enemies: string[]; civilians: string[] } = { enemies: [], civilians: [] },
 ): LooksPlan {
   const looks: Look[] = [];
   const bySlot = slots.map(() => -1);
@@ -206,7 +221,7 @@ export function planLooks(
   let code = budget.firstCode;
   const free = budget.palettes.map(([a, n]) => [a, n] as [number, number]);
 
-  const make = (ch: Character): Look | null => {
+  const make = (ch: Character, role: "hero" | "enemy" | "civilian" = "hero"): Look | null => {
     const name = ch.name || ch.id;
     const pic = ch.sheet ? pictures(ch.id) : null;
     if (!pic) {
@@ -250,8 +265,8 @@ export function planLooks(
     const anims = {} as Record<LookAnimId, string>;
     try {
       for (const id of LOOK_ANIMS) {
-        const chain = id === "idle" ? ["idle", "walk", "run", ...Object.keys(ch.anims)] : LOOK_SOURCES[id];
-        const fallback = LOOK_FALLBACK[id];
+        const chain = role !== "hero" ? (ACTOR_SOURCES[role][id] ?? ["idle", ...Object.keys(ch.anims)]) : id === "idle" ? ["idle", "walk", "run", ...Object.keys(ch.anims)] : LOOK_SOURCES[id];
+        const fallback = role === "hero" ? LOOK_FALLBACK[id] : undefined;
         const src = chain.find((n) => tryAnim(n)) ?? (fallback ? anims[fallback] : undefined) ?? anims.idle;
         if (!src) {
           note("heroFrames", { name });
@@ -329,5 +344,23 @@ export function planLooks(
       note("heroShirt", { name: looks[k]!.name });
     }
   });
-  return { looks, slots: bySlot, tiles: code - budget.firstCode };
+  // the game's own enemies and civilians, one look per kind (T-30)
+  const byKind = new Map<string, number>();
+  const actor = (role: "enemy" | "civilian", kind: string): number => {
+    const key = `${role}:${kind}`;
+    const known = byKind.get(key);
+    if (known !== undefined) return known;
+    const ch = project.characters.find((c) => c.id === kind && c.role === role);
+    let k = -1;
+    if (ch && !failed.has(ch.id)) {
+      const look = make(ch, role);
+      if (look) k = looks.push(look) - 1;
+      else failed.add(ch.id);
+    }
+    byKind.set(key, k);
+    return k;
+  };
+  const enemies = actors.enemies.map((kind) => actor("enemy", kind));
+  const civilians = actors.civilians.map((kind) => actor("civilian", kind));
+  return { looks, slots: bySlot, enemies, civilians, tiles: code - budget.firstCode };
 }

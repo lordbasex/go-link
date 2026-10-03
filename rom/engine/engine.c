@@ -275,12 +275,13 @@ static void load_col2(int c)
 	const u8 *tag = D_TAGS + c;
 	const u8 *col = col_map + c;
 	volatile u16 *p = 0;
+	const u8 *band = nbands ? band_of_row : 0; /* no check at all without bands: the first frame streams every column */
 	for (r = 0; r < n; r++, src += cols, tag += cols, col += cols, p += 2) {
 		u16 code = *src, k;
 		u8 t = *tag;
 		if (!(r & 15)) /* the tilemap is laid out in blocks of 16 rows */
 			p = scroll2_cell(c, r);
-		if (band_of_row[r])
+		if (band && band[r])
 			continue; /* a parallax band's row: loaded with its band */
 		if ((t == T_CRATE || t == T_BREAKABLE) && *col == T_AIR)
 			code = WM_EMPTY16;
@@ -574,6 +575,7 @@ static struct enemy {
 	s32 x, fy, min, max;
 	int state, hp, flip, dir, fire_wait;
 	u32 t;
+	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
 static int nen;
 
@@ -583,7 +585,15 @@ static struct civ {
 	s32 x, fy;
 	int child, rescued;
 	u32 t;
+	const struct wm_look *look; /* the game's own civilian, or 0 */
 } civ[MAX_CIVS];
+
+/* entry i of a table of look addresses (enemy_looks, civ_looks), or 0 */
+static const struct wm_look *actor_look(u32 table, int i)
+{
+	u32 a = table >= WM_DATA_ADDR && table < 2 * WM_DATA_ADDR ? ((const u32 *)table)[i] : 0;
+	return a >= WM_DATA_ADDR && a < 2 * WM_DATA_ADDR ? (const struct wm_look *)a : 0;
+}
 static int nciv, rescued;
 
 static struct crate {
@@ -1028,6 +1038,7 @@ static void game_reset(void)
 		en[i].state = EN_WALK;
 		en[i].t = (u32)i * 11;
 		en[i].fire_wait = ENEMY_FIRE_EVERY;
+		en[i].look = actor_look(D->enemy_looks, i);
 	}
 	o = D_OBJ + D->n_enemies;
 	nciv = D->n_civs < MAX_CIVS ? D->n_civs : MAX_CIVS;
@@ -1037,6 +1048,7 @@ static void game_reset(void)
 		civ[i].child = o->a;
 		civ[i].rescued = 0;
 		civ[i].t = (u32)i * 17;
+		civ[i].look = actor_look(D->civ_looks, i);
 	}
 	o = D_OBJ + D->n_enemies + D->n_civs;
 	ncrates = D->n_crates < MAX_CRATES ? D->n_crates : MAX_CRATES;
@@ -1686,6 +1698,20 @@ static void draw_enemies(void)
 		int sx = (int)e->x - cam_x, sy = (int)e->fy - cam_y;
 		if (e->state == EN_OFF || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
 			continue;
+		if (e->look) {
+			/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
+			const struct wm_look *l = e->look;
+			if (e->state == EN_DOWN) {
+				const Anim *a = l->victory;
+				u32 f = e->t * a->fps / 60;
+				if (f >= a->count)
+					f = a->count - 1;
+				if (e->t < 70 || (e->t & 4))
+					draw_frame(&a->frames[f], sx, sy, l->pal, e->flip);
+			} else
+				draw_anim(e->state == EN_HIT ? l->land : e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
+			continue;
+		}
 		if (e->state == EN_DOWN) {
 			u32 f = e->t * anim_robot_defeated.fps / 60;
 			if (f >= anim_robot_defeated.count)
@@ -1706,6 +1732,11 @@ static void draw_civilians(void)
 		const Anim *a;
 		if (sx < -40 || sx > SCREEN_W + 40 || sy < -10 || sy > SCREEN_H + 50)
 			continue;
+		if (civ[i].look) {
+			/* the game's own civilian: worried until rescued, then thanks (wm_look's land, thumbs) */
+			draw_anim(civ[i].rescued ? civ[i].look->thumbs : civ[i].look->land, civ[i].t, sx, sy, civ[i].look->pal, 0);
+			continue;
+		}
 		if (civ[i].child)
 			a = civ[i].rescued ? &anim_child_happy : &anim_child_worried;
 		else

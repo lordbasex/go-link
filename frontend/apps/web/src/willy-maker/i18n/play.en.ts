@@ -27,6 +27,8 @@ export const playEn = {
   },
   placing: "+ {piece}",
   overlays: "Debug",
+  display: "Display",
+  displayStyles: { sharp: "Sharp", smooth: "Smooth", crt: "CRT arcade", edges: "Smooth edges" },
   overlay: {
     collision: "Collision",
     hitboxes: "Hitboxes",

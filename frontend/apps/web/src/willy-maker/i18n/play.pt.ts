@@ -27,6 +27,8 @@ export const playPt: PlayMessages = {
   },
   placing: "+ {piece}",
   overlays: "Depuração",
+  display: "Tela",
+  displayStyles: { sharp: "Nítida", smooth: "Suave", crt: "CRT arcade", edges: "Bordas suaves" },
   overlay: {
     collision: "Colisão",
     hitboxes: "Caixas de golpe",

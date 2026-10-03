@@ -464,7 +464,36 @@ export function detectFigures(mask: Uint8Array, w: number, h: number, { gap = 2 
   const minWidth = Math.max(4, Math.round(figH * 0.2));
   const parts = kept.flatMap((b) => splitAtEmptyColumns(mask, w, b, minWidth));
   const figW = median(parts.filter((b) => b.h >= figH * 0.6).map((b) => b.w));
-  return readingOrder(parts.flatMap((b) => splitWide(mask, w, b, figW)));
+  return splitTouching(mask, w, readingOrder(parts.flatMap((b) => splitWide(mask, w, b, figW))));
+}
+
+/**
+ * The image AI tests' case (T-30): two poses drawn touching make one box
+ * about twice as wide as the others of its row. A box at least 1.8 times
+ * its row's typical width is cut into that many, at the column with the
+ * least ink near each expected border, even where the poses overlap a bit.
+ */
+export function splitTouching(mask: Uint8Array, w: number, boxes: Box[]): Box[] {
+  const rows: Box[][] = [];
+  for (const b of boxes) {
+    const cy = b.y + b.h / 2;
+    const row = rows.find((r) => r.some((o) => cy >= o.y && cy <= o.y + o.h));
+    if (row) row.push(b);
+    else rows.push([b]);
+  }
+  const out: Box[] = [];
+  for (const row of rows) {
+    if (row.length < 3) {
+      out.push(...row);
+      continue;
+    }
+    const typical = median(row.map((b) => b.w));
+    for (const b of row) {
+      if (b.w >= typical * 1.8) out.push(...splitWide(mask, w, b, typical / 1.15, true));
+      else out.push(b);
+    }
+  }
+  return readingOrder(out);
 }
 
 /**
@@ -472,7 +501,7 @@ export function detectFigures(mask: Uint8Array, w: number, h: number, { gap = 2 
  * the least ink near each expected border, when that column is nearly
  * empty (at most a tenth of the height: a foot or a hand crossing over).
  */
-export function splitWide(mask: Uint8Array, w: number, b: Box, figW: number): Box[] {
+export function splitWide(mask: Uint8Array, w: number, b: Box, figW: number, force = false): Box[] {
   if (figW < 4) return [b];
   const n = Math.round(b.w / (figW * 1.15));
   if (n < 2) return [b];
@@ -494,7 +523,8 @@ export function splitWide(mask: Uint8Array, w: number, b: Box, figW: number): Bo
         best = x;
       }
     }
-    if (best >= 0 && bc <= b.h * 0.1) cuts.push(best);
+    // touching poses (force): cut at the thinnest column even where they overlap a little
+    if (best >= 0 && (bc <= b.h * 0.1 || (force && bc <= b.h * 0.6))) cuts.push(best);
   }
   if (!cuts.length) return [b];
   const edges = [b.x, ...cuts, b.x + b.w];

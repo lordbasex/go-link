@@ -356,6 +356,14 @@ describe("level 1: every rule of validation.md", () => {
     const d = base();
     objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
     broken.push(d, specProject());
+    const short = base();
+    {
+      const far = short.levels[0]!.layers.find((l): l is TileLayer => l.id === "far")!;
+      const g = layerGrid(short.levels[0]!, far);
+      for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) g.set(c, r, c < 2 ? 1 : 0); // art only in the first 64 px
+      g.commit();
+    }
+    broken.push(short);
     const band = base();
     band.levels[0]!.parallax = [{ y0: 160, y1: 224, speed: 50 }]; // over the floor: collision in the band
     broken.push(band);

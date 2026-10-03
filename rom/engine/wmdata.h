@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 6
+#define WM_VERSION 7
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -110,6 +110,8 @@ struct wm_data {
 		u16 r0, r1;           /* its rows of 16 px, r1 excluded */
 		u16 speed;            /* % of the camera's speed */
 	} bands[4];               /* 86 */
+	u32 enemy_looks;          /* 9e u32[n_enemies]: an enemy's own look (wm_look), 0 = the engine's android (T-30) */
+	u32 civ_looks;            /* a2 u32[n_civs]: a civilian's own look, 0 = the engine's woman or child */
 };
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
@@ -149,7 +151,8 @@ _Static_assert(WM_OFF(bg_color) == 0x58 && WM_OFF(rules) == 0x5c && WM_OFF(title
 _Static_assert(WM_OFF(looks) == 0x70 && WM_OFF(n_play_pals) == 0x74 && WM_OFF(play_pal) == 0x78, "wm_data looks, palettes");
 _Static_assert(WM_OFF(far_pal) == 0x7c && WM_OFF(n_play_codes) == 0x80 && WM_OFF(n_far_codes) == 0x82, "wm_data tile palettes");
 _Static_assert(WM_OFF(n_bands) == 0x84 && WM_OFF(bands) == 0x86, "wm_data bands");
-_Static_assert(sizeof(struct wm_data) == 0x9e, "wm_data size");
+_Static_assert(WM_OFF(enemy_looks) == 0x9e && WM_OFF(civ_looks) == 0xa2, "wm_data actor looks");
+_Static_assert(sizeof(struct wm_data) == 0xa6, "wm_data size");
 /* the records the packer writes for a look: 68000 alignment (2), big-endian */
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");

@@ -68,8 +68,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 6;
-const HEADER = 0x9e;
+const WM_VERSION = 7;
+const HEADER = 0xa6;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -396,6 +396,8 @@ export function packGame(
   type Row = [number, number, number, number, number, number];
   const enemies: Row[] = [];
   const civs: Row[] = [];
+  const enemyKinds: string[] = [];
+  const civKinds: string[] = [];
   const crates: Row[] = [];
   const pickups: Row[] = [];
   const startX = [-1, -1, -1, -1];
@@ -413,11 +415,13 @@ export function packGame(
         break;
       }
       case "enemy": {
+        enemyKinds.push(String(o.kind ?? ""));
         const patrol = num(o.patrol, 6 * CELL);
         enemies.push([o.x, o.y, Math.round(o.x - patrol / 2), Math.round(o.x + patrol / 2), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         break;
       }
       case "civilian":
+        civKinds.push(String(o.kind ?? ""));
         civs.push([o.x, o.y, o.kind === "child" || o.kind === "baby" ? 1 : 0, 0, 0, 0]);
         if (typeof o.trapped_in === "string" && o.trapped_in) note("trapped");
         break;
@@ -451,14 +455,16 @@ export function packGame(
   if (enemies.length > 16) note("enemies", { n: enemies.length, max: 16 });
   if (civs.length > 8) note("civilians", { n: civs.length, max: 8 });
   if (crates.length > 32) note("crates", { n: crates.length, max: 32 });
-  if (new Set(objects.filter((o) => o.type === "enemy").map((o) => String(o.kind ?? ""))).size > 1 || objects.some((o) => o.type === "enemy" && o.kind !== "trooper")) note("enemyArt");
 
   // each player's look: Willy (or a recruit's shirt), or one of the game's own heroes
   const players = Math.max(1, Math.min(4, project.settings.players));
   const slotList = playerSlots(project).slice(0, 4);
   const slots = slotList.map((s) => (s.character === BUILTIN_HERO ? Math.max(0, Math.min(3, s.variant)) : 0));
   while (slots.length < 4) slots.push(slots.length);
-  const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note);
+  const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8) });
+  // enemy kinds with no enemy character of their own are the engine's android (T-30)
+  const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper");
+  if (android.length) note("enemyArt", { kinds: android.join(", ") });
 
   const rules = rulesWith(project.settings.rules);
   const dip = project.settings.dip;
@@ -527,6 +533,8 @@ export function packGame(
 
   // the players' own looks: their Tile, Frame and Anim records (gfx.h's layout), each wm_look and its palettes, then looks[4]
   let looksAt = 0;
+  let enemyLooksAt = 0;
+  let civLooksAt = 0;
   if (looks.looks.length) {
     const lookAt: number[] = [];
     for (const look of looks.looks) {
@@ -567,6 +575,15 @@ export function packGame(
     }
     looksAt = out.addr;
     for (const k of looks.slots) out.u32(k >= 0 ? lookAt[k]! : 0);
+    // the own enemies' and civilians' looks, one address per packed object (T-30)
+    if (looks.enemies.some((k) => k >= 0)) {
+      enemyLooksAt = out.addr;
+      for (const k of looks.enemies) out.u32(k >= 0 ? lookAt[k]! : 0);
+    }
+    if (looks.civilians.some((k) => k >= 0)) {
+      civLooksAt = out.addr;
+      for (const k of looks.civilians) out.u32(k >= 0 ? lookAt[k]! : 0);
+    }
   }
 
   // the header (wm_data)
@@ -633,6 +650,8 @@ export function packGame(
     w16(b ? b.r1 : 0);
     w16(b ? b.speed : 0);
   }
+  w32(enemyLooksAt);
+  w32(civLooksAt);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

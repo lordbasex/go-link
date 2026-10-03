@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { cloneProject, newLevel, newProject, objectLayer, tagGrid, TAG_NUMBER, type Character, type Project } from "../../model";
+import { cloneProject, layerGrid, newLevel, newProject, objectLayer, tagGrid, TAG_NUMBER, type Character, type Project, type TileLayer } from "../../model";
 import { projectFromTemplate } from "../../templates";
 import { CPS1, ENGINE_USE } from "../../board/cps1";
 import { exportEn } from "../../i18n/export.en";
@@ -69,6 +69,16 @@ describe("review: levels", () => {
     expect(has(p, "level.start-extra")?.severity).toBe("warning");
     items.push({ name: "p1_again", type: "player_start", x: 80, y: 192, player: 1 });
     expect(has(p, "level.start-many")?.target).toMatchObject({ tab: "build", object: "p1_again" });
+  });
+  it("warns about layer art that ends before the screen does (T-30)", () => {
+    const p = base();
+    const level = p.levels[0]!;
+    const far = level.layers.find((l): l is TileLayer => l.id === "far")!;
+    const g = layerGrid(level, far);
+    for (let c = 0; c < g.cols; c++) for (let r = 0; r < g.rows; r++) g.set(c, r, c < 12 ? 1 : 0); // 384 px of art
+    g.commit();
+    const c = has(p, "level.art-short");
+    expect(c?.params).toMatchObject({ end: 384, need: (level.size.w - 384) / 2 + 384 });
   });
   it("warns about a start with no free floor right under it (T-09)", () => {
     const p = base();
