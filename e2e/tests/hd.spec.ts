@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { pairingCode, stack } from "../stack";
@@ -7,8 +7,11 @@ import { pairingCode, stack } from "../stack";
 // go-link HD's experiment (T-31, docs/experiments/hd-streaming.md): the test
 // room streams the HD scene through the real WebRTC path, and Chrome measures
 // what arrives. Runs only when asked:
-//   E2E_HD=out.json E2E_DEVICE_ARGS="--test-room-hd 1080p --hd-far far.png --hd-play play.png" \
+//   E2E_HD=out.json E2E_DEVICE_ARGS="--test-room-hd 1080p --hd-far far.png --hd-play play.png [--hd-codec h264 --hd-h264 x264|videotoolbox]" \
 //     npx playwright test tests/hd.spec.ts --project=web
+// A device on another computer (the host) with this browser as the guest:
+// E2E_DEVICE_COMMAND starts it through ssh with the signalhub and the panel
+// tunnelled (docs/experiments/hd-streaming.md has the command).
 
 test.skip(!process.env.E2E_HD, "go-link HD's experiment runs only with E2E_HD");
 
@@ -37,12 +40,19 @@ test("the HD scene reaches a room: frames, size and the device's CPU", async ({ 
     return { t: performance.now(), frames: q.totalVideoFrames, dropped: q.droppedVideoFrames, w: v.videoWidth, h: v.videoHeight };
   });
   const cpu: number[] = [];
+  const ffcpu: number[] = [];
   const a = await read();
   for (let i = 0; i < 15; i++) {
     await page.waitForTimeout(1000);
     // the device's process, found by its binary (ps adds every thread's CPU: 100 = one core)
-    const line = execFileSync("ps", ["-Awwo", "pid=,%cpu=,command="], { env: { ...process.env, LC_ALL: "C" } }).toString().split("\n").find((l) => l.includes(stack().bin) && l.includes("--headless"));
-    if (line) cpu.push(Number(line.trim().split(/\s+/)[1]));
+    // and the ffmpeg it runs for H.264 (a process of its own)
+    // E2E_HD_PS lists the processes of a device running elsewhere (E2E_DEVICE_COMMAND), E2E_HD_MATCH names its binary
+    const ps = process.env.E2E_HD_PS ? execSync(process.env.E2E_HD_PS) : execFileSync("ps", ["-Awwo", "pid=,%cpu=,command="], { env: { ...process.env, LC_ALL: "C" } });
+    const lines = ps.toString().split("\n");
+    const device = lines.find((l) => l.includes(process.env.E2E_HD_MATCH ?? stack().bin) && l.includes("--headless"));
+    const ffmpeg = lines.filter((l) => l.includes("ffmpeg") && l.includes("rawvideo") && l.includes("pipe:0"));
+    if (device) cpu.push(Number(device.trim().split(/\s+/)[1]));
+    ffcpu.push(ffmpeg.reduce((sum, l) => sum + Number(l.trim().split(/\s+/)[1]), 0));
   }
   const b = await read();
   const secs = (b.t - a.t) / 1000;
@@ -55,6 +65,7 @@ test("the HD scene reaches a room: frames, size and the device's CPU", async ({ 
     fps: (b.frames - a.frames) / secs,
     droppedPerSecond: (b.dropped - a.dropped) / secs,
     deviceCpuPercent: cpu.reduce((x, y) => x + y, 0) / cpu.length,
+    ffmpegCpuPercent: ffcpu.reduce((x, y) => x + y, 0) / Math.max(1, ffcpu.length),
     details: details.replace(/\s+/g, " ").trim(),
   };
   writeFileSync(process.env.E2E_HD!, JSON.stringify(result, null, 2));

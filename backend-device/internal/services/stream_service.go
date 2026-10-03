@@ -61,7 +61,15 @@ type StreamConfig struct {
 	Logger *slog.Logger
 	// EncoderThreads is libvpx's thread count (0: its streaming default of 2); HD sizes need more (T-31).
 	EncoderThreads int
+	// H264Encoder, when set ("x264" or "videotoolbox"), sends H.264 made by
+	// ffmpeg instead of VP8 (go-link HD, docs/experiments/hd-streaming.md):
+	// the HD test room only, without recordings or the 2x encoder check.
+	H264Encoder string
 }
+
+// h264Fmtp is the H.264 the device offers: Constrained Baseline, which
+// every browser decodes, sent as single NAL units and FU-A fragments.
+const h264Fmtp = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 
 // NewWebRTCAPI builds the WebRTC API streams share. udpPort > 0 carries
 // every connection on that single UDP port (ICE UDP mux).
@@ -137,11 +145,14 @@ type StreamService struct {
 	vp8        *encoder.VP8
 	vp8W, vp8H int
 	vp8Kbps    int
-	opus       *encoder.Opus
-	pcm        []int16
-	sent       int
-	window     time.Time
-	probe      *encodeProbe
+	h264       *encoder.H264
+	// frames and bytes the H.264 reader goroutine sent since the last count
+	h264Sent, h264Bytes atomic.Int64
+	opus                *encoder.Opus
+	pcm                 []int16
+	sent                int
+	window              time.Time
+	probe               *encodeProbe
 
 	mu           sync.Mutex
 	sender       Sender
@@ -412,7 +423,11 @@ func NewStreamService(cfg StreamConfig, ice *ICEStore) (*StreamService, error) {
 			return nil, err
 		}
 	}
-	track, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8, ClockRate: 90000}, "video", "go-link")
+	video := webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8, ClockRate: 90000}
+	if cfg.H264Encoder != "" {
+		video = webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264, ClockRate: 90000, SDPFmtpLine: h264Fmtp}
+	}
+	track, err := webrtc.NewTrackLocalStaticSample(video, "video", "go-link")
 	if err != nil {
 		return nil, err
 	}
@@ -582,6 +597,9 @@ func (s *StreamService) Run(ctx context.Context) error {
 		if s.vp8 != nil {
 			s.vp8.Close()
 		}
+		if s.h264 != nil {
+			s.h264.Close()
+		}
 	}()
 	go func() {
 		t := time.NewTicker(2 * time.Second)
@@ -647,6 +665,10 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.sent, s.sentBytes, s.window = 0, 0, time.Now()
 	}
 	kbps := s.Bitrate()
+	if s.cfg.H264Encoder != "" {
+		s.h264Frame(i420, w, h, kbps, dur)
+		return
+	}
 	if s.vp8 == nil || s.vp8W != w || s.vp8H != h || s.vp8Kbps != kbps {
 		if s.vp8 != nil {
 			s.vp8.Close()
@@ -692,6 +714,45 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 	}
 	s.sent++
 	s.sentBytes += len(data)
+}
+
+// h264Frame hands a frame to ffmpeg's H.264 encoder (started again when the
+// size or bitrate changes); its frames are sent from the encoder's reader.
+// A new viewer starts with the next keyframe, one every two seconds.
+func (s *StreamService) h264Frame(i420 []byte, w, h, kbps int, dur time.Duration) {
+	s.sent += int(s.h264Sent.Swap(0))
+	s.sentBytes += int(s.h264Bytes.Swap(0))
+	if s.h264 == nil || s.vp8W != w || s.vp8H != h || s.vp8Kbps != kbps {
+		if s.h264 != nil {
+			s.h264.Close()
+		}
+		fps := max(int(time.Second/dur), 1)
+		enc, err := encoder.NewH264(encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps}, s.cfg.H264Encoder, func(au []byte) {
+			if err := s.track.WriteSample(media.Sample{Data: au, Duration: dur}); err != nil && !errors.Is(err, errClosedPipe) {
+				s.log.Debug("write sample", "err", err)
+			}
+			s.h264Sent.Add(1)
+			s.h264Bytes.Add(int64(len(au)))
+		})
+		if err != nil {
+			s.log.Error("video encoder", "codec", "h264", "err", err)
+			s.h264 = nil
+			return
+		}
+		s.log.Info("video encoder", "codec", "h264", "encoder", s.cfg.H264Encoder, "size", fmt.Sprintf("%dx%d", w, h), "kbps", kbps)
+		s.mu.Lock()
+		resized := s.vp8W != w || s.vp8H != h
+		s.h264, s.vp8W, s.vp8H, s.vp8Kbps = enc, w, h, kbps
+		s.mu.Unlock()
+		if resized {
+			go s.sendStreamStats()
+		}
+	}
+	if err := s.h264.Write(i420); err != nil {
+		s.log.Error("encode failed", "codec", "h264", "err", err)
+		s.h264.Close()
+		s.h264 = nil
+	}
 }
 
 // AudioSamples buffers audio and sends it in 20 ms Opus frames.

@@ -82,10 +82,28 @@ On the M1 the picture changes: VP8 is faster than on the Intel Mac Pro at every 
 - **4K is a second step and needs H.264:** WebRTC carries it in every browser. The M1 measurement says the way there is x264 in software (110-149 fps at 4K on Apple Silicon, about half its cores), not the M1's media engine (54-63 fps for H.264); on Intel hosts neither reaches it. Next step: an H.264 track in the device's WebRTC stream (x264, with the hardware encoder for 1080p, where it costs half a core), then `hd.spec.ts` end to end at 4K.
 - **Viewers:** 8 Mbps for 1080p fits home connections; phones get 720p (4 Mbps). Adapting the size to each viewer is future work: today every viewer of a room gets the same stream.
 
+## An H.264 track (2026-10-03)
+
+The decision's next step: the device sends H.264 as well as VP8. The encoder is ffmpeg running as its own process (`pkg/encoder` `H264`): the device writes raw I420 frames to its input and reads Annex B H.264 from its output, cut into frames at each access unit delimiter, so ffmpeg is never linked into go-link and the device keeps its MIT license whatever ffmpeg was built with (x264 is GPL). It drives **x264** (`ultrafast`, `zerolatency`, software) or the computer's hardware encoder (**VideoToolbox** on a Mac), Constrained Baseline (profile-level-id 42e01f, which every browser decodes), with the parameter sets on every keyframe, one every two seconds; the stream runs one frame behind the encoder (a frame ends where the next begins). The HD test room uses it with `--hd-codec h264 --hd-h264 x264|videotoolbox`; without ffmpeg the device refuses the flag and game rooms keep VP8.
+
+End to end in Chrome on the Mac Pro (the same `hd.spec.ts`, which now adds ffmpeg's CPU to the device's):
+
+| Size | Codec | Shown by Chrome | Sent / received | Device + ffmpeg CPU |
+|---|---|---|---|---|
+| 1080p | VP8, 8 threads (before) | 59.7 fps | 59.6 / 59-60 | 1.9 cores |
+| 1080p | H.264, x264 | 59.7 fps | 60 / 60 | 0.3 + 0.9 = 1.2 cores |
+| 1080p | H.264, VideoToolbox | 59.4-59.9 fps | 60 / 59 | 0.3 + 0.16 = 0.44 cores |
+| 4K | VP8, 8 threads (before) | 25.8 fps | 25.9 / 26 | 2.5 cores |
+| 4K | H.264, x264 | 38.8 fps | 38 / 39 | 0.8 + 2.6 = 3.4 cores |
+| 4K | H.264, VideoToolbox | 32.6 fps | 33 / 33 | 0.55 + 0.3 = 0.9 cores |
+
+On this Intel Mac H.264 already pays at 1080p: the hardware encoder streams 1080p60 with less than half a core, a quarter of VP8's CPU, leaving the host's cores to the emulator. 4K stays out of reach here, as the encoders alone predicted (and Chrome decoding 4K on the same computer takes cores too).
+
 ## Tools added for it
 
 - `backend-device/pkg/hdscene`: the HD test scene, composed in I420 (tests and a 1080p benchmark).
 - `device hdbench`: the encoder measurement above (`--encoder vp8|videotoolbox|x264`, `--threads`, `--cpu-used`, `--raw` to write the frames for timing other encoders).
 - `device --test-room-hd 720p|1080p|2160p --hd-far PICTURE [--hd-play PICTURE] [--hd-kbps N] [--hd-threads N]`: the test room streams the scene instead of the test card.
 - `pkg/encoder` `Config.Threads` and `StreamConfig.EncoderThreads`: libvpx's thread count (the streaming default stays 2; VP8 shares the work with token partitions above 2).
-- `e2e/tests/hd.spec.ts`: the end-to-end measurement, skipped unless `E2E_HD` names the output file (`E2E_DEVICE_ARGS` passes the device's flags).
+- `e2e/tests/hd.spec.ts`: the end-to-end measurement, skipped unless `E2E_HD` names the output file (`E2E_DEVICE_ARGS` passes the device's flags). With `E2E_DEVICE_COMMAND` the device runs on another computer, the host, through ssh with the test signalhub and panel tunnelled, while this computer's Chrome is the guest (`E2E_HD_PS` and `E2E_HD_MATCH` read its CPU there).
+- `pkg/encoder` `H264` and `device --test-room-hd SIZE --hd-codec h264 --hd-h264 x264|videotoolbox`: the H.264 track through ffmpeg.

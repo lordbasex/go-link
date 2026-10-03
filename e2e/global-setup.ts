@@ -84,7 +84,10 @@ export default async function globalSetup() {
   const config = join(state, "device.json");
   const deviceLog = join(state, "device.log");
   const out = openSync(deviceLog, "a");
-  const device = spawn(
+  // E2E_DEVICE_COMMAND runs the device elsewhere instead (go-link HD on another computer, tests/hd.spec.ts):
+  // a shell command whose output is the device's log, reaching this signalhub and giving its panel on the same ports
+  const remote = process.env.E2E_DEVICE_COMMAND;
+  const device = remote ? spawn("/bin/sh", ["-c", remote], { stdio: ["ignore", openSync(deviceLog, "a"), openSync(deviceLog, "a")], detached: true }) : spawn(
     join(bin, "device"),
     [
       "--headless",

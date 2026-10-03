@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,6 +29,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/panel"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
+	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
@@ -68,6 +70,8 @@ func run() error {
 		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
 		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
 		hdThreads  = flag.Int("hd-threads", 8, "libvpx threads for the HD scene")
+		hdCodec    = flag.String("hd-codec", "vp8", "the HD scene's codec: vp8, or h264 made by ffmpeg (needs ffmpeg installed)")
+		hdH264     = flag.String("hd-h264", "x264", "with --hd-codec h264: x264 (software) or videotoolbox (the Mac's hardware)")
 		game       = flag.String("game", "", "ROM set to play in the room, e.g. robby (from the ROM folder); empty streams the test pattern")
 		udpPort    = flag.Int("udp-port", 0, "carry every WebRTC connection on this UDP port, to forward it on a router (default: udp_port in device.json, else random ports)")
 		announce   = flag.String("announce", "", "comma-separated addresses where browsers reach --udp-port through a forwarding router (default: announce_ips in device.json)")
@@ -150,6 +154,19 @@ func run() error {
 	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger}
 	if *testHD != "" {
 		streamCfg.EncoderThreads = *hdThreads
+		switch *hdCodec {
+		case "vp8":
+		case "h264":
+			if !slices.Contains(encoder.H264Encoders, *hdH264) {
+				return fmt.Errorf("--hd-h264: %q is not x264 or videotoolbox", *hdH264)
+			}
+			if _, err := encoder.FFmpegPath(); err != nil {
+				return err
+			}
+			streamCfg.H264Encoder = *hdH264
+		default:
+			return fmt.Errorf("--hd-codec: %q is not vp8 or h264", *hdCodec)
+		}
 	}
 	stream, err := services.NewStreamService(streamCfg, ice)
 	if err != nil {
