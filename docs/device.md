@@ -60,7 +60,8 @@ device roms dir [PATH]                   # show or change the ROM folder
 device roms check [--dir D] [--json]     # check which ROM sets the core can run
 device roms saves [--json]               # test which games can resume from a save
 device romtest [--frames N] [--json] [--shot FILE] ZIP   # power a set on with the exact core
-device romtest --input FILE [--checkpoints LIST] [--frames-dir DIR] [--mp4 FILE] ZIP   # replay an input script on the exact core
+device romtest --input FILE [--checkpoints LIST] [--frames-dir DIR] [--mp4 FILE] [--wav FILE] ZIP   # replay an input script on the exact core
+device hdbench --far PICTURE [--play PICTURE] [--res 720p,1080p,2160p] [--encoder vp8|videotoolbox|x264]   # go-link HD: time an HD scene's encoder
 device thumbnails check [--json]         # count the thumbnails of the ROM sets
 device thumbnails dir [PATH|default]     # show or change the thumbnails folder
 device thumbnails kind [boxart|title|snap]   # which thumbnail is shown
@@ -84,7 +85,7 @@ go-link makes its own games (the [CPS-1 ROM](rom/README.md), and later Willy Mak
 
 ### ROM test
 
-`device romtest ZIP` is validation level 4 from a terminal: the same test as the website's **Test on my go-link** ([protocol](protocol.md#rom-test)). It copies the zip to `~/go-link/tmp/romtest/run-<random>/`, runs the two worker processes (`device romtest --child`, with and without scripted input) with the core in `~/go-link/cores` (`--core` for another one), prints the checklist and deletes the copy. It never reads or changes `device.json` or the ROM folder. `--json` prints the result, `--shot FILE` saves the last frame, and the exit status is 1 when a check fails. With `--input FILE` it replays an input script instead (experiment 1's harness, [docs/experiments/harness.md](experiments/harness.md#the-real-core)): the JSON script of `rom/tools/lab/run.mjs`, frame by frame on the exact core from power on, saving the `--checkpoints` frames (default: the script's) and every `--png-every` frame as PNG in `--frames-dir`, and with `--mp4 FILE` every frame as a video (needs ffmpeg). It works in `~/go-link/tmp/romreplay-<pid>/` and deletes it.
+`device romtest ZIP` is validation level 4 from a terminal: the same test as the website's **Test on my go-link** ([protocol](protocol.md#rom-test)). It copies the zip to `~/go-link/tmp/romtest/run-<random>/`, runs the two worker processes (`device romtest --child`, with and without scripted input) with the core in `~/go-link/cores` (`--core` for another one), prints the checklist and deletes the copy. It never reads or changes `device.json` or the ROM folder. `--json` prints the result, `--shot FILE` saves the last frame, and the exit status is 1 when a check fails. With `--input FILE` it replays an input script instead (experiment 1's harness, [docs/experiments/harness.md](experiments/harness.md#the-real-core)): the JSON script of `rom/tools/lab/run.mjs`, frame by frame on the exact core from power on, saving the `--checkpoints` frames (default: the script's) and every `--png-every` frame as PNG in `--frames-dir`, with `--mp4 FILE` every frame as a video (needs ffmpeg), and with `--wav FILE` the core's stereo sound (48 kHz). `device hdbench` and the device flag `--test-room-hd 720p|1080p|2160p` (with `--hd-far`, `--hd-play`, `--hd-kbps`, `--hd-threads`) belong to go-link HD's experiment ([docs/experiments/hd-streaming.md](experiments/hd-streaming.md)): the first times an HD test scene's encoder, the second streams the scene in the test room instead of the test card. It works in `~/go-link/tmp/romreplay-<pid>/` and deletes it.
 
 ```
 ROM test of slammast.zip (slammast)

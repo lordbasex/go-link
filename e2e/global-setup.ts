@@ -97,6 +97,8 @@ export default async function globalSetup() {
       "--test-room-pause",
       // The Android test reads the device's input log lines (npm run test:android).
       ...(process.env.E2E_DEVICE_DEBUG === "1" ? ["--debug"] : []),
+      // Extra device flags, e.g. go-link HD's scene in the test room (tests/hd.spec.ts).
+      ...(process.env.E2E_DEVICE_ARGS ? process.env.E2E_DEVICE_ARGS.split(" ").filter(Boolean) : []),
     ],
     { env: { ...process.env, HOME: join(state, "home") }, stdio: ["ignore", out, out], detached: true },
   );

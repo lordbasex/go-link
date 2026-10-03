@@ -12,6 +12,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"image"
 	"log/slog"
 	"net"
 	"net/url"
@@ -62,6 +63,11 @@ func run() error {
 		debug      = flag.Bool("debug", false, "verbose logs")
 		testRoom   = flag.Bool("test-room", true, "open the test pattern room (or the game given with --game)")
 		testPause  = flag.Bool("test-room-pause", false, "let the host pause the test pattern room (to try the pause and its requests without a game)")
+		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p or 2160p) made of --hd-far and --hd-play")
+		hdFar      = flag.String("hd-far", "", "the HD scene's far picture (with --test-room-hd)")
+		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
+		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
+		hdThreads  = flag.Int("hd-threads", 8, "libvpx threads for the HD scene")
 		game       = flag.String("game", "", "ROM set to play in the room, e.g. robby (from the ROM folder); empty streams the test pattern")
 		udpPort    = flag.Int("udp-port", 0, "carry every WebRTC connection on this UDP port, to forward it on a router (default: udp_port in device.json, else random ports)")
 		announce   = flag.String("announce", "", "comma-separated addresses where browsers reach --udp-port through a forwarding router (default: announce_ips in device.json)")
@@ -142,6 +148,9 @@ func run() error {
 		return err
 	}
 	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger}
+	if *testHD != "" {
+		streamCfg.EncoderThreads = *hdThreads
+	}
 	stream, err := services.NewStreamService(streamCfg, ice)
 	if err != nil {
 		return err
@@ -194,6 +203,11 @@ func run() error {
 			manager.OnPauseAsk(func(ev services.PauseAskEvent) {
 				stream.SendToLinks(services.RoomPauseAskEvent{PauseAskEvent: ev, ID: services.TestRoomID})
 			})
+		}
+		if *testHD != "" {
+			if err := useHDScene(stream, *testHD, *hdFar, *hdPlay, *hdKbps, logger); err != nil {
+				return err
+			}
 		}
 		go manager.Run(ctx)
 		handlers = append(handlers, room)
@@ -758,4 +772,32 @@ func roomPicture(style, bands string) (*models.RoomPicture, bool) {
 	}
 	p := &models.RoomPicture{Style: style, Bands: bands}
 	return p, p.Valid()
+}
+
+// useHDScene makes the test room stream go-link HD's test scene (T-31).
+func useHDScene(stream *services.StreamService, size, far, play string, kbps int, log *slog.Logger) error {
+	sz, ok := hdSizes[size]
+	if !ok {
+		return fmt.Errorf("--test-room-hd: unknown size %q (720p, 1080p or 2160p)", size)
+	}
+	if far == "" {
+		return errors.New("--test-room-hd needs --hd-far")
+	}
+	farImg, err := loadPicture(far)
+	if err != nil {
+		return err
+	}
+	var playImg image.Image
+	if play != "" {
+		if playImg, err = loadPicture(play); err != nil {
+			return err
+		}
+	}
+	if kbps <= 0 {
+		kbps = sz.Kbps
+	}
+	stream.SetBitrate(kbps)
+	stream.SetSource(&services.HDSceneSource{Width: sz.W, Height: sz.H, FPS: 60, Far: farImg, Play: playImg})
+	log.Info("test room streams the HD scene", "size", size, "kbps", kbps)
+	return nil
 }

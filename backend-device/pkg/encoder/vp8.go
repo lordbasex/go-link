@@ -21,7 +21,7 @@ typedef struct {
 	int keyframe;
 } enc_t;
 
-static int enc_open(enc_t *e, int w, int h, int fps, int kbps, int minq, int maxq, int cpu) {
+static int enc_open(enc_t *e, int w, int h, int fps, int kbps, int minq, int maxq, int cpu, int threads) {
 	vpx_codec_enc_cfg_t cfg;
 	memset(e, 0, sizeof(*e));
 	if (vpx_codec_enc_config_default(vpx_codec_vp8_cx(), &cfg, 0) != VPX_CODEC_OK) return -1;
@@ -35,12 +35,14 @@ static int enc_open(enc_t *e, int w, int h, int fps, int kbps, int minq, int max
 	cfg.rc_max_quantizer = maxq;
 	cfg.g_lag_in_frames = 0;
 	cfg.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
-	cfg.g_threads = 2;
+	cfg.g_threads = threads;
 	cfg.kf_mode = VPX_KF_AUTO;
 	cfg.kf_max_dist = fps * 3;
 	if (vpx_codec_enc_init(&e->ctx, vpx_codec_vp8_cx(), &cfg, 0) != VPX_CODEC_OK) return -2;
 	vpx_codec_control(&e->ctx, VP8E_SET_CPUUSED, cpu);
 	vpx_codec_control(&e->ctx, VP8E_SET_STATIC_THRESHOLD, 1);
+	// more threads need token partitions to share the work (HD, T-31)
+	if (threads > 2) vpx_codec_control(&e->ctx, VP8E_SET_TOKEN_PARTITIONS, threads >= 8 ? 3 : threads >= 4 ? 2 : 1);
 	if (!vpx_img_alloc(&e->img, VPX_IMG_FMT_I420, w, h, 1)) {
 		vpx_codec_destroy(&e->ctx);
 		return -3;
@@ -107,6 +109,9 @@ type Config struct {
 	// video quality lab sets them to compare other tunings.
 	MinQuantizer, MaxQuantizer int
 	CPUUsed                    int
+	// Threads is libvpx's thread count; zero keeps the streaming default (2).
+	// HD sizes need more (go-link HD, experiment T-31).
+	Threads int
 }
 
 // Encoder defaults, used when Config leaves the tuning fields at zero.
@@ -136,6 +141,10 @@ func NewVP8(cfg Config) (*VP8, error) {
 		return nil, fmt.Errorf("encoder: invalid config %+v", cfg)
 	}
 	minq, maxq, cpu := cfg.MinQuantizer, cfg.MaxQuantizer, cfg.CPUUsed
+	threads := cfg.Threads
+	if threads <= 0 {
+		threads = 2
+	}
 	if minq == 0 {
 		minq = DefaultMinQuantizer
 	}
@@ -149,7 +158,7 @@ func NewVP8(cfg Config) (*VP8, error) {
 		return nil, fmt.Errorf("encoder: invalid tuning %+v", cfg)
 	}
 	e := (*C.enc_t)(C.malloc(C.size_t(unsafe.Sizeof(C.enc_t{}))))
-	if rc := C.enc_open(e, C.int(cfg.Width), C.int(cfg.Height), C.int(cfg.FPS), C.int(cfg.BitrateKbps), C.int(minq), C.int(maxq), C.int(cpu)); rc != 0 {
+	if rc := C.enc_open(e, C.int(cfg.Width), C.int(cfg.Height), C.int(cfg.FPS), C.int(cfg.BitrateKbps), C.int(minq), C.int(maxq), C.int(cpu), C.int(threads)); rc != 0 {
 		C.free(unsafe.Pointer(e))
 		return nil, fmt.Errorf("encoder: libvpx init failed (%d)", int(rc))
 	}

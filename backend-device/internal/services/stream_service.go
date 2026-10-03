@@ -59,6 +59,8 @@ type StreamConfig struct {
 	// because the announced addresses point at it.
 	API    *webrtc.API
 	Logger *slog.Logger
+	// EncoderThreads is libvpx's thread count (0: its streaming default of 2); HD sizes need more (T-31).
+	EncoderThreads int
 }
 
 // NewWebRTCAPI builds the WebRTC API streams share. udpPort > 0 carries
@@ -650,7 +652,7 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 			s.vp8.Close()
 		}
 		fps := max(int(time.Second/dur), 1)
-		enc, err := encoder.NewVP8(encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps})
+		enc, err := encoder.NewVP8(encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps, Threads: s.cfg.EncoderThreads})
 		if err != nil {
 			s.log.Error("video encoder", "err", err)
 			s.vp8 = nil

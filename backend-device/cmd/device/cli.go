@@ -39,6 +39,9 @@ Usage:
   device romtest [--frames N] [--json] [--shot FILE] ZIP
                                          power a set on with the exact core: picture, sound,
                                          inputs (the website's "Test on my go-link")
+  device hdbench --far PICTURE [--play PICTURE] [--res 720p,1080p,2160p] [--encoder vp8|videotoolbox|x264]
+                                         go-link HD's experiment: encode an HD test scene and
+                                         measure the time per frame, bitrate and CPU
   device thumbnails check [--json]       count the thumbnails of the ROM sets
   device thumbnails dir [PATH|default]   show or change the thumbnails folder
   device thumbnails kind [boxart|title|snap]
@@ -73,6 +76,10 @@ func runCommand(args []string) (handled bool, err error) {
 	// The ROM test (and its worker process): no config either.
 	if args[0] == "romtest" {
 		return true, cmdRomTest(args[1:])
+	}
+	// go-link HD's streaming experiment (T-31): no config either.
+	if args[0] == "hdbench" {
+		return true, cmdHDBench(args[1:])
 	}
 	key := args[0]
 	if len(args) > 1 {

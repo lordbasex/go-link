@@ -6,6 +6,8 @@ All notable changes to go-link. Newest first.
 
 ### Added (lab)
 
+- **go-link HD, the streaming experiment** (task T-31 of [experiment 1's verdict](docs/experiments/verdict.md), [docs/experiments/hd-streaming.md](docs/experiments/hd-streaming.md)): an HD test scene (two image AI pictures scrolling as far and play layers, a bouncing ball; `pkg/hdscene`, composed in I420 in under a millisecond at 1080p), `device hdbench` to time the stream's VP8, the Mac's hardware H.264 and x264 at 720p, 1080p and 4K, `device --test-room-hd SIZE` to stream the scene in the test room, and `e2e/tests/hd.spec.ts` to measure it in Chrome. On the user's Mac Pro 2019: 1080p at 60 fps works end to end with today's VP8 (59.7 fps shown, about 2 cores, 7-8 Mbps) and 720p takes 1.25 cores; 4K reached 26 fps with VP8 and 39 fps with this Mac's hardware encoder, so 4K needs H.264 on a faster hardware encoder (the M1 next). Decision: go-link HD's first version streams 1080p60, with 720p as the fallback. `pkg/encoder` and the stream gain a libvpx thread count (the default stays 2).
+
 - **Recorded sessions** (task T-17 of [experiment 1's verdict](docs/experiments/verdict.md), lesson L-15): `rom/tools/lab/session.mjs` records a user session with Playwright for every future case: fixed step numbers from the script, a caption in a fixed place that moves out of a control's way, the control outlined and a "Why" card in the corner farthest from it, then an MP4 with one chapter per step and the captions as a subtitle track, WebVTT chapters and captions, a timeline and `session.md`, whose links open the MP4 at each step ([docs/experiments/harness.md](docs/experiments/harness.md#recorded-sessions)).
 
 ### Added (website)
