@@ -296,6 +296,13 @@ export const coreEs: CoreMessages = {
     camera: "Cámara",
     forwardOnly: "Solo avanza",
     backtrack: "Margen atrás (px)",
+    parallax: "Bandas de parallax",
+    parallaxHelp: "Filas de la capa de juego que se desplazan más lento que la cámara, como edificios lejanos sobre el cielo (el row scroll de la placa). No pongas colisión ni objetos en ellas.",
+    bandFrom: (n: number) => `Banda ${n}: desde y`,
+    bandTo: (n: number) => `Banda ${n}: hasta y`,
+    bandSpeed: (n: number) => `Banda ${n}: velocidad %`,
+    removeBand: (n: number) => `Quitar la banda ${n}`,
+    addBand: "Agregar una banda",
   },
   picture: {
     button: "Imagen…",

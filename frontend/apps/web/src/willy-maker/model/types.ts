@@ -245,6 +245,18 @@ export interface Level {
   sections: Section[];
   /** The time limit in seconds; 0 or missing = none (the ROM keeps it; play mode has no timer). */
   timer?: number;
+  /**
+   * Parallax bands of the play layer (T-26): rows (y0 to y1, px on the 16 px
+   * grid) that scroll at `speed` % of the camera's speed, like far buildings
+   * drawn over the sky; up to 4, with no collision or objects in them.
+   */
+  parallax?: ParallaxBand[];
+}
+
+export interface ParallaxBand {
+  y0: number;
+  y1: number;
+  speed: number;
 }
 
 /** A live rule's finding (validation.md, level 1). Messages are i18n keys with params. */

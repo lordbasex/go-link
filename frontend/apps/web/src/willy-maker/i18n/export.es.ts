@@ -263,6 +263,7 @@ export const exportEs: ExportMessages = {
     "level.start-many": (p: P) => `${p.level} tiene ${p.n} inicios para el jugador ${p.player}. Deja uno.`,
     "level.start-extra": (p: P) => `${p.level} no tiene inicio para el jugador ${p.player}: entrará junto al jugador 1.`,
     "level.start-floor": (p: P) => `${p.level}: el inicio del jugador ${p.player} no tiene un piso libre justo debajo, así que el juego lo pone ${p.d} px más abajo. Pon el inicio sobre un piso.`,
+    "level.parallax": (p: P) => `${p.level}: la banda de parallax de y ${p.y0} a ${p.y1} tiene colisión o un objeto en x ${p.x}; la banda se desplaza aparte del juego, así que deja en ella solo decorado.`,
     "level.start.ok": () => "Hay inicio de jugador 1 y salida",
     "level.exit": (p: P) => `${p.level} no tiene salida.`,
     "level.exit-many": (p: P) => `${p.level} tiene ${p.n} salidas: la primera que se alcanza termina el nivel.`,

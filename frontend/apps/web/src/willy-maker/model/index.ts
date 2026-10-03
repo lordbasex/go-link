@@ -5,12 +5,14 @@
 // uses to read a level (its layers, its cells, its objects).
 
 import { decodeCells, encodeCells } from "./rle";
+import { cleanBands } from "./parallax";
 import { InputError } from "./inputError";
 import {
   BUILTIN_HERO,
   PROJECT_FORMAT,
   TAG_NUMBER,
   TAGS,
+  type ParallaxBand,
   type BoardRef,
   type GameSettings,
   type Animation,
@@ -34,6 +36,7 @@ import { DEFAULT_GENRE, isGenre, type GenreId } from "./genres";
 
 export * from "./types";
 export * from "./genres";
+export * from "./parallax";
 export * from "./inputError";
 export { decodeCells, encodeCells } from "./rle";
 
@@ -341,6 +344,7 @@ function normalizeLevel(raw: Level): Level {
     camera: { forwardOnly: raw.camera?.forwardOnly !== false, backtrack: Math.max(0, num(raw.camera?.backtrack, 48)) },
     layers: layers.map((l) => ({ visible: true, locked: false, opacity: 1, ...l, name: l.name ?? l.id })) as Layer[],
     sections: Array.isArray(raw.sections) ? raw.sections : [],
+    ...(Array.isArray(raw.parallax) ? { parallax: cleanBands({ size: { w, h }, parallax: raw.parallax.filter(isRecord) as unknown as ParallaxBand[] }) } : {}),
   };
 }
 

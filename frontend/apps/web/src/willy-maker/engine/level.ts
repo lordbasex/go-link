@@ -6,6 +6,8 @@
 // maps a project's level (docs/willy-maker/file-format.md) to it.
 
 import { CELL, Tag } from "./rules";
+import { parallaxBands } from "../model/parallax";
+import type { ParallaxBand } from "../model/types";
 
 /** One object of a level's object layer (world px; y is the feet for characters). */
 export interface LevelObject {
@@ -40,6 +42,8 @@ export interface LevelView {
   scenery?: Scenery[];
   /** Named stretches of the level (for the status panel). */
   sections?: { name: string; x0: number; x1: number }[];
+  /** Parallax bands of the play layer (T-26): rows r0-r1 (r1 excluded) at `speed` % of the camera. */
+  bands?: { r0: number; r1: number; speed: number }[];
 }
 
 /**
@@ -72,6 +76,7 @@ export function decodeCells(data: unknown, length: number): Uint8Array {
 export interface ProjectLevelLike {
   name?: string;
   size?: { w: number; h: number };
+  parallax?: ParallaxBand[];
   layers?: {
     id?: string;
     kind?: string;
@@ -98,6 +103,7 @@ export function levelFromProject(level: ProjectLevelLike): LevelView {
     tags: decodeCells(tagLayer?.data, cols * rows),
     props: tagLayer?.props,
     objects: (objLayer?.items ?? []).map((o) => ({ ...o })),
+    bands: level.size && level.parallax ? parallaxBands({ size: level.size, parallax: level.parallax }) : undefined,
     sections: level.sections,
   };
 }

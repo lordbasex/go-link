@@ -6,8 +6,9 @@
 //
 // Not pixel-perfect against the core: the layers are drawn in the layer
 // control's order without the priority masks, the sprite table is the
-// current one (the board shows the previous frame's), and there are no row
-// scroll, starfields or flip screen.
+// current one (the board shows the previous frame's), and there are no
+// starfields or flip screen. Row scroll (scroll2 only, video control bit 0)
+// is drawn as the core does it (T-26, parallax bands).
 
 import type { RomSet } from "./sets.ts";
 
@@ -91,11 +92,16 @@ export function renderScreen(s: BoardScreen): Uint8ClampedArray {
     const sx = regs[L.scroll >> 1]!;
     const sy = regs[(L.scroll + 2) >> 1]!;
     const span = L.size * 64;
+    // row scroll (the core's cps1_vidhrdw.c): each raster line adds other[(line + offset) & 0x3ff] to scroll2's x
+    const rows = n === 2 && (regs[0x22 >> 1]! & 1) !== 0;
+    const other = base(regs, 0x08);
+    const offs = regs[0x20 >> 1]!;
     for (let y = 0; y < SCREEN_H; y++) {
       const my = (y + Y0 + sy) & (span - 1);
       const row = Math.floor(my / L.size);
+      const lineX = rows ? sx + gfxram[(other + ((y + Y0 + offs) & 0x3ff)) % gfxram.length]! : sx;
       for (let x = 0; x < SCREEN_W; x++) {
-        const mx = (x + X0 + sx) & (span - 1);
+        const mx = (x + X0 + lineX) & (span - 1);
         const col = Math.floor(mx / L.size);
         const w = map + L.index(row, col) * 2;
         const code = gfxram[w % gfxram.length]!;

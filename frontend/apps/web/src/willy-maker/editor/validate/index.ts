@@ -8,7 +8,7 @@
 // automatically, a fix. Errors block the AI pack; warnings do not.
 // Messages live in the module's i18n (i18n/export.*.ts), keyed by `msg`.
 
-import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
+import { cleanBands, objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
 import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
 import { leftBehind, reachability, routes, rowsForHeroes } from "../reach";
 import { heroHeights, levelHeroes } from "../../game/settings";
@@ -187,6 +187,21 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
         startsOk = false;
         out.push({ id: "level.start", severity: "error", msg: "level.start-many", params: { level: name, player: pl, n: starts.length }, target: go(starts[1]!.x, starts[1]!.y, starts[1]!.name) });
       }
+    }
+    // parallax bands (T-26): they scroll apart from the playfield, so nothing to stand on or meet may sit in them
+    try {
+      const g = tagGrid(level);
+      for (const b of cleanBands(level)) {
+        const r0 = b.y0 / 16;
+        const r1 = b.y1 / 16;
+        let tagged = -1;
+        for (let r = r0; r < r1 && tagged < 0; r++) for (let c = 0; c < g.cols; c++) if (g.get(c, r)) { tagged = c; break; }
+        const obj = items.find((o) => o.y > b.y0 && o.y - 16 < b.y1);
+        if (tagged >= 0 || obj)
+          out.push({ id: "level.parallax", severity: "warning", msg: "level.parallax", params: { level: name, y0: b.y0, y1: b.y1, x: tagged >= 0 ? tagged * 16 : obj!.x }, target: go(tagged >= 0 ? tagged * 16 : obj!.x, b.y0) });
+      }
+    } catch {
+      // a broken collision layer is reported by the other rules
     }
     // where the engine really puts each start: on the first free floor under it (T-09)
     let game: Game | null = null;

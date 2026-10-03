@@ -29,6 +29,7 @@ typedef signed long s32;
 #define CPSA_SCROLL2_Y    REG16(0x800112)
 #define CPSA_SCROLL3_X    REG16(0x800114)
 #define CPSA_SCROLL3_Y    REG16(0x800116)
+#define CPSA_ROWSCROLL_OFFS REG16(0x800120) /* start of the row scroll table in "other" RAM */
 #define CPSA_VIDEO_CTRL   REG16(0x800122)
 
 #if defined(SET_CAPTCOMM)

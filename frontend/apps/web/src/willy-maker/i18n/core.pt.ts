@@ -296,6 +296,13 @@ export const corePt: CoreMessages = {
     camera: "Câmera",
     forwardOnly: "Só avança",
     backtrack: "Margem para trás (px)",
+    parallax: "Faixas de parallax",
+    parallaxHelp: "Linhas da camada de jogo que rolam mais devagar que a câmera, como prédios distantes sobre o céu (o row scroll da placa). Não ponha colisão nem objetos nelas.",
+    bandFrom: (n: number) => `Faixa ${n}: de y`,
+    bandTo: (n: number) => `Faixa ${n}: até y`,
+    bandSpeed: (n: number) => `Faixa ${n}: velocidade %`,
+    removeBand: (n: number) => `Remover a faixa ${n}`,
+    addBand: "Adicionar uma faixa",
   },
   picture: {
     button: "Imagem…",

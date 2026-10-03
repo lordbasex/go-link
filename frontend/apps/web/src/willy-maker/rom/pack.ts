@@ -11,6 +11,7 @@
 
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
+import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
 import { difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -67,8 +68,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 5;
-const HEADER = 0x84;
+const WM_VERSION = 6;
+const HEADER = 0x9e;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -623,6 +624,15 @@ export function packGame(
   w32(far.table.length ? farPalAt : 0);
   w16(play.table.length);
   w16(far.table.length);
+  // the parallax bands of the play layer (T-26): rows r0-r1 and their speed in %
+  const bands = parallaxBands(level).slice(0, 4);
+  w16(bands.length);
+  for (let i = 0; i < 4; i++) {
+    const b = bands[i];
+    w16(b ? b.r0 : 0);
+    w16(b ? b.r1 : 0);
+    w16(b ? b.speed : 0);
+  }
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

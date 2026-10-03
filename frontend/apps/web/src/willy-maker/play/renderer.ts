@@ -6,6 +6,7 @@
 // their sheets, the HUD, and the debug overlays play mode can switch on.
 
 import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
+import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
 import { TEXT_INKS, boardTextWidth, drawBoardText } from "../game/boardText";
@@ -112,12 +113,12 @@ export interface ArtLayer {
   columns: number;
 }
 
-/** Draws a tile layer's visible cells, the layer scrolled to (ox, oy); `skip` leaves a cell out. */
-function drawArt(ctx: CanvasRenderingContext2D, a: ArtLayer, ox: number, oy: number, skip?: (c: number, r: number) => boolean): void {
+/** Draws a tile layer's visible cells, the layer scrolled to (ox, oy); `skip` leaves a cell out; `rows` limits it to rows [from, to). */
+function drawArt(ctx: CanvasRenderingContext2D, a: ArtLayer, ox: number, oy: number, skip?: (c: number, r: number) => boolean, rows?: [number, number]): void {
   const c0 = Math.max(0, Math.floor(ox / a.tile));
   const c1 = Math.min(a.cols - 1, Math.floor((ox + SCREEN_W) / a.tile));
-  const r0 = Math.max(0, Math.floor(oy / a.tile));
-  const r1 = Math.min(a.rows - 1, Math.floor((oy + SCREEN_H) / a.tile));
+  const r0 = Math.max(rows ? rows[0] : 0, Math.floor(oy / a.tile));
+  const r1 = Math.min(a.rows - 1, rows ? rows[1] - 1 : a.rows - 1, Math.floor((oy + SCREEN_H) / a.tile));
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++) {
       const n = a.cells[r * a.cols + c] ?? 0;
@@ -149,7 +150,11 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
       const was = Number(game.level.tags[r * game.cols + c] ?? 0);
       return (was === Tag.Crate || was === Tag.Breakable) && game.cell(c, r) === Tag.Air;
     };
-    drawArt(ctx, play, cx, cy, gone);
+    // parallax bands (T-26): their rows at their own speed, as the board's row scroll draws them
+    const bands = game.level.bands ?? [];
+    const inBand = (r: number) => bands.some((b) => r >= b.r0 && r < b.r1);
+    drawArt(ctx, play, cx, cy, (c, r) => inBand(r) || gone(c, r));
+    for (const b of bands) drawArt(ctx, play, bandX(cx, b.speed), cy, undefined, [b.r0, b.r1]);
   }
   ctx.save();
   ctx.translate(-cx, -cy);

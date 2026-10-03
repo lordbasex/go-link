@@ -356,6 +356,9 @@ describe("level 1: every rule of validation.md", () => {
     const d = base();
     objectLayer(d.levels[0]!).items.push({ name: "flame", type: "pickup", x: 100, y: 192, item: "flamethrower" }, { name: "e1", type: "enemy", x: 200, y: 192, kind: "trooper" });
     broken.push(d, specProject());
+    const band = base();
+    band.levels[0]!.parallax = [{ y0: 160, y1: 224, speed: 50 }]; // over the floor: collision in the band
+    broken.push(band);
     const crowded = base();
     crowded.settings.players = 3;
     crowded.settings.menus.hud.texts = { join: "PLEASE PRESS START" };

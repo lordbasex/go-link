@@ -251,6 +251,13 @@ static void load_palette(int index, const u16 *colors)
 
 /* columns of the tile maps in the board's 64-column tilemaps */
 static s16 loaded2[64], loaded3[64];
+/* parallax bands (T-26): rows of the play layer that scroll at their own
+   speed with the board's row scroll; their tiles are loaded around their
+   own position, apart from the rest of the layer */
+static u8 band_of_row[64];  /* 0, or the band + 1 */
+static s16 loaded_band[4][64];
+static s32 band_x[4];       /* where each band's view starts, world px */
+static int nbands;
 static u8 col_map[24576]; /* the collision map in RAM: crates and walls break */
 
 /*
@@ -273,6 +280,8 @@ static void load_col2(int c)
 		u8 t = *tag;
 		if (!(r & 15)) /* the tilemap is laid out in blocks of 16 rows */
 			p = scroll2_cell(c, r);
+		if (band_of_row[r])
+			continue; /* a parallax band's row: loaded with its band */
 		if ((t == T_CRATE || t == T_BREAKABLE) && *col == T_AIR)
 			code = WM_EMPTY16;
 		k = (u16)(code - WM_PLAY_TILES);
@@ -280,6 +289,22 @@ static void load_col2(int c)
 		p[1] = k < npal ? pal[k] : 0;
 	}
 	loaded2[c & 63] = (s16)c;
+}
+
+/* column c of band b's rows */
+static void load_band_col(int b, int c)
+{
+	const struct wm_band *bd = &D->bands[b];
+	const u8 *pal = (const u8 *)D->play_pal;
+	u16 npal = pal ? D->n_play_codes : 0;
+	int r;
+	for (r = bd->r0; r < bd->r1 && r < 64 && r < rows; r++) {
+		u16 code = D_PLAY[r * cols + c], k = (u16)(code - WM_PLAY_TILES);
+		volatile u16 *p = scroll2_cell(c, r);
+		p[0] = code;
+		p[1] = k < npal ? pal[k] : 0;
+	}
+	loaded_band[b][c & 63] = (s16)c;
 }
 
 static void load_col3(int c)
@@ -335,10 +360,18 @@ static void sfx(int id, s32 x)
 /* loads the tile columns around the camera that are not on the board yet */
 static void stream(void)
 {
-	int c, c0 = cam_x / 16 - 2, c1 = cam_x / 16 + SCREEN_W / 16 + 3;
+	int b, c, c0 = cam_x / 16 - 2, c1 = cam_x / 16 + SCREEN_W / 16 + 3;
 	for (c = c0; c <= c1; c++)
 		if (c >= 0 && c < cols && loaded2[c & 63] != c)
 			load_col2(c);
+	for (b = 0; b < nbands; b++) {
+		band_x[b] = (s32)cam_x * D->bands[b].speed / 100;
+		c0 = (int)(band_x[b] / 16) - 2;
+		c1 = (int)(band_x[b] / 16) + SCREEN_W / 16 + 3;
+		for (c = c0; c <= c1; c++)
+			if (c >= 0 && c < cols && loaded_band[b][c & 63] != c)
+				load_band_col(b, c);
+	}
 	c0 = cam_x / 2 / 32 - 1;
 	c1 = cam_x / 2 / 32 + SCREEN_W / 32 + 2;
 	for (c = c0; c <= c1; c++)
@@ -955,8 +988,22 @@ static void game_reset(void)
 	int i, n = cols * rows;
 	for (i = 0; i < n; i++)
 		col_map[i] = D_TAGS[i];
-	for (i = 0; i < 64; i++)
+	for (i = 0; i < 64; i++) {
+		int b;
 		loaded2[i] = loaded3[i] = -1;
+		band_of_row[i] = 0;
+		for (b = 0; b < 4; b++)
+			loaded_band[b][i] = -1;
+	}
+	/* the parallax bands' rows, and the row scroll on when there are any */
+	nbands = D->n_bands < 4 ? D->n_bands : 4;
+	for (i = 0; i < nbands; i++) {
+		int r;
+		for (r = D->bands[i].r0; r < D->bands[i].r1 && r < 64; r++)
+			band_of_row[r] = (u8)(i + 1);
+	}
+	CPSA_ROWSCROLL_OFFS = 0;
+	CPSA_VIDEO_CTRL = nbands ? 0x000f : 0x000e;
 	for (i = 0; i < MAX_DAMAGED; i++)
 		damaged[i].hp = 0;
 	for (i = 0; i < MAX_PLAYERS; i++) {
@@ -1543,6 +1590,16 @@ static void update_camera(int snap)
 
 static void set_scroll(void)
 {
+	/* each raster line of a band's rows adds the band's lag behind the camera to scroll2 */
+	if (nbands) {
+		volatile u16 *other = (volatile u16 *)GFX_OTHER;
+		int i;
+		for (i = 0; i < 256; i++) {
+			s32 y = cam_y + i - SCREEN_Y0;
+			int r = y >= 0 ? (int)(y >> 4) : 0, b = r < 64 ? band_of_row[r] : 0;
+			other[i] = b ? (u16)(band_x[b - 1] - cam_x) : 0;
+		}
+	}
 	CPSA_SCROLL2_X = (u16)(cam_x - SCREEN_X0);
 	CPSA_SCROLL2_Y = (u16)(cam_y - SCREEN_Y0);
 	CPSA_SCROLL3_X = (u16)(cam_x / 2 - SCREEN_X0);

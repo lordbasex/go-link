@@ -296,6 +296,13 @@ export const coreEn = {
     camera: "Camera",
     forwardOnly: "Only moves forward",
     backtrack: "Margin back (px)",
+    parallax: "Parallax bands",
+    parallaxHelp: "Rows of the play layer that scroll slower than the camera, like far buildings over the sky (the board's row scroll). Keep collision and objects out of them.",
+    bandFrom: (n: number) => `Band ${n}: from y`,
+    bandTo: (n: number) => `Band ${n}: to y`,
+    bandSpeed: (n: number) => `Band ${n}: speed %`,
+    removeBand: (n: number) => `Remove band ${n}`,
+    addBand: "Add a band",
   },
   picture: {
     button: "Picture…",

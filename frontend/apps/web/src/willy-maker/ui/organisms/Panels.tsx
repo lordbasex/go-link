@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCore } from "../../i18n";
-import { CELL, layerGrid, newLevel, objectLayer, TAGS, type Level, type LevelObject, type Project, type TagLayer, type TileLayer } from "../../model";
+import { BAND_SPEED, CELL, cleanBands, layerGrid, MAX_BANDS, newLevel, objectLayer, TAGS, type Level, type LevelObject, type ParallaxBand, type Project, type TagLayer, type TileLayer } from "../../model";
 import { CPS1 } from "../../board/cps1";
 import { BOSS_KINDS, CIVILIAN_KINDS, CRATE_CONTENTS, ENEMY_KINDS, PART_GROUPS, PARTS, PICKUP_ITEMS, type Part, type PartGroup } from "../../editor/parts";
 import { deleteObject, nameFree, updateObject } from "../../editor/ops";
@@ -184,6 +184,48 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images, onP
  * kept in range when the field is left (experiment 1, case C: clamping
  * every keystroke turned 64 into 164).
  */
+/** A level's parallax bands (T-26): rows of the play layer that scroll at their own speed. */
+function ParallaxRows({ store, level }: { store: EditorStore; level: Level }) {
+  const t = useCore();
+  const bands = level.parallax ?? [];
+  const edit = (fn: (b: ParallaxBand[]) => void) =>
+    store.editLevel(t.inspector.parallax, level.id, (l) => {
+      const next = [...(l.parallax ?? [])].map((b) => ({ ...b }));
+      fn(next);
+      l.parallax = cleanBands({ size: l.size, parallax: next });
+    });
+  return (
+    <div className="wm-parallax">
+      <PropRow label={t.inspector.parallax}>
+        <span className="wm-dim wm-small">{t.inspector.parallaxHelp}</span>
+      </PropRow>
+      {bands.map((b, i) => (
+        <div className="wm-row is-wrap wm-parallax-band" key={`${b.y0}-${b.y1}`}>
+          <NumberInput label={t.inspector.bandFrom(i + 1)} value={b.y0} min={0} max={level.size.h - 16} step={16} onChange={(v) => edit((bs) => (bs[i]!.y0 = v))} />
+          <NumberInput label={t.inspector.bandTo(i + 1)} value={b.y1} min={16} max={level.size.h} step={16} onChange={(v) => edit((bs) => (bs[i]!.y1 = v))} />
+          <NumberInput label={t.inspector.bandSpeed(i + 1)} value={b.speed} min={BAND_SPEED.min} max={BAND_SPEED.max} step={5} onChange={(v) => edit((bs) => (bs[i]!.speed = v))} />
+          <IconButton className="is-xs" label={t.inspector.removeBand(i + 1)} onClick={() => edit((bs) => bs.splice(i, 1))}>
+            <IconTrash />
+          </IconButton>
+        </div>
+      ))}
+      {bands.length < MAX_BANDS && (
+        <Capsule
+          size="sm"
+          onClick={() =>
+            edit((bs) => {
+              const from = bs.length ? bs[bs.length - 1]!.y1 : 0;
+              bs.push({ y0: from, y1: Math.min(level.size.h, from + 64), speed: 50 });
+            })
+          }
+        >
+          <IconPlus /> {t.inspector.addBand}
+        </Capsule>
+      )}
+    </div>
+  );
+}
+
 export function NumberInput({ value, onChange, min, max, step = 1, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; label: string }) {
   const shown = Number.isFinite(value) ? value : 0;
   const [text, setText] = useState<string | null>(null);
@@ -297,6 +339,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
         <PropRow label={t.inspector.sections}>
           <span className="wm-mono">{t.inspector.sectionsCount(level.sections.length)}</span>
         </PropRow>
+        <ParallaxRows store={store} level={level} />
         <p className="wm-dim wm-small">{t.inspector.none}</p>
       </section>
     );
