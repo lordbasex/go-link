@@ -43,9 +43,11 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
  * fired (gun), is hit (land) and goes down (victory); a civilian waits
  * worried (land) and thanks the player (thumbs). Every other slot is idle.
  */
-export const ACTOR_SOURCES: Record<"enemy" | "civilian", Partial<Record<LookAnimId, string[]>>> = {
+export const ACTOR_SOURCES: Record<"enemy" | "civilian" | "pickup", Partial<Record<LookAnimId, string[]>>> = {
   enemy: { idle: ["idle", "walk"], run: ["walk", "run", "idle"], gun: ["shoot", "fire", "attack", "idle"], knife: ["melee", "attack", "shoot", "idle"], land: ["hit", "hurt", "idle"], victory: ["death", "die", "hit", "idle"] },
   civilian: { idle: ["idle"], run: ["follow", "walk", "idle"], land: ["worried", "idle"], thumbs: ["thanks", "happy", "idle"], victory: ["thanks", "idle"] },
+  // a pickup is drawn with its idle (a coin spinning, a weapon glowing): any character's first animation otherwise
+  pickup: {},
 };
 
 /** A move whose names all miss takes the engine animation it stands in for (crawl the crouch's, turn the run's, ...). */
@@ -100,6 +102,8 @@ export interface LooksPlan {
   /** Per packed enemy and civilian (T-30): the index in `looks`, or -1 for the engine's own. */
   enemies: number[];
   civilians: number[];
+  /** Per packed pickup: the index in `looks` of its own picture, or -1 for the engine's icon. */
+  pickups: number[];
   /** Tiles written into the graphics region. */
   tiles: number;
 }
@@ -212,7 +216,7 @@ export function planLooks(
   pictures: (characterId: string) => Picture | null,
   budget: LooksBudget,
   note: (id: string, params: Record<string, string | number>) => void,
-  actors: { enemies: string[]; civilians: string[] } = { enemies: [], civilians: [] },
+  actors: { enemies: string[]; civilians: string[]; pickups?: string[] } = { enemies: [], civilians: [] },
 ): LooksPlan {
   const looks: Look[] = [];
   const bySlot = slots.map(() => -1);
@@ -221,7 +225,7 @@ export function planLooks(
   let code = budget.firstCode;
   const free = budget.palettes.map(([a, n]) => [a, n] as [number, number]);
 
-  const make = (ch: Character, role: "hero" | "enemy" | "civilian" = "hero"): Look | null => {
+  const make = (ch: Character, role: "hero" | "enemy" | "civilian" | "pickup" = "hero"): Look | null => {
     const name = ch.name || ch.id;
     const pic = ch.sheet ? pictures(ch.id) : null;
     if (!pic) {
@@ -346,11 +350,12 @@ export function planLooks(
   });
   // the game's own enemies and civilians, one look per kind (T-30)
   const byKind = new Map<string, number>();
-  const actor = (role: "enemy" | "civilian", kind: string): number => {
+  const actor = (role: "enemy" | "civilian" | "pickup", kind: string): number => {
     const key = `${role}:${kind}`;
     const known = byKind.get(key);
     if (known !== undefined) return known;
-    const ch = project.characters.find((c) => c.id === kind && c.role === role);
+    // a pickup's picture is any character of the game, chosen by id in the Inspector
+    const ch = kind ? project.characters.find((c) => c.id === kind && (role === "pickup" || c.role === role)) : undefined;
     let k = -1;
     if (ch && !failed.has(ch.id)) {
       const look = make(ch, role);
@@ -362,5 +367,6 @@ export function planLooks(
   };
   const enemies = actors.enemies.map((kind) => actor("enemy", kind));
   const civilians = actors.civilians.map((kind) => actor("civilian", kind));
-  return { looks, slots: bySlot, enemies, civilians, tiles: code - budget.firstCode };
+  const pickups = (actors.pickups ?? []).map((id) => actor("pickup", id));
+  return { looks, slots: bySlot, enemies, civilians, pickups, tiles: code - budget.firstCode };
 }

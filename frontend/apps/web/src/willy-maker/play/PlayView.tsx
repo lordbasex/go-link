@@ -61,6 +61,8 @@ export interface PlayViewProps {
   heroes?: (Character | null)[];
   /** The music slot of each engine screen (rom/sound.ts screenSongs): title, playing, clear, continue, game over. */
   music?: (string | null)[];
+  /** The game's characters a pickup may be drawn with (a pickup's `look`). */
+  characters?: Character[];
   /** The level's far and play tile art, drawn as the board does (T-28). */
   art?: ArtLayer[];
   /** The on-screen pad: on touch screens ("auto"), always or never; this browser's choice by default. */
@@ -116,7 +118,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, characters, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -146,6 +148,24 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heroKey]);
+  // the pickups' own pictures, by character id
+  const [pickupLooks, setPickupLooks] = useState<Record<string, Sheet | null>>({});
+  const lookIds = [...new Set(level.objects.filter((o) => o.type === "pickup" && typeof o.look === "string" && o.look).map((o) => String(o.look)))];
+  const lookKey = lookIds.map((id) => {
+    const c = characters?.find((ch) => ch.id === id);
+    return c ? `${c.id}:${c.sheet ?? ""}:${c.frames.length}` : id;
+  }).join("|");
+  useEffect(() => {
+    let live = true;
+    Promise.all(lookIds.map(async (id) => {
+      const c = characters?.find((ch) => ch.id === id);
+      return [id, c ? await characterSheet(c, assetUrl).catch(() => null) : null] as const;
+    })).then((pairs) => live && setPickupLooks(Object.fromEntries(pairs)));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookKey]);
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -245,8 +265,8 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
   const drawScale = viaGpu ? 1 : scale;
-  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art, music });
-  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art, music };
+  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music });
+  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -297,7 +317,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
           canvas.width = w;
           canvas.height = h;
         }
-        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes, art: st.art });
+        drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes, pickupLooks: st.pickupLooks, art: st.art });
       }
       if (++ui % 6 === 0) {
         setSnap(g.snapshot());

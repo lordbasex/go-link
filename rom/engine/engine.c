@@ -604,6 +604,7 @@ static int ncrates;
 static struct pickup {
 	s32 x, fy;
 	int item, live;
+	const struct wm_look *look; /* the game's own picture, or 0 for the engine's icon */
 } pickup[MAX_PICKUPS];
 static int npickups;
 
@@ -805,6 +806,7 @@ static void spawn_pickup(s32 x, s32 fy, int item)
 	pickup[npickups].fy = fy;
 	pickup[npickups].item = item;
 	pickup[npickups].live = 1;
+	pickup[npickups].look = 0;
 	npickups++;
 }
 
@@ -1111,6 +1113,8 @@ static void game_reset(void)
 	coins = ncoins = 0;
 	for (i = 0; i < D->n_pickups; i++, o++) {
 		spawn_pickup(o->x, o->y, o->a);
+		if (npickups && i == npickups - 1)
+			pickup[i].look = actor_look(D->pickup_looks, i);
 		if (o->a == WM_ITEM_COIN)
 			ncoins++;
 	}
@@ -1885,7 +1889,10 @@ static void draw_pickups(void)
 		int sx = (int)pickup[i].x - cam_x, sy = (int)pickup[i].fy - cam_y;
 		if (!pickup[i].live)
 			continue;
-		if (pickup[i].item == WM_ITEM_COIN)
+		if (pickup[i].look)
+			/* the game's own picture: its idle animation, standing on the pickup's place */
+			draw_anim(pickup[i].look->idle, frame_count, sx, sy, pickup[i].look->pal, 0);
+		else if (pickup[i].item == WM_ITEM_COIN)
 			put_sprite(sx - 8, sy - 16 - ((frame_count >> 3) & 1), TILE_COIN, PAL_PICKUPS);
 		else if (pickup[i].item == WM_ITEM_SPRING)
 			put_sprite(sx - 8, sy - 16, TILE_SPRING, PAL_PICKUPS);

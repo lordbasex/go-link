@@ -140,7 +140,7 @@ Paint is not enough: the game needs to know what is a floor, what is climbable, 
 | `enemy` | `kind` (trooper, shield_trooper, spinner, pinger, glitch9, vera, jitter…), `facing`, `patrol` (px) |
 | `civilian` | `kind` (woman, child, baby, elder), `trapped_in` (the crate or wall that hides them, if any) |
 | `crate` | `size` (32 or 16), `hp`, `contains` (nothing, weapon, health, civilian) |
-| `pickup` | `item` (bazooka, flamethrower, spread, grenades, health, lattenza_page, coin, spring) |
+| `pickup` | `item` (bazooka, flamethrower, spread, grenades, health, lattenza_page, coin, spring), `look` (optional: a character id that draws it) |
 | `platform` | a moving platform: `w` (32-128 px), `axis` (`x` across, `y` up and down), `range` (px, there and back), `speed` (1-4 px a frame); (x, y) its top left at the start |
 | `camera_lock` | a rectangle where the camera stops until its enemies are defeated |
 | `checkpoint` | where players come back after losing a life |

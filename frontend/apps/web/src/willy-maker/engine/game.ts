@@ -163,6 +163,8 @@ export interface Pickup {
   x: number;
   fy: number;
   live: boolean;
+  /** The game's own picture: a character id (its idle animation), or none for the engine's icon. */
+  look?: string;
 }
 
 /**
@@ -360,7 +362,7 @@ export class Game {
           break;
         }
         case "pickup":
-          this.pickups.push({ name: o.name, item: str(o.item, "bazooka"), x: o.x, fy: o.y, live: true });
+          this.pickups.push({ name: o.name, item: str(o.item, "bazooka"), x: o.x, fy: o.y, live: true, ...(typeof o.look === "string" && o.look ? { look: o.look } : {}) });
           if (o.item === "coin") this.coinTotal++;
           break;
         case "platform":

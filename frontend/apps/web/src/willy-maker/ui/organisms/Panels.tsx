@@ -459,9 +459,22 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
         </>
       )}
       {o.type === "pickup" && (
-        <PropRow label={t.inspector.item}>
-          <Select label={t.inspector.item} value={String(o.item ?? "bazooka")} options={PICKUP_ITEMS} support={(i) => optionSupport("item", i)} onChange={(item) => set({ item })} />
-        </PropRow>
+        <>
+          <PropRow label={t.inspector.item}>
+            <Select label={t.inspector.item} value={String(o.item ?? "bazooka")} options={PICKUP_ITEMS} support={(i) => optionSupport("item", i)} onChange={(item) => set({ item })} />
+          </PropRow>
+          <PropRow label={t.inspector.look}>
+            <select className="wm-input is-sm" aria-label={t.inspector.look} value={typeof o.look === "string" ? o.look : ""} onChange={(e) => set({ look: e.target.value || undefined })}>
+              <option value="">{t.inspector.engineIcon}</option>
+              {store.project.characters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name || c.id}
+                </option>
+              ))}
+            </select>
+          </PropRow>
+          <div className="wm-dim wm-small">{t.inspector.lookHelp}</div>
+        </>
       )}
       <Capsule
         size="sm"

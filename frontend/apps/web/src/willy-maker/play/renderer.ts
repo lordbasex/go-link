@@ -98,6 +98,8 @@ export interface DrawOptions {
   variants?: number[];
   /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
   ownHeroes?: (Sheet | null)[];
+  /** The pickups' own pictures by character id (their idle animation). */
+  pickupLooks?: Record<string, Sheet | null>;
   /** The level's own art (T-28): its far and play tile layers, drawn as the board does (the far one at half speed). */
   art?: ArtLayer[];
 }
@@ -161,7 +163,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (!far) for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
   drawCells(ctx, game, play);
   drawExits(ctx, game);
-  drawObjects(ctx, game, sprites, o.variants, o.ownHeroes);
+  drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
   if (o.ghost) {
@@ -333,11 +335,19 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, game: Game): void {
   }
 }
 
-function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[], ownHeroes?: (Sheet | null)[]): void {
+function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[], ownHeroes?: (Sheet | null)[], pickupLooks?: Record<string, Sheet | null>): void {
   const f = game.frame;
   drawPlatforms(ctx, game);
   for (const k of game.pickups) {
     if (!k.live) continue;
+    const own = k.look ? pickupLooks?.[k.look] : undefined;
+    if (own) {
+      // the game's own picture, at board scale, standing on the pickup's place (as the ROM draws it)
+      const anim = own.anims.idle ? "idle" : (Object.keys(own.anims)[0] ?? "idle");
+      const ref = own.frames[own.anims[anim]?.frames[0] ?? ""];
+      sheetDraw(ctx, own, anim, anim, f, k.x, k.fy, ref?.py ?? 16, false, 1);
+      continue;
+    }
     if (k.item === "coin") {
       // the platformer's coin, as the ROM draws it (gold, bobbing a pixel)
       const y = k.fy - 8 - ((f >> 3) & 1);

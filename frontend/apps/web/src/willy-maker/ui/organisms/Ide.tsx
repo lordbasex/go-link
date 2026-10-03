@@ -579,6 +579,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               variants={playerSlots(p).map((s) => s.variant)}
               heroes={playerSlots(p).map((s) => (s.character === BUILTIN_HERO ? null : (p.characters.find((c) => c.id === s.character) ?? null)))}
               art={levelArt(level, images)}
+              characters={p.characters}
               music={screenSongs(p)}
               texts={{
                 start: menuText(p, "hud", "join"),

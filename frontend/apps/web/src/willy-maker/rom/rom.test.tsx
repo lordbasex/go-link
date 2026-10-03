@@ -46,8 +46,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(8);
-    expect(u16(d, 6)).toBe(0xae);
+    expect(u16(d, 4)).toBe(9);
+    expect(u16(d, 6)).toBe(0xb2);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -474,5 +474,33 @@ describe("Create ROM with the game's own hero", () => {
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
     expect(result.ok).toBe(true);
+  }, 30000);
+
+  it("draws a pickup with a character of the game (its look), the others with the engine's icons", async () => {
+    const p = specProject();
+    p.palettes.push(...HERO_PALETTES.map((x) => ({ ...x, colors: [...x.colors] })));
+    p.characters.push(heroCharacter());
+    const items = p.levels[0]!.layers.find((l) => l.kind === "objects")!;
+    if (items.kind !== "objects") throw new Error("objects");
+    // two coins in front of player 1: the first drawn with the hero's picture
+    items.items.push({ name: "coin_own", type: "pickup", x: 120, y: 416, item: "coin", look: HERO_ID });
+    items.items.push({ name: "coin_icon", type: "pickup", x: 160, y: 416, item: "coin" });
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null, heroPics);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    const table = u32(d, 0xae);
+    expect(table).toBeGreaterThan(WM_DATA_ADDR);
+    const at = table - WM_DATA_ADDR;
+    expect(u32(d, at)).toBeGreaterThan(WM_DATA_ADDR); // the first pickup: a look
+    expect(u32(d, at + 4)).toBe(0); // the second: the engine's coin
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "pickuplook");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
   }, 30000);
 });

@@ -69,8 +69,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 8;
-const HEADER = 0xae;
+const WM_VERSION = 9;
+const HEADER = 0xb2;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -404,6 +404,7 @@ export function packGame(
   const civKinds: string[] = [];
   const crates: Row[] = [];
   const pickups: Row[] = [];
+  const pickupLooks: string[] = [];
   const platforms: Row[] = [];
   const startX = [-1, -1, -1, -1];
   const startY = [-1, -1, -1, -1];
@@ -440,7 +441,10 @@ export function packGame(
       case "pickup": {
         const item = String(o.item ?? "bazooka");
         if (!ITEM[item]) note("item", { item });
-        else pickups.push([o.x, o.y, ITEM[item]!, 0, 0, 0]);
+        else {
+          pickups.push([o.x, o.y, ITEM[item]!, 0, 0, 0]);
+          pickupLooks.push(typeof o.look === "string" ? o.look : "");
+        }
         break;
       }
       case "platform": {
@@ -472,7 +476,7 @@ export function packGame(
   const slotList = playerSlots(project).slice(0, 4);
   const slots = slotList.map((s) => (s.character === BUILTIN_HERO ? Math.max(0, Math.min(3, s.variant)) : 0));
   while (slots.length < 4) slots.push(slots.length);
-  const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8) });
+  const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8), pickups: pickupLooks.slice(0, 64) });
   // enemy kinds with no enemy character of their own are the engine's android (T-30)
   const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper");
   if (android.length) note("enemyArt", { kinds: android.join(", ") });
@@ -548,6 +552,7 @@ export function packGame(
   let looksAt = 0;
   let enemyLooksAt = 0;
   let civLooksAt = 0;
+  let pickupLooksAt = 0;
   if (looks.looks.length) {
     const lookAt: number[] = [];
     for (const look of looks.looks) {
@@ -596,6 +601,10 @@ export function packGame(
     if (looks.civilians.some((k) => k >= 0)) {
       civLooksAt = out.addr;
       for (const k of looks.civilians) out.u32(k >= 0 ? lookAt[k]! : 0);
+    }
+    if (looks.pickups.some((k) => k >= 0)) {
+      pickupLooksAt = out.addr;
+      for (const k of looks.pickups) out.u32(k >= 0 ? lookAt[k]! : 0);
     }
   }
 
@@ -668,6 +677,7 @@ export function packGame(
   w32(platforms.length ? platAt : 0);
   w16(Math.min(MAX_PLATFORMS, platforms.length));
   w16(0);
+  w32(pickupLooksAt);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);
