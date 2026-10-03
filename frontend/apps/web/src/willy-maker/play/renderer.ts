@@ -384,28 +384,38 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     ctx.fillStyle = ART.wallDark;
     ctx.fillRect(k.x - 9, k.fy - 9 + bob, 18, 2);
   }
+  // the actors, each with its depth: drawn in this order, or back to front
+  // in a beat 'em up (the depth rule), so the one nearer the screen is in front
+  const actors: { fy: number; draw: () => void }[] = [];
   const civ = sprites?.civilians;
-  for (const v of game.civilians) {
-    if (v.rescued && v.t > 120) continue;
+  for (const v of game.civilians) actors.push({ fy: v.fy, draw: () => {
+    if (v.rescued && v.t > 120) return;
     const kind = ["woman", "child", "baby", "elder"].includes(v.kind) ? v.kind : "woman";
     const anim = v.rescued ? `${kind}_happy` : v.trappedIn ? `${kind}_worried` : `${kind}_idle`;
     const h = HEIGHTS[kind as keyof typeof HEIGHTS];
     if (civ && civ.anims[anim]) sheetDraw(ctx, civ, anim, `${kind}_idle`, v.t, v.x, v.fy, h, false, v.rescued ? 1 - v.t / 120 : 1);
     else box(ctx, v.x, v.fy, 14, h, ART.windowWarm);
-  }
+  } });
   const en = sprites?.enemy;
-  for (const e of game.enemies) {
-    if (e.state === "off") continue;
+  for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
+    if (e.state === "off") return;
     const anim = e.state === "down" ? "defeated" : e.state === "hit" ? "hit" : e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
     if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
-  }
-  for (const p of game.players) {
-    if (!p.active) continue;
-    if (p.invulnerable && (p.invulnerable >> 2) & 1) continue;
+  } });
+  for (const p of game.players) actors.push({ fy: p.y >> 4, draw: () => {
+    if (!p.active) return;
+    if (p.invulnerable && (p.invulnerable >> 2) & 1) return;
     const sheet = sprites?.heroes[variants?.[p.index] ?? p.index] ?? sprites?.heroes[0];
-    const fy = p.y >> 4;
+    // a beat 'em up's hop: drawn over its shadow on the floor
+    if (p.hop < 0) {
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y >> 4, 10, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const fy = (p.y >> 4) + (p.hop >> 4);
     const moving = (p.pad & 3) !== 0;
     let anim = "idle";
     let t = p.t;
@@ -454,7 +464,9 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       ctx.fillStyle = ART.hazard;
       ctx.fillRect(p.rocket.dir > 0 ? p.rocket.x + 28 : p.rocket.x, p.rocket.y + 6, 4, 5);
     }
-  }
+  } });
+  if (game.walkBand) actors.sort((a, b) => a.fy - b.fy);
+  for (const a of actors) a.draw();
   ctx.fillStyle = ART.enemyShot;
   for (const s of game.enemyShots) ctx.fillRect(s.x - 2, s.y - 1, 4, 3);
 }

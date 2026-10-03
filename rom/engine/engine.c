@@ -645,11 +645,20 @@ struct player {
 	int energy, hurt;
 	/* the moves: crouched, shown moves' frames left, the kick's one hit, the air rules */
 	int crouch, crouch_t, land_t, turn_t, kick_t, kick_hit, thumbs_t, idle_t, air_t, air_jumps, fuel, jetting;
+	s32 hop; /* the beat 'em up's hop over the floor, 1/16 px, 0 or less */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
 };
 static struct player pl[MAX_PLAYERS];
+/* the beat 'em up (WM_F_DEPTH, engine/game.ts moveInDepth): its walkable band, feet y px */
+static int depth;
+static s32 walk_y0, walk_y1;
+
+static s32 in_walk(s32 fy)
+{
+	return fy < walk_y0 ? walk_y0 : fy > walk_y1 ? walk_y1 : fy;
+}
 static u16 start_now, start_last; /* bit k: port k's Start */
 
 enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN };
@@ -1027,6 +1036,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->dead = 0;
 	p->x = x;
 	p->y = fy * 16;
+	p->hop = 0;
 	p->vy = 0;
 	p->flip = 0;
 	p->on_ground = 1;
@@ -1083,7 +1093,19 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
-	if (lead < 0 && D->start_x[k] >= 0) {
+	if (depth) {
+		/* the beat 'em up: beside the player already in, at the start, or near the camera, inside the band */
+		if (lead >= 0) {
+			x = pl[lead].x + (pl[lead].x + 24 < cam_x + SCREEN_W - 12 ? 24 : -24);
+			fy = in_walk(pl[lead].y >> 4);
+		} else if (D->start_x[k] >= 0) {
+			x = D->start_x[k];
+			fy = in_walk(D->start_y[k]);
+		} else {
+			x = cam_x + 64 + k * 24;
+			fy = in_walk((walk_y0 + walk_y1) >> 1);
+		}
+	} else if (lead < 0 && D->start_x[k] >= 0) {
 		x = D->start_x[k];
 		fy = ground_below_b(x, D->start_y[k] - 16, p->look);
 	} else if (lead >= 0) {
@@ -1107,7 +1129,10 @@ static void respawn_near_camera(struct player *p)
 		x = cam_x + 64;
 	if (x > cam_x + SCREEN_W - 64)
 		x = cam_x + SCREEN_W - 64;
-	place_near(x, cam_y, cam_y + SCREEN_H, around, p->look, &x, &fy);
+	if (depth)
+		fy = in_walk(p->y >> 4);
+	else
+		place_near(x, cam_y, cam_y + SCREEN_H, around, p->look, &x, &fy);
 	player_spawn(p, x, fy);
 	p->energy = energy;
 	p->hurt = hurt;
@@ -1149,6 +1174,9 @@ static void game_reset(void)
 		for (b = 0; b < 4; b++)
 			loaded_band[b][i] = -1;
 	}
+	depth = (D->flags & WM_F_DEPTH) != 0;
+	walk_y0 = D->walk_y0;
+	walk_y1 = D->walk_y1;
 	/* a tall level's windows come to the camera on the first stream() */
 	win2 = rows < 64 ? rows : 64;
 	top2 = rows > 64 ? -1 : 0;
@@ -1365,6 +1393,55 @@ static void walk(struct player *p, int dir, int speed)
 	}
 }
 
+/*
+ * The beat 'em up's moves (WM_F_DEPTH, engine/game.ts moveInDepth): left and
+ * right stopped by solid cells at the feet, up and down a pixel a frame
+ * inside the walkable band, B2 hops and lands back at the same depth.
+ */
+static void move_in_depth(struct player *p, int dir)
+{
+	s32 fy = p->y >> 4;
+	int n, dz = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	p->crouch = 0;
+	if (dir) {
+		if (p->on_ground && p->flip != (dir < 0))
+			p->turn_t = TURN_FRAMES;
+		p->flip = dir < 0;
+		for (n = 0; n < (p->running ? 2 : 1); n++) {
+			if (is_solid(cell_at(p->x + dir + dir * p->look->half_w, fy - 1)))
+				break;
+			p->x += dir;
+		}
+	}
+	if (dz) {
+		s32 nf = in_walk(fy + dz);
+		if (!is_solid(cell_at(p->x, nf - 1)))
+			p->y = nf * 16;
+	}
+	if (p->on_ground && PRESSED(p, BTN_2)) {
+		p->vy = p->look->jump_vy;
+		p->on_ground = 0;
+		sfx(SFX_JUMP, p->x);
+	}
+	if (!p->on_ground) {
+		p->air_t++;
+		p->vy += GRAVITY;
+		if (p->vy > MAX_FALL)
+			p->vy = MAX_FALL;
+		p->hop += p->vy;
+		if (p->hop >= 0) {
+			p->hop = 0;
+			p->vy = 0;
+			p->on_ground = 1;
+			if (p->air_t >= LAND_AFTER) {
+				p->land_t = LAND_FRAMES;
+				sfx(SFX_LAND, p->x);
+			}
+			p->air_t = 0;
+		}
+	}
+}
+
 static void update_player(struct player *p)
 {
 	int i, dir = 0, jet_was;
@@ -1401,146 +1478,150 @@ static void update_player(struct player *p)
 		p->running = 0;
 	fy = p->y >> 4;
 
-	/* ladders: up in front of one, or down standing on its top (6 px of grace) */
-	if (!p->climbing && !p->knife_t) {
-		int k;
-		for (k = -6; k <= 6; k += 6) {
-			s32 lx = p->x + k;
-			if (((p->pad & BTN_UP) && cell_at(lx, fy - 8) == T_LADDER) ||
-			    ((p->pad & BTN_DOWN) && !(p->pad & BTN_1) && p->on_ground && cell_at(lx, fy) == T_LADDER)) {
-				p->climbing = 1;
-				p->on_ground = 0;
-				p->vy = 0;
-				p->x = ((lx >> 4) << 4) + 8;
-				break;
+	if (depth)
+		move_in_depth(p, dir);
+	else {
+		/* ladders: up in front of one, or down standing on its top (6 px of grace) */
+		if (!p->climbing && !p->knife_t) {
+			int k;
+			for (k = -6; k <= 6; k += 6) {
+				s32 lx = p->x + k;
+				if (((p->pad & BTN_UP) && cell_at(lx, fy - 8) == T_LADDER) ||
+				    ((p->pad & BTN_DOWN) && !(p->pad & BTN_1) && p->on_ground && cell_at(lx, fy) == T_LADDER)) {
+					p->climbing = 1;
+					p->on_ground = 0;
+					p->vy = 0;
+					p->x = ((lx >> 4) << 4) + 8;
+					break;
+				}
 			}
 		}
-	}
-	if (p->climbing) {
-		if (p->pad & BTN_UP) {
-			p->y -= CLIMB_SPEED;
-			fy = p->y >> 4;
-			if (cell_at(p->x, fy - 1) != T_LADDER) {
-				p->y = (((fy - 1) >> 4) + 1) * 16 * 16;
+		if (p->climbing) {
+			if (p->pad & BTN_UP) {
+				p->y -= CLIMB_SPEED;
+				fy = p->y >> 4;
+				if (cell_at(p->x, fy - 1) != T_LADDER) {
+					p->y = (((fy - 1) >> 4) + 1) * 16 * 16;
+					p->climbing = 0;
+					p->on_ground = 1;
+				}
+			} else if (p->pad & BTN_DOWN) {
+				p->y += CLIMB_SPEED;
+				fy = p->y >> 4;
+				if (support_w(p->x, (fy >> 4) << 4, 1, p->look->half_w) == 2 && (fy & 15) < 2) {
+					p->y = ((fy >> 4) << 4) * 16;
+					p->climbing = 0;
+					p->on_ground = 1;
+				}
+			}
+			/* off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04) */
+			if (p->climbing && cell_at(p->x, fy - 1) != T_LADDER && cell_at(p->x, fy) != T_LADDER)
 				p->climbing = 0;
-				p->on_ground = 1;
-			}
-		} else if (p->pad & BTN_DOWN) {
-			p->y += CLIMB_SPEED;
-			fy = p->y >> 4;
-			if (support_w(p->x, (fy >> 4) << 4, 1, p->look->half_w) == 2 && (fy & 15) < 2) {
-				p->y = ((fy >> 4) << 4) * 16;
+			if (PRESSED(p, BTN_1)) {
 				p->climbing = 0;
-				p->on_ground = 1;
+				p->vy = p->look->jump_vy / 2;
 			}
-		}
-		/* off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04) */
-		if (p->climbing && cell_at(p->x, fy - 1) != T_LADDER && cell_at(p->x, fy) != T_LADDER)
-			p->climbing = 0;
-		if (PRESSED(p, BTN_1)) {
-			p->climbing = 0;
-			p->vy = p->look->jump_vy / 2;
-		}
-	} else {
-		/* crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit */
-		if (p->on_ground && (p->pad & BTN_DOWN) && !(p->pad & BTN_1)) {
-			if (!p->crouch)
-				p->crouch_t = 0;
-			p->crouch = 1;
-		} else if (p->crouch && (!p->on_ground || !body_blocked_h(p->x, fy, p->look->body_h)))
-			p->crouch = 0;
-		if (p->crouch) {
-			p->crouch_t++;
-			p->running = 0;
-			p->push_t = 0;
-			if (dir) {
-				s32 nx = p->x + dir;
-				if (p->flip != (dir < 0))
+		} else {
+			/* crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit */
+			if (p->on_ground && (p->pad & BTN_DOWN) && !(p->pad & BTN_1)) {
+				if (!p->crouch)
+					p->crouch_t = 0;
+				p->crouch = 1;
+			} else if (p->crouch && (!p->on_ground || !body_blocked_h(p->x, fy, p->look->body_h)))
+				p->crouch = 0;
+			if (p->crouch) {
+				p->crouch_t++;
+				p->running = 0;
+				p->push_t = 0;
+				if (dir) {
+					s32 nx = p->x + dir;
+					if (p->flip != (dir < 0))
+						p->turn_t = TURN_FRAMES;
+					p->flip = dir < 0;
+					/* crawl: 1 px every 2 frames, under anything CROUCH_H tall */
+					if ((p->t & 1) && !body_blocked_h(nx + dir * p->look->half_w, fy, p->look->crouch_h))
+						p->x = nx;
+				}
+			} else if (dir && !p->knife_t && !p->bazooka_t) {
+				if (p->on_ground && p->flip != (dir < 0))
 					p->turn_t = TURN_FRAMES;
 				p->flip = dir < 0;
-				/* crawl: 1 px every 2 frames, under anything CROUCH_H tall */
-				if ((p->t & 1) && !body_blocked_h(nx + dir * p->look->half_w, fy, p->look->crouch_h))
-					p->x = nx;
+				walk(p, dir, p->running ? 2 : 1);
+			} else
+				p->push_t = 0;
+			fy = p->y >> 4;
+			if (p->on_ground && PRESSED(p, BTN_1)) {
+				if ((p->pad & BTN_DOWN) && support_w(p->x, fy, 0, p->look->half_w) == 1) {
+					p->drop_t = DROP_FRAMES;
+					p->on_ground = 0;
+					p->vy = 0;
+					p->y += 16;
+				} else {
+					p->crouch = 0;
+					p->vy = p->look->jump_vy;
+					sfx(SFX_JUMP, p->x);
+					p->on_ground = 0;
+				}
+			} else if (!p->on_ground && PRESSED(p, BTN_1) && (D->flags & WM_F_DOUBLE_JUMP) && !p->air_jumps) {
+				p->vy = p->look->double_vy;
+				sfx(SFX_JUMP, p->x);
+				p->air_jumps = 1;
 			}
-		} else if (dir && !p->knife_t && !p->bazooka_t) {
-			if (p->on_ground && p->flip != (dir < 0))
-				p->turn_t = TURN_FRAMES;
-			p->flip = dir < 0;
-			walk(p, dir, p->running ? 2 : 1);
-		} else
-			p->push_t = 0;
-		fy = p->y >> 4;
-		if (p->on_ground && PRESSED(p, BTN_1)) {
-			if ((p->pad & BTN_DOWN) && support_w(p->x, fy, 0, p->look->half_w) == 1) {
-				p->drop_t = DROP_FRAMES;
+			/* jump kick: Down + B2 in the air */
+			if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t && !(D->flags & WM_F_NO_WEAPONS)) {
+				p->kick_t = KICK_FRAMES;
+				p->kick_hit = 0;
+				sfx(SFX_KICK, p->x);
+			}
+			if (p->on_ground && !support_w(p->x, fy, 0, p->look->half_w)) {
 				p->on_ground = 0;
 				p->vy = 0;
-				p->y += 16;
-			} else {
-				p->crouch = 0;
-				p->vy = p->look->jump_vy;
-				sfx(SFX_JUMP, p->x);
-				p->on_ground = 0;
 			}
-		} else if (!p->on_ground && PRESSED(p, BTN_1) && (D->flags & WM_F_DOUBLE_JUMP) && !p->air_jumps) {
-			p->vy = p->look->double_vy;
-			sfx(SFX_JUMP, p->x);
-			p->air_jumps = 1;
-		}
-		/* jump kick: Down + B2 in the air */
-		if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t && !(D->flags & WM_F_NO_WEAPONS)) {
-			p->kick_t = KICK_FRAMES;
-			p->kick_hit = 0;
-			sfx(SFX_KICK, p->x);
-		}
-		if (p->on_ground && !support_w(p->x, fy, 0, p->look->half_w)) {
-			p->on_ground = 0;
-			p->vy = 0;
-		}
-		if (!p->on_ground) {
-			s32 from = p->y >> 4, to, py, was = p->vy;
-			p->air_t++;
-			p->vy += GRAVITY;
-			if (p->vy > MAX_FALL)
-				p->vy = MAX_FALL;
-			/* the jet pack, after gravity: B1 held starts it while falling (or after the
-			   double jump) and keeps it going, even rising, until the fuel runs out */
-			if ((D->flags & WM_F_JETPACK) && (p->pad & BTN_1) && p->fuel > 0 && (jet_was || was >= 0 || p->air_jumps)) {
-				/* it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's) */
-				if (p->vy > JET_MAX_UP) {
-					p->vy -= JET_LIFT;
-					if (p->vy < JET_MAX_UP)
-						p->vy = JET_MAX_UP;
-				}
-				p->fuel--;
-				p->jetting = 1;
-			}
-			to = (p->y + p->vy) >> 4;
-			if (p->vy > 0) {
-				/* a platform going up can meet the feet from below: it is found at its own top */
-				int rose = p->drop_t ? -1 : platform_rose(p->x, from, p->look->half_w);
-				s32 last = rose >= 0 && plat[rose].y > to ? plat[rose].y : to;
-				for (py = rose >= 0 ? plat[rose].y : from + 1; py <= last; py++)
-					if (support_w(p->x, py, p->drop_t != 0, p->look->half_w)) {
-						p->y = py * 16;
-						p->vy = 0;
-						p->on_ground = 1;
-						if (p->air_t >= LAND_AFTER) {
-							p->land_t = LAND_FRAMES;
-							sfx(SFX_LAND, p->x);
-						}
-						p->air_t = 0;
-						p->air_jumps = 0;
-						p->fuel = JET_FUEL;
-						break;
+			if (!p->on_ground) {
+				s32 from = p->y >> 4, to, py, was = p->vy;
+				p->air_t++;
+				p->vy += GRAVITY;
+				if (p->vy > MAX_FALL)
+					p->vy = MAX_FALL;
+				/* the jet pack, after gravity: B1 held starts it while falling (or after the
+				   double jump) and keeps it going, even rising, until the fuel runs out */
+				if ((D->flags & WM_F_JETPACK) && (p->pad & BTN_1) && p->fuel > 0 && (jet_was || was >= 0 || p->air_jumps)) {
+					/* it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's) */
+					if (p->vy > JET_MAX_UP) {
+						p->vy -= JET_LIFT;
+						if (p->vy < JET_MAX_UP)
+							p->vy = JET_MAX_UP;
 					}
-				if (!p->on_ground)
-					p->y += p->vy;
-			} else {
-				if (is_solid(cell_at(p->x, to - p->look->body_h)))
-					p->vy = 0;
-				else
-					p->y += p->vy;
+					p->fuel--;
+					p->jetting = 1;
+				}
+				to = (p->y + p->vy) >> 4;
+				if (p->vy > 0) {
+					/* a platform going up can meet the feet from below: it is found at its own top */
+					int rose = p->drop_t ? -1 : platform_rose(p->x, from, p->look->half_w);
+					s32 last = rose >= 0 && plat[rose].y > to ? plat[rose].y : to;
+					for (py = rose >= 0 ? plat[rose].y : from + 1; py <= last; py++)
+						if (support_w(p->x, py, p->drop_t != 0, p->look->half_w)) {
+							p->y = py * 16;
+							p->vy = 0;
+							p->on_ground = 1;
+							if (p->air_t >= LAND_AFTER) {
+								p->land_t = LAND_FRAMES;
+								sfx(SFX_LAND, p->x);
+							}
+							p->air_t = 0;
+							p->air_jumps = 0;
+							p->fuel = JET_FUEL;
+							break;
+						}
+					if (!p->on_ground)
+						p->y += p->vy;
+				} else {
+					if (is_solid(cell_at(p->x, to - p->look->body_h)))
+						p->vy = 0;
+					else
+						p->y += p->vy;
+				}
 			}
 		}
 	}
@@ -1924,7 +2005,7 @@ static int victory; /* the section is cleared: every player shows its victory */
 static void draw_player(struct player *p)
 {
 	int sx = (int)p->x - cam_x;
-	int sy = (int)(p->y >> 4) - cam_y;
+	int sy = (int)((p->y + p->hop) >> 4) - cam_y; /* a beat 'em up's hop draws it over the floor */
 	int moving = (p->pad & (BTN_LEFT | BTN_RIGHT)) != 0;
 	const struct wm_look *l = p->look;
 	if (!p->active || (p->hurt & 4))
@@ -1979,62 +2060,74 @@ static void draw_shots(struct player *p)
 		put_sprite(p->rocket.x - cam_x, p->rocket.y - cam_y, TILE_ROCKET, (u16)(PAL_ROCKET | (p->rocket.dir < 0 ? 0x20 : 0) | (1 << 8)));
 }
 
+static void draw_enemy(int i);
+
 static void draw_enemies(void)
 {
 	int i;
 	for (i = 0; i < MAX_EN_SHOTS; i++)
 		if (en_shots[i].live)
 			put_sprite(en_shots[i].x - cam_x - 8, en_shots[i].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (en_shots[i].dir < 0 ? 0x20 : 0)));
-	for (i = 0; i < nen; i++) {
-		struct enemy *e = &en[i];
-		int sx = (int)e->x - cam_x, sy = (int)e->fy - cam_y;
-		if (e->state == EN_OFF || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
-			continue;
-		if (e->look) {
-			/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
-			const struct wm_look *l = e->look;
-			if (e->state == EN_DOWN) {
-				const Anim *a = l->victory;
-				u32 f = e->t * a->fps / 60;
-				if (f >= a->count)
-					f = a->count - 1;
-				if (e->t < 70 || (e->t & 4))
-					draw_frame(&a->frames[f], sx, sy, l->pal, e->flip);
-			} else
-				draw_anim(e->state == EN_HIT ? l->land : e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
-			continue;
-		}
-		if (e->state == EN_DOWN) {
-			u32 f = e->t * anim_robot_defeated.fps / 60;
-			if (f >= anim_robot_defeated.count)
-				f = anim_robot_defeated.count - 1;
-			if (e->t < 70 || (e->t & 4))
-				draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, e->flip);
-			continue;
-		}
-		draw_anim(e->state == EN_HIT ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, 0, e->flip);
-	}
+	for (i = 0; i < nen; i++)
+		draw_enemy(i);
 }
+
+static void draw_enemy(int i)
+{
+	struct enemy *e = &en[i];
+	int sx = (int)e->x - cam_x, sy = (int)e->fy - cam_y;
+	if (e->state == EN_OFF || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
+		return;
+	if (e->look) {
+		/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
+		const struct wm_look *l = e->look;
+		if (e->state == EN_DOWN) {
+			const Anim *a = l->victory;
+			u32 f = e->t * a->fps / 60;
+			if (f >= a->count)
+				f = a->count - 1;
+			if (e->t < 70 || (e->t & 4))
+				draw_frame(&a->frames[f], sx, sy, l->pal, e->flip);
+		} else
+			draw_anim(e->state == EN_HIT ? l->land : e->fire_wait > ENEMY_FIRE_EVERY - 15 ? l->gun : l->run, e->t, sx, sy, l->pal, e->flip);
+		return;
+	}
+	if (e->state == EN_DOWN) {
+		u32 f = e->t * anim_robot_defeated.fps / 60;
+		if (f >= anim_robot_defeated.count)
+			f = anim_robot_defeated.count - 1;
+		if (e->t < 70 || (e->t & 4))
+			draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, e->flip);
+		return;
+	}
+	draw_anim(e->state == EN_HIT ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, 0, e->flip);
+}
+
+static void draw_civilian(int i);
 
 static void draw_civilians(void)
 {
 	int i;
-	for (i = 0; i < nciv; i++) {
-		int sx = (int)civ[i].x - cam_x, sy = (int)civ[i].fy - cam_y;
-		const Anim *a;
-		if (sx < -40 || sx > SCREEN_W + 40 || sy < -10 || sy > SCREEN_H + 50)
-			continue;
-		if (civ[i].look) {
-			/* the game's own civilian: worried until rescued, then thanks (wm_look's land, thumbs) */
-			draw_anim(civ[i].rescued ? civ[i].look->thumbs : civ[i].look->land, civ[i].t, sx, sy, civ[i].look->pal, 0);
-			continue;
-		}
-		if (civ[i].child)
-			a = civ[i].rescued ? &anim_child_happy : &anim_child_worried;
-		else
-			a = civ[i].rescued ? &anim_woman_happy : &anim_woman_worried;
-		draw_anim(a, civ[i].t, sx, sy, 0, 1);
+	for (i = 0; i < nciv; i++)
+		draw_civilian(i);
+}
+
+static void draw_civilian(int i)
+{
+	int sx = (int)civ[i].x - cam_x, sy = (int)civ[i].fy - cam_y;
+	const Anim *a;
+	if (sx < -40 || sx > SCREEN_W + 40 || sy < -10 || sy > SCREEN_H + 50)
+		return;
+	if (civ[i].look) {
+		/* the game's own civilian: worried until rescued, then thanks (wm_look's land, thumbs) */
+		draw_anim(civ[i].rescued ? civ[i].look->thumbs : civ[i].look->land, civ[i].t, sx, sy, civ[i].look->pal, 0);
+		return;
 	}
+	if (civ[i].child)
+		a = civ[i].rescued ? &anim_child_happy : &anim_child_worried;
+	else
+		a = civ[i].rescued ? &anim_woman_happy : &anim_woman_worried;
+	draw_anim(a, civ[i].t, sx, sy, 0, 1);
 }
 
 static void draw_pickups(void)
@@ -2056,11 +2149,56 @@ static void draw_pickups(void)
 	}
 }
 
+/*
+ * A beat 'em up's actors by depth (WM_F_DEPTH): the nearer the screen (the
+ * larger the feet y), the earlier in the sprite list, which the board draws
+ * in front; at the same depth players before enemies before civilians, as
+ * play mode draws them.
+ */
+static void draw_actors_by_depth(void)
+{
+	s32 key[MAX_PLAYERS + MAX_ENEMIES + MAX_CIVS];
+	int n = 0, i, j, k;
+	for (i = 0; i < nplayers; i++)
+		if (pl[i].active)
+			key[n++] = ((pl[i].y >> 4) << 8) | (2 << 6) | i;
+	for (i = 0; i < nen; i++)
+		if (en[i].state != EN_OFF)
+			key[n++] = (en[i].fy << 8) | (1 << 6) | i;
+	for (i = 0; i < nciv; i++)
+		key[n++] = (civ[i].fy << 8) | i;
+	for (i = 1; i < n; i++) /* largest first */
+		for (j = i; j > 0 && key[j] > key[j - 1]; j--) {
+			k = key[j];
+			key[j] = key[j - 1];
+			key[j - 1] = k;
+		}
+	for (i = 0; i < n; i++) {
+		int kind = (key[i] >> 6) & 3, idx = key[i] & 63;
+		if (kind == 2)
+			draw_player(&pl[idx]);
+		else if (kind == 1)
+			draw_enemy(idx);
+		else
+			draw_civilian(idx);
+	}
+}
+
 static void draw_world(void)
 {
 	int k;
 	for (k = 0; k < nplayers; k++)
 		draw_shots(&pl[k]);
+	if (depth) {
+		for (k = 0; k < MAX_EN_SHOTS; k++)
+			if (en_shots[k].live)
+				put_sprite(en_shots[k].x - cam_x - 8, en_shots[k].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (en_shots[k].dir < 0 ? 0x20 : 0)));
+		draw_actors_by_depth();
+		draw_pickups();
+		draw_platforms();
+		flush_sprites();
+		return;
+	}
 	for (k = 0; k < nplayers; k++)
 		draw_player(&pl[k]);
 	draw_enemies();

@@ -1,0 +1,106 @@
+{
+ "name": "street-walk",
+ "description": "The beat 'em up, phase 1 (WM_ROM_OUT/street of rom.test.tsx, rom/streetFixture.ts: the spec level as a street, band 352-416, an enemy standing in it at x 110): player 1 walks right, goes up behind the enemy (drawn in front of the player), comes down in front of it (drawn behind the player), hops with B2, then walks to the crates and up to the back edge of the band. Play mode gives the same places every frame.",
+ "frames": 620,
+ "checkpoints": [
+  200,
+  245,
+  305,
+  320,
+  420,
+  600
+ ],
+ "expect": [
+  {
+   "frame": 245,
+   "path": "players.0.y",
+   "equals": 357
+  },
+  {
+   "frame": 305,
+   "path": "players.0.y",
+   "equals": 413
+  },
+  {
+   "frame": 320,
+   "path": "players.0.ground",
+   "equals": false
+  },
+  {
+   "frame": 420,
+   "path": "players.0.x",
+   "equals": 154
+  },
+  {
+   "frame": 600,
+   "path": "players.0.y",
+   "equals": 352
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 165,
+   "to": 200,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 201,
+   "to": 245,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 246,
+   "to": 305,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 310,
+   "to": 312,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 360,
+   "to": 420,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 430,
+   "to": 600,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  }
+ ]
+}

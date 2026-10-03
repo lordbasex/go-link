@@ -317,6 +317,10 @@ export const coreEn = {
     bandSpeed: (n: number) => `Band ${n}: speed %`,
     removeBand: (n: number) => `Remove band ${n}`,
     addBand: "Add a band",
+    walk: "Walkable band",
+    walkHelp: "The beat 'em up's street: the feet y range players and enemies walk in; up and down move along it. Drawn as a dashed band on the level.",
+    walkFrom: "Walk from y",
+    walkTo: "to y",
   },
   picture: {
     button: "Picture…",

@@ -13,6 +13,7 @@ import {
   TAG_NUMBER,
   TAGS,
   type ParallaxBand,
+  type WalkBand,
   type BoardRef,
   type GameSettings,
   type Animation,
@@ -345,6 +346,7 @@ function normalizeLevel(raw: Level): Level {
     layers: layers.map((l) => ({ visible: true, locked: false, opacity: 1, ...l, name: l.name ?? l.id })) as Layer[],
     sections: Array.isArray(raw.sections) ? raw.sections : [],
     ...(Array.isArray(raw.parallax) ? { parallax: cleanBands({ size: { w, h }, parallax: raw.parallax.filter(isRecord) as unknown as ParallaxBand[] }) } : {}),
+    ...(isRecord(raw.walk) ? { walk: cleanWalk(raw.walk, h) } : {}),
   };
 }
 
@@ -417,6 +419,23 @@ export function layerGrid(level: Level, layer: TileLayer | TagLayer): CellGrid {
       layer.data = encodeCells(cells);
     },
   };
+}
+
+/** A new beat 'em up level's band: the 64 px over the floor (the lowest solid row from the bottom, at the level's left). */
+export function defaultWalk(level: Level): WalkBand {
+  const g = tagGrid(level);
+  let r = g.rows - 1;
+  while (r > 0 && g.get(1, r - 1) === TAG_NUMBER.solid) r--;
+  const y1 = g.get(1, r) === TAG_NUMBER.solid ? r * CELL : level.size.h - 32;
+  return cleanWalk({ y0: y1 - 64, y1 }, level.size.h);
+}
+
+/** A walkable band inside the level, at least 16 px deep, on whole pixels. */
+export function cleanWalk(raw: Record<string, unknown>, h: number): WalkBand {
+  const n = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : d);
+  const y1 = Math.max(16, Math.min(h, n(raw.y1, h - 32)));
+  const y0 = Math.max(0, Math.min(y1 - 16, n(raw.y0, y1 - 64)));
+  return { y0, y1 };
 }
 
 export function tagGrid(level: Level): CellGrid {

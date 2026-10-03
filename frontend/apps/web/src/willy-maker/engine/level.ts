@@ -44,6 +44,8 @@ export interface LevelView {
   sections?: { name: string; x0: number; x1: number }[];
   /** Parallax bands of the play layer (T-26): rows r0-r1 (r1 excluded) at `speed` % of the camera. */
   bands?: { r0: number; r1: number; speed: number }[];
+  /** The beat 'em up's walkable band: the feet y range (px) with the depth rule. */
+  walk?: { y0: number; y1: number };
 }
 
 /**
@@ -77,6 +79,7 @@ export interface ProjectLevelLike {
   name?: string;
   size?: { w: number; h: number };
   parallax?: ParallaxBand[];
+  walk?: { y0: number; y1: number };
   layers?: {
     id?: string;
     kind?: string;
@@ -105,6 +108,7 @@ export function levelFromProject(level: ProjectLevelLike): LevelView {
     objects: (objLayer?.items ?? []).map((o) => ({ ...o })),
     bands: level.size && level.parallax ? parallaxBands({ size: level.size, parallax: level.parallax }) : undefined,
     sections: level.sections,
+    ...(level.walk ? { walk: { y0: level.walk.y0, y1: level.walk.y1 } } : {}),
   };
 }
 

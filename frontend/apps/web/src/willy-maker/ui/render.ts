@@ -172,7 +172,10 @@ export function drawLevel(ctx: CanvasRenderingContext2D, level: Level, o: DrawOp
     ctx.globalAlpha = layer.opacity ?? 1;
     if (layer.kind === "tiles") drawTiles(ctx, level, layer, o.images.get(layer.tileset ?? ""), vx0, vy0, vx1, vy1);
     else if (layer.kind === "tags") drawTags(ctx, level, layer, pal, z, vx0, vy0, vx1, vy1);
-    else drawObjects(ctx, level, pal, z, o, vx0, vx1);
+    else {
+      if (level.walk) drawWalk(ctx, level.walk, pal, z, vx0, vx1);
+      drawObjects(ctx, level, pal, z, o, vx0, vx1);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -303,6 +306,27 @@ function drawTags(ctx: CanvasRenderingContext2D, level: Level, layer: TagLayer, 
         ctx.stroke();
       }
     }
+}
+
+/** The beat 'em up's walkable band: where feet may be, as a dashed band. */
+function drawWalk(ctx: CanvasRenderingContext2D, walk: { y0: number; y1: number }, pal: Palette, z: number, vx0: number, vx1: number) {
+  const alpha = ctx.globalAlpha;
+  const color = pal.objects.platform ?? pal.text;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = alpha * 0.08;
+  ctx.fillRect(vx0, walk.y0, vx1 - vx0, walk.y1 - walk.y0);
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5 / z;
+  ctx.setLineDash([10 / z, 6 / z]);
+  for (const y of [walk.y0, walk.y1]) {
+    ctx.beginPath();
+    ctx.moveTo(vx0, y);
+    ctx.lineTo(vx1, y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.globalAlpha = alpha;
 }
 
 function drawObjects(ctx: CanvasRenderingContext2D, level: Level, pal: Palette, z: number, o: DrawOptions, vx0: number, vx1: number) {

@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 9
+#define WM_VERSION 10
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -75,6 +75,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_DIFFICULTY 0x0060  /* bits 5-6, the DIP switch's difficulty: 0 normal, 1 easy, 2 hard, 3 lag */
 #define WM_F_NO_WEAPONS 0x0080  /* the platformer (T-22): no gun, knife, kick or bazooka */
 #define WM_F_STOMP 0x0100       /* landing on an enemy from above takes it down */
+#define WM_F_DEPTH 0x0200       /* the beat 'em up: walking a street in depth (walk_y0-walk_y1), B2 hops */
 
 struct wm_data {
 	u32 magic;                /* 00 */
@@ -120,6 +121,7 @@ struct wm_data {
 	u16 n_platforms;          /* aa 0-16 */
 	u16 pad;                  /* ac */
 	u32 pickup_looks;         /* ae u32[n_pickups]: a pickup's own look (its idle animation), 0 = the engine's icon */
+	u16 walk_y0, walk_y1;     /* b2, b4 the beat 'em up's walkable band: feet y, px (WM_F_DEPTH) */
 };
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
@@ -162,7 +164,8 @@ _Static_assert(WM_OFF(n_bands) == 0x84 && WM_OFF(bands) == 0x86, "wm_data bands"
 _Static_assert(WM_OFF(enemy_looks) == 0x9e && WM_OFF(civ_looks) == 0xa2, "wm_data actor looks");
 _Static_assert(WM_OFF(platforms) == 0xa6 && WM_OFF(n_platforms) == 0xaa, "wm_data platforms");
 _Static_assert(WM_OFF(pickup_looks) == 0xae, "wm_data pickup looks");
-_Static_assert(sizeof(struct wm_data) == 0xb2, "wm_data size");
+_Static_assert(WM_OFF(walk_y0) == 0xb2 && WM_OFF(walk_y1) == 0xb4, "wm_data walk band");
+_Static_assert(sizeof(struct wm_data) == 0xb6, "wm_data size");
 /* the records the packer writes for a look: 68000 alignment (2), big-endian */
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");

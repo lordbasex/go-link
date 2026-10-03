@@ -251,6 +251,17 @@ export interface Level {
    * drawn over the sky; up to 4, with no collision or objects in them.
    */
   parallax?: ParallaxBand[];
+  /**
+   * The beat 'em up's walkable band (docs/willy-maker/genres.md): the range
+   * of feet y (px) the players and enemies walk in, up and down being toward
+   * and away from the screen. Only games with the `depth` rule use it.
+   */
+  walk?: WalkBand;
+}
+
+export interface WalkBand {
+  y0: number;
+  y1: number;
 }
 
 export interface ParallaxBand {

@@ -90,6 +90,7 @@ export const gamePt: GameMessages = {
     jetpack: "Mochila a jato (segure B1 ao cair)",
     weapons: "Armas (arma, faca, chute, bazuca)",
     stomp: "Cair sobre um inimigo o derruba",
+    depth: "Andar em profundidade (beat 'em up: cima e baixo percorrem a rua)",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

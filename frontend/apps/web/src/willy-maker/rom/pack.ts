@@ -15,7 +15,7 @@ import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
 import { difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
-import { MAX_PLATFORMS, platformOf } from "../engine/game";
+import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
 import { BUILTIN_HERO } from "../model";
@@ -69,8 +69,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 9;
-const HEADER = 0xb2;
+const WM_VERSION = 10;
+const HEADER = 0xb6;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -95,6 +95,7 @@ const F_JETPACK = 16;
 /** The platformer (T-22): no weapons, stomping. */
 const F_NO_WEAPONS = 0x80;
 const F_STOMP = 0x100;
+const F_DEPTH = 0x200;
 /** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
 const F_DIFFICULTY_SHIFT = 5;
 
@@ -624,7 +625,7 @@ export function packGame(
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT) | (rules.weapons ? 0 : F_NO_WEAPONS) | (rules.stomp ? F_STOMP : 0));
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT) | (rules.weapons ? 0 : F_NO_WEAPONS) | (rules.stomp ? F_STOMP : 0) | (rules.depth ? F_DEPTH : 0));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);
@@ -682,6 +683,10 @@ export function packGame(
   w16(Math.min(MAX_PLATFORMS, platforms.length));
   w16(0);
   w32(pickupLooksAt);
+  // the beat 'em up's walkable band (WM_F_DEPTH), as play mode computes it
+  const walk = walkBandOf(rows * CELL, level.walk);
+  w16(walk.y0);
+  w16(walk.y1);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

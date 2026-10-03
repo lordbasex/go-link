@@ -102,6 +102,7 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
       "size": { "w": 8192, "h": 672 },
       "camera": { "forwardOnly": true, "backtrack": 48 },
       "parallax": [{ "y0": 64, "y1": 128, "speed": 50 }],   // optional, up to 4 bands of play layer rows (16 px grid) at speed % (10-95), T-26
+      "walk": { "y0": 544, "y1": 608 },                       // optional, the beat 'em up's walkable band: the feet y range (px), with the depth rule
       "layers": [
         { "id": "far", "kind": "tiles", "grid": 32, "tileset": "ts-sky", "data": "rle:…",
           "name": "Sky and skyline", "visible": true, "locked": false },

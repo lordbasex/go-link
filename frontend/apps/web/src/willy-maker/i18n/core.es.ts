@@ -317,6 +317,10 @@ export const coreEs: CoreMessages = {
     bandSpeed: (n: number) => `Banda ${n}: velocidad %`,
     removeBand: (n: number) => `Quitar la banda ${n}`,
     addBand: "Agregar una banda",
+    walk: "Franja caminable",
+    walkHelp: "La calle del beat 'em up: el rango de y de los pies donde caminan jugadores y enemigos; arriba y abajo la recorren. Se dibuja como una franja punteada en el nivel.",
+    walkFrom: "Caminable desde y",
+    walkTo: "hasta y",
   },
   picture: {
     button: "Imagen…",

@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { BEATEMUP_RULES, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -695,5 +695,59 @@ describe("moving platforms (the platformer)", () => {
     run(g, 60, 0);
     expect(g.platforms[0]!.x).toBe(252);
     expect(g.players[0]!.x).toBeLessThan(256);
+  });
+});
+
+describe("the beat 'em up: walking in depth (genres.md, phase 1)", () => {
+  // a street: the band of feet y 336-400 over the floor at 400
+  const street = (objects: LevelObject[] = []) => {
+    const view = flat(undefined, objects);
+    view.walk = { y0: 336, y1: 400 };
+    view.objects[0] = { name: "p1", type: "player_start", x: 64, y: 380, player: 1 };
+    return new Game(view, { rules: BEATEMUP_RULES });
+  };
+
+  it("starts at its start's depth, inside the band", () => {
+    const g = street();
+    expect(feet(g)).toBe(380);
+    expect(g.walkBand).toEqual({ y0: 336, y1: 400 });
+  });
+
+  it("walks up and down a pixel a frame, never out of the band", () => {
+    const g = street();
+    run(g, 20, Input.Up);
+    expect(feet(g)).toBe(360);
+    run(g, 100, Input.Up);
+    expect(feet(g)).toBe(336);
+    run(g, 200, Input.Down | Input.Right);
+    expect(feet(g)).toBe(400);
+    expect(g.players[0]!.x).toBeGreaterThan(64 + 150);
+  });
+
+  it("hops with B2 and lands at the same depth", () => {
+    const g = street();
+    run(g, 10, Input.Up);
+    const depth = feet(g);
+    run(g, 1, Input.B2);
+    let top = 0;
+    for (let f = 0; f < 60; f++) {
+      run(g, 1, 0);
+      top = Math.min(top, g.players[0]!.hop >> 4);
+    }
+    expect(top).toBeLessThan(-20);
+    expect(g.players[0]!.hop).toBe(0);
+    expect(g.players[0]!.onGround).toBe(true);
+    expect(feet(g)).toBe(depth);
+  });
+
+  it("stops at a wall and leaves the platform games as they were", () => {
+    const g = street();
+    // no band, no hop: the same level without the rule is a platform level
+    const plain = new Game(flat(), {});
+    expect(plain.walkBand).toBeUndefined();
+    run(plain, 10, Input.Up);
+    expect(feet(plain)).toBe(400);
+    run(g, 10, Input.Left);
+    expect(g.players[0]!.x).toBeGreaterThanOrEqual(12);
   });
 });

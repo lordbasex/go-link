@@ -11,6 +11,7 @@ import { bigGlyph, packGame, romSymbols, WM_DATA_ADDR, type Engine, type Picture
 import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { tallProject } from "./tallFixture";
+import { streetProject } from "./streetFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -47,8 +48,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(9);
-    expect(u16(d, 6)).toBe(0xb2);
+    expect(u16(d, 4)).toBe(10);
+    expect(u16(d, 6)).toBe(0xb6);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -165,6 +166,25 @@ describe("Create ROM", () => {
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
     expect(result.ok).toBe(true);
+  }, 30000);
+
+  it("packs a beat 'em up street and powers it on (validation level 3)", async () => {
+    // the spec level as a street: walking in depth over the floor, an enemy standing in the band (rom/tools/lab/runs/street-walk.json)
+    const p = streetProject();
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    expect(u16(d, 0x0a) & 0x200).toBe(0x200);
+    expect([u16(d, 0xb2), u16(d, 0xb4)]).toEqual([352, 416]);
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "street");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
   }, 30000);
 
   it("draws double-size glyphs as four quarters", () => {

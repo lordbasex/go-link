@@ -88,6 +88,7 @@ export const gameEn = {
     jetpack: "Jet pack (hold B1 while falling)",
     weapons: "Weapons (gun, knife, kick, bazooka)",
     stomp: "Landing on an enemy takes it down",
+    depth: "Walking in depth (beat 'em up: up and down move along the street)",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",

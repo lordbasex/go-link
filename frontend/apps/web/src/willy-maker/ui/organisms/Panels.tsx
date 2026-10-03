@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCore } from "../../i18n";
-import { BAND_SPEED, CELL, cleanBands, layerGrid, MAX_BANDS, newLevel, objectLayer, TAGS, type Level, type LevelObject, type ParallaxBand, type Project, type TagLayer, type TileLayer } from "../../model";
+import { BAND_SPEED, CELL, cleanBands, cleanWalk, defaultWalk, layerGrid, MAX_BANDS, newLevel, objectLayer, TAGS, type Level, type LevelObject, type ParallaxBand, type Project, type WalkBand, type TagLayer, type TileLayer } from "../../model";
 import { CPS1 } from "../../board/cps1";
 import { BOSS_KINDS, CIVILIAN_KINDS, CRATE_CONTENTS, ENEMY_KINDS, PART_GROUPS, PARTS, PICKUP_ITEMS, type Part, type PartGroup } from "../../editor/parts";
 import { deleteObject, nameFree, updateObject } from "../../editor/ops";
@@ -185,6 +185,31 @@ export function PartsPalette({ partId, onPart, level, activeLayerId, images, onP
  * every keystroke turned 64 into 164).
  */
 /** A level's parallax bands (T-26): rows of the play layer that scroll at their own speed. */
+/** The beat 'em up's walkable band (the depth rule): the feet y range of the level. */
+function WalkRows({ store, level }: { store: EditorStore; level: Level }) {
+  const t = useCore();
+  const walk = level.walk ?? defaultWalk(level);
+  const set = (patch: Partial<WalkBand>) =>
+    store.editLevel(t.inspector.walk, level.id, (l) => {
+      l.walk = cleanWalk({ ...(l.walk ?? defaultWalk(l)), ...patch }, l.size.h);
+    });
+  return (
+    <div className="wm-parallax">
+      <PropRow label={t.inspector.walk}>
+        <span className="wm-dim wm-small">{t.inspector.walkHelp}</span>
+      </PropRow>
+      <div className="wm-grid2 is-tight">
+        <PropRow label={t.inspector.walkFrom}>
+          <NumberInput label={t.inspector.walkFrom} value={walk.y0} min={0} max={level.size.h} step={8} onChange={(y0) => set({ y0 })} />
+        </PropRow>
+        <PropRow label={t.inspector.walkTo}>
+          <NumberInput label={t.inspector.walkTo} value={walk.y1} min={16} max={level.size.h} step={8} onChange={(y1) => set({ y1 })} />
+        </PropRow>
+      </div>
+    </div>
+  );
+}
+
 function ParallaxRows({ store, level }: { store: EditorStore; level: Level }) {
   const t = useCore();
   const bands = level.parallax ?? [];
@@ -340,6 +365,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           <span className="wm-mono">{t.inspector.sectionsCount(level.sections.length)}</span>
         </PropRow>
         <ParallaxRows store={store} level={level} />
+        {rulesWith(store.project.settings.rules).depth && <WalkRows store={store} level={level} />}
         <p className="wm-dim wm-small">{t.inspector.none}</p>
       </section>
     );

@@ -113,6 +113,8 @@ export interface Player {
   airJumps: number;
   fuel: number;
   jetting: boolean;
+  /** The beat 'em up's hop (the depth rule): height over the floor, 1/16 px, 0 or less. */
+  hop: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off";
@@ -201,6 +203,12 @@ export const FALL_SHAKE = 30;
 export const FALL_GRAVITY = 4;
 export const FALL_MAX = 64;
 export const FALL_BACK = 180;
+
+/** A beat 'em up level's walkable band (feet y, px): its own, or the 64 px over the bottom 32 (the ROM's too). */
+export function walkBandOf(height: number, walk?: { y0: number; y1: number }): { y0: number; y1: number } {
+  const y1 = Math.max(16, Math.min(height, Math.round(walk?.y1 ?? height - 32)));
+  return { y0: Math.max(0, Math.min(y1 - 16, Math.round(walk?.y0 ?? y1 - 64))), y1 };
+}
 
 /** A platform's limits (the ROM's too): width 32-128 px in 16s, range 0-512 px, speed 1-4 px a frame. */
 export function platformOf(o: { name: string; x: number; y: number; w?: unknown; axis?: unknown; range?: unknown; speed?: unknown; falls?: unknown }): Platform {
@@ -293,6 +301,8 @@ export class Game {
   private readonly startAt?: { x: number; y: number };
   private readonly runTap: number;
   readonly rules: GameRules;
+  /** The beat 'em up's walkable band (feet y, px), with the depth rule only. */
+  readonly walkBand?: { y0: number; y1: number };
   /** The difficulty's enemy fire interval (frames) and shot speed (px per frame). */
   readonly fireEvery: number;
   readonly shotSpeed: number;
@@ -309,6 +319,7 @@ export class Game {
     this.startAt = opts.startAt;
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
     this.rules = rulesWith(opts.rules);
+    if (this.rules.depth) this.walkBand = walkBandOf(level.height, level.walk);
     this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
     this.shotSpeed = difficultyOf(opts.difficulty).shotSpeed;
     for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives, opts.heights?.[i] ? bodyFor(opts.heights[i]) : WILLY_BODY));
@@ -584,7 +595,12 @@ export class Game {
     const lead = this.players.find((q) => q.active);
     let x: number;
     let fy: number;
-    if (start && !lead) {
+    if (this.walkBand) {
+      // the beat 'em up: at the start, beside the player already in, or near the camera, inside the band
+      const lx = lead ? lead.x + (lead.x + 24 < this.camX + SCREEN_W - 12 ? 24 : -24) : start && !lead ? start.x + (this.startAt ? i * 24 : 0) : this.camX + 64 + i * 24;
+      x = lx;
+      fy = this.inWalk(lead ? lead.y >> 4 : start ? start.y : (this.walkBand.y0 + this.walkBand.y1) >> 1);
+    } else if (start && !lead) {
       x = start.x + (this.startAt ? i * 24 : 0);
       fy = this.groundBelow(x, start.y - CELL, p.body);
     } else if (lead) {
@@ -603,7 +619,7 @@ export class Game {
     if (!p.active || (p.invulnerable && !fell)) return;
     if (p.invulnerable) {
       // fell out while protected: back on the ground, no life lost
-      const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
+      const at = this.walkBand ? { x: Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), fy: this.inWalk(p.y >> 4) } : this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
       spawn(p, at.x, at.fy);
       return;
     }
@@ -615,7 +631,7 @@ export class Game {
     }
     p.invulnerable = this.rules.hurtFrames;
     if (!fell && !this.rules.respawnOnHurt) return;
-    const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
+    const at = this.walkBand ? { x: Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), fy: this.inWalk(p.y >> 4) } : this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
     const keep = p.invulnerable;
     spawn(p, at.x, at.fy);
     p.invulnerable = keep;
@@ -623,6 +639,53 @@ export class Game {
 
   private pressed(p: Player, bit: number): boolean {
     return (p.pad & bit) !== 0 && (p.last & bit) === 0;
+  }
+
+  /**
+   * The beat 'em up's moves (the depth rule): left and right as anywhere,
+   * stopped by solid cells at the feet; up and down a pixel a frame inside
+   * the walkable band; B2 hops and lands back at the same depth.
+   */
+  private moveInDepth(p: Player, dir: number): void {
+    const walk = this.walkBand!;
+    const fy = p.y >> 4;
+    p.crouching = false;
+    if (dir) {
+      if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
+      p.flip = dir < 0;
+      for (let n = 0; n < (p.running ? 2 : 1); n++) {
+        if (this.isSolid(this.cellAt(p.x + dir + dir * p.body.halfW, fy - 1))) break;
+        p.x += dir;
+      }
+    }
+    const dz = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    if (dz) {
+      const nf = Math.max(walk.y0, Math.min(walk.y1, fy + dz));
+      if (!this.isSolid(this.cellAt(p.x, nf - 1))) p.y = nf * 16;
+    }
+    if (p.onGround && this.pressed(p, Input.B2)) {
+      p.vy = p.body.jumpVy;
+      p.onGround = false;
+      this.events.push({ kind: "jump", player: p.index });
+    }
+    if (!p.onGround) {
+      p.airT++;
+      p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
+      p.hop += p.vy;
+      if (p.hop >= 0) {
+        p.hop = 0;
+        p.vy = 0;
+        p.onGround = true;
+        if (p.airT >= LAND_AFTER) p.landT = LAND_FRAMES;
+        p.airT = 0;
+        this.events.push({ kind: "land", player: p.index });
+      }
+    }
+  }
+
+  /** A feet y inside the walkable band. */
+  private inWalk(fy: number): number {
+    return this.walkBand ? Math.max(this.walkBand.y0, Math.min(this.walkBand.y1, fy)) : fy;
   }
 
   private walk(p: Player, dir: number, speed: number): void {
@@ -675,127 +738,130 @@ export class Game {
     if (!dir) p.running = false;
     let fy = p.y >> 4;
 
-    // ladders: up in front of one, or down standing on its top (6 px of grace)
-    if (!p.climbing && !p.knifeT) {
-      for (let k = -6; k <= 6; k += 6) {
-        const lx = p.x + k;
-        if (((p.pad & Input.Up) && this.cellAt(lx, fy - 8) === Tag.Ladder) || ((p.pad & Input.Down) && !(p.pad & Input.B1) && p.onGround && this.cellAt(lx, fy) === Tag.Ladder)) {
-          p.climbing = true;
-          p.onGround = false;
-          p.vy = 0;
-          p.x = Math.floor(lx / CELL) * CELL + 8;
-          break;
+    if (this.walkBand) this.moveInDepth(p, dir);
+    else {
+      // ladders: up in front of one, or down standing on its top (6 px of grace)
+      if (!p.climbing && !p.knifeT) {
+        for (let k = -6; k <= 6; k += 6) {
+          const lx = p.x + k;
+          if (((p.pad & Input.Up) && this.cellAt(lx, fy - 8) === Tag.Ladder) || ((p.pad & Input.Down) && !(p.pad & Input.B1) && p.onGround && this.cellAt(lx, fy) === Tag.Ladder)) {
+            p.climbing = true;
+            p.onGround = false;
+            p.vy = 0;
+            p.x = Math.floor(lx / CELL) * CELL + 8;
+            break;
+          }
         }
       }
-    }
-    if (p.climbing) {
-      if (p.pad & Input.Up) {
-        p.y -= CLIMB_SPEED;
-        fy = p.y >> 4;
-        if (this.cellAt(p.x, fy - 1) !== Tag.Ladder) {
-          // over the top: stand on the ladder's top cell
-          p.y = (Math.floor((fy - 1) / CELL) + 1) * CELL * 16;
+      if (p.climbing) {
+        if (p.pad & Input.Up) {
+          p.y -= CLIMB_SPEED;
+          fy = p.y >> 4;
+          if (this.cellAt(p.x, fy - 1) !== Tag.Ladder) {
+            // over the top: stand on the ladder's top cell
+            p.y = (Math.floor((fy - 1) / CELL) + 1) * CELL * 16;
+            p.climbing = false;
+            p.onGround = true;
+          }
+        } else if (p.pad & Input.Down) {
+          p.y += CLIMB_SPEED;
+          fy = p.y >> 4;
+          const cellTop = Math.floor(fy / CELL) * CELL;
+          if (this.support(p.x, cellTop, true, p.body.halfW) === 2 && fy % CELL < 2) {
+            p.y = cellTop * 16;
+            p.climbing = false;
+            p.onGround = true;
+          }
+        }
+        // off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04)
+        if (p.climbing && this.cellAt(p.x, fy - 1) !== Tag.Ladder && this.cellAt(p.x, fy) !== Tag.Ladder) p.climbing = false;
+        if (this.pressed(p, Input.B1)) {
           p.climbing = false;
-          p.onGround = true;
+          p.vy = p.body.jumpVy / 2;
         }
-      } else if (p.pad & Input.Down) {
-        p.y += CLIMB_SPEED;
-        fy = p.y >> 4;
-        const cellTop = Math.floor(fy / CELL) * CELL;
-        if (this.support(p.x, cellTop, true, p.body.halfW) === 2 && fy % CELL < 2) {
-          p.y = cellTop * 16;
-          p.climbing = false;
-          p.onGround = true;
-        }
-      }
-      // off the ladder's column or off its bottom: the climb ends and the player falls (L-06, J-04)
-      if (p.climbing && this.cellAt(p.x, fy - 1) !== Tag.Ladder && this.cellAt(p.x, fy) !== Tag.Ladder) p.climbing = false;
-      if (this.pressed(p, Input.B1)) {
-        p.climbing = false;
-        p.vy = p.body.jumpVy / 2;
-      }
-    } else {
-      // crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit
-      if (p.onGround && (p.pad & Input.Down) && !(p.pad & Input.B1)) p.crouching = true;
-      else if (p.crouching && (!p.onGround || !this.bodyBlocked(p.x, fy, p.body.h))) p.crouching = false;
-      if (p.crouching) {
-        p.running = false;
-        p.pushT = 0;
-        if (dir) {
-          if (p.flip !== dir < 0) p.turnT = TURN_FRAMES;
+      } else {
+        // crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit
+        if (p.onGround && (p.pad & Input.Down) && !(p.pad & Input.B1)) p.crouching = true;
+        else if (p.crouching && (!p.onGround || !this.bodyBlocked(p.x, fy, p.body.h))) p.crouching = false;
+        if (p.crouching) {
+          p.running = false;
+          p.pushT = 0;
+          if (dir) {
+            if (p.flip !== dir < 0) p.turnT = TURN_FRAMES;
+            p.flip = dir < 0;
+            // crawl: 1 px every 2 frames, under anything 24 px tall
+            const nx = p.x + dir;
+            if (p.t & 1 && !this.bodyBlocked(nx + dir * p.body.halfW, fy, p.body.crouchH)) p.x = nx;
+          }
+        } else if (dir && !p.knifeT && !p.bazookaT) {
+          if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
           p.flip = dir < 0;
-          // crawl: 1 px every 2 frames, under anything 24 px tall
-          const nx = p.x + dir;
-          if (p.t & 1 && !this.bodyBlocked(nx + dir * p.body.halfW, fy, p.body.crouchH)) p.x = nx;
-        }
-      } else if (dir && !p.knifeT && !p.bazookaT) {
-        if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
-        p.flip = dir < 0;
-        this.walk(p, dir, p.running ? 2 : 1);
-      } else p.pushT = 0;
-      fy = p.y >> 4;
-      // down + jump drops through a ledge; jump otherwise
-      if (p.onGround && this.pressed(p, Input.B1)) {
-        if ((p.pad & Input.Down) && this.support(p.x, fy, false, p.body.halfW) === 1) {
-          p.dropT = DROP_FRAMES;
-          p.onGround = false;
-          p.vy = 0;
-          p.y += 16;
-        } else {
-          p.crouching = false;
-          p.vy = p.body.jumpVy;
-          p.onGround = false;
+          this.walk(p, dir, p.running ? 2 : 1);
+        } else p.pushT = 0;
+        fy = p.y >> 4;
+        // down + jump drops through a ledge; jump otherwise
+        if (p.onGround && this.pressed(p, Input.B1)) {
+          if ((p.pad & Input.Down) && this.support(p.x, fy, false, p.body.halfW) === 1) {
+            p.dropT = DROP_FRAMES;
+            p.onGround = false;
+            p.vy = 0;
+            p.y += 16;
+          } else {
+            p.crouching = false;
+            p.vy = p.body.jumpVy;
+            p.onGround = false;
+            this.events.push({ kind: "jump", player: p.index });
+          }
+        } else if (!p.onGround && this.pressed(p, Input.B1) && this.rules.doubleJump && !p.airJumps) {
+          p.vy = p.body.doubleVy;
+          p.airJumps = 1;
           this.events.push({ kind: "jump", player: p.index });
         }
-      } else if (!p.onGround && this.pressed(p, Input.B1) && this.rules.doubleJump && !p.airJumps) {
-        p.vy = p.body.doubleVy;
-        p.airJumps = 1;
-        this.events.push({ kind: "jump", player: p.index });
-      }
-      // jump kick: Down + B2 in the air
-      if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT && this.rules.weapons) {
-        p.kickT = KICK_FRAMES;
-        p.kickHit = false;
-        this.events.push({ kind: "kick", player: p.index });
-      }
-      // walking off an edge
-      if (p.onGround && !this.support(p.x, fy, false, p.body.halfW)) {
-        p.onGround = false;
-        p.vy = 0;
-      }
-      if (!p.onGround) {
-        const from = p.y >> 4;
-        const was = p.vy;
-        p.airT++;
-        p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
-        // the jet pack, after gravity
-        // it starts while falling (or after the double jump) and goes on while B1 is held
-        if (this.rules.jetpack && (p.pad & Input.B1) && p.fuel > 0 && (jetWas || was >= 0 || p.airJumps > 0)) {
-          // it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's)
-          if (p.vy > JET_MAX_UP) p.vy = Math.max(p.vy - JET_LIFT, JET_MAX_UP);
-          p.fuel--;
-          p.jetting = true;
+        // jump kick: Down + B2 in the air
+        if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT && this.rules.weapons) {
+          p.kickT = KICK_FRAMES;
+          p.kickHit = false;
+          this.events.push({ kind: "kick", player: p.index });
         }
-        const to = (p.y + p.vy) >> 4;
-        if (p.vy > 0) {
-          // a platform going up can meet the feet from below: it is found at its own top
-          const rose = p.dropT === 0 ? this.platformRose(p.x, from, p.body.halfW) : undefined;
-          for (let py = rose ? rose.y : from + 1; py <= Math.max(to, rose ? rose.y : to); py++)
-            if (this.support(p.x, py, p.dropT !== 0, p.body.halfW)) {
-              p.y = py * 16;
-              p.vy = 0;
-              p.onGround = true;
-              if (p.airT >= LAND_AFTER) p.landT = LAND_FRAMES;
-              p.airT = 0;
-              p.airJumps = 0;
-              p.fuel = JET_FUEL;
-              this.events.push({ kind: "land", player: p.index });
-              break;
-            }
-          if (!p.onGround) p.y += p.vy;
-        } else if (this.isSolid(this.cellAt(p.x, to - p.body.h))) p.vy = 0;
-        // the head hits only solid cells: one-way platforms let it through
-        else p.y += p.vy;
+        // walking off an edge
+        if (p.onGround && !this.support(p.x, fy, false, p.body.halfW)) {
+          p.onGround = false;
+          p.vy = 0;
+        }
+        if (!p.onGround) {
+          const from = p.y >> 4;
+          const was = p.vy;
+          p.airT++;
+          p.vy = Math.min(p.vy + GRAVITY, MAX_FALL);
+          // the jet pack, after gravity
+          // it starts while falling (or after the double jump) and goes on while B1 is held
+          if (this.rules.jetpack && (p.pad & Input.B1) && p.fuel > 0 && (jetWas || was >= 0 || p.airJumps > 0)) {
+            // it lifts up to JET_MAX_UP and never slows a faster rise (the double jump's)
+            if (p.vy > JET_MAX_UP) p.vy = Math.max(p.vy - JET_LIFT, JET_MAX_UP);
+            p.fuel--;
+            p.jetting = true;
+          }
+          const to = (p.y + p.vy) >> 4;
+          if (p.vy > 0) {
+            // a platform going up can meet the feet from below: it is found at its own top
+            const rose = p.dropT === 0 ? this.platformRose(p.x, from, p.body.halfW) : undefined;
+            for (let py = rose ? rose.y : from + 1; py <= Math.max(to, rose ? rose.y : to); py++)
+              if (this.support(p.x, py, p.dropT !== 0, p.body.halfW)) {
+                p.y = py * 16;
+                p.vy = 0;
+                p.onGround = true;
+                if (p.airT >= LAND_AFTER) p.landT = LAND_FRAMES;
+                p.airT = 0;
+                p.airJumps = 0;
+                p.fuel = JET_FUEL;
+                this.events.push({ kind: "land", player: p.index });
+                break;
+              }
+            if (!p.onGround) p.y += p.vy;
+          } else if (this.isSolid(this.cellAt(p.x, to - p.body.h))) p.vy = 0;
+          // the head hits only solid cells: one-way platforms let it through
+          else p.y += p.vy;
+        }
       }
     }
     fy = p.y >> 4;
@@ -1229,6 +1295,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     airJumps: 0,
     fuel: JET_FUEL,
     jetting: false,
+    hop: 0,
   };
 }
 
@@ -1262,6 +1329,7 @@ function spawn(p: Player, x: number, fy: number): void {
   p.landT = p.turnT = p.kickT = p.thumbsT = p.idleT = p.airT = p.airJumps = 0;
   p.kickHit = p.jetting = false;
   p.fuel = JET_FUEL;
+  p.hop = 0;
 }
 
 function num(v: unknown, fallback: number): number {

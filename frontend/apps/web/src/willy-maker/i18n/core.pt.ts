@@ -317,6 +317,10 @@ export const corePt: CoreMessages = {
     bandSpeed: (n: number) => `Faixa ${n}: velocidade %`,
     removeBand: (n: number) => `Remover a faixa ${n}`,
     addBand: "Adicionar uma faixa",
+    walk: "Faixa caminhável",
+    walkHelp: "A rua do beat 'em up: a faixa de y dos pés onde jogadores e inimigos andam; cima e baixo a percorrem. Aparece como uma faixa tracejada no nível.",
+    walkFrom: "Caminhável de y",
+    walkTo: "até y",
   },
   picture: {
     button: "Imagem…",

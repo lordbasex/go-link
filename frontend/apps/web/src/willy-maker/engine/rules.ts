@@ -178,6 +178,12 @@ export interface GameRules {
   weapons: boolean;
   /** Landing on an enemy's head takes it down and bounces the player (the platformer). */
   stomp: boolean;
+  /**
+   * The beat 'em up (genres.md): players walk a band of the floor in depth
+   * (up and down move away from and toward the screen), B2 hops, with no
+   * platforms, ladders or gravity between floors; actors are drawn by depth.
+   */
+  depth: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -202,10 +208,14 @@ export const DEFAULT_RULES: GameRules = {
   jetpack: false,
   weapons: true,
   stomp: false,
+  depth: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
 export const PLATFORMER_RULES: Partial<GameRules> = { weapons: false, stomp: true, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false };
+
+/** A new beat 'em up's rules (genres.md, phase 1): walking in depth, no guns, enemies that come for the players, an exit after every enemy is down. */
+export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true };
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
 export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
@@ -229,6 +239,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     jetpack: bool(r.jetpack, false),
     weapons: bool(r.weapons, true),
     stomp: bool(r.stomp, false),
+    depth: bool(r.depth, false),
   };
 }
 
