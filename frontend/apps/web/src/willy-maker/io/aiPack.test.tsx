@@ -238,6 +238,15 @@ describe("ROM docs", () => {
     expect(docs["hardware.md"]).toContain("CPS-1");
     expect(docs["file-format.md"]).toContain("project.json");
   });
+  it("states its limits before anything else (T-19)", () => {
+    const p = newProject({ title: "Dead Air", players: 1 });
+    const prompt = buildPrompt(p, reviewProject(p));
+    const first = prompt.split("\n## ")[1]!;
+    expect(first.startsWith("Before you start")).toBe(true);
+    expect(first).toContain("A browser is not enough");
+    expect(first).toContain("builds only go-link's prototype");
+    expect(first).toContain("rom/tools/willy-rom.mjs");
+  });
   it("answers experiment 1's P-01 to P-26 with this game's settings", () => {
     const p = newProject({ title: "Dead Air", players: 2 });
     p.settings.rules = { exitNeedsEnemies: true, touchHurts: true };

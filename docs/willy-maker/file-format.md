@@ -184,6 +184,7 @@ my-game.ai-pack.zip
 
 Filled in from the project and the review, in English, with these sections:
 
+0. **Before you start** (task T-19, lesson E-02): its limits first: a browser is not enough (a shell, the go-link repository, the m68k-elf tools, z80asm, Node and the core), `rom/tools/build.mjs` builds only the prototype, the shortcut (Create ROM in the Export tab, or `node rom/tools/willy-rom.mjs` on the project file) and that neither the pack nor a project file is a ROM.
 1. **The brief**: build an arcade ROM for go-link with the tools in `rom/`; the target board (CPS-1, 384 × 224 at 60 Hz, 68000), the set layout (`slammast` 4 × 3 or `captcomm` 4 × 2) and the mame2003-plus core; every byte original; which docs to follow (`docs/` in the pack).
 2. **The game**: title and author, the genre (its name and description; a genre with no engine yet says so and points to [genres.md](genres.md)), players, the levels in play order (id, size, camera, sections, map file), the characters (role, height, animations), the buttons and what each does (with 2 buttons, special is buttons 1 + 2), Start/Coin, the DIP switches and the menus.
 3. **Rules the engine keeps**: a table of the numbers in `engine/rules.ts` with the game's Rules card applied: body, gravity, jump, fall, ladders, how crates are climbed, run tap, drop-through, camera, weapons, enemies (hits, chase, shoot, touch), crates, lives and blinking, score, the exit, ports past the players, opposite directions.

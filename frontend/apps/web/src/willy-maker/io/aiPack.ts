@@ -265,6 +265,14 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
 
   line(`# ${p.title}: build the ROM`);
   line();
+  // its limits first (T-19, E-02: an outside AI with only a browser read the whole brief before finding it could not build anything)
+  line("## Before you start: what this pack can and cannot do");
+  line();
+  line("- **A browser is not enough.** Building from this pack needs a computer with a shell, the go-link repository (https://github.com/lordbasex/go-link, its `rom/` folder), the m68k-elf cross compiler and binutils, z80asm and Node 22.18 or newer; testing it needs the mame2003-plus core that a go-link device downloads.");
+  line("- **`rom/tools/build.mjs` builds only go-link's prototype**, its own fixed level, not this game. This pack gives you this game's data; reading it into a ROM is the work (step 3 below).");
+  line(`- **The shortcut:** Willy Maker's Export tab has **Create ROM**, which builds this game's ROM in the browser with go-link's engine (\`${layout.id}.zip\`), and \`node rom/tools/willy-rom.mjs GAME.willy.zip\` does the same from the project file (Save project) on the command line. Use this pack when you want a different engine or a different board.`);
+  line("- **Nothing here is a ROM:** a ROM set is the `.zip` of the board's files that the build makes; this pack, and a `.willy.zip` project file, are its sources.");
+  line();
   line(`You are building an arcade game ROM for go-link with the tools in the go-link repository (rom/). Target board: Capcom ${board.name} (${board.screen.w} × ${board.screen.h} at ${board.screen.fps} Hz, 68000 main CPU), laid out as the files of the \`${layout.id}\` set: ${layout.players} players × ${layout.buttons} buttons, run by the mame2003-plus core (MAME 0.78). Every byte must be original: no code, graphics, music or text from any existing game.`);
   line();
   const has = (name: string) => !docs || name in docs;
