@@ -10,7 +10,7 @@ import { BUILTIN_HERO, cloneProject, findLevel, layerGrid, type Level, type Leve
 import type { LevelView } from "../../engine";
 import { layoutOf } from "../../board/cps1";
 import { EditorStore } from "../../editor/store";
-import { jumpRowsFor, reachability } from "../../editor/reach";
+import { reachability, rowsForHeroes } from "../../editor/reach";
 import { rulesWith } from "../../engine/rules";
 import { applyPlayEdit, deleteObject, type PlayModeEdit } from "../../editor/ops";
 import { partById } from "../../editor/parts";
@@ -18,7 +18,7 @@ import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
 import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
-import { playerSlots, runTapMs, setPlayers } from "../../game/settings";
+import { heroHeights, levelHeroes, playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { BoardUsageChip } from "./BoardUsage";
 import { PictureDialog } from "./PictureDialog";
 import { PromptDialog, usePromptMessages } from "./PromptDialog";
@@ -186,7 +186,11 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
   }, [levelId]);
 
   const reach = useMemo(
-    () => (showReach ? reachability(level, jumpRowsFor(rulesWith(p.settings.rules))) : null),
+    () => {
+      if (!showReach) return null;
+      const rows = rowsForHeroes(rulesWith(p.settings.rules), levelHeroes(p).heights);
+      return reachability(level, rows.jumpRows, rows.bodyRows);
+    },
     // the version says when the level changed
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [level, version, showReach],
@@ -568,6 +572,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               lives={p.settings.dip.lives}
               rules={p.settings.rules}
               difficulty={p.settings.dip.difficulty}
+              heights={heroHeights(p)}
               runTapMs={runTapMs(p)}
               combo={layout.buttons < 3}
               variants={playerSlots(p).map((s) => s.variant)}

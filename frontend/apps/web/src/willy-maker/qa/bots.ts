@@ -9,6 +9,7 @@
 
 import { BODY_H, CELL, Game, Input, SCREEN_H, SCREEN_W, Tag, levelFromProject, rulesWith, type LevelView } from "../engine";
 import type { Level, Project } from "../model";
+import { heroHeights } from "../game/settings";
 
 export type BotId = "newcomer" | "masher" | "runPast" | "shooter" | "regret" | "fuzz";
 
@@ -147,6 +148,7 @@ function newGame(project: Project, view: LevelView, players: number): Game {
     lives: s.dip?.lives,
     rules: s.rules,
     difficulty: s.dip?.difficulty,
+    heights: heroHeights(project),
   });
 }
 

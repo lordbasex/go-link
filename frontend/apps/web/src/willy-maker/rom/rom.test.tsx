@@ -12,6 +12,7 @@ import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
+import { bodyFor } from "../engine/rules";
 
 // Create ROM end to end with the committed engine (public/willy-maker/engine,
 // rom/tools/engine.mjs): Game Spec v1's level packed, zipped and powered on
@@ -45,7 +46,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(4);
+    expect(u16(d, 4)).toBe(5);
     expect(u16(d, 6)).toBe(0x84);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -319,7 +320,11 @@ describe("Create ROM with the game's own hero", () => {
     // the palettes: the first free run that fits (recruit 1 is worn, recruit 2's four are free)
     expect(u16(d, l + 0x40)).toBe(8);
     expect(u16(d, l + 0x42)).toBe(3);
-    const words = [...Array(48)].map((_, i) => u16(d, l + 0x44 + i * 2));
+    // the body, scaled to the hero's height (T-26), then the palette words
+    const b = bodyFor(heroCharacter().height);
+    const s16 = (a: number) => (u16(d, a) << 16) >> 16;
+    expect([0x44, 0x46, 0x48, 0x4a, 0x4c, 0x4e, 0x50, 0x52, 0x54, 0x56, 0x58].map((o) => s16(l + o))).toEqual([b.h, b.crouchH, b.halfW, b.jumpVy, b.doubleVy, b.knifeReach, b.kickReach, b.knifeY, b.shotY, b.crouchShotY, b.rocketY]);
+    const words = [...Array(48)].map((_, i) => u16(d, l + 0x5a + i * 2));
     HERO_PALETTES.forEach((p, k) => p.colors.forEach((c, i) => expect(words[k * 16 + i]).toBe(toCps1([parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]).word)));
     expect(words[15]).toBe(0);
     // Anim { frames, count, fps }: idle skips its empty frame
@@ -417,6 +422,13 @@ describe("Create ROM with the game's own hero", () => {
       mkdirSync(dir, { recursive: true });
       writeFileSync(resolve(dir, "slammast.zip"), zip);
       writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+      // the same hero 96 px tall (T-26): its body and jump scale, for the harness
+      const tall = heroProject();
+      tall.characters[0]!.height = 96;
+      const tallDir = resolve(out, "hero96");
+      mkdirSync(tallDir, { recursive: true });
+      writeFileSync(resolve(tallDir, "slammast.zip"), await zipSet(packGame(tall, engine, (id) => pictures.get(id) ?? null, heroPics).files));
+      writeFileSync(resolve(tallDir, "slammast.symbols.json"), romSymbols(engine));
     }
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);

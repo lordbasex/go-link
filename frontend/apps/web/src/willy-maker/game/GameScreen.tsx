@@ -15,7 +15,7 @@ import { IconWarn } from "../ui/icons";
 import { StatusBadge } from "../ui/molecules";
 import { partSupport } from "../editor/support";
 import { ControllerPanel } from "./ControllerPanel";
-import { actionLabel, actionRows, heroChoices, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRules, setRunTap, slotResolves } from "./settings";
+import { actionLabel, actionRows, heroChoices, levelHeroes, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRules, setRunTap, slotResolves } from "./settings";
 import { fill, issueText, useGameText, useMenusText } from "./texts";
 import "./game.css";
 
@@ -243,7 +243,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {flag("doubleJump")}
       {flag("jetpack")}
       <p className="wm-dim wm-small" role="status">
-        {fill(t.rules.jump, { ...measureJump(r) })}
+        {fill(t.rules.jump, { ...measureJump(r, Math.min(...levelHeroes(store.project).heights)) })}
       </p>
       <div className="wm-game-stack">
         <span className="wm-field-label">{t.rules.crateClimb}</span>

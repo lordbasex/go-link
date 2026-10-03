@@ -10,7 +10,8 @@
 
 import { objectLayer, OBJECT_TYPES, tagGrid, TAG_NUMBER, type Level, type Project } from "../../model";
 import { boardOf, ENGINE_USE, isBoardColor, layerPaletteCount, layoutOf, snapColor, type BoardProfile } from "../../board/cps1";
-import { jumpRowsFor, leftBehind, reachability, routes } from "../reach";
+import { leftBehind, reachability, routes, rowsForHeroes } from "../reach";
+import { heroHeights, levelHeroes } from "../../game/settings";
 import { rulesWith } from "../../engine/rules";
 import { Game } from "../../engine/game";
 import { measureJump } from "../../engine/jump";
@@ -190,12 +191,13 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     // where the engine really puts each start: on the first free floor under it (T-09)
     let game: Game | null = null;
     try {
-      game = new Game(levelFromProject(level));
+      game = new Game(levelFromProject(level), { heights: heroHeights(p) });
     } catch {
       game = null;
     }
     for (const st of game ? items.filter((o) => o.type === "player_start") : []) {
-      const fy = game!.groundBelow(st.x, st.y - 16);
+      const pl = game!.players[Math.max(0, Math.min(3, Number(st.player ?? 1) - 1))]!;
+      const fy = game!.groundBelow(st.x, st.y - 16, pl.body);
       if (fy - st.y > 32 || fy >= h - 16)
         out.push({ id: "level.start-floor", severity: "warning", msg: "level.start-floor", params: { level: name, player: Number(st.player ?? 1), d: Math.max(0, fy - st.y) }, target: go(st.x, st.y, st.name) });
     }
@@ -224,7 +226,8 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     if (!items.some((o) => o.type === "player_start")) return;
     let reach: ReturnType<typeof reachability>;
     try {
-      reach = reachability(level, jumpRowsFor(rulesWith(p.settings.rules)));
+      const rows = rowsForHeroes(rulesWith(p.settings.rules), levelHeroes(p).heights);
+      reach = reachability(level, rows.jumpRows, rows.bodyRows);
     } catch {
       return;
     }
@@ -236,7 +239,7 @@ function levelChecks(p: Project, board: BoardProfile): Check[] {
     if (reach.ledges.length) {
       reachOk = false;
       const l = reach.ledges[0]!;
-      out.push({ id: "level.ledge", severity: "warning", msg: "level.ledge", params: { level: name, n: reach.ledges.length, x: l.x0, h: l.rise, peak: measureJump(p.settings.rules).peak }, target: go((l.x0 + l.x1) / 2, l.y) });
+      out.push({ id: "level.ledge", severity: "warning", msg: "level.ledge", params: { level: name, n: reach.ledges.length, x: l.x0, h: l.rise, peak: Math.min(...levelHeroes(p).heights.map((h) => measureJump(p.settings.rules, h).peak)) }, target: go((l.x0 + l.x1) / 2, l.y) });
     }
     // the routes: places with no way on, the forward-only camera, the timer
     if (!lostExit) {

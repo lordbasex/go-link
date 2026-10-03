@@ -63,6 +63,7 @@ static const struct wm_look willy_look = {
 	&anim_willy_idle, &anim_willy_run, &anim_willy_jump, &anim_willy_knife, &anim_willy_machine_gun, &anim_willy_bazooka,
 	&anim_willy_crouch, &anim_willy_crawl, &anim_willy_idle, &anim_willy_turn, &anim_willy_jump_kick,
 	&anim_willy_thumbs_up, &anim_willy_thumbs_up, &anim_willy_yawn, &anim_willy_jump, &anim_willy_jump, 0, 0,
+	40, 24, 5, -112, -96, 18, 24, 20, 27, 12, 30, /* his body: the prototype's numbers (BODY_H, CROUCH_H, HALF_W, JUMP_VY…) */
 };
 
 /* player slot k's own look (wm_look), or 0 for Willy */
@@ -624,14 +625,14 @@ static int is_ledge(int c, int r)
 	return t == T_ONEWAY || (t == T_LADDER && cell(c, r - 1) != T_LADDER);
 }
 
-static int support(s32 x, s32 fy, int drop)
+static int support_w(s32 x, s32 fy, int drop, int half)
 {
 	int r, c0, c1, best = 0, c;
 	if (fy & 15)
 		return 0;
 	r = (int)(fy >> 4);
-	c0 = (int)((x - HALF_W) >> 4);
-	c1 = (int)((x + HALF_W) >> 4);
+	c0 = (int)((x - half) >> 4);
+	c1 = (int)((x + half) >> 4);
 	for (c = c0; c <= c1; c++) {
 		if (is_solid(cell(c, r)))
 			return 2;
@@ -639,6 +640,11 @@ static int support(s32 x, s32 fy, int drop)
 			best = 1;
 	}
 	return best;
+}
+
+static int support(s32 x, s32 fy, int drop)
+{
+	return support_w(x, fy, drop, HALF_W);
 }
 
 /* a body h px tall (BODY_H standing, CROUCH_H crouched) */
@@ -657,15 +663,20 @@ static int body_blocked(s32 x, s32 fy)
 }
 
 /* the first place feet can stand at x, searching down from y (px) */
-static s32 ground_below(s32 x, s32 y)
+static s32 ground_below_b(s32 x, s32 y, const struct wm_look *b)
 {
 	s32 fy = ((y + 15) >> 4) << 4;
 	if (fy < 16)
 		fy = 16;
 	for (; fy < level_h; fy += 16)
-		if (support(x, fy, 0) && !body_blocked(x, fy))
+		if (support_w(x, fy, 0, b->half_w) && !body_blocked_h(x, fy, b->body_h))
 			return fy;
 	return level_h - 16;
+}
+
+static s32 ground_below(s32 x, s32 y)
+{
+	return ground_below_b(x, y, &willy_look);
 }
 
 static void clear_cell(int c, int r)
@@ -824,7 +835,7 @@ static const s8 beside[5] = { -24, 24, -48, 48, 0 };
 
 /* a place for a player near x, on screen: x and 24 and 48 px to each side,
    on the first free floor from y down to max_y; else the old search */
-static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, s32 *ox, s32 *ofy)
+static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, const struct wm_look *b, s32 *ox, s32 *ofy)
 {
 	s32 lo = cam_x + 16, hi = cam_x + SCREEN_W - 16, cx, fy;
 	int i;
@@ -836,7 +847,7 @@ static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, s32 *ox, s32 *of
 		if (fy < 16)
 			fy = 16;
 		for (; fy <= max_y && fy < level_h; fy += 16)
-			if (support(cx, fy, 0) && !body_blocked(cx, fy)) {
+			if (support_w(cx, fy, 0, b->half_w) && !body_blocked_h(cx, fy, b->body_h)) {
 				*ox = cx;
 				*ofy = fy;
 				return;
@@ -844,7 +855,7 @@ static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, s32 *ox, s32 *of
 	}
 	cx = x < lo ? lo : x > hi ? hi : x;
 	*ox = cx;
-	*ofy = ground_below(cx, y);
+	*ofy = ground_below_b(cx, y, b);
 }
 
 /* a player comes in: at their start, or next to a player already in */
@@ -860,13 +871,13 @@ static void player_join(int k)
 		}
 	if (lead < 0 && D->start_x[k] >= 0) {
 		x = D->start_x[k];
-		fy = ground_below(x, D->start_y[k] - 16);
+		fy = ground_below_b(x, D->start_y[k] - 16, p->look);
 	} else if (lead >= 0) {
 		/* beside the player already in, on a floor they can stand on (J-06) */
 		s32 lf = pl[lead].y >> 4;
-		place_near(pl[lead].x, lf - 48, lf + 64, beside, &x, &fy);
+		place_near(pl[lead].x, lf - 48, lf + 64, beside, p->look, &x, &fy);
 	} else
-		place_near(cam_x + 64 + k * 24, cam_y, cam_y + SCREEN_H, around, &x, &fy);
+		place_near(cam_x + 64 + k * 24, cam_y, cam_y + SCREEN_H, around, p->look, &x, &fy);
 	player_spawn(p, x, fy);
 	p->energy = R->energy;
 	p->hurt = R->hurt_frames;
@@ -882,7 +893,7 @@ static void respawn_near_camera(struct player *p)
 		x = cam_x + 64;
 	if (x > cam_x + SCREEN_W - 64)
 		x = cam_x + SCREEN_W - 64;
-	place_near(x, cam_y, cam_y + SCREEN_H, around, &x, &fy);
+	place_near(x, cam_y, cam_y + SCREEN_H, around, p->look, &x, &fy);
 	player_spawn(p, x, fy);
 	p->energy = energy;
 	p->hurt = hurt;
@@ -979,8 +990,8 @@ static void walk(struct player *p, int dir, int speed)
 	int n;
 	for (n = 0; n < speed; n++) {
 		s32 nx = p->x + dir;
-		s32 front = nx + dir * HALF_W;
-		if (!body_blocked(front, fy)) {
+		s32 front = nx + dir * p->look->half_w;
+		if (!body_blocked_h(front, fy, p->look->body_h)) {
 			p->x = nx;
 			p->push_t = 0;
 			continue;
@@ -991,7 +1002,7 @@ static void walk(struct player *p, int dir, int speed)
 			s32 top = fy;
 			while (fy - top < STEP_UP + 16 && is_solid(cell_at(front, top - 1)))
 				top = ((top - 1) >> 4) << 4;
-			if (fy - top <= STEP_UP && !body_blocked(front, top) && !body_blocked(p->x, top)) {
+			if (fy - top <= STEP_UP && !body_blocked_h(front, top, p->look->body_h) && !body_blocked_h(p->x, top, p->look->body_h)) {
 				if (++p->push_t >= PUSH_FRAMES) {
 					p->y = top * 16;
 					p->x = nx;
@@ -1066,7 +1077,7 @@ static void update_player(struct player *p)
 		} else if (p->pad & BTN_DOWN) {
 			p->y += CLIMB_SPEED;
 			fy = p->y >> 4;
-			if (support(p->x, (fy >> 4) << 4, 1) == 2 && (fy & 15) < 2) {
+			if (support_w(p->x, (fy >> 4) << 4, 1, p->look->half_w) == 2 && (fy & 15) < 2) {
 				p->y = ((fy >> 4) << 4) * 16;
 				p->climbing = 0;
 				p->on_ground = 1;
@@ -1077,7 +1088,7 @@ static void update_player(struct player *p)
 			p->climbing = 0;
 		if (PRESSED(p, BTN_1)) {
 			p->climbing = 0;
-			p->vy = JUMP_VY / 2;
+			p->vy = p->look->jump_vy / 2;
 		}
 	} else {
 		/* crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit */
@@ -1085,7 +1096,7 @@ static void update_player(struct player *p)
 			if (!p->crouch)
 				p->crouch_t = 0;
 			p->crouch = 1;
-		} else if (p->crouch && (!p->on_ground || !body_blocked(p->x, fy)))
+		} else if (p->crouch && (!p->on_ground || !body_blocked_h(p->x, fy, p->look->body_h)))
 			p->crouch = 0;
 		if (p->crouch) {
 			p->crouch_t++;
@@ -1097,7 +1108,7 @@ static void update_player(struct player *p)
 					p->turn_t = TURN_FRAMES;
 				p->flip = dir < 0;
 				/* crawl: 1 px every 2 frames, under anything CROUCH_H tall */
-				if ((p->t & 1) && !body_blocked_h(nx + dir * HALF_W, fy, CROUCH_H))
+				if ((p->t & 1) && !body_blocked_h(nx + dir * p->look->half_w, fy, p->look->crouch_h))
 					p->x = nx;
 			}
 		} else if (dir && !p->knife_t && !p->bazooka_t) {
@@ -1109,18 +1120,18 @@ static void update_player(struct player *p)
 			p->push_t = 0;
 		fy = p->y >> 4;
 		if (p->on_ground && PRESSED(p, BTN_1)) {
-			if ((p->pad & BTN_DOWN) && support(p->x, fy, 0) == 1) {
+			if ((p->pad & BTN_DOWN) && support_w(p->x, fy, 0, p->look->half_w) == 1) {
 				p->drop_t = DROP_FRAMES;
 				p->on_ground = 0;
 				p->vy = 0;
 				p->y += 16;
 			} else {
 				p->crouch = 0;
-				p->vy = JUMP_VY;
+				p->vy = p->look->jump_vy;
 				p->on_ground = 0;
 			}
 		} else if (!p->on_ground && PRESSED(p, BTN_1) && (D->flags & WM_F_DOUBLE_JUMP) && !p->air_jumps) {
-			p->vy = DOUBLE_JUMP_VY;
+			p->vy = p->look->double_vy;
 			p->air_jumps = 1;
 		}
 		/* jump kick: Down + B2 in the air */
@@ -1128,7 +1139,7 @@ static void update_player(struct player *p)
 			p->kick_t = KICK_FRAMES;
 			p->kick_hit = 0;
 		}
-		if (p->on_ground && !support(p->x, fy, 0)) {
+		if (p->on_ground && !support_w(p->x, fy, 0, p->look->half_w)) {
 			p->on_ground = 0;
 			p->vy = 0;
 		}
@@ -1153,7 +1164,7 @@ static void update_player(struct player *p)
 			to = (p->y + p->vy) >> 4;
 			if (p->vy > 0) {
 				for (py = from + 1; py <= to; py++)
-					if (support(p->x, py, p->drop_t != 0)) {
+					if (support_w(p->x, py, p->drop_t != 0, p->look->half_w)) {
 						p->y = py * 16;
 						p->vy = 0;
 						p->on_ground = 1;
@@ -1167,7 +1178,7 @@ static void update_player(struct player *p)
 				if (!p->on_ground)
 					p->y += p->vy;
 			} else {
-				if (is_solid(cell_at(p->x, to - BODY_H)))
+				if (is_solid(cell_at(p->x, to - p->look->body_h)))
 					p->vy = 0;
 				else
 					p->y += p->vy;
@@ -1179,7 +1190,7 @@ static void update_player(struct player *p)
 		hurt(p, 1); /* fell out */
 		return;
 	}
-	if (cell_at(p->x, fy - 1) == T_HAZARD || cell_at(p->x, fy - BODY_H / 2) == T_HAZARD)
+	if (cell_at(p->x, fy - 1) == T_HAZARD || cell_at(p->x, fy - (p->look->body_h >> 1)) == T_HAZARD)
 		hurt(p, 0);
 	if (!p->active)
 		return;
@@ -1205,7 +1216,7 @@ static void update_player(struct player *p)
 		p->rocket.live = 1;
 		p->rocket.dir = p->flip ? -1 : 1;
 		p->rocket.x = (s16)(p->x + (p->flip ? -30 : 10));
-		p->rocket.y = (s16)(fy - 30);
+		p->rocket.y = (s16)(fy - p->look->rocket_y);
 		p->rocket.speed = 2;
 		p->bazooka_t = BAZOOKA_FRAMES;
 		if (--p->ammo == 0)
@@ -1232,7 +1243,7 @@ static void update_player(struct player *p)
 	if (p->knife_t)
 		p->knife_t--;
 	if (PRESSED(p, BTN_2) && p->on_ground && !p->climbing) {
-		int ei = enemy_at(p->x + (p->flip ? -KNIFE_REACH : KNIFE_REACH), fy - 20, 16);
+		int ei = enemy_at(p->x + (p->flip ? -p->look->knife_reach : p->look->knife_reach), fy - p->look->knife_y, 16);
 		if (ei >= 0) {
 			p->knife_t = KNIFE_FRAMES;
 			en_damage(ei, 2, p);
@@ -1247,7 +1258,7 @@ static void update_player(struct player *p)
 				p->shots[i].live = 1;
 				p->shots[i].dir = p->flip ? -1 : 1;
 				p->shots[i].x = (s16)(p->x + (p->flip ? -20 : 20));
-				p->shots[i].y = (s16)(fy - (p->crouch ? CROUCH_SHOT_Y : 27));
+				p->shots[i].y = (s16)(fy - (p->crouch ? p->look->crouch_shot_y : p->look->shot_y));
 				p->fire_wait = FIRE_EVERY;
 				break;
 			}
@@ -1255,7 +1266,7 @@ static void update_player(struct player *p)
 	if (p->kick_t && !p->kick_hit)
 		for (i = 0; i < nen; i++) {
 			s32 dx = (en[i].x - p->x) * (p->flip ? -1 : 1);
-			if (en_alive(i) && dx >= 0 && dx <= KICK_REACH && en[i].fy - 40 < fy && en[i].fy > fy - BODY_H) {
+			if (en_alive(i) && dx >= 0 && dx <= p->look->kick_reach && en[i].fy - 40 < fy && en[i].fy > fy - p->look->body_h) {
 				p->kick_hit = 1;
 				en_damage(i, 2, p);
 				break;
@@ -1364,7 +1375,7 @@ static void update_enemies(int playing)
 		for (k = 0; k < nplayers; k++) {
 			struct player *p = &pl[k];
 			s32 fy = p->y >> 4, dx = p->x - s->x;
-			if (p->active && dx > -8 && dx < 8 && s->y <= fy && s->y > fy - (p->crouch ? CROUCH_H : BODY_H)) {
+			if (p->active && dx > -8 && dx < 8 && s->y <= fy && s->y > fy - (p->crouch ? p->look->crouch_h : p->look->body_h)) {
 				hurt(p, 0);
 				s->live = 0;
 				break;
@@ -1417,8 +1428,8 @@ static void update_camera(int snap)
 				min_x = pl[k].x;
 			if (pl[k].x > max_x)
 				max_x = pl[k].x;
-			if (fy - BODY_H < top)
-				top = fy - BODY_H;
+			if (fy - pl[k].look->body_h < top)
+				top = fy - pl[k].look->body_h;
 			if (fy > feet)
 				feet = fy;
 		}

@@ -9,6 +9,7 @@
 // palette per tile. Pure: the picture comes in decoded.
 
 import { type GfxRegion, type Pens, toCps1 } from "@go-link/cps1";
+import { bodyFor, type Body } from "../engine/rules";
 import { BUILTIN_HERO, type Character, type Frame, type PlayerSlot, type Project } from "../model";
 import type { Picture } from "./pack";
 
@@ -77,6 +78,8 @@ export interface Look {
   pal: number;
   /** Its zone palettes as CPS-1 words, 16 each (pen 15 transparent). */
   palettes: number[][];
+  /** Its body, scaled to the hero's height (T-26), written after the palette count. */
+  body: Body;
 }
 
 export interface LooksPlan {
@@ -299,7 +302,7 @@ export function planLooks(
       return words;
     });
     if (!palettes.length) palettes.push(new Array<number>(16).fill(0));
-    return { character: ch.id, name, anims, cut, pal, palettes };
+    return { character: ch.id, name, anims, cut, pal, palettes, body: bodyFor(ch.height) };
   };
 
   const shirts = new Set<string>();

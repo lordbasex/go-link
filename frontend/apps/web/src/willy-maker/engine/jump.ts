@@ -20,14 +20,14 @@ export interface JumpMeasure {
 }
 
 const COLS = 8;
-const ROWS = 24;
+const ROWS = 48;
 const FLOOR = ROWS - 2;
 
-function rise(rules: GameRules, pad: (frame: number) => number): number {
+function rise(rules: GameRules, pad: (frame: number) => number, height?: number): number {
   const tags = new Uint8Array(COLS * ROWS);
   for (let c = 0; c < COLS; c++) tags[FLOOR * COLS + c] = Tag.Solid;
   const level = { name: "jump", width: COLS * CELL, height: ROWS * CELL, tags, objects: [{ name: "p1", type: "player_start", x: 64, y: FLOOR * CELL, player: 1 }] };
-  const g = new Game(level, { rules, maxPlayers: 1 });
+  const g = new Game(level, { rules, maxPlayers: 1, heights: [height] });
   const p = g.players[0]!;
   const floor = p.y;
   let top = floor;
@@ -41,19 +41,19 @@ function rise(rules: GameRules, pad: (frame: number) => number): number {
 
 const cache = new Map<string, JumpMeasure>();
 
-/** The jump this game's rules give, measured on play mode's engine (the ROM engine plays the same). */
-export function measureJump(saved?: Partial<GameRules>): JumpMeasure {
+/** The jump this game's rules give a hero this tall (Willy's 44 px by default), measured on play mode's engine (the ROM engine plays the same). */
+export function measureJump(saved?: Partial<GameRules>, height?: number): JumpMeasure {
   const rules = rulesWith(saved);
-  const key = `${rules.doubleJump}:${rules.jetpack}`;
+  const key = `${rules.doubleJump}:${rules.jetpack}:${height ?? 44}`;
   const known = cache.get(key);
   if (known) return known;
-  let peak = rise(rules, (f) => (f === 0 ? Input.B1 : 0));
+  let peak = rise(rules, (f) => (f === 0 ? Input.B1 : 0), height);
   // a second press in the air, at every frame it could come
-  if (rules.doubleJump) for (let k = 2; k < 60; k++) peak = Math.max(peak, rise(rules, (f) => (f === 0 || f === k ? Input.B1 : 0)));
+  if (rules.doubleJump) for (let k = 2; k < 60; k++) peak = Math.max(peak, rise(rules, (f) => (f === 0 || f === k ? Input.B1 : 0), height));
   // B1 held, and held again after a second press
   if (rules.jetpack) {
-    peak = Math.max(peak, rise(rules, () => Input.B1));
-    if (rules.doubleJump) for (let k = 2; k < 60; k += 2) peak = Math.max(peak, rise(rules, (f) => (f === 0 || f >= k ? Input.B1 : 0)));
+    peak = Math.max(peak, rise(rules, () => Input.B1, height));
+    if (rules.doubleJump) for (let k = 2; k < 60; k += 2) peak = Math.max(peak, rise(rules, (f) => (f === 0 || f >= k ? Input.B1 : 0), height));
   }
   const rows = Math.floor(peak / CELL);
   const out = { peak: Math.round(peak * 10) / 10, rows, ledge: rows * CELL };

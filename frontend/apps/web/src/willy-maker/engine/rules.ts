@@ -55,6 +55,59 @@ export const KNIFE_REACH = 18;
 export const BAZOOKA_FRAMES = 24;
 export const BAZOOKA_AMMO = 3;
 
+/**
+ * A player's body, scaled to the hero's height (experiment 1, T-26: heroes
+ * taller than Willy's 44 px, toward Final Fight's scale). Willy is the
+ * prototype's numbers exactly; a taller hero gets a taller and wider body,
+ * a crouch, a reach and shots at its own heights, and a jump that rises in
+ * proportion (the start speed grows with the square root of the scale).
+ * The ROM engine gets the same numbers from the packer (wm_look).
+ */
+export interface Body {
+  /** The hero's drawn height, px. */
+  height: number;
+  /** Standing and crouched body heights, half width at the feet (px). */
+  h: number;
+  crouchH: number;
+  halfW: number;
+  /** Jump and double-jump start speeds, 1/16 px per frame. */
+  jumpVy: number;
+  doubleVy: number;
+  /** Knife and jump-kick reach (px), and the heights over the feet of the knife, a shot, a crouched shot and a rocket. */
+  knifeReach: number;
+  kickReach: number;
+  knifeY: number;
+  shotY: number;
+  crouchShotY: number;
+  rocketY: number;
+}
+
+export const HERO_HEIGHT = 44;
+
+export function bodyFor(height = HERO_HEIGHT): Body {
+  const hgt = Math.max(24, Math.min(192, Math.round(height) || HERO_HEIGHT));
+  const s = hgt / HERO_HEIGHT;
+  const r = (v: number) => Math.round(v * s);
+  const q = Math.sqrt(s);
+  return {
+    height: hgt,
+    h: r(BODY_H),
+    crouchH: r(CROUCH_H),
+    halfW: Math.max(3, r(HALF_W)),
+    jumpVy: Math.round(JUMP_VY * q),
+    doubleVy: Math.round(DOUBLE_JUMP_VY * q),
+    knifeReach: r(KNIFE_REACH),
+    kickReach: r(KICK_REACH),
+    knifeY: r(20),
+    shotY: r(27),
+    crouchShotY: r(CROUCH_SHOT_Y),
+    rocketY: r(30),
+  };
+}
+
+/** Willy's body: the prototype's numbers. */
+export const WILLY_BODY: Body = bodyFor(HERO_HEIGHT);
+
 /** Enemies. */
 export const ENEMY_HP = 4;
 export const ENEMY_SIGHT = 170;

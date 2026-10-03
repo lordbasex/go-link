@@ -44,6 +44,8 @@ export interface PlayViewProps {
   rules?: Partial<GameRules>;
   /** The DIP switch's difficulty. */
   difficulty?: Difficulty;
+  /** Each player's hero height (T-26: the body scales to it). */
+  heights?: number[];
   /** The double-tap window for running, in milliseconds (250 by default). */
   runTapMs?: number;
   /** A 2-button layout: both buttons together are the special. */
@@ -97,7 +99,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -106,11 +108,11 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   const make = useCallback(
     (startAt?: { x: number; y: number }) => {
       const runTapFrames = runTapMs === undefined ? undefined : Math.max(1, Math.round((runTapMs * 60) / 1000));
-      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules, difficulty });
+      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules, difficulty, heights });
       for (const e of edits.current) applyEdit(g, e);
       return g;
     },
-    [level, players, maxPlayers, lives, runTapMs, rules, difficulty],
+    [level, players, maxPlayers, lives, runTapMs, rules, difficulty, heights],
   );
   const game = useRef<Game>(null as unknown as Game);
   if (!game.current) game.current = make();

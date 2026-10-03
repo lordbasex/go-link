@@ -12,6 +12,7 @@ import { CELL, DEFAULT_GENRE, genreAvailable, isGenre, layerGrid, TAGS, type Ass
 import { boardOf, layoutOf } from "../board/cps1";
 import * as R from "../engine/rules";
 import { measureJump } from "../engine/jump";
+import { levelHeroes } from "../game/settings";
 import { checkText, REQUIRED_ANIMS, type Review } from "../editor/validate";
 import { exportEn } from "../i18n/export.en";
 import { coreEn } from "../i18n/core.en";
@@ -297,7 +298,7 @@ export function buildPrompt(p: Project, review: Review, notes: { missingPictures
   const levels = order.length ? order : p.levels;
   const b = (s.buttons ?? {}) as unknown as Record<string, string>;
   const G = R.rulesWith(s.rules);
-  const J = measureJump(G);
+  const J = measureJump(G, Math.min(...levelHeroes(p).heights));
   const L: string[] = [];
   const line = (t = "") => L.push(t);
 

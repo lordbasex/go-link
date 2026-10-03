@@ -23,9 +23,7 @@ import {
   GRAVITY,
   HALF_W,
   Input,
-  JUMP_VY,
   KNIFE_FRAMES,
-  KNIFE_REACH,
   LIVES,
   MAX_FALL,
   PUSH_FRAMES,
@@ -36,20 +34,19 @@ import {
   SHOT_SPEED,
   STEP_UP,
   Tag,
-  CROUCH_H,
-  CROUCH_SHOT_Y,
-  DOUBLE_JUMP_VY,
   JET_FUEL,
   JET_LIFT,
   JET_MAX_UP,
   KICK_FRAMES,
-  KICK_REACH,
   LAND_AFTER,
   LAND_FRAMES,
   THUMBS_FRAMES,
   TURN_FRAMES,
   cancelOpposites,
   rulesWith,
+  bodyFor,
+  WILLY_BODY,
+  type Body,
   type Difficulty,
   type GameRules,
 } from "./rules";
@@ -70,6 +67,8 @@ export interface Rocket extends Shot {
 
 export interface Player {
   index: number;
+  /** The body scaled to this player's hero (T-26). */
+  body: Body;
   active: boolean;
   pad: number;
   last: number;
@@ -197,6 +196,8 @@ export interface GameOptions {
   rules?: Partial<GameRules>;
   /** The DIP switch's difficulty (normal when missing). */
   difficulty?: Difficulty;
+  /** Each player's hero height in px (T-26: the body scales to it); 44, Willy's, when missing. */
+  heights?: (number | undefined)[];
 }
 
 export class Game {
@@ -245,7 +246,7 @@ export class Game {
     this.rules = rulesWith(opts.rules);
     this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
     this.shotSpeed = difficultyOf(opts.difficulty).shotSpeed;
-    for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives));
+    for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives, opts.heights?.[i] ? bodyFor(opts.heights[i]) : WILLY_BODY));
     this.loadObjects(level.objects);
     const n = Math.max(1, Math.min(this.maxPlayers, opts.players ?? 1));
     for (let i = 0; i < n; i++) this.join(i);
@@ -333,11 +334,11 @@ export class Game {
   }
 
   /** Can feet at y (px, on a cell top) stand at x? 2 = solid, 1 = ledge, 0 = no. */
-  support(x: number, fy: number, drop: boolean): number {
+  support(x: number, fy: number, drop: boolean, halfW = HALF_W): number {
     if (fy % CELL !== 0) return 0;
     const r = fy / CELL;
-    const c0 = Math.floor((x - HALF_W) / CELL);
-    const c1 = Math.floor((x + HALF_W) / CELL);
+    const c0 = Math.floor((x - halfW) / CELL);
+    const c1 = Math.floor((x + halfW) / CELL);
     let best = 0;
     for (let c = c0; c <= c1; c++) {
       if (this.isSolid(this.cell(c, r))) return 2;
@@ -352,9 +353,9 @@ export class Game {
   }
 
   /** The first place feet can stand at x, searching down from y (px). */
-  groundBelow(x: number, y: number): number {
+  groundBelow(x: number, y: number, b: Body = WILLY_BODY): number {
     for (let fy = Math.max(CELL, Math.ceil(y / CELL) * CELL); fy < this.level.height; fy += CELL) {
-      if (this.support(x, fy, false) && !this.bodyBlocked(x, fy)) return fy;
+      if (this.support(x, fy, false, b.halfW) && !this.bodyBlocked(x, fy, b.h)) return fy;
     }
     return this.level.height - CELL;
   }
@@ -364,17 +365,17 @@ export class Game {
    * to each side (`beside` starts 24 px to the left and tries x last), on
    * the first free floor from y down to maxY. Falls back to the old search.
    */
-  placeNear(x: number, y: number, maxY: number, beside = false): { x: number; fy: number } {
+  placeNear(x: number, y: number, maxY: number, beside = false, b: Body = WILLY_BODY): { x: number; fy: number } {
     const lo = this.camX + 16;
     const hi = this.camX + SCREEN_W - 16;
     for (const d of beside ? BESIDE : AROUND) {
       const cx = x + d;
       if (cx < lo || cx > hi) continue;
       for (let fy = Math.max(CELL, Math.ceil(y / CELL) * CELL); fy <= maxY && fy < this.level.height; fy += CELL)
-        if (this.support(cx, fy, false) && !this.bodyBlocked(cx, fy)) return { x: cx, fy };
+        if (this.support(cx, fy, false, b.halfW) && !this.bodyBlocked(cx, fy, b.h)) return { x: cx, fy };
     }
     const cx = Math.max(lo, Math.min(hi, x));
-    return { x: cx, fy: this.groundBelow(cx, y) };
+    return { x: cx, fy: this.groundBelow(cx, y, b) };
   }
 
   /** A hit on a crate or breakable wall at cell (c, r); true if something took it. */
@@ -439,13 +440,13 @@ export class Game {
     let fy: number;
     if (start && !lead) {
       x = start.x + (this.startAt ? i * 24 : 0);
-      fy = this.groundBelow(x, start.y - CELL);
+      fy = this.groundBelow(x, start.y - CELL, p.body);
     } else if (lead) {
       // beside the player already in, on a floor they can stand on (J-06)
       const leadFeet = lead.y >> 4;
-      ({ x, fy } = this.placeNear(lead.x, leadFeet - 48, leadFeet + 64, true));
+      ({ x, fy } = this.placeNear(lead.x, leadFeet - 48, leadFeet + 64, true, p.body));
     } else {
-      ({ x, fy } = this.placeNear(this.camX + 64 + i * 24, this.camY, this.camY + SCREEN_H));
+      ({ x, fy } = this.placeNear(this.camX + 64 + i * 24, this.camY, this.camY + SCREEN_H, false, p.body));
     }
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
@@ -456,7 +457,7 @@ export class Game {
     if (!p.active || (p.invulnerable && !fell)) return;
     if (p.invulnerable) {
       // fell out while protected: back on the ground, no life lost
-      const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H);
+      const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
       spawn(p, at.x, at.fy);
       return;
     }
@@ -468,7 +469,7 @@ export class Game {
     }
     p.invulnerable = this.rules.hurtFrames;
     if (!fell && !this.rules.respawnOnHurt) return;
-    const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H);
+    const at = this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
     const keep = p.invulnerable;
     spawn(p, at.x, at.fy);
     p.invulnerable = keep;
@@ -482,8 +483,8 @@ export class Game {
     const fy = p.y >> 4;
     for (let n = 0; n < speed; n++) {
       const nx = p.x + dir;
-      const front = nx + dir * HALF_W;
-      if (!this.bodyBlocked(front, fy)) {
+      const front = nx + dir * p.body.halfW;
+      if (!this.bodyBlocked(front, fy, p.body.h)) {
         p.x = nx;
         p.pushT = 0;
         continue;
@@ -493,7 +494,7 @@ export class Game {
       if (p.onGround && this.rules.crateClimb === "push") {
         let top = fy;
         while (fy - top < STEP_UP + CELL && this.isSolid(this.cellAt(front, top - 1))) top = Math.floor((top - 1) / CELL) * CELL;
-        if (fy - top <= STEP_UP && !this.bodyBlocked(front, top) && !this.bodyBlocked(p.x, top)) {
+        if (fy - top <= STEP_UP && !this.bodyBlocked(front, top, p.body.h) && !this.bodyBlocked(p.x, top, p.body.h)) {
           if (++p.pushT >= PUSH_FRAMES) {
             p.y = top * 16;
             p.x = nx;
@@ -555,7 +556,7 @@ export class Game {
         p.y += CLIMB_SPEED;
         fy = p.y >> 4;
         const cellTop = Math.floor(fy / CELL) * CELL;
-        if (this.support(p.x, cellTop, true) === 2 && fy % CELL < 2) {
+        if (this.support(p.x, cellTop, true, p.body.halfW) === 2 && fy % CELL < 2) {
           p.y = cellTop * 16;
           p.climbing = false;
           p.onGround = true;
@@ -565,12 +566,12 @@ export class Game {
       if (p.climbing && this.cellAt(p.x, fy - 1) !== Tag.Ladder && this.cellAt(p.x, fy) !== Tag.Ladder) p.climbing = false;
       if (this.pressed(p, Input.B1)) {
         p.climbing = false;
-        p.vy = JUMP_VY / 2;
+        p.vy = p.body.jumpVy / 2;
       }
     } else {
       // crouch on Down (B1 with it drops through a ledge); stand up only where 40 px fit
       if (p.onGround && (p.pad & Input.Down) && !(p.pad & Input.B1)) p.crouching = true;
-      else if (p.crouching && (!p.onGround || !this.bodyBlocked(p.x, fy))) p.crouching = false;
+      else if (p.crouching && (!p.onGround || !this.bodyBlocked(p.x, fy, p.body.h))) p.crouching = false;
       if (p.crouching) {
         p.running = false;
         p.pushT = 0;
@@ -579,7 +580,7 @@ export class Game {
           p.flip = dir < 0;
           // crawl: 1 px every 2 frames, under anything 24 px tall
           const nx = p.x + dir;
-          if (p.t & 1 && !this.bodyBlocked(nx + dir * HALF_W, fy, CROUCH_H)) p.x = nx;
+          if (p.t & 1 && !this.bodyBlocked(nx + dir * p.body.halfW, fy, p.body.crouchH)) p.x = nx;
         }
       } else if (dir && !p.knifeT && !p.bazookaT) {
         if (p.onGround && p.flip !== dir < 0) p.turnT = TURN_FRAMES;
@@ -589,19 +590,19 @@ export class Game {
       fy = p.y >> 4;
       // down + jump drops through a ledge; jump otherwise
       if (p.onGround && this.pressed(p, Input.B1)) {
-        if ((p.pad & Input.Down) && this.support(p.x, fy, false) === 1) {
+        if ((p.pad & Input.Down) && this.support(p.x, fy, false, p.body.halfW) === 1) {
           p.dropT = DROP_FRAMES;
           p.onGround = false;
           p.vy = 0;
           p.y += 16;
         } else {
           p.crouching = false;
-          p.vy = JUMP_VY;
+          p.vy = p.body.jumpVy;
           p.onGround = false;
           this.events.push({ kind: "jump", player: p.index });
         }
       } else if (!p.onGround && this.pressed(p, Input.B1) && this.rules.doubleJump && !p.airJumps) {
-        p.vy = DOUBLE_JUMP_VY;
+        p.vy = p.body.doubleVy;
         p.airJumps = 1;
         this.events.push({ kind: "jump", player: p.index });
       }
@@ -612,7 +613,7 @@ export class Game {
         this.events.push({ kind: "knife", player: p.index });
       }
       // walking off an edge
-      if (p.onGround && !this.support(p.x, fy, false)) {
+      if (p.onGround && !this.support(p.x, fy, false, p.body.halfW)) {
         p.onGround = false;
         p.vy = 0;
       }
@@ -632,7 +633,7 @@ export class Game {
         const to = (p.y + p.vy) >> 4;
         if (p.vy > 0) {
           for (let py = from + 1; py <= to; py++)
-            if (this.support(p.x, py, p.dropT !== 0)) {
+            if (this.support(p.x, py, p.dropT !== 0, p.body.halfW)) {
               p.y = py * 16;
               p.vy = 0;
               p.onGround = true;
@@ -644,7 +645,7 @@ export class Game {
               break;
             }
           if (!p.onGround) p.y += p.vy;
-        } else if (this.isSolid(this.cellAt(p.x, to - BODY_H))) p.vy = 0;
+        } else if (this.isSolid(this.cellAt(p.x, to - p.body.h))) p.vy = 0;
         // the head hits only solid cells: one-way platforms let it through
         else p.y += p.vy;
       }
@@ -654,7 +655,7 @@ export class Game {
       this.hurt(p, true); // fell out
       return;
     }
-    if (this.cellAt(p.x, fy - 1) === Tag.Hazard || this.cellAt(p.x, fy - BODY_H / 2) === Tag.Hazard) this.hurt(p);
+    if (this.cellAt(p.x, fy - 1) === Tag.Hazard || this.cellAt(p.x, fy - (p.body.h >> 1)) === Tag.Hazard) this.hurt(p);
     if (!p.active) return;
 
     // pickups
@@ -673,7 +674,7 @@ export class Game {
     // special: the picked-up weapon while it has ammo
     if (p.bazookaT) p.bazookaT--;
     if (this.pressed(p, Input.B3) && p.special === "bazooka" && p.ammo > 0 && !p.rocket && p.onGround) {
-      p.rocket = { dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -30 : 10), y: fy - 30, speed: 2 };
+      p.rocket = { dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -30 : 10), y: fy - p.body.rocketY, speed: 2 };
       p.bazookaT = BAZOOKA_FRAMES;
       this.events.push({ kind: "rocket", player: p.index });
       if (--p.ammo === 0) p.special = "";
@@ -695,7 +696,7 @@ export class Game {
     // fire: the knife if an enemy stands right in front, else the machine gun
     if (p.knifeT) p.knifeT--;
     if (this.pressed(p, Input.B2) && p.onGround && !p.climbing) {
-      const e = this.enemyAt(p.x + (p.flip ? -KNIFE_REACH : KNIFE_REACH), fy - 20, 16);
+      const e = this.enemyAt(p.x + (p.flip ? -p.body.knifeReach : p.body.knifeReach), fy - p.body.knifeY, 16);
       if (e) {
         p.knifeT = KNIFE_FRAMES;
         this.damage(e, 2, p);
@@ -705,7 +706,7 @@ export class Game {
     p.firing = (p.pad & Input.B2) !== 0 && !p.knifeT && !p.bazookaT && !p.climbing && !p.kickT;
     if (p.fireWait) p.fireWait--;
     if (p.firing && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
-      p.shots.push({ dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -20 : 20), y: fy - (p.crouching ? CROUCH_SHOT_Y : 27) });
+      p.shots.push({ dir: p.flip ? -1 : 1, x: p.x + (p.flip ? -20 : 20), y: fy - (p.crouching ? p.body.crouchShotY : p.body.shotY) });
       p.fireWait = FIRE_EVERY;
       this.events.push({ kind: "shot", player: p.index });
     }
@@ -713,7 +714,7 @@ export class Game {
     if (p.kickT && !p.kickHit) {
       const e = this.enemies.find((q) => {
         const dx = (q.x - p.x) * (p.flip ? -1 : 1);
-        return this.alive(q) && dx >= 0 && dx <= KICK_REACH && q.fy - 40 < fy && q.fy > fy - BODY_H;
+        return this.alive(q) && dx >= 0 && dx <= p.body.kickReach && q.fy - 40 < fy && q.fy > fy - p.body.h;
       });
       if (e) {
         p.kickHit = true;
@@ -811,7 +812,7 @@ export class Game {
       s.x += s.dir * this.shotSpeed;
       for (const p of this.players) {
         const fy = p.y >> 4;
-        if (p.active && Math.abs(p.x - s.x) < 8 && s.y <= fy && s.y > fy - (p.crouching ? CROUCH_H : BODY_H)) {
+        if (p.active && Math.abs(p.x - s.x) < 8 && s.y <= fy && s.y > fy - (p.crouching ? p.body.crouchH : p.body.h)) {
           this.hurt(p);
           return false;
         }
@@ -914,7 +915,7 @@ export class Game {
         const fy = p.y >> 4;
         minX = Math.min(minX, p.x);
         maxX = Math.max(maxX, p.x);
-        top = Math.min(top, fy - BODY_H);
+        top = Math.min(top, fy - p.body.h);
         feet = Math.max(feet, fy);
       }
     const hiX = minX - 12;
@@ -1006,9 +1007,10 @@ export interface GameSnapshot {
   civilians: { rescued: number; total: number };
 }
 
-function newPlayer(index: number, lives: number): Player {
+function newPlayer(index: number, lives: number, body: Body): Player {
   return {
     index,
+    body,
     active: false,
     pad: 0,
     last: 0,

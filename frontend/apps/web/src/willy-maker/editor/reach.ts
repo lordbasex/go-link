@@ -7,9 +7,34 @@
 
 import { CELL, objectLayer, tagGrid, TAG_NUMBER, type CellGrid, type Level } from "../model";
 import { measureJump } from "../engine/jump";
+import { bodyFor } from "../engine/rules";
 
-/** The hero is 44 px tall: three cells of headroom. */
-const BODY = 3;
+/**
+ * Cells of headroom the hero needs: three for Willy's 44 px; a taller hero's
+ * own (T-26, bodyRowsFor). The searches set it for their run (withBody).
+ */
+let BODY = 3;
+
+function withBody<T>(rows: number, fn: () => T): T {
+  const was = BODY;
+  BODY = Math.max(1, rows);
+  try {
+    return fn();
+  } finally {
+    BODY = was;
+  }
+}
+
+/** The rows a level search uses for these heroes: the tallest's headroom, the lowest jump (T-26). */
+export function rowsForHeroes(rules: { doubleJump?: boolean; jetpack?: boolean }, heights: number[]): { jumpRows: number; bodyRows: number } {
+  const hs = heights.length ? heights : [44];
+  return { jumpRows: Math.min(...hs.map((h) => jumpRowsFor(rules, h))), bodyRows: Math.max(...hs.map((h) => bodyRowsFor(h))) };
+}
+
+/** Cells of headroom a hero this many px tall needs. */
+export function bodyRowsFor(height?: number): number {
+  return Math.ceil(bodyFor(height).h / CELL);
+}
 /** Rows a jump climbs: 48 px. The jump peaks at 61.9 px (-112 + 6 per frame, in 1/16 px), so a ledge 64 px up is out of reach (experiment 1, case C; engine/game.test.tsx). */
 const JUMP_ROWS = 3;
 /** Cells a jump crosses: farther when landing level or lower. */
@@ -48,6 +73,8 @@ export interface Reach {
   starts: number[];
   /** Rows a jump climbs with this game's rules (jumpRowsFor). */
   jumpRows: number;
+  /** Cells of headroom the hero needs (bodyRowsFor; 3 for Willy). */
+  bodyRows?: number;
 }
 
 /** Can a hero stand with the feet at the bottom of cell (c, r)? */
@@ -96,8 +123,8 @@ function fall(g: CellGrid, c: number, r: number): number {
  * (engine/jump.ts, T-13), 61.9 px plain, 107 px with the double jump, 239 px
  * with the jet pack, rounded down to rows with room to land.
  */
-export function jumpRowsFor(rules: { doubleJump?: boolean; jetpack?: boolean }): number {
-  return measureJump(rules).rows;
+export function jumpRowsFor(rules: { doubleJump?: boolean; jetpack?: boolean }, height?: number): number {
+  return measureJump(rules, height).rows;
 }
 
 export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: number) => void, jumpRows = JUMP_ROWS): void {
@@ -153,7 +180,11 @@ export function moves(g: CellGrid, c: number, r: number, to: (c: number, r: numb
   }
 }
 
-export function reachability(level: Level, jumpRows = JUMP_ROWS): Reach {
+export function reachability(level: Level, jumpRows = JUMP_ROWS, bodyRows = 3): Reach {
+  return withBody(bodyRows, () => ({ ...reachabilityWith(level, jumpRows), bodyRows }));
+}
+
+function reachabilityWith(level: Level, jumpRows: number): Reach {
   const g = tagGrid(level);
   const { cols, rows } = g;
   const reached = new Uint8Array(cols * rows);
@@ -252,6 +283,10 @@ interface RouteGraph {
 }
 
 function routeGraph(level: Level, reach: Reach): RouteGraph {
+  return withBody(reach.bodyRows ?? 3, () => routeGraphWith(level, reach));
+}
+
+function routeGraphWith(level: Level, reach: Reach): RouteGraph {
   const g = tagGrid(level);
   const { cols, rows, reached } = reach;
   const n = cols * rows;

@@ -67,6 +67,24 @@ export function playerSlots(project: Project): PlayerSlot[] {
   return defaultPlayerSlots().map((d, i) => saved[i] ?? d);
 }
 
+/** Each player's hero height in px (44 for Willy, or a slot whose hero is gone), T-26. */
+export function heroHeights(project: Project): number[] {
+  return playerSlots(project).map((s) => {
+    if (!s.character || s.character === BUILTIN_HERO) return 44;
+    return project.characters.find((c) => c.id === s.character)?.height ?? 44;
+  });
+}
+
+/**
+ * What the level checks plan for (T-26): the headroom of the tallest hero
+ * and the jump of the one that jumps least, among the game's players, so a
+ * place counts as reachable only when every hero gets there.
+ */
+export function levelHeroes(project: Project): { tallest: number; heights: number[] } {
+  const heights = heroHeights(project).slice(0, Math.max(1, project.settings.players));
+  return { tallest: Math.max(...heights), heights };
+}
+
 /** Whether a slot's character exists: the built-in hero or one of the project's. */
 export function slotResolves(project: Project, slot: PlayerSlot | undefined): boolean {
   if (!slot || !slot.character) return false;

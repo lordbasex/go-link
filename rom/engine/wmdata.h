@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 4
+#define WM_VERSION 5
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -127,6 +127,11 @@ struct wm_look {
 	const Anim *double_jump, *jetpack; /* 38, 3c */
 	u16 pal;                         /* 40 the first sprite palette (0-31) */
 	u16 npal;                        /* 42 palettes that follow the struct */
+	/* the body, scaled to the hero (T-26, engine/rules.ts bodyFor): Willy's is 40, 24, 5, -112, -96, 18, 24, 20, 27, 12, 30 */
+	s16 body_h, crouch_h, half_w;    /* 44, 46, 48 standing and crouched heights, half width at the feet */
+	s16 jump_vy, double_vy;          /* 4a, 4c start speeds, 1/16 px per frame */
+	s16 knife_reach, kick_reach;     /* 4e, 50 */
+	s16 knife_y, shot_y, crouch_shot_y, rocket_y; /* 52-58 heights over the feet */
 };
 #define WM_LOOK_PALETTES(l) ((const u16 *)((l) + 1))
 
@@ -143,7 +148,7 @@ _Static_assert(sizeof(struct wm_data) == 0x84, "wm_data size");
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");
 _Static_assert(sizeof(Anim) == 8 && __builtin_offsetof(Anim, count) == 4 && __builtin_offsetof(Anim, fps) == 6, "Anim");
-_Static_assert(sizeof(struct wm_look) == 0x44 && __builtin_offsetof(struct wm_look, pal) == 0x40, "wm_look");
+_Static_assert(sizeof(struct wm_look) == 0x5a && __builtin_offsetof(struct wm_look, pal) == 0x40 && __builtin_offsetof(struct wm_look, body_h) == 0x44 && __builtin_offsetof(struct wm_look, rocket_y) == 0x58, "wm_look");
 _Static_assert(__builtin_offsetof(struct wm_look, crouch) == 0x18 && __builtin_offsetof(struct wm_look, kick) == 0x28 && __builtin_offsetof(struct wm_look, jetpack) == 0x3c, "wm_look moves");
 
 #endif
