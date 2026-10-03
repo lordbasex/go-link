@@ -40,8 +40,8 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
 /** A move whose names all miss takes the engine animation it stands in for (crawl the crouch's, turn the run's, ...). */
 const LOOK_FALLBACK: Partial<Record<LookAnimId, LookAnimId>> = { crawl: "crouch", turn: "run", kick: "jump", double_jump: "jump", jetpack: "jump" };
 
-/** At most this many 16 x 16 tiles in one frame (the engine draws up to 200 sprite entries). */
-export const MAX_FRAME_TILES = 32;
+/** At most this many 16 x 16 tiles in one frame (the engine draws up to 248 sprite entries; T-26: 64, a 128 px hero, was 32). */
+export const MAX_FRAME_TILES = 64;
 /** A frame's width fits the Frame record's u8 `w`. */
 const MAX_FRAME_COLS = 15;
 const TRANSPARENT = 15;

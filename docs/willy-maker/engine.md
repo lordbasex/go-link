@@ -131,7 +131,7 @@ The data: `looks` points to four `u32`, one per player. A look is the engine's o
 | `Anim` | 8 | `frames` (pointer), `count`, `fps` (u16) |
 | `wm_look` | 68 (0x44) | `idle`, `run`, `jump`, `knife`, `gun`, `bazooka`, then the moves of [moves.md](moves.md) `crouch`, `crawl`, `land`, `turn`, `kick`, `thumbs`, `victory`, `yawn`, `double_jump`, `jetpack` (pointers to `Anim`, each from the hero's animation of that name or its fallback), `pal` (the first sprite palette), `npal`; then `npal` × 16 palette words. Willy's built-in look has `turn`, `jump_kick`, `crouch`, `crawl`, `yawn` and `thumbs_up` from his sprite sheet (idle stands in for land, thumbs up for victory, the jump for the air moves) |
 
-**Limits**, each with a Create ROM note when a hero does not fit (that player is then drawn as Willy): a picture is needed; a frame takes at most 32 tiles and 15 across (240 px); every zone needs its palette; the hero's palettes must fit one free run; the tiles must fit the room left. A shirt variant on a player who uses an own hero is noted too: every player using that hero wears its own colors.
+**Limits**, each with a Create ROM note when a hero does not fit (that player is then drawn as Willy): a picture is needed; a frame takes at most 64 tiles (a 128 px hero; 32 before T-26) and 15 across (240 px), and the engine draws up to 248 sprite entries a frame (of the table's 256); every zone needs its palette; the hero's palettes must fit one free run; the tiles must fit the room left. A shirt variant on a player who uses an own hero is noted too: every player using that hero wears its own colors.
 
 ## Rules (the Game tab)
 

@@ -386,7 +386,7 @@ static void no_data(void)
 
 /* ------------------------------------------------------------- sprites */
 
-#define MAX_SPRITES 200 /* the table holds 256 */
+#define MAX_SPRITES 248 /* the table holds 256, one ends it (T-26: was 200) */
 #define OBJ ((volatile u16 *)GFX_OBJ)
 static int nobj;
 
