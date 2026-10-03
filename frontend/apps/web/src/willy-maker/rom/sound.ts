@@ -126,14 +126,14 @@ const mix = (...parts: Float32Array[]) => {
 const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
 /** One effect: its samples and volume (0x0000-0x0fff). */
-interface Sample {
+export interface Sample {
   data: Int8Array;
   /** Samples from the end the chip loops back over (0: plays once). */
   loop: number;
   vol: number;
 }
 
-function effects(): Record<SfxId, Sample> {
+export function effects(): Record<SfxId, Sample> {
   const one = (f: Float32Array, vol = 0x700, gain = 1.2): Sample => ({ data: pcm(f, gain), loop: 0, vol });
   return {
     shot: one(mix(noise(0.09, 0.9, 0.3, 7, 11), sweep(0.09, 1400, 300, "square", 8)), 0x900),
@@ -180,6 +180,21 @@ const INSTRUMENTS = {
 };
 type InstrumentId = keyof typeof INSTRUMENTS;
 const INSTRUMENT_IDS = Object.keys(INSTRUMENTS) as InstrumentId[];
+
+/** The instruments' samples, in the songs' instrument order. */
+export function instruments(): Sample[] {
+  return INSTRUMENT_IDS.map((k) => INSTRUMENTS[k]());
+}
+
+/** The chip's pitch of a MIDI note (middle C = 0x1000): the rate is QS_RATE × pitch / 0x1000. */
+export function notePitch(note: number): number {
+  return Math.min(0xffff, Math.round(0x1000 * Math.pow(2, (note - 60) / 12)));
+}
+
+/** The built-in tunes by music slot, and the clear fanfare (as the ROM plays them). */
+export function builtInSongs(): Record<string, Song> {
+  return songs();
+}
 const I = Object.fromEntries(INSTRUMENT_IDS.map((k, i) => [k, i])) as Record<InstrumentId, number>;
 
 // ---------------------------------------------------------------- songs
@@ -342,7 +357,7 @@ export function packSound(project: Project, regionSize = 0x400000): SoundPack {
   patch16(10, addr());
   instEntries.forEach(entry);
   patch16(12, addr());
-  for (let n = 0; n < 128; n++) u16(Math.min(0xffff, Math.round(0x1000 * Math.pow(2, (n - 60) / 12))));
+  for (let n = 0; n < 128; n++) u16(notePitch(n));
   patch16(8, addr());
   const ptrAt = out.length;
   for (let i = 0; i < bySlot.length; i++) u16(0);

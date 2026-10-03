@@ -30,6 +30,18 @@ export const IconPlay = () => (
     <path d="M7 4v16l13-8z" fill="currentColor" />
   </Svg>
 );
+export const IconSound = () => (
+  <Svg>
+    <path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />
+    <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />
+  </Svg>
+);
+export const IconSoundOff = () => (
+  <Svg>
+    <path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />
+    <path d="M16 9l6 6M22 9l-6 6" />
+  </Svg>
+);
 export const IconPause = () => (
   <Svg>
     <path d="M8 5v14M16 5v14" />

@@ -430,6 +430,18 @@ describe("the Rules card (Game Spec v1's numbers)", () => {
     expect(free.outcome).toBe("cleared");
   });
 
+  it("tells the sound where a shot lands: a hit, then the enemy down at its place", () => {
+    const g = new Game(flat(undefined, [trooper(220)]), { rules: SPEC_RULES });
+    const seen: { kind: string; x?: number }[] = [];
+    for (let f = 0; f < 240 && !seen.some((e) => e.kind === "enemy_down"); f++) {
+      run(g, 1, f % 8 < 4 ? Input.B2 : 0);
+      seen.push(...g.events.map((e) => ({ kind: e.kind, x: "x" in e ? e.x : undefined })));
+    }
+    const down = seen.find((e) => e.kind === "enemy_down");
+    expect(down?.x).toBeGreaterThan(100);
+    if (seen.some((e) => e.kind === "hit")) expect(seen.find((e) => e.kind === "hit")!.x).toBeGreaterThan(100);
+  });
+
   it("says why the exit does not open while enemies are left", () => {
     const g = new Game(flat(undefined, [trooper(900), { name: "exit", type: "exit", x: 70, y: 400, w: 64 }]), { rules: SPEC_RULES });
     const seen: string[] = [];

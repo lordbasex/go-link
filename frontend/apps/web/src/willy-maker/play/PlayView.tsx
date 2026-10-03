@@ -20,7 +20,8 @@ import { DEFAULT_COLORS, drawGame, type ArtLayer, type Ghost, type OverlayColors
 import { characterSheet, loadPlaySprites, type PlaySprites, type Sheet } from "./sprites";
 import { assetUrl } from "../io/assets";
 import type { Character } from "../model";
-import { IconBack, IconDots, IconPause, IconPencil, IconPlay } from "../ui/icons";
+import { IconBack, IconDots, IconPause, IconPencil, IconPlay, IconSound, IconSoundOff } from "../ui/icons";
+import { PlayAudio } from "./audio";
 import { StatusBadge } from "../ui/molecules";
 import { partSupport } from "../editor/support";
 import "./play.css";
@@ -58,6 +59,8 @@ export interface PlayViewProps {
   variants?: number[];
   /** Each player's own hero (the Game tab's character); null or missing = the built-in Willy. */
   heroes?: (Character | null)[];
+  /** The music slot of each engine screen (rom/sound.ts screenSongs): title, playing, clear, continue, game over. */
+  music?: (string | null)[];
   /** The level's far and play tile art, drawn as the board does (T-28). */
   art?: ArtLayer[];
   /** The on-screen pad: on touch screens ("auto"), always or never; this browser's choice by default. */
@@ -68,6 +71,18 @@ export interface PlayViewProps {
   onEdit?: (edit: PlayEdit) => void;
   /** Back to building; `at` is where player 1 was (world px, feet). */
   onBack?: (at?: { x: number; y: number }) => void;
+}
+
+/** The built-in tunes when the game names none (as Create ROM's defaults). */
+const DEFAULT_MUSIC = ["title", "stage", "clear", "continue", "game-over"];
+const SOUND_KEY = "go-link.wm-sound";
+
+function loadSound(): boolean {
+  try {
+    return window.localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
 }
 
 function fill(text: string, vars: Record<string, string | number>): string {
@@ -101,7 +116,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, art, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -137,6 +152,31 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   const [piece, setPiece] = useState<Piece>("crate");
   const [overlays, setOverlays] = useState<Overlays>({ collision: true, hitboxes: true, camera: true, fps: false });
   const [slow, setSlow] = useState(false);
+  // sound: the ROM's effects and tunes (play/audio.ts), on until turned off (kept in this browser)
+  const audio = useMemo(() => new PlayAudio(), []);
+  const [sound, setSound] = useState(loadSound);
+  const toggleSound = () => {
+    const on = !sound;
+    setSound(on);
+    audio.unlock();
+    try {
+      window.localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+    } catch {
+      // private windows keep it for this visit only
+    }
+  };
+  useEffect(() => audio.setMuted(!sound || paused), [audio, sound, paused]);
+  useEffect(() => {
+    // browsers start sound only from a key or a tap
+    const unlock = () => audio.unlock();
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("pointerdown", unlock);
+    return () => {
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("pointerdown", unlock);
+      audio.close();
+    };
+  }, [audio]);
   const [snap, setSnap] = useState<GameSnapshot>(() => game.current.snapshot());
   const [seats, setSeats] = useState<Seat[]>([]);
   const [held, setHeld] = useState(0);
@@ -205,8 +245,8 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
   const drawScale = viaGpu ? 1 : scale;
-  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art });
-  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art };
+  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art, music });
+  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, art, music };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -223,6 +263,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
     let fpsAt = last;
     let fps = 60;
     let ui = 0;
+    let tune: string | null | undefined;
     const tick = (now: number) => {
       const st = state.current;
       const g = game.current;
@@ -234,8 +275,15 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
       while (acc >= FRAME_MS) {
         reading = controls.read(connectedPads(), g.players.length);
         g.step(reading.inputs);
+        audio.events(g.events, g.camX, (i) => (g.players[i]?.x ?? g.camX) + 8);
         acc -= FRAME_MS;
         frames++;
+      }
+      // the screen's tune: playing, the clear or game over (Menus tab), as the ROM plays them
+      const want = st.music[g.outcome === "cleared" ? 2 : g.outcome === "over" ? 4 : 1] ?? null;
+      if (want !== tune) {
+        tune = want;
+        audio.music(want);
       }
       if (now - fpsAt >= 1000) {
         fps = (frames * 1000) / (now - fpsAt);
@@ -261,7 +309,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
     // the console layout has its own canvas
-  }, [controls, touch]);
+  }, [controls, touch, audio]);
 
   const restart = (fromHere: boolean) => {
     const p = game.current.players.find((q) => q.active);
@@ -375,6 +423,9 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
           <button type="button" className="wm-play-icon" aria-label={paused ? t.resume : t.pause} data-tip={paused ? t.resume : t.pause} onClick={() => setPaused((v) => !v)}>
             {paused ? <IconPlay /> : <IconPause />}
           </button>
+          <button type="button" className={`wm-play-icon${sound ? "" : " is-on"}`} aria-label={sound ? t.sound : t.soundOff} data-tip={sound ? t.sound : t.soundOff} aria-pressed={!sound} onClick={toggleSound}>
+            {sound ? <IconSound /> : <IconSoundOff />}
+          </button>
           <button type="button" className={`wm-play-icon${editing ? " is-on" : ""}`} aria-label={t.editWhilePlaying} data-tip={t.editWhilePlaying} aria-pressed={editing} onClick={() => setEditing((v) => !v)}>
             <IconPencil />
           </button>
@@ -431,6 +482,9 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
         <span className="wm-play-spacer" />
         <button type="button" className="wm-cap" onClick={() => setPaused((p) => !p)}>
           {paused ? t.resume : t.pause}
+        </button>
+        <button type="button" className={`wm-play-icon${sound ? "" : " is-on"}`} aria-label={sound ? t.sound : t.soundOff} data-tip={sound ? t.sound : t.soundOff} aria-pressed={!sound} onClick={toggleSound}>
+          {sound ? <IconSound /> : <IconSoundOff />}
         </button>
         {onBack && (
           <button type="button" className="wm-cap" onClick={pauseAndEdit}>

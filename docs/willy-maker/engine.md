@@ -160,7 +160,7 @@ Create ROM lists these as notes under its result; none of them stops it.
 - **Own enemies and civilians** (T-30): an enemy kind with an enemy character whose id is the kind (a civilian kind likewise) is drawn from it, through a look like a hero's (`wm_data` version 7: `enemy_looks` and `civ_looks`, one look address per packed object; an enemy walks with its walk, shows its shoot right after firing, its hit when hit and its death when down; a civilian is worried until rescued, then thanks); other kinds are the Lag android, and the civilians the prototype's woman and child, with a Create ROM note naming the kinds. Pickups keep the engine's icons. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
 - **Bosses, camera locks and checkpoints** are left out; **water** plays as air; civilians trapped in crates start free; crates and pickups give only the bazooka and health.
 - The **mid layer** and extra tile layers are left out (the board has one far layer); each layer loads the palettes its tiles use, up to 32 ([layer palettes](#layer-palettes)).
-- **Sound** (T-26): see [Sound](#sound-qsound): QSound effects and music; play mode stays silent for now.
+- **Sound** (T-26): see [Sound](#sound-qsound): QSound effects and music; play mode plays the same sounds in the browser (below).
 - The ROM is always laid out as `slammast` (a `captcomm` game is noted).
 - **Play on my go-link** powers the set on with the real core of the linked device (validation level 4); opening a room with it needs the device to accept a user's own set under its own identity, which is not built yet.
 
@@ -173,6 +173,10 @@ Task T-26 of [experiment 1's verdict](../experiments/verdict.md). The slammast b
 - **Everything is made from code**, the same bytes for the same game: effects and instruments (bass, lead, arpeggio, pad, kick, snare, hi-hat) are synthesized with seeded noise into the `mb_q1`-`mb_q8` sample ROMs (about 0.4 MB, each sample inside one 64 KB bank as the chip addresses them), and six built-in tunes (title, stage, boss, continue, game over and the clear fanfare) are tracker rows of (note, instrument) per channel at 250 Hz. Each screen plays the tune of its music slot (the Menus tab), or nothing with "none".
 - **Encryption:** the board decrypts only the Z80 ROM's first 0x8000 bytes, opcodes and operands with different Kabuki tables, and the core fetches opcodes only from that decrypted area, so the driver (with no IX or IY) and its data (at 0x4000) both live there: `@go-link/cps1` `z80OpcodeMap` sorts every byte into opcode or data and `encodeProgram` encodes each with its table.
 - **Checked on the real core:** `device romtest --wav FILE` records the core's stereo sound; on the spec level's clear the tunes' notes came out within a few cents of their pitch, the channels differ left to right, nothing clips, and the pictures still match the board model at tolerance 0. Play mode in the browser is silent for now.
+
+### In play mode
+
+Play mode sounds like the ROM: `play/audio.ts` (`PlayAudio`) builds the same effects, instruments and tunes from `rom/sound.ts` (`effects`, `instruments`, `builtInSongs`, `notePitch`) and plays them with Web Audio at the chip's 24096 Hz, with their loops. Each engine event plays the effect the C engine sends for it (`GameEvent`: jump, shot, knife, kick, rocket, landing, crate, hit, enemy down, explosion, pickup, rescue, hurt, join), panned to where it happens on screen as `sfx()` does; events carry the place (`x`) when it is not a player's. The tune follows the screen with the Menus tab's music slots (`screenSongs`): playing, the clear and game over; rows run at the driver's 250 Hz tick. Sound starts with the first key or tap (browsers keep it off until then), stops while paused, and the bar's sound button turns it off in this browser (`go-link.wm-sound`).
 
 ## Create ROM from the command line
 

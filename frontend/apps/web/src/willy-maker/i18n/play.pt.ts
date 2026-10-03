@@ -7,6 +7,8 @@ export const playPt: PlayMessages = {
   paused: "Em pausa",
   pause: "Pausar",
   resume: "Continuar",
+  sound: "Som",
+  soundOff: "Sem som",
   pauseEdit: "Pausar e editar",
   editWhilePlaying: "Editar enquanto jogo",
   fromStart: "Do início",

@@ -47,6 +47,28 @@ cd ../e2e && E2E_HD=out.json E2E_DEVICE_ARGS="--test-room-hd 1080p --hd-far FAR.
 
 The dropped frames are Chrome's (the same computer also decoded and drew the stream, through the rooms' WebGL renderer).
 
+## The same, on Apple Silicon (M1)
+
+Measured on 2026-10-03 on the user's MacBook Pro M1 (8 cores, 16 GB, macOS 27), with the same release binary (`hdbench`, 10 s at 60 fps) and Homebrew's ffmpeg for the hardware and x264 encoders.
+
+| Size | Encoder | Encode avg | p95 | Max fps | Realtime at 60 | Bitrate (target) | CPU |
+|---|---|---|---|---|---|---|---|
+| 720p | VP8, the stream's | 3.7 ms | 4.8 ms | 270 | yes | 3.7 Mbps (4) | 1.4 cores |
+| 720p | VideoToolbox H.264 | 4.1 ms | 5.4 ms | 242 | yes | 4.2 Mbps (4) | 0.5 cores |
+| 720p | x264 ultrafast | 1.0 ms | 1.1 ms | 1020 | yes | 3.9 Mbps (4) | 0.6 cores* |
+| 1080p | VP8, the stream's | 8.3 ms | 10.9 ms | 121 | just over | 7.4 Mbps (8) | 1.4 cores |
+| 1080p | VP8, 4 threads | 8.1 ms | 12.2 ms | 124 | no (p95) | 7.4 Mbps (8) | 2.5 cores |
+| 1080p | VideoToolbox H.264 | 5.3 ms | 6.4 ms | 187 | yes | 8.3 Mbps (8) | 0.5 cores |
+| 1080p | x264 ultrafast | 2.3 ms | 2.6 ms | 430 | yes | 7.8 Mbps (8) | 0.6 cores* |
+| 4K | VP8, the stream's | 15.7 ms | 16.1 ms | 64 | no | 26 Mbps (25) | 1.6 cores |
+| 4K | VP8, 8 threads | 20.0 ms | 22.8 ms | 50 | no | 64 Mbps (25) | 4.3 cores |
+| 4K | VideoToolbox H.264 | 16.0 ms | 17.6 ms | 63 | no | 23 Mbps (25) | 0.4 cores |
+| 4K | x264 ultrafast | 9.1 ms | 10.0 ms | 110 | at the limit | 24 Mbps (25) | 0.6 cores* |
+
+On 300 raw 4K frames (`ffmpeg -benchmark`): the hardware H.264 encodes 54-55 fps whatever its options (`-realtime`, `-prio_speed`, baseline profile), the hardware HEVC 79 fps, and x264 149 fps using about 3.8 of the 8 cores. Every encoder on the M1 also had rare single frames of 30-170 ms (the maximums), worth watching in a real room.
+
+On the M1 the picture changes: VP8 is faster than on the Intel Mac Pro at every size but still not 4K60, and its rate control overshoots at 4K with more threads; the media engine does 1080p60 with half a core, but its H.264 stays just under 4K60 (HEVC reaches it, but WebRTC browsers do not all carry HEVC); **x264 does 4K60 with half the M1's cores**.
+
 ## What the numbers say
 
 1. **1080p at 60 fps works today**, with the device's own stack: VP8 in software, 8 encoder threads, about 2 cores of the Mac Pro and 7-8 Mbps; a room showed 59.7 fps. 720p takes 1.25 cores and 4 Mbps, a safe default for smaller hosts and phones on mobile data.
@@ -57,7 +79,7 @@ The dropped frames are Chrome's (the same computer also decoded and drew the str
 ## Decision
 
 - **go-link HD, first version: 1920 × 1080 at 60 fps**, streamed as VP8 with 8 encoder threads (what the experiment proved end to end), with **1280 × 720** as the fallback, to be chosen by the same encoder check the device already runs between 2x and saver for the CPS-1 (`video_quality.go`; not built for HD yet). The own 2D "chip" can therefore draw a 1080p picture (for example a 480 × 270 or 640 × 360 pixel-art screen scaled 4x or 3x by the device, or real HD art).
-- **4K is a second step and needs H.264:** WebRTC carries it in every browser, and the hardware encoders that do 4K at 60 fps live on Apple Silicon's media engine and on NVIDIA and AMD encoders; x264 is the software path for strong hosts. Next measurement: the same `hdbench` and `hd.spec.ts` on the M1 (it was not reachable during this experiment) and an H.264 track in the device's WebRTC stream.
+- **4K is a second step and needs H.264:** WebRTC carries it in every browser. The M1 measurement says the way there is x264 in software (110-149 fps at 4K on Apple Silicon, about half its cores), not the M1's media engine (54-63 fps for H.264); on Intel hosts neither reaches it. Next step: an H.264 track in the device's WebRTC stream (x264, with the hardware encoder for 1080p, where it costs half a core), then `hd.spec.ts` end to end at 4K.
 - **Viewers:** 8 Mbps for 1080p fits home connections; phones get 720p (4 Mbps). Adapting the size to each viewer is future work: today every viewer of a room gets the same stream.
 
 ## Tools added for it

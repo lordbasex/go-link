@@ -176,9 +176,10 @@ export type GameOutcome = "playing" | "cleared" | "over";
 
 /** A sound or moment the view may react to (one frame's worth). */
 export type GameEvent =
-  | { kind: "jump" | "shot" | "knife" | "rocket" | "land"; player: number }
-  | { kind: "crate"; name: string }
-  | { kind: "enemy_down"; name: string }
+  | { kind: "jump" | "shot" | "knife" | "kick" | "rocket" | "land"; player: number }
+  | { kind: "crate"; name: string; x?: number }
+  | { kind: "enemy_down" | "hit"; name: string; x?: number }
+  | { kind: "explosion"; x: number }
   | { kind: "rescue"; name: string; player: number }
   | { kind: "pickup"; item: string; player: number }
   | { kind: "hurt" | "join"; player: number }
@@ -420,7 +421,7 @@ export class Game {
     for (let r = crate.row; r < crate.row + crate.cells; r++)
       for (let c = crate.col; c < crate.col + crate.cells; c++) if (this.cell(c, r) === Tag.Crate) this.cells[r * this.cols + c] = Tag.Air;
     if (by) by.score += this.rules.crateScore;
-    this.events.push({ kind: "crate", name: crate.name });
+    this.events.push({ kind: "crate", name: crate.name, x: crate.col * CELL + crate.cells * 8 });
     const x = (crate.col + crate.cells / 2) * CELL;
     // "nothing" leaves no pickup; a civilian inside a crate has no effect yet (editor/support.ts)
     if (crate.contents && crate.contents !== "nothing" && crate.contents !== "civilian") this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
@@ -617,7 +618,7 @@ export class Game {
       if (!p.onGround && (p.pad & Input.Down) && this.pressed(p, Input.B2) && !p.kickT && this.rules.weapons) {
         p.kickT = KICK_FRAMES;
         p.kickHit = false;
-        this.events.push({ kind: "knife", player: p.index });
+        this.events.push({ kind: "kick", player: p.index });
       }
       // walking off an edge
       if (p.onGround && !this.support(p.x, fy, false, p.body.halfW)) {
@@ -710,7 +711,11 @@ export class Game {
       if (e) {
         this.damage(e, 9, p);
         p.rocket = null;
-      } else if (this.hitCell(Math.floor(tip / CELL), Math.floor((r.y + 8) / CELL), 9, p)) p.rocket = null;
+        this.events.push({ kind: "explosion", x: tip });
+      } else if (this.hitCell(Math.floor(tip / CELL), Math.floor((r.y + 8) / CELL), 9, p)) {
+        p.rocket = null;
+        this.events.push({ kind: "explosion", x: tip });
+      }
       else if (t === Tag.Solid || r.x < this.camX - 48 || r.x > this.camX + SCREEN_W + 48) p.rocket = null;
     }
 
@@ -775,8 +780,11 @@ export class Game {
     if (e.hp <= 0) {
       e.state = "down";
       by.score += this.rules.enemyScore;
-      this.events.push({ kind: "enemy_down", name: e.name });
-    } else e.state = "hit";
+      this.events.push({ kind: "enemy_down", name: e.name, x: e.x });
+    } else {
+      e.state = "hit";
+      this.events.push({ kind: "hit", name: e.name, x: e.x });
+    }
   }
 
   private updateEnemies(): void {

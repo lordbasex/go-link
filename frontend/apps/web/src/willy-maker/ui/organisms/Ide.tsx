@@ -18,6 +18,7 @@ import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
 import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
+import { screenSongs } from "../../rom/sound";
 import { heroHeights, levelHeroes, playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { BoardUsageChip } from "./BoardUsage";
 import { PictureDialog } from "./PictureDialog";
@@ -578,6 +579,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               variants={playerSlots(p).map((s) => s.variant)}
               heroes={playerSlots(p).map((s) => (s.character === BUILTIN_HERO ? null : (p.characters.find((c) => c.id === s.character) ?? null)))}
               art={levelArt(level, images)}
+              music={screenSongs(p)}
               texts={{
                 start: menuText(p, "hud", "join"),
                 ammo: menuText(p, "hud", "ammo"),

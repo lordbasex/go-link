@@ -7,6 +7,8 @@ export const playEn = {
   paused: "Paused",
   pause: "Pause",
   resume: "Resume",
+  sound: "Sound",
+  soundOff: "Sound off",
   pauseEdit: "Pause and edit",
   editWhilePlaying: "Edit while playing",
   fromStart: "From the start",

@@ -796,7 +796,7 @@ export const docsEn: Docs = {
             "**The moves**: **Down** crouches (shots at standing height pass over you, and you fire low); **Left/Right** while crouched crawls, also under a ceiling 32 px over the floor; **Down + B2 in the air** is a jump kick (2 hits); a hero also lands, turns, gives a thumbs up on a rescue, celebrates the clear and yawns after 5 s still. The Rules card adds a **double jump** (B1 again in the air) and a **jet pack** (hold B1 while falling). Each move uses its own animation when your hero has one (the names are in Characters), else the closest one.",
             "Play with the keyboard (arrows, Z, X, C), controllers or the on-screen buttons on touch screens; press a button to join, up to 4 players.",
             "**Edit while playing**: place pieces (crate, platform, ladder, enemy, civilian, weapon) while the game keeps running, or **Pause and edit** and go on **From here** or **From the start**.",
-            "**Debug** shows collision, hitboxes, the camera, the FPS and slow motion; **Display** picks how the game is drawn (sharp, smooth, CRT arcade, smooth edges), the same choice as in the rooms. **Back to building** returns to the editor.",
+            "**Debug** shows collision, hitboxes, the camera, the FPS and slow motion; **Display** picks how the game is drawn (sharp, smooth, CRT arcade, smooth edges), the same choice as in the rooms. The game sounds like its ROM: the same effects, placed left or right where they happen, and the Menus tab's tunes (they start with your first key or tap; the speaker button turns them off). **Back to building** returns to the editor.",
           ],
         },
         { t: "h2", id: "game", text: "The Game tab" },

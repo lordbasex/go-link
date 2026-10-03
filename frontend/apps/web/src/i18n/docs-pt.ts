@@ -796,7 +796,7 @@ export const docsPt: Docs = {
             "**Os movimentos**: **Baixo** agacha (os tiros na altura de alguém em pé passam por cima, e você atira baixo); **Esquerda/Direita** agachado rasteja, também sob um teto a 32 px do chão; **Baixo + B2 no ar** é uma voadora (2 golpes); o herói também aterrissa, vira, faz joinha ao resgatar, comemora ao terminar e boceja após 5 s parado. O cartão Regras soma um **pulo duplo** (B1 de novo no ar) e uma **mochila a jato** (segure B1 ao cair). Cada movimento usa a própria animação se o seu herói tiver (os nomes estão em Personagens), senão a mais parecida.",
             "Jogue com o teclado (setas, Z, X, C), controles ou os botões na tela em telas de toque; aperte um botão para entrar, até 4 jogadores.",
             "**Editar enquanto jogo**: coloque peças (caixa, plataforma, escada, inimigo, civil, arma) enquanto o jogo continua rodando, ou use **Pausar e editar** e continue **Daqui** ou **Do início**.",
-            "**Depuração** mostra a colisão, as caixas de golpe, a câmera, os FPS e a câmera lenta; **Tela** escolhe como o jogo é desenhado (nítida, suave, CRT arcade, bordas suaves), a mesma escolha das salas. **Voltar a construir** leva de volta ao editor.",
+            "**Depuração** mostra a colisão, as caixas de golpe, a câmera, os FPS e a câmera lenta; **Tela** escolhe como o jogo é desenhado (nítida, suave, CRT arcade, bordas suaves), a mesma escolha das salas. O jogo soa como a sua ROM: os mesmos efeitos, à esquerda ou à direita conforme onde acontecem, e os temas da aba Menus (começam com a sua primeira tecla ou toque; o botão do alto-falante os desliga). **Voltar a construir** leva de volta ao editor.",
           ],
         },
         { t: "h2", id: "game", text: "A aba Jogo" },
