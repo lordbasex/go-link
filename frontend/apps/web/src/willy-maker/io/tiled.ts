@@ -166,7 +166,8 @@ function readTiled(text: string, fileName: string): Level {
         if (type === "camera_lock" || type === "boss") {
           item.w = Math.round(finite(o.width));
           item.h = Math.round(finite(o.height));
-        } else item.y = Math.round(finite(o.y) + finite(o.height));
+        } else if (type === "platform") item.w = Math.round(finite(o.width));
+        else item.y = Math.round(finite(o.y) + finite(o.height));
       }
       for (const p of Array.isArray(o.properties) ? o.properties : []) if (p && typeof p.name === "string" && p.name && !(p.name in item)) item[p.name] = p.value;
       objectsLayer.items.push(item);

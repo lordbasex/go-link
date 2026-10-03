@@ -165,6 +165,47 @@ export interface Pickup {
   live: boolean;
 }
 
+/**
+ * A moving platform (the platformer, docs/willy-maker/genres.md): a ledge
+ * `w` px wide whose top goes back and forth `range` px along x or y at
+ * `speed` px a frame. Its place comes from the frame count alone, so the
+ * ROM engine (platform_at in engine.c) puts it in exactly the same spot.
+ * It holds the players like a one-way platform and carries them.
+ */
+export interface Platform {
+  name: string;
+  x0: number;
+  y0: number;
+  w: number;
+  axis: "x" | "y";
+  range: number;
+  speed: number;
+  /** The top left now (y = the top the feet stand on). */
+  x: number;
+  y: number;
+  /** How far the top moved up or down this frame. */
+  dy: number;
+}
+
+/** A platform's limits (the ROM's too): width 32-128 px in 16s, range 0-512 px, speed 1-4 px a frame. */
+export function platformOf(o: { name: string; x: number; y: number; w?: unknown; axis?: unknown; range?: unknown; speed?: unknown }): Platform {
+  const w = Math.max(2, Math.min(8, Math.round(num(o.w, 48) / CELL))) * CELL;
+  const range = Math.max(0, Math.min(512, Math.round(num(o.range, 96))));
+  const speed = Math.max(1, Math.min(4, Math.round(num(o.speed, 1))));
+  const p: Platform = { name: o.name, x0: Math.round(o.x), y0: Math.round(o.y), w, axis: o.axis === "y" ? "y" : "x", range, speed, x: 0, y: 0, dy: 0 };
+  placePlatform(p, 0);
+  return p;
+}
+
+/** Where a platform is at frame t: there and back, `range` px each way. */
+export function placePlatform(p: Platform, t: number): void {
+  const span = 2 * p.range;
+  const s = span ? (t * p.speed) % span : 0;
+  const off = s <= p.range ? s : span - s;
+  p.x = p.axis === "x" ? p.x0 + off : p.x0;
+  p.y = p.axis === "y" ? p.y0 + off : p.y0;
+}
+
 export interface Rect {
   x: number;
   y: number;
@@ -215,6 +256,7 @@ export class Game {
   civilians: Civilian[] = [];
   crates: Crate[] = [];
   pickups: Pickup[] = [];
+  platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
   exits: Rect[] = [];
@@ -321,6 +363,13 @@ export class Game {
           this.pickups.push({ name: o.name, item: str(o.item, "bazooka"), x: o.x, fy: o.y, live: true });
           if (o.item === "coin") this.coinTotal++;
           break;
+        case "platform":
+          if (this.platforms.length < MAX_PLATFORMS) {
+            const pl = platformOf(o);
+            placePlatform(pl, this.frame);
+            this.platforms.push(pl);
+          }
+          break;
         case "camera_lock":
           this.cameraLocks.push({ name: o.name, x: o.x, y: o.y, w: num(o.w, SCREEN_W), h: num(o.h, SCREEN_H), done: false });
           break;
@@ -343,7 +392,8 @@ export class Game {
 
   /** Can feet at y (px, on a cell top) stand at x? 2 = solid, 1 = ledge, 0 = no. */
   support(x: number, fy: number, drop: boolean, halfW = HALF_W): number {
-    if (fy % CELL !== 0) return 0;
+    const on = !drop && this.platformUnder(x, fy, halfW) ? 1 : 0;
+    if (fy % CELL !== 0) return on;
     const r = fy / CELL;
     const c0 = Math.floor((x - halfW) / CELL);
     const c1 = Math.floor((x + halfW) / CELL);
@@ -352,7 +402,41 @@ export class Game {
       if (this.isSolid(this.cell(c, r))) return 2;
       if (!drop && this.isLedge(c, r)) best = 1;
     }
-    return best;
+    return Math.max(best, on);
+  }
+
+  /** The moving platform whose top is at fy under feet at x, if any. */
+  platformUnder(x: number, fy: number, halfW = HALF_W): Platform | undefined {
+    for (const pl of this.platforms) if (fy === pl.y && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
+    return undefined;
+  }
+
+  /** A platform that rose to or past falling feet this frame (from: the feet before the fall), if any. */
+  private platformRose(x: number, from: number, halfW: number): Platform | undefined {
+    for (const pl of this.platforms) if (pl.dy <= 0 && from >= pl.y && from <= pl.y - pl.dy && x + halfW >= pl.x && x - halfW < pl.x + pl.w) return pl;
+    return undefined;
+  }
+
+  /** Moves the platforms to this frame's place, carrying whoever stands on them. */
+  private movePlatforms(): void {
+    for (const pl of this.platforms) {
+      const was = { x: pl.x, y: pl.y };
+      const riders = this.players.filter((p) => p.active && p.onGround && !p.climbing && this.platformUnder(p.x, p.y >> 4, p.body.halfW) === pl);
+      placePlatform(pl, this.frame);
+      const dx = pl.x - was.x;
+      const dy = pl.y - was.y;
+      pl.dy = dy;
+      for (const p of riders) {
+        // sideways one pixel at a time, stopped by walls; up or down with the top
+        const step = Math.sign(dx);
+        for (let n = 0; n < Math.abs(dx); n++) {
+          if (this.bodyBlocked(p.x + step + step * p.body.halfW, p.y >> 4, p.body.h)) break;
+          p.x += step;
+        }
+        if (dy < 0 && this.bodyBlocked(p.x, (p.y >> 4) + dy, p.body.h)) continue;
+        p.y += dy * 16;
+      }
+    }
   }
 
   private bodyBlocked(x: number, fy: number, h = BODY_H): boolean {
@@ -640,7 +724,9 @@ export class Game {
         }
         const to = (p.y + p.vy) >> 4;
         if (p.vy > 0) {
-          for (let py = from + 1; py <= to; py++)
+          // a platform going up can meet the feet from below: it is found at its own top
+          const rose = p.dropT === 0 ? this.platformRose(p.x, from, p.body.halfW) : undefined;
+          for (let py = rose ? rose.y : from + 1; py <= Math.max(to, rose ? rose.y : to); py++)
             if (this.support(p.x, py, p.dropT !== 0, p.body.halfW)) {
               p.y = py * 16;
               p.vy = 0;
@@ -973,6 +1059,7 @@ export class Game {
       return;
     }
     this.frame++;
+    this.movePlatforms();
     for (const p of this.players) {
       const pad = cancelOpposites(inputs[p.index] ?? 0);
       if (!p.active) {
@@ -1092,6 +1179,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
 }
 
 /** Room kept above the highest head and below the lowest feet (px). */
+/** The most moving platforms in a level (the ROM engine keeps as many). */
+export const MAX_PLATFORMS = 16;
 const VIEW_TOP = 24;
 const VIEW_BOTTOM = 8;
 

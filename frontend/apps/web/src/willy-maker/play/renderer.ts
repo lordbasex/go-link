@@ -317,8 +317,25 @@ function drawExits(ctx: CanvasRenderingContext2D, game: Game): void {
   }
 }
 
+/** The moving platforms, as the ROM draws them: a steel girder 8 px tall with a bolt every 16 px. */
+function drawPlatforms(ctx: CanvasRenderingContext2D, game: Game): void {
+  for (const pl of game.platforms) {
+    ctx.fillStyle = "#3a4a66";
+    ctx.fillRect(pl.x, pl.y, pl.w, 8);
+    ctx.fillStyle = "#8fb3e8";
+    ctx.fillRect(pl.x, pl.y, pl.w, 2);
+    ctx.fillStyle = "#1c2433";
+    ctx.fillRect(pl.x, pl.y + 7, pl.w, 1);
+    ctx.fillRect(pl.x, pl.y, 1, 8);
+    ctx.fillRect(pl.x + pl.w - 1, pl.y, 1, 8);
+    ctx.fillStyle = "#d8e6ff";
+    for (let x = pl.x + 7; x < pl.x + pl.w; x += 16) ctx.fillRect(x, pl.y + 4, 2, 2);
+  }
+}
+
 function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[], ownHeroes?: (Sheet | null)[]): void {
   const f = game.frame;
+  drawPlatforms(ctx, game);
   for (const k of game.pickups) {
     if (!k.live) continue;
     if (k.item === "coin") {

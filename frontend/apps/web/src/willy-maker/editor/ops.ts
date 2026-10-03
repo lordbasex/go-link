@@ -135,6 +135,11 @@ export function placePart(store: EditorStore, levelId: string, part: Part, x: nu
     if (part.kind !== "object") return;
     name = uniqueName(level, baseName(part));
     const o: LevelObject = { name, type: part.type, x: Math.round(x / 8) * 8, y: Math.round(y / CELL) * CELL, ...part.props };
+    if (part.type === "platform") {
+      // its top on a 16 px row, its left on an 8 px column
+      o.x = Math.max(0, Math.round(x / 8) * 8 - 24);
+      o.y = Math.floor(y / CELL) * CELL;
+    }
     if (part.type === "camera_lock") {
       o.x = Math.max(0, Math.min(level.size.w - 384, Math.floor(x / CELL) * CELL));
       o.y = Math.max(0, Math.min(level.size.h - 224, Math.floor(y / CELL) * CELL - 112));

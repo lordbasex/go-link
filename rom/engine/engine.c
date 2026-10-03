@@ -606,6 +606,45 @@ static struct pickup {
 	int item, live;
 } pickup[MAX_PICKUPS];
 static int npickups;
+
+/* the moving platforms (engine/game.ts Platform): their place comes from
+   plat_t, the frames played since the level started, alone */
+#define MAX_PLATFORMS 16
+static struct platform {
+	s32 x0, y0, w, axis, range, speed;
+	s32 x, y; /* the top left now */
+	s32 dy;   /* how far the top moved this frame */
+} plat[MAX_PLATFORMS];
+static int nplat;
+static u32 plat_t;
+
+static void place_platform(struct platform *q, u32 t)
+{
+	s32 span = 2 * q->range, s = span ? (s32)((t * (u32)q->speed) % (u32)span) : 0;
+	s32 off = s <= q->range ? s : span - s;
+	q->x = q->axis ? q->x0 : q->x0 + off;
+	q->y = q->axis ? q->y0 + off : q->y0;
+}
+
+/* a platform that rose to or past falling feet this frame (from: the feet before the fall), or -1 */
+static int platform_rose(s32 x, s32 from, int half)
+{
+	int i;
+	for (i = 0; i < nplat; i++)
+		if (plat[i].dy <= 0 && from >= plat[i].y && from <= plat[i].y - plat[i].dy && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
+			return i;
+	return -1;
+}
+
+/* the platform whose top is at fy under feet at x, or -1 */
+static int platform_under(s32 x, s32 fy, int half)
+{
+	int i;
+	for (i = 0; i < nplat; i++)
+		if (fy == plat[i].y && x + half >= plat[i].x && x - half < plat[i].x + plat[i].w)
+			return i;
+	return -1;
+}
 /* the platformer (T-22): coins taken and in the level, a spring's and a stomp's bounce (1/16 px per frame) */
 static int coins, ncoins;
 #define COIN_SCORE 100
@@ -709,8 +748,9 @@ static int is_ledge(int c, int r)
 static int support_w(s32 x, s32 fy, int drop, int half)
 {
 	int r, c0, c1, best = 0, c;
+	int on = !drop && platform_under(x, fy, half) >= 0;
 	if (fy & 15)
-		return 0;
+		return on;
 	r = (int)(fy >> 4);
 	c0 = (int)((x - half) >> 4);
 	c1 = (int)((x + half) >> 4);
@@ -720,7 +760,7 @@ static int support_w(s32 x, s32 fy, int drop, int half)
 		if (!drop && is_ledge(c, r))
 			best = 1;
 	}
-	return best;
+	return best > on ? best : on;
 }
 
 /* a body h px tall (BODY_H standing, CROUCH_H crouched) */
@@ -1074,10 +1114,66 @@ static void game_reset(void)
 		if (o->a == WM_ITEM_COIN)
 			ncoins++;
 	}
+	plat_t = 0;
+	nplat = D->n_platforms < MAX_PLATFORMS ? D->n_platforms : MAX_PLATFORMS;
+	o = (const struct wm_object *)D->platforms;
+	for (i = 0; i < nplat; i++, o++) {
+		plat[i].x0 = o->x;
+		plat[i].y0 = o->y;
+		plat[i].w = o->a;
+		plat[i].axis = o->b;
+		plat[i].range = o->c;
+		plat[i].speed = o->d;
+		plat[i].dy = 0;
+		place_platform(&plat[i], 0);
+	}
 	for (i = 0; i < MAX_EN_SHOTS; i++)
 		en_shots[i].live = 0;
 	rescued = 0;
 	cam_x = cam_y = cam_far = 0;
+}
+
+/* moves the platforms to this frame's place, carrying whoever stands on them (engine/game.ts movePlatforms) */
+static void move_platforms(void)
+{
+	int i, k;
+	plat_t++;
+	for (i = 0; i < nplat; i++) {
+		struct platform *q = &plat[i];
+		s32 wx = q->x, wy = q->y, dx, dy, n;
+		int ride[MAX_PLAYERS];
+		for (k = 0; k < nplayers; k++)
+			ride[k] = pl[k].active && pl[k].on_ground && !pl[k].climbing && platform_under(pl[k].x, pl[k].y >> 4, pl[k].look->half_w) == i;
+		place_platform(q, plat_t);
+		dx = q->x - wx;
+		dy = q->y - wy;
+		q->dy = dy;
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			int step = dx > 0 ? 1 : -1;
+			if (!ride[k])
+				continue;
+			/* sideways one pixel at a time, stopped by walls; up or down with the top */
+			for (n = 0; n < (dx < 0 ? -dx : dx); n++) {
+				if (body_blocked_h(p->x + step + step * p->look->half_w, p->y >> 4, p->look->body_h))
+					break;
+				p->x += step;
+			}
+			if (dy < 0 && body_blocked_h(p->x, (p->y >> 4) + dy, p->look->body_h))
+				continue;
+			p->y += dy * 16;
+		}
+	}
+}
+
+static void draw_platforms(void)
+{
+	int i, x;
+	for (i = 0; i < nplat; i++) {
+		int sx = (int)plat[i].x - cam_x, sy = (int)plat[i].y - cam_y;
+		for (x = 0; x < plat[i].w; x += 16)
+			put_sprite(sx + x, sy, x == 0 ? TILE_PLATFORM : x + 16 >= plat[i].w ? TILE_PLATFORM + 2 : TILE_PLATFORM + 1, PAL_PICKUPS);
+	}
 }
 
 static void walk(struct player *p, int dir, int speed)
@@ -1262,7 +1358,10 @@ static void update_player(struct player *p)
 			}
 			to = (p->y + p->vy) >> 4;
 			if (p->vy > 0) {
-				for (py = from + 1; py <= to; py++)
+				/* a platform going up can meet the feet from below: it is found at its own top */
+				int rose = p->drop_t ? -1 : platform_rose(p->x, from, p->look->half_w);
+				s32 last = rose >= 0 && plat[rose].y > to ? plat[rose].y : to;
+				for (py = rose >= 0 ? plat[rose].y : from + 1; py <= last; py++)
 					if (support_w(p->x, py, p->drop_t != 0, p->look->half_w)) {
 						p->y = py * 16;
 						p->vy = 0;
@@ -1805,6 +1904,7 @@ static void draw_world(void)
 	draw_enemies();
 	draw_pickups();
 	draw_civilians();
+	draw_platforms();
 	flush_sprites();
 }
 
@@ -2138,6 +2238,8 @@ static int play(int first)
 					}
 					player_join(k);
 				}
+		if (outcome < 0)
+			move_platforms();
 		/* on the clear screen the players stand still, showing their victory */
 		victory = outcome == END_CLEAR;
 		for (k = 0; k < nplayers; k++)

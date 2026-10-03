@@ -8,6 +8,7 @@
 import { CELL, objectLayer, tagGrid, TAG_NUMBER, type CellGrid, type Level } from "../model";
 import { measureJump } from "../engine/jump";
 import { bodyFor } from "../engine/rules";
+import { platformOf } from "../engine/game";
 
 /**
  * Cells of headroom the hero needs: three for Willy's 44 px; a taller hero's
@@ -187,6 +188,17 @@ export function reachability(level: Level, jumpRows = JUMP_ROWS, bodyRows = 3): 
 function reachabilityWith(level: Level, jumpRows: number): Reach {
   const g = tagGrid(level);
   const { cols, rows } = g;
+  // a moving platform carries the players along its track: for the search, a one-way ledge all the way
+  for (const o of objectLayer(level).items) {
+    if (o.type !== "platform") continue;
+    const pl = platformOf(o);
+    const across = pl.axis === "x";
+    const c0 = Math.floor(pl.x0 / CELL);
+    const c1 = Math.floor((pl.x0 + pl.w - 1 + (across ? pl.range : 0)) / CELL);
+    const r0 = Math.round(pl.y0 / CELL);
+    const r1 = Math.round((pl.y0 + (across ? 0 : pl.range)) / CELL);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (r >= 0 && r < rows && c >= 0 && c < cols && g.get(c, r) === 0) g.set(c, r, oneway);
+  }
   const reached = new Uint8Array(cols * rows);
   const queue: number[] = [];
   const startCells: number[] = [];

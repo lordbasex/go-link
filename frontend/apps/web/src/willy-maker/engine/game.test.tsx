@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { Game, Input, Tag, decodeCells, levelFromProject, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { Game, Input, Tag, decodeCells, levelFromProject, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -590,5 +590,88 @@ describe("the platformer (T-22)", () => {
     run(g, 60, Input.Right);
     expect(g.players[0]!.lives).toBe(3);
     expect(g.enemies[0]!.state === "down" || g.enemies[0]!.state === "off").toBe(true);
+  });
+});
+
+describe("moving platforms (the platformer)", () => {
+  const plat = (o: Partial<LevelObject> = {}): LevelObject => ({ name: "lift", type: "platform", x: 192, y: 352, w: 48, axis: "x", range: 96, speed: 1, ...o });
+  const onIt = (o: Partial<LevelObject> = {}, build?: Parameters<typeof flat>[0]) => {
+    const view = flat(build, [plat(o)]);
+    view.objects[0] = { name: "p1", type: "player_start", x: 216, y: o.y ?? 352, player: 1 };
+    return new Game(view);
+  };
+
+  it("goes there and back from the frame count alone", () => {
+    const pl = platformOf({ name: "a", x: 100, y: 200, w: 40, axis: "x", range: 30, speed: 2 });
+    expect(pl.w).toBe(48); // whole cells
+    const at = (t: number) => (placePlatform(pl, t), pl.x);
+    expect([at(0), at(5), at(15), at(20), at(30), at(45)]).toEqual([100, 110, 130, 120, 100, 130]);
+  });
+
+  it("holds a player and carries them along", () => {
+    const g = onIt();
+    expect(feet(g)).toBe(352);
+    expect(g.players[0]!.onGround).toBe(true);
+    run(g, 40, 0);
+    expect(g.platforms[0]!.x).toBe(232);
+    expect(g.players[0]!.x).toBe(256);
+    expect(feet(g)).toBe(352);
+    // out to 96 px and 44 back by frame 140
+    run(g, 100, 0);
+    expect(g.platforms[0]!.x).toBe(244);
+    expect(g.players[0]!.x).toBe(268);
+  });
+
+  it("carries a player up and down", () => {
+    const g = onIt({ axis: "y", y: 320, range: 48 });
+    run(g, 30, 0);
+    expect(g.platforms[0]!.y).toBe(350);
+    expect(feet(g)).toBe(350);
+    run(g, 48, 0);
+    expect(feet(g)).toBe(g.platforms[0]!.y);
+    expect(g.players[0]!.onGround).toBe(true);
+  });
+
+  it("is one-way: the player jumps through from below and drops through with down and jump", () => {
+    const g = onIt({ range: 0 });
+    run(g, 1, Input.Down | Input.B1);
+    run(g, 40, 0);
+    expect(feet(g)).toBe(400);
+    // jumping from the floor under it goes through and lands on top
+    let top = false;
+    for (let f = 0; f < 80 && !top; f++) {
+      run(g, 1, f < 20 ? Input.B1 : 0);
+      top = g.players[0]!.onGround && feet(g) === 352;
+    }
+    expect(top).toBe(true);
+  });
+
+  it("catches a player falling onto it while it goes up", () => {
+    // a lift going up and down over a player who keeps jumping: the feet never cross its top
+    const view = flat(undefined, [{ name: "lift", type: "platform", x: 192, y: 320, w: 64, axis: "y", range: 64, speed: 1 }]);
+    view.objects[0] = { name: "p1", type: "player_start", x: 224, y: 400, player: 1 };
+    let ridden = 0;
+    for (let wait = 0; wait < 128; wait += 3) {
+      const g = new Game(view);
+      run(g, wait, 0);
+      for (let f = 0; f < 150; f++) {
+        const before = { feet: feet(g), top: g.platforms[0]!.y, falling: g.players[0]!.vy > 0 };
+        run(g, 1, f < 14 ? Input.B1 : 0);
+        // falling from on or over its top to under it (going up through it from below is allowed)
+        const crossed = before.falling && before.feet <= before.top && feet(g) > g.platforms[0]!.y;
+        expect(crossed, `wait ${wait}, frame ${f}`).toBe(false);
+      }
+      if (g.players[0]!.onGround && feet(g) === g.platforms[0]!.y) ridden++;
+    }
+    expect(ridden).toBeGreaterThan(10);
+  });
+
+  it("a wall stops the ride but not the platform", () => {
+    const g = onIt({}, (set) => {
+      for (let r = 19; r < 22; r++) set(16, r, Tag.Solid); // a wall at x 256, above the platform's top
+    });
+    run(g, 60, 0);
+    expect(g.platforms[0]!.x).toBe(252);
+    expect(g.players[0]!.x).toBeLessThan(256);
   });
 });

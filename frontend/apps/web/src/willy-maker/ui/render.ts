@@ -40,7 +40,7 @@ export const FALLBACK_PALETTE: Palette = {
   danger: "#e0627a",
   dangerBg: "#2a1519",
   tags: { solid: "#a3abbd", oneway: "#7ee2a8", ladder: "#4fc3d9", crate: "#f2a33a", breakable: "#e0627a", hazard: "#f2d23a", water: "#4f8bd9" },
-  objects: { player_start: "#f2a33a", enemy: "#e0627a", civilian: "#7ee2a8", crate: "#f2a33a", pickup: "#f2d23a", camera_lock: "#9d8cf0", checkpoint: "#7ee2a8", boss: "#e0627a", exit: "#7ee2a8" },
+  objects: { player_start: "#f2a33a", enemy: "#e0627a", civilian: "#7ee2a8", crate: "#f2a33a", pickup: "#f2d23a", platform: "#4fc3d9", camera_lock: "#9d8cf0", checkpoint: "#7ee2a8", boss: "#e0627a", exit: "#7ee2a8" },
   font: "monospace",
 };
 
@@ -88,6 +88,7 @@ export function paletteFrom(el: Element | null): Palette {
       civilian: ok,
       crate: accent,
       pickup: v("--color-hazard", "#f2d23a"),
+      platform: v("--color-voice", "#4fc3d9"),
       camera_lock: p4,
       checkpoint: ok,
       boss: p3,
@@ -136,6 +137,7 @@ function cellsOf(level: Level, layer: TileLayer | TagLayer): Uint16Array {
 
 /** The world rectangle of an object (points get a small box above their feet). */
 export function objectBox(o: LevelObject): { x: number; y: number; w: number; h: number } {
+  if (o.type === "platform") return { x: o.x, y: o.y, w: Number(o.w) || 48, h: 8 };
   if (typeof o.w === "number" && typeof o.h === "number" && o.type !== "boss") return { x: o.x, y: o.y, w: o.w, h: o.h };
   if (o.type === "crate") {
     const s = Number(o.size) || 32;
@@ -318,6 +320,16 @@ function drawObjects(ctx: CanvasRenderingContext2D, level: Level, pal: Palette, 
     ctx.globalAlpha = 1;
     ctx.strokeRect(b.x, b.y, b.w, b.h);
     ctx.setLineDash([]);
+    if (obj.type === "platform") {
+      // its track: where it goes and comes back
+      const range = Math.max(0, Number(obj.range) || 0);
+      const across = obj.axis !== "y";
+      ctx.globalAlpha = 0.5;
+      ctx.setLineDash([4 / z, 4 / z]);
+      ctx.strokeRect(b.x, b.y, b.w + (across ? range : 0), b.h + (across ? 0 : range));
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
     if (obj.type === "boss" && typeof obj.w === "number" && typeof obj.h === "number") {
       ctx.globalAlpha = 0.6;
       ctx.setLineDash([3 / z, 4 / z]);

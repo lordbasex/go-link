@@ -130,6 +130,8 @@ export function levelToTiled(level: Level, project: Project, opts: TiledExportOp
   const objects = objectLayer(level).items.map((o) => {
     const rect = (o.type === "camera_lock" || o.type === "boss") && typeof o.w === "number" && typeof o.h === "number";
     const base = { id: objectId++, name: o.name, type: o.type, class: o.type, x: o.x, y: o.y, rotation: 0, visible: true, properties: propsOf(o, skip) };
+    // a moving platform: its top 8 px, at its place at the start
+    if (o.type === "platform") return { ...base, width: Number(o.w) || 48, height: 8 };
     return rect ? { ...base, width: o.w, height: o.h } : { ...base, width: 0, height: 0, point: true };
   });
   layers.push({ id: id++, name: "objects", type: "objectgroup", draworder: "index", x: 0, y: 0, opacity: 1, visible: true, objects });

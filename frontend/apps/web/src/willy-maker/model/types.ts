@@ -180,7 +180,7 @@ export type Tag = (typeof TAGS)[number];
 export const TAG_NUMBER: Record<Tag, number> = { air: 0, solid: 1, oneway: 2, ladder: 3, crate: 4, breakable: 5, hazard: 6, water: 7 };
 
 /** Object types and their properties (art-spec.md section 4). */
-export const OBJECT_TYPES = ["player_start", "enemy", "civilian", "crate", "pickup", "camera_lock", "checkpoint", "boss", "exit"] as const;
+export const OBJECT_TYPES = ["player_start", "enemy", "civilian", "crate", "pickup", "platform", "camera_lock", "checkpoint", "boss", "exit"] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 
 export interface LevelObject {

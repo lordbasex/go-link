@@ -626,9 +626,24 @@ export function addArt(gfx, defs, genDir, opts = {}) {
       }),
     );
     gfx.tile16(code + 1, spring);
-    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
-    objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, ...new Array(7).fill(0xf000), 0x0000]);
-    code += 2;
+    // the moving platform: a steel girder 8 px tall, as play mode draws it (play/renderer.ts drawPlatforms);
+    // left end, middle, right end, a bolt in the middle of each
+    for (let part = 0; part < 3; part++)
+      gfx.tile16(
+        code + 2 + part,
+        Array.from({ length: 16 }, (_, y) =>
+          Array.from({ length: 16 }, (_, x) => {
+            if (y >= 8) return 15;
+            if (y === 7 || (part === 0 && x === 0) || (part === 2 && x === 15)) return 10; // shadow and ends
+            if (y < 2) return 9; // the lit top
+            if ((x === 7 || x === 8) && (y === 4 || y === 5)) return 11; // the bolt
+            return 8;
+          }),
+        ),
+      );
+    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end */`, `#define PAL_PICKUPS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, ...new Array(3).fill(0xf000), 0x0000]);
+    code += 5;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

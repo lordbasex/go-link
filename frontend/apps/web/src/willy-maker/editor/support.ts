@@ -64,6 +64,7 @@ export const SUPPORT: Record<string, Support> = {
   "player_start:p4": works,
   "checkpoint:checkpoint": soon("checkpoint"),
   "camera_lock:camera_lock": works,
+  "platform:platform": works,
   "exit:exit": works,
   // the inspector's options
   ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`item:${i}`, i === "bazooka" || i === "coin" || i === "spring" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),

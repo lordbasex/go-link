@@ -39,6 +39,7 @@ export const PARTS: Part[] = [
   { id: "tag:water", group: "terrain", kind: "tag", tag: "water" },
   { id: "crate:object", group: "objects", kind: "crate" },
   ...PICKUP_ITEMS.map((item) => obj("objects", "pickup", item, { item })),
+  obj("objects", "platform", "platform", { w: 48, axis: "x", range: 96, speed: 1 }),
   ...ENEMY_KINDS.map((kind) => obj("enemies", "enemy", kind, { kind, facing: "left", patrol: 96 })),
   ...BOSS_KINDS.map((kind) => obj("enemies", "boss", kind, { kind, w: 384, h: 224 })),
   ...CIVILIAN_KINDS.map((kind) => obj("civilians", "civilian", kind, { kind, trapped_in: "" })),

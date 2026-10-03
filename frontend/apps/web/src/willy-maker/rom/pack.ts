@@ -15,6 +15,7 @@ import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
 import { difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
+import { MAX_PLATFORMS, platformOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
 import { BUILTIN_HERO } from "../model";
@@ -62,14 +63,14 @@ export interface PackResult {
   /** The data block (for tests and the record). */
   data: Uint8Array;
   notes: RomNote[];
-  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; playPalettes?: number; farPalettes?: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number; sound?: SoundPack["stats"] };
+  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; playPalettes?: number; farPalettes?: number; enemies: number; civilians: number; crates: number; pickups: number; platforms?: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number; sound?: SoundPack["stats"] };
 }
 
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 7;
-const HEADER = 0xa6;
+const WM_VERSION = 8;
+const HEADER = 0xae;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -403,6 +404,7 @@ export function packGame(
   const civKinds: string[] = [];
   const crates: Row[] = [];
   const pickups: Row[] = [];
+  const platforms: Row[] = [];
   const startX = [-1, -1, -1, -1];
   const startY = [-1, -1, -1, -1];
   let exit: [number, number, number, number] = [0, 0, 0, 0];
@@ -439,6 +441,12 @@ export function packGame(
         const item = String(o.item ?? "bazooka");
         if (!ITEM[item]) note("item", { item });
         else pickups.push([o.x, o.y, ITEM[item]!, 0, 0, 0]);
+        break;
+      }
+      case "platform": {
+        // the same limits play mode applies (engine/game.ts platformOf)
+        const pl = platformOf(o);
+        platforms.push([pl.x0, pl.y0, pl.w, pl.axis === "y" ? 1 : 0, pl.range, pl.speed]);
         break;
       }
       case "exit":
@@ -516,6 +524,8 @@ export function packGame(
   out.align();
   const objAt = out.addr;
   for (const row of [...enemies.slice(0, 16), ...civs.slice(0, 8), ...crates.slice(0, 32), ...pickups.slice(0, 64)]) for (const v of row) out.u16(v & 0xffff);
+  const platAt = out.addr;
+  for (const row of platforms.slice(0, MAX_PLATFORMS)) for (const v of row) out.u16(v & 0xffff);
   const textAt = out.addr;
   for (const { scr, line, attr } of textLines(project)) {
     const text = [...line.text].map((ch) => (unsupportedChars(ch).length ? " " : ch)).join("").slice(0, 48);
@@ -655,6 +665,9 @@ export function packGame(
   }
   w32(enemyLooksAt);
   w32(civLooksAt);
+  w32(platforms.length ? platAt : 0);
+  w16(Math.min(MAX_PLATFORMS, platforms.length));
+  w16(0);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);
@@ -710,6 +723,7 @@ export function packGame(
       civilians: civs.length,
       crates: crates.length,
       pickups: pickups.length,
+      platforms: platforms.length,
       dataBytes: data.length,
       looks: looks.looks.length,
       lookTiles: looks.tiles,

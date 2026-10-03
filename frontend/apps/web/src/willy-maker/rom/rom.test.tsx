@@ -46,8 +46,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(7);
-    expect(u16(d, 6)).toBe(0xa6);
+    expect(u16(d, 4)).toBe(8);
+    expect(u16(d, 6)).toBe(0xae);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -101,6 +101,33 @@ describe("Create ROM", () => {
     const out = process.env.WM_ROM_OUT;
     if (out) {
       const dir = resolve(out, "moves");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    expect(result.ok).toBe(true);
+  }, 30000);
+
+  it("powers on with moving platforms (validation level 3)", async () => {
+    // player 1 starts on a lift going across; a second one goes up and down (rom/tools/lab/runs/platforms-ride.json)
+    const p = specProject();
+    const items = p.levels[0]!.layers.find((l) => l.kind === "objects")!;
+    if (items.kind !== "objects") throw new Error("objects");
+    Object.assign(items.items.find((o) => o.type === "player_start" && o.player === 1)!, { x: 64, y: 384 });
+    items.items.push({ name: "lift_a", type: "platform", x: 40, y: 384, w: 48, axis: "x", range: 96, speed: 1 });
+    items.items.push({ name: "lift_b", type: "platform", x: 232, y: 320, w: 64, axis: "y", range: 64, speed: 1 });
+    const r = packGame(p, engine, (id) => pictures.get(id) ?? null);
+    expect(r.stats.platforms).toBe(2);
+    const d = assembleProgram(SLAMMAST, r.files).subarray(WM_DATA_ADDR);
+    expect(u16(d, 0xaa)).toBe(2);
+    const at = u32(d, 0xa6) - WM_DATA_ADDR;
+    expect([0, 2, 4, 6, 8, 10].map((k) => u16(d, at + 12 + k))).toEqual([232, 320, 64, 1, 64, 1]);
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "platforms");
       mkdirSync(dir, { recursive: true });
       writeFileSync(resolve(dir, "slammast.zip"), zip);
       writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));

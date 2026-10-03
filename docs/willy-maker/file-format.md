@@ -113,6 +113,8 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
           { "name": "p1_start", "type": "player_start", "x": 64, "y": 608, "player": 1 },
           { "name": "crate_dock_3", "type": "crate", "x": 512, "y": 576,
             "size": 32, "hp": 2, "contents": "bazooka" },
+          { "name": "lift_1", "type": "platform", "x": 2048, "y": 512,       // its top left at the start
+            "w": 48, "axis": "x", "range": 96, "speed": 1 },              // across (x) or up and down (y), there and back
           { "name": "lock_lobby", "type": "camera_lock", "x": 3200, "y": 448, "w": 384, "h": 224 }
         ]},
         { "id": "text", "kind": "tiles", "grid": 8, "data": "rle:…" }
@@ -174,7 +176,7 @@ my-game.ai-pack.zip
 
 - Every picture is converted to board colors (each channel to the nearest multiple of 17; alpha is on or off). Layers and tilesets keep transparency; strips use magenta `#FF00FF`.
 - **No whole-level pictures** (task T-20, lesson E-03: an outside AI found 22 MB per 8192 px level picture, 70 MB unpacked for two levels; the PNGs are written without compression): the play and collision layers are the maps' tile layers over their tilesets, and the far layer is cut into its unique 32 px tiles (`far-tiles.png`), each placed on the map cell of its bottom-left with a 0.5 parallax. Buenos Aires (8192 × 672) packs into about 0.7 MB unpacked, 54 KB zipped.
-- The `.tmj` files point at `../tilesets/*.png` and `<level>/far-tiles.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles.
+- The `.tmj` files point at `../tilesets/*.png` and `<level>/far-tiles.png`, so the pack opens in Tiled as it is. Willy Maker's Tiled import reads them back with the same collision and objects. Objects are points, except `camera_lock` and `boss`, which are rectangles, and `platform`, a rectangle as wide as the platform and 8 px tall.
 - The docs are the repository's `docs/rom/*.md` plus Willy Maker's `file-format.md` (this file, so `project.json` can be read without the repository) and `moves.md`, bundled with the website and loaded when the pack is made.
 - **Deterministic**: the same project gives the same bytes. Entries have a fixed date (2026-01-01 00:00) and a fixed order (`PROMPT.md`, then the rest sorted by name), and PNGs are written without a canvas. Compression uses the browser's own deflate, so two browsers may still differ.
 - A picture the browser no longer has (cleared site data) is left out, and `PROMPT.md` names it.

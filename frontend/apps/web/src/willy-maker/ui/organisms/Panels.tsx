@@ -382,6 +382,30 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           </PropRow>
         </div>
       )}
+      {o.type === "platform" && (
+        <>
+          <div className="wm-grid2 is-tight">
+            <PropRow label={t.inspector.w}>
+              <NumberInput label={t.inspector.w} value={Number(o.w ?? 48)} min={2 * CELL} max={8 * CELL} step={CELL} onChange={(w) => set({ w })} />
+            </PropRow>
+            <PropRow label={t.inspector.moves}>
+              <select className="wm-input is-sm" aria-label={t.inspector.moves} value={o.axis === "y" ? "y" : "x"} onChange={(e) => set({ axis: e.target.value })}>
+                <option value="x">{t.inspector.across}</option>
+                <option value="y">{t.inspector.upDown}</option>
+              </select>
+            </PropRow>
+          </div>
+          <div className="wm-grid2 is-tight">
+            <PropRow label={t.inspector.distance}>
+              <NumberInput label={t.inspector.distance} value={Number(o.range ?? 96)} min={0} max={512} step={8} onChange={(range) => set({ range })} />
+            </PropRow>
+            <PropRow label={t.inspector.speed}>
+              <NumberInput label={t.inspector.speed} value={Number(o.speed ?? 1)} min={1} max={4} onChange={(speed) => set({ speed })} />
+            </PropRow>
+          </div>
+          <div className="wm-dim wm-small">{t.inspector.platformHelp}</div>
+        </>
+      )}
       {(o.type === "camera_lock" || o.type === "boss") && (
         <div className="wm-grid2 is-tight">
           <PropRow label={t.inspector.w}>

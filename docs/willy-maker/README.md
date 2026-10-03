@@ -161,7 +161,8 @@ Stamps placed on the `objects` layer, each with a **reference name** (for exampl
 | Enemy | kind, facing, patrol distance |
 | Civilian | kind (woman, child, baby, elder), trapped in (a crate or wall) |
 | Crate | size (16 or 32), hp, contents (nothing, weapon, health, civilian) |
-| Pickup | bazooka, flamethrower, spread, grenades, health, Lattenza page |
+| Pickup | bazooka, flamethrower, spread, grenades, health, Lattenza page, coin, spring |
+| Moving platform | width, across or up and down, distance, speed |
 | Camera lock | a rectangle where the camera stops until its enemies are beaten |
 | Checkpoint | where players come back after losing a life |
 | Boss | kind, arena rectangle |
