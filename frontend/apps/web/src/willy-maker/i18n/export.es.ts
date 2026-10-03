@@ -39,12 +39,12 @@ export const exportEs: ExportMessages = {
   },
   project: {
     title: "1 · Guardar el proyecto",
-    text: "Un .zip con todo: niveles, personajes, fondos y ajustes. Ábrelo en otro navegador y sigue donde estabas.",
+    text: "Un .zip con todo: niveles, personajes, fondos y ajustes. Ábrelo en otro navegador y sigue donde estabas. No es una ROM: el dispositivo no lo ejecuta (Crear ROM hace la ROM).",
     download: "Descargar proyecto (.zip)",
   },
   ai: {
     title: "2 · Paquete para una IA",
-    text: "El proyecto más un PROMPT.md con la placa, las reglas, la historia y la especificación de arte. Dáselo a una IA para que arme la ROM con las herramientas de rom/.",
+    text: "El proyecto más un PROMPT.md con la placa, las reglas, la historia y la especificación de arte. Dáselo a una IA para que arme la ROM con las herramientas de rom/. Tampoco es una ROM.",
     download: "Descargar paquete IA",
     copy: "Copiar prompt",
     copied: "Prompt copiado",

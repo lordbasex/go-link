@@ -473,9 +473,11 @@ function AddRoms() {
           id?: string;
           ok?: boolean;
           error?: string;
+          code?: string;
         };
         if (m.type === "upload_result" && m.id) {
-          waiters.current.get(m.id)?.({ ok: m.ok === true, error: m.error });
+          // "not_rom": a Willy Maker project or AI pack, named in the user's language (T-21)
+          waiters.current.get(m.id)?.({ ok: m.ok === true, error: m.code === "not_rom" ? t.linked.notRom : m.error });
           waiters.current.delete(m.id);
         } else if (m.type === "roms_dir_result") {
           setDirError(m.ok ? "" : (m.error ?? t.linked.folderError));
@@ -498,9 +500,16 @@ function AddRoms() {
   const upload = async (files: FileList | File[]) => {
     const stream = hostLink?.stream;
     // ROM sets, and PNG/JPG pictures that become Boxart thumbnails.
-    const list = [...files].filter((f) =>
-      /\.(zip|png|jpe?g)$/i.test(f.name),
+    const all = [...files];
+    // a Willy Maker project or AI pack is the game's sources, not a ROM (T-21)
+    const sources = all.filter((f) => /\.(willy|ai-pack)\.zip$/i.test(f.name));
+    const list = all.filter(
+      (f) => /\.(zip|png|jpe?g)$/i.test(f.name) && !sources.includes(f),
     );
+    if (sources.length && list.length === 0) {
+      setUploadText(`${sources.map((f) => f.name).join(", ")}: ${t.linked.notRom}`);
+      return;
+    }
     if (!stream || list.length === 0) {
       setUploadText(t.linked.dropOnlyZip);
       return;
@@ -535,7 +544,8 @@ function AddRoms() {
       }
     }
     setUploading(false);
-    setUploadText(t.linked.dropDone(ok, list.length, failed));
+    for (const f of sources) failed.push(`${f.name} (${t.linked.notRom})`);
+    setUploadText(t.linked.dropDone(ok, list.length + sources.length, failed));
   };
 
   const onDrop = (e: DragEvent) => {

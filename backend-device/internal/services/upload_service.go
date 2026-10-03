@@ -16,6 +16,16 @@ type FileReply struct {
 	Name  string `json:"name"`
 	OK    bool   `json:"ok"`
 	Error string `json:"error,omitempty"`
+	// Code names an error the web translates ("not_rom": a project or AI pack, T-21).
+	Code string `json:"code,omitempty"`
+}
+
+// errorCode is the translatable code of an upload error, or "".
+func errorCode(err error) string {
+	if errors.Is(err, ErrNotRom) {
+		return "not_rom"
+	}
+	return ""
 }
 
 // Importer is what the uploads need from the library.
@@ -116,7 +126,7 @@ func (u *UploadService) begin(peerID string, msg fileControl) {
 		check = func() error { return errors.New("unknown upload purpose") }
 	}
 	if err := check(); err != nil {
-		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error()})
+		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error(), Code: errorCode(err)})
 		u.mu.Lock()
 		u.current[peerID] = &upload{id: msg.ID, name: msg.Name, failed: err} // swallow its chunks
 		u.mu.Unlock()
@@ -124,7 +134,7 @@ func (u *UploadService) begin(peerID string, msg fileControl) {
 	}
 	if msg.Size <= 0 || msg.Size > maxSize {
 		err := ErrBadRom
-		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error()})
+		u.reply(peerID, FileReply{Type: "upload_result", ID: msg.ID, Name: msg.Name, Error: err.Error(), Code: errorCode(err)})
 		u.mu.Lock()
 		u.current[peerID] = &upload{id: msg.ID, name: msg.Name, failed: err}
 		u.mu.Unlock()
@@ -180,6 +190,7 @@ func (u *UploadService) end(peerID, id string) {
 	r := FileReply{Type: "upload_result", ID: up.id, Name: up.name, OK: err == nil}
 	if err != nil {
 		r.Error = err.Error()
+		r.Code = errorCode(err)
 	}
 	u.reply(peerID, r)
 }

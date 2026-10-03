@@ -153,7 +153,7 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `set_thumbnails` / `thumbnails_result` | both | `kind` (`boxart`, `title` or `snap`) and/or `dir` (a folder on the device, or `default`): which picture everyone sees and where the device reads them, like the window's Settings / `ok`, `error` |
 | `set_video_quality` / `video_quality_result` | both | `quality` (`high`, `normal` or `saver`): the video quality of game rooms, like the window's Settings; running rooms switch at once / `quality`, `ok`, `error` (an unknown value changes nothing). See [Video scale](#video-scale) |
 | `set_roms_dir` / `roms_dir_result` | both | `dir`: absolute path of an existing folder on the device / `dir`, `ok`, `error` |
-| `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error` |
+| `upload_result` | device → linked | Result of one file of the `files` channel: `id`, `name`, `ok`, `error`, and `code` for an error the web translates (`not_rom`) |
 | `rom_test` | linked → device | `id` (the one of a `files` upload with `purpose: "rom_test"`), `set` (the set name), optional `frames` (600 to 3600, default 900). Powers the set on with the exact core. See [ROM test](#rom-test) |
 | `rom_test_result` | device → linked | `id`, `set`, `ok`, `steps` (`name`, `ok`, `detail`), `frames`, `seconds`, optional `shot` (PNG of the last frame, base64), `own` (`id`, `title`: a go-link set) or `error` with `code` (`busy`, `not_found`) |
 | `get_history` / `clear_history` / `delete_history` | linked → device | Ask for the game history, clear it (**with every recording**), or delete one game (`id`, with its recordings). The device answers `history` (with `error` for an unknown `id`) |
@@ -306,6 +306,7 @@ The device answers on `control` with `upload_result`. Rules, enforced on the dev
 - The file must start like a real ZIP, be at most 512 MB and match the announced `size`.
 - It is written to a temporary file in the same folder and renamed at the end. It **never replaces** an existing set. Files get mode `0644`.
 - If the channel closes halfway, the partial file is removed.
+- A Willy Maker project (`.willy.zip`) or AI pack (`.ai-pack.zip`) is refused by its name, and a renamed one by what it holds (`project.json` or `PROMPT.md` at its top), with `code: "not_rom"`: they are a game's sources, and Create ROM makes its ROM (task T-21 of experiment 1's verdict). The web also stops them before sending, and the device window and the CLI say the same.
 - The browser watches `bufferedAmount` so large files do not fill its memory.
 
 With `"purpose": "rom_test"` in `begin`, the file is a set for a [ROM test](#rom-test) instead: the device writes it to `~/go-link/tmp/romtest/<id>/<set>.zip` (`0600`, at most 16 MB, `id` of letters, digits, `_` and `-`), never to the ROM folder or the library, and keeps only the last one waiting. Any other `purpose` is refused.

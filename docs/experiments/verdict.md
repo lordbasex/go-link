@@ -104,7 +104,7 @@ Each task comes from the evidence that asked for it: the jury's lessons (L-01 to
 | T-18 | The jury process (case names out of the arena files, ROM hashes out of what jurors read before part 1, the second-agent HOWTO run required, newcomer and run-past scripts for every juror) | L-16, J-18 | done in the `experiment-jury` skill |
 | T-19 | The AI pack's `PROMPT.md` states its limits first: the tools it needs and that `build.mjs` builds only the prototype | E-02 | done |
 | T-20 | A lighter AI pack: level pictures cut into the board's tiles instead of 22 MB pictures | E-03 | done |
-| T-21 | A project or AI pack is not a ROM: the export page says so, and a `.willy.zip` dropped on the device gets a message | E-04 | next |
+| T-21 | A project or AI pack is not a ROM: the export page says so, and a `.willy.zip` dropped on the device gets a message | E-04 | done |
 | T-22 | Other genres, in the order of [genres.md](../willy-maker/genres.md) | E-05, U-04 | roadmap |
 | T-23 | The number of players in plain sight (one or two, up to four) in the wizard and the Game tab | U-02 | done |
 | T-24 | Own heroes: a project's characters drawn by play mode and by the ROM engine instead of Willy | U-03 | done |

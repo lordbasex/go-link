@@ -614,6 +614,7 @@ export const es: Messages = {
     dropTitle: "Arrastra sets de ROMs o imágenes aquí, o haz clic para elegir",
     dropHint: "Los sets .zip de MAME van a la carpeta de ROMs y las imágenes PNG o JPG quedan como thumbnails Boxart, directo a tu dispositivo por WebRTC.",
     dropOnlyZip: "Solo se pueden agregar sets de ROMs .zip e imágenes PNG o JPG.",
+    notRom: "un proyecto o paquete IA de Willy Maker no es una ROM: ábrelo en Willy Maker y crea la ROM con Crear ROM (pestaña Exportar).",
     dropProgress: (i: number, n: number, name: string, pct: number) => `Copiando ${i} / ${n} · ${name} · ${pct}%`,
     dropDone: (ok: number, n: number, failed: string[]) =>
       `Se agregaron ${ok} de ${n}.${failed.length ? ` No se agregaron: ${failed.join(", ")}` : ""}`,

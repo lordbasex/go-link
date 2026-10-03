@@ -601,6 +601,7 @@ export const pt: Messages = {
     dropTitle: "Arraste sets de ROMs ou imagens aqui, ou clique para escolher",
     dropHint: "Os sets .zip do MAME vão para a pasta de ROMs e as imagens PNG ou JPG viram thumbnails Boxart, direto para o seu dispositivo via WebRTC.",
     dropOnlyZip: "Só é possível adicionar sets de ROMs .zip e imagens PNG ou JPG.",
+    notRom: "um projeto ou pacote IA do Willy Maker não é uma ROM: abra-o no Willy Maker e crie a ROM com Criar ROM (aba Exportar).",
     dropProgress: (i: number, n: number, name: string, pct: number) => `Copiando ${i} / ${n} · ${name} · ${pct}%`,
     dropDone: (ok: number, n: number, failed: string[]) => `Adicionados ${ok} de ${n}.${failed.length ? ` Não adicionados: ${failed.join(", ")}` : ""}`,
     core: "Emulador (mame2003-plus)",

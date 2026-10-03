@@ -25,12 +25,12 @@ export const exportEn = {
   },
   project: {
     title: "1 · Save the project",
-    text: "A .zip with everything: levels, characters, backgrounds and settings. Open it in another browser and carry on where you left off.",
+    text: "A .zip with everything: levels, characters, backgrounds and settings. Open it in another browser and carry on where you left off. It is not a ROM: the device does not run it (Create ROM makes the ROM).",
     download: "Download project (.zip)",
   },
   ai: {
     title: "2 · Pack for an AI",
-    text: "The project plus a PROMPT.md with the board, the rules, the story and the art spec. Give it to an AI so it builds the ROM with the tools in rom/.",
+    text: "The project plus a PROMPT.md with the board, the rules, the story and the art spec. Give it to an AI so it builds the ROM with the tools in rom/. It is not a ROM either.",
     download: "Download AI pack",
     copy: "Copy prompt",
     copied: "Prompt copied",

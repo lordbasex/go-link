@@ -608,6 +608,7 @@ export const en = {
     dropTitle: "Drop ROM sets or pictures here, or click to choose",
     dropHint: "MAME .zip sets go to the ROM folder and PNG or JPG pictures become Boxart thumbnails, straight to your device over WebRTC.",
     dropOnlyZip: "Only .zip ROM sets and PNG or JPG pictures can be added.",
+    notRom: "a Willy Maker project or AI pack is not a ROM: open it in Willy Maker and make the ROM with Create ROM (Export tab).",
     dropProgress: (i: number, n: number, name: string, pct: number) => `Copying ${i} / ${n} · ${name} · ${pct}%`,
     dropDone: (ok: number, n: number, failed: string[]) => `Added ${ok} of ${n}.${failed.length ? ` Not added: ${failed.join(", ")}` : ""}`,
     core: "Emulator (mame2003-plus)",

@@ -257,3 +257,39 @@ func writeOwnZip(t *testing.T, path string, files map[string][]byte) {
 	later := time.Now().Add(time.Duration(len(buf.Bytes())) * time.Millisecond)
 	_ = os.Chtimes(path, later, later)
 }
+
+// A Willy Maker project or AI pack dropped as a ROM gets its own answer,
+// by its name or by what is inside a renamed one (T-21).
+func TestImportRefusesProjectsAndAiPacks(t *testing.T) {
+	st := NewStatusService(deviceID, "test", "ws://x", "")
+	lib := NewLibraryService(t.TempDir(), st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	withFile := func(name string) []byte {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		w, _ := zw.Create(name)
+		_, _ = w.Write([]byte("{}"))
+		if err := zw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	for _, name := range []string{"dead-air.willy.zip", "Dead-Air.AI-PACK.zip"} {
+		if _, err := lib.CheckImportName(name); !errors.Is(err, ErrNotRom) {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	for _, inside := range []string{"project.json", "PROMPT.md"} {
+		if err := lib.Import("deadair.zip", bytes.NewReader(withFile(inside))); !errors.Is(err, ErrNotRom) {
+			t.Fatalf("%s inside: %v", inside, err)
+		}
+	}
+	if lib.HasRom("deadair") {
+		t.Fatal("a project was kept as a ROM")
+	}
+	if err := lib.Import("robby.zip", bytes.NewReader(withFile("robby.ic1"))); err != nil {
+		t.Fatalf("a set: %v", err)
+	}
+	if errorCode(ErrNotRom) != "not_rom" || errorCode(ErrBadRom) != "" {
+		t.Fatal("error codes")
+	}
+}

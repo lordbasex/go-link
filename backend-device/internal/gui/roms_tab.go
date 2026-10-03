@@ -5,6 +5,7 @@
 package gui
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
+	"github.com/lordbasex/go-link/backend-device/internal/services"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 )
 
@@ -275,6 +277,11 @@ func (t *romsTab) importFiles(uris []fyne.URI, progress func(i, n int, name stri
 		if err == nil {
 			err = t.u.opts.Library.Import(name, f)
 			f.Close()
+		}
+		if errors.Is(err, services.ErrNotRom) {
+			// a Willy Maker project or AI pack: its sources, not the ROM (T-21)
+			failed = append(failed, name+" ("+L("a Willy Maker project or AI pack, not a ROM: make the ROM with Create ROM in Willy Maker")+")")
+			continue
 		}
 		if err != nil {
 			failed = append(failed, fmt.Sprintf("%s (%v)", name, err))

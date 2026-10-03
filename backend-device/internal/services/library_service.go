@@ -3,6 +3,7 @@
 package services
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
@@ -282,7 +283,32 @@ var (
 	ErrBadFolder = errors.New("the folder must be an absolute path to an existing directory")
 	ErrBadRom    = errors.New("only MAME ROM sets (.zip files with a short name, e.g. robby.zip) can be added")
 	ErrDiskFull  = errors.New("not enough free space on the device's disk for this ROM")
+	// ErrNotRom is a Willy Maker project or AI pack dropped as a ROM (T-21):
+	// they are the game's sources, and Create ROM makes the ROM from them.
+	ErrNotRom = errors.New("this is a Willy Maker project or AI pack, not a ROM: open it in Willy Maker and use Create ROM in the Export tab to make the ROM")
 )
+
+// notRomName reports a Willy Maker project (.willy.zip) or AI pack (.ai-pack.zip) by its name.
+func notRomName(base string) bool {
+	return strings.HasSuffix(base, ".willy.zip") || strings.HasSuffix(base, ".ai-pack.zip")
+}
+
+// notRomZip reports a zip with a Willy Maker project or AI pack inside
+// (project.json or PROMPT.md at its top), whatever it is called. No ROM
+// set has them.
+func notRomZip(path string) bool {
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return false
+	}
+	defer z.Close()
+	for _, f := range z.File {
+		if f.Name == "project.json" || f.Name == "PROMPT.md" {
+			return true
+		}
+	}
+	return false
+}
 
 // MinFreeSpace is what an import always leaves free on the disk, so a
 // drop never fills it (the device, its saves and the system need room).
@@ -328,6 +354,9 @@ func (l *LibraryService) CheckImportName(fileName string) (string, error) {
 		return fileName, nil // a thumbnail (Boxart), see Import
 	}
 	base := strings.ToLower(filepath.Base(fileName))
+	if notRomName(base) {
+		return "", ErrNotRom
+	}
 	name, ok := strings.CutSuffix(base, ".zip")
 	if !ok || !romNameRE.MatchString(name) {
 		return "", ErrBadRom
@@ -381,6 +410,9 @@ func (l *LibraryService) Import(fileName string, r io.Reader) error {
 	}
 	if err != nil {
 		return err
+	}
+	if notRomZip(tmp.Name()) {
+		return ErrNotRom
 	}
 	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
 		return err
