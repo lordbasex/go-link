@@ -812,7 +812,7 @@ export const docsEn: Docs = {
           ],
         },
         { t: "h2", id: "menus", text: "The Menus tab" },
-        { t: "p", text: "Design the **Title**, **Demo**, **Player select**, **HUD**, **Continue**, **Game over** and **High scores** screens with a live 384 × 224 preview in the board's 8 × 8 font: their texts, background, music slot and credits line. Each line says whether it fits the screen, stays inside the **Safe area** and uses only letters the font has, and the review warns when two lines cover each other, counting what the ROM adds (credit and enemy counters, the HUD under Continue). On Continue the prompt follows the credits: INSERT COIN without one, the title's prompt with one." },
+        { t: "p", text: "Design the **Title**, **Demo**, **Player select**, **HUD**, **Continue**, **Game over** and **High scores** screens with a live 384 × 224 preview in the board's 8 × 8 font: their texts, background, music slot and credits line. In the ROM the music slot plays: a built-in tune for the title, the level, the boss, continue and game over (or silence with **None**), in stereo on the board's QSound chip, with effects panned to where they happen on screen. Each line says whether it fits the screen, stays inside the **Safe area** and uses only letters the font has, and the review warns when two lines cover each other, counting what the ROM adds (credit and enemy counters, the HUD under Continue). On Continue the prompt follows the credits: INSERT COIN without one, the title's prompt with one." },
         { t: "h2", id: "export", text: "Export" },
         {
           t: "list",

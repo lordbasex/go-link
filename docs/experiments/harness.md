@@ -168,7 +168,7 @@ go-link-device romtest --input FILE.json [--frames N] [--checkpoints 300,600] \
     [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--json] ZIP
 ```
 
-It runs the script frame by frame on the exact core (the one in `~/go-link/cores`, `--core` for another), unpaced, from power on, with a fresh system folder in `~/go-link/tmp/romreplay-<pid>/` (deleted at the end) and a copy of the zip named after the set. It saves the checkpoint frames (and every K-th) as `DIR/fNNNNNN.png` at the core's size, and with `--mp4` every frame as an MP4 like the runner's. `--json` prints `{type: "rom_replay", set, core, fps, width, height, frames, seconds, checkpoints: [{frame, png, hash}], pngs, mp4}`. It never reads `device.json` or the ROM folder and does not touch a running device. The core gives no RAM access through libretro here, so the core's run has pictures but no lab state.
+It runs the script frame by frame on the exact core (the one in `~/go-link/cores`, `--core` for another), unpaced, from power on, with a fresh system folder in `~/go-link/tmp/romreplay-<pid>/` (deleted at the end) and a copy of the zip named after the set. It saves the checkpoint frames (and every K-th) as `DIR/fNNNNNN.png` at the core's size, with `--mp4` every frame as an MP4 like the runner's, and with `--wav FILE` the core's stereo sound (48 kHz, 16-bit; task T-26). `--json` prints `{type: "rom_replay", set, core, fps, width, height, frames, seconds, checkpoints: [{frame, png, hash}], pngs, mp4}`. It never reads `device.json` or the ROM folder and does not touch a running device. The core gives no RAM access through libretro here, so the core's run has pictures but no lab state.
 
 ## Comparing frames
 

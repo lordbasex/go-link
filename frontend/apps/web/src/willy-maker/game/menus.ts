@@ -14,7 +14,7 @@ export { TEXT_COLS, TEXT_ROWS };
 export const MENU_SCREENS = ["title", "attract", "select", "hud", "continue", "gameOver", "highScores"] as const;
 export type MenuScreenId = (typeof MENU_SCREENS)[number];
 
-/** Music slot ids (sound is Phase 2: these are references only). */
+/** Music slot ids: each is a built-in tune in the ROM (rom/sound.ts, T-26). */
 export const MUSIC_SLOTS = ["none", "title", "select", "stage", "boss", "continue", "game-over", "high-scores"] as const;
 
 /**

@@ -36,7 +36,7 @@ export const menusEn = {
   color: "Color",
   music: "Music",
   musicSlots: { none: "None", title: "Title theme", select: "Select theme", stage: "Stage theme", boss: "Boss theme", continue: "Continue jingle", "game-over": "Game over jingle", "high-scores": "High-score theme" },
-  musicNote: "Sound arrives in Phase 2: the slot is kept with the game.",
+  musicNote: "The ROM plays this tune on the board's QSound chip, in stereo (play mode is silent for now).",
   credits: "Credits",
   showCredits: "Show the credits line on this screen",
   creditsLine: "Credits line (every screen)",

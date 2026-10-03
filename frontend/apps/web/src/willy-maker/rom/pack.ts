@@ -9,8 +9,9 @@
 // @go-link/cps1, encrypts the sound program (Kabuki) and lays every file
 // out as the set's. Pure: pictures come in decoded, nothing touches the DOM.
 
-import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
+import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
+import { packSound, type SoundPack } from "./sound";
 import { difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -27,7 +28,8 @@ export interface EngineManifest {
   sprites: { offset: number; size: number; code: number };
   /** The sprite palettes the engine's own art takes: Willy's, then `recruits` shirts of `recruitOffset` each, up to `used`. */
   spritePalettes?: { used: number; recruitOffset: number; recruits: number };
-  z80: { offset: number; size: number };
+  /** codeEnd and data: the QSound driver's code end and its data address (sound.z80 labels, T-26). */
+  z80: { offset: number; size: number; codeEnd?: number; data?: number };
   kabuki: string;
   sha256: string;
   lab_state: { address: number; size: number; type: string };
@@ -59,7 +61,7 @@ export interface PackResult {
   /** The data block (for tests and the record). */
   data: Uint8Array;
   notes: RomNote[];
-  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; playPalettes?: number; farPalettes?: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number };
+  stats: { level: string; cols: number; rows: number; playTiles: number; farTiles: number; playPalettes?: number; farPalettes?: number; enemies: number; civilians: number; crates: number; pickups: number; dataBytes: number; looks?: number; lookTiles?: number; gfxBytes?: number; spritePalettes?: number; sound?: SoundPack["stats"] };
 }
 
 // rom/engine/wmdata.h
@@ -642,9 +644,22 @@ export function packGame(
   // the sound program, encrypted the way the QSound board decrypts it
   const z80 = bin.subarray(manifest.z80.offset, manifest.z80.offset + manifest.z80.size);
   const sound = new Uint8Array(SLAMMAST.z80.size).fill(0xff);
-  sound.set(encodeOpcodes(z80, KEYS[manifest.kabuki] ?? KEYS.slammast!));
+  const keys = KEYS[manifest.kabuki] ?? KEYS.slammast!;
+  let soundStats: SoundPack["stats"] | undefined;
+  if (manifest.z80.codeEnd !== undefined && manifest.z80.data !== undefined) {
+    // the QSound driver (T-26): its code, then the game's sound data, every byte encoded as the Z80 reads it
+    const snd = packSound(project);
+    soundStats = snd.stats;
+    const plain = new Uint8Array(0x8000);
+    plain.set(z80.subarray(0, Math.min(z80.length, manifest.z80.data)));
+    plain.set(snd.data, manifest.z80.data);
+    sound.set(encodeProgram(plain, z80OpcodeMap(plain, manifest.z80.codeEnd), keys));
+    SLAMMAST.samples.forEach((s, i) => files.set(s.name, snd.samples.slice(i * s.size, (i + 1) * s.size)));
+  } else {
+    sound.set(encodeOpcodes(z80, keys));
+    for (const s of SLAMMAST.samples) files.set(s.name, new Uint8Array(s.size));
+  }
   files.set(SLAMMAST.z80.name, sound);
-  for (const s of SLAMMAST.samples) files.set(s.name, new Uint8Array(s.size));
   for (const f of setFiles(SLAMMAST)) if (files.get(f.name)?.length !== f.size) throw new Error(`${f.name}: ${files.get(f.name)?.length} bytes, the set needs ${f.size}`);
 
   return {
@@ -667,6 +682,7 @@ export function packGame(
       looks: looks.looks.length,
       lookTiles: looks.tiles,
       gfxBytes,
+      sound: soundStats,
       // the engine's own, plus the heroes' palettes loaded past them (a hero in a free recruit's slots adds none)
       spritePalettes: Math.min(32, (manifest.spritePalettes?.used ?? 25) + looks.looks.reduce((n, l) => n + l.palettes.filter((_, i) => l.pal + i >= (manifest.spritePalettes?.used ?? 25)).length, 0)),
     },

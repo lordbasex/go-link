@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,6 +47,7 @@ type replayOptions struct {
 	FramesDir   string
 	PNGEvery    int
 	MP4         string
+	WAV         string // the core's stereo sound, 48 kHz 16-bit (T-26: checking QSound)
 	Core        string
 	Work        string // a scratch folder for the set copy and the system folder
 }
@@ -63,6 +65,7 @@ type replayReport struct {
 	Checkpoints []replayCheckpoint `json:"checkpoints"`
 	PNGs        int                `json:"pngs"`
 	MP4         string             `json:"mp4,omitempty"`
+	WAV         string             `json:"wav,omitempty"`
 	Error       string             `json:"error,omitempty"`
 }
 
@@ -157,7 +160,13 @@ func runReplay(zip string, o replayOptions) (rep replayReport, err error) {
 	}
 
 	var last framelab.Image
+	var pcm []int16
 	game, err := services.OpenGameCore(services.GameCoreConfig{
+		Audio: func(s []int16) {
+			if o.WAV != "" {
+				pcm = append(pcm, s...)
+			}
+		},
 		CorePath: o.Core, RomPath: rom, SystemDir: filepath.Join(o.Work, "system"),
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		RawVideo: func(f libretro.Frame) {
@@ -219,7 +228,35 @@ func runReplay(zip string, o replayOptions) (rep replayReport, err error) {
 		}
 		rep.MP4 = o.MP4
 	}
+	if o.WAV != "" {
+		if err := writeWAV(o.WAV, pcm); err != nil {
+			return rep, err
+		}
+		rep.WAV = o.WAV
+	}
 	return rep, nil
+}
+
+// writeWAV writes interleaved stereo 16-bit samples at 48 kHz as a WAV file.
+func writeWAV(file string, pcm []int16) error {
+	data := make([]byte, 44+len(pcm)*2)
+	le := binary.LittleEndian
+	copy(data[0:], "RIFF")
+	le.PutUint32(data[4:], uint32(36+len(pcm)*2))
+	copy(data[8:], "WAVEfmt ")
+	le.PutUint32(data[16:], 16)
+	le.PutUint16(data[20:], 1) // PCM
+	le.PutUint16(data[22:], 2)
+	le.PutUint32(data[24:], 48000)
+	le.PutUint32(data[28:], 48000*4)
+	le.PutUint16(data[32:], 4)
+	le.PutUint16(data[34:], 16)
+	copy(data[36:], "data")
+	le.PutUint32(data[40:], uint32(len(pcm)*2))
+	for i, v := range pcm {
+		le.PutUint16(data[44+i*2:], uint16(v))
+	}
+	return os.WriteFile(file, data, 0o644)
 }
 
 // replaySetName is the set a zip is, from its file name.

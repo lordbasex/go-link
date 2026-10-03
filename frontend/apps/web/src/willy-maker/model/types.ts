@@ -45,7 +45,7 @@ export interface MenuScreen {
   /** The screen's text lines by field id (game/menus.ts lists each screen's fields). */
   texts?: Record<string, string>;
   background?: MenuBackground;
-  /** A music slot id (sound is Phase 2; only the reference is kept). */
+  /** A music slot id: the built-in tune the ROM plays on this screen (rom/sound.ts), "none" for silence. */
   music?: string;
   /** Shows the game's credits line at the bottom. */
   credits?: boolean;

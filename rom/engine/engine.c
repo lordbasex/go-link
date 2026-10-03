@@ -301,6 +301,37 @@ static void load_col3(int c)
 
 static int cam_x, cam_y, cam_far;
 
+/* ---------------------------------------------------------------- sound */
+
+/*
+ * Commands to the QSound Z80 (rom/engine/sound.z80, T-26) through shared
+ * RAM 1 (0xf18000, the low byte of each word is the Z80's 0xc000 + n): an
+ * 8-entry queue of (id, pan) and its write index at n = 0x10. Effects are
+ * panned to where they happen on screen (0 left, 16 centre, 32 right).
+ */
+#define QRAM ((volatile u16 *)0xf18000)
+enum { SFX_SHOT = 1, SFX_KNIFE, SFX_JUMP, SFX_HIT, SFX_ENEMY_DOWN, SFX_HURT, SFX_CRATE, SFX_PICKUP, SFX_RESCUE, SFX_COIN, SFX_START, SFX_ROCKET, SFX_EXPLOSION, SFX_KICK, SFX_LAND };
+enum { MUSIC_TITLE, MUSIC_PLAY, MUSIC_CLEAR, MUSIC_CONTINUE, MUSIC_GAMEOVER };
+static u8 q_head;
+
+static void sound_cmd(int id, int pan)
+{
+	QRAM[q_head * 2] = (u16)id;
+	QRAM[q_head * 2 + 1] = (u16)pan;
+	q_head = (u8)((q_head + 1) & 7);
+	QRAM[0x10] = q_head;
+}
+
+/* an effect where world x is on screen */
+static void sfx(int id, s32 x)
+{
+	s32 pan = ((x - cam_x) * 32) / SCREEN_W;
+	sound_cmd(id, pan < 0 ? 0 : pan > 32 ? 32 : (int)pan);
+}
+
+#define SFX_CENTRE(id) sound_cmd((id), 16)
+#define MUSIC(n) sound_cmd(0x40 + (n), 16)
+
 /* loads the tile columns around the camera that are not on the board yet */
 static void stream(void)
 {
@@ -583,8 +614,10 @@ static void read_inputs(void)
 		u16 down = coins & (u16)~coins_last;
 		coins_last = coins;
 		for (k = 0; k < 4; k++)
-			if ((down & (1 << k)) && credits < 9)
+			if ((down & (1 << k)) && credits < 9) {
 				credits++;
+				SFX_CENTRE(SFX_COIN);
+			}
 	}
 }
 
@@ -642,11 +675,6 @@ static int support_w(s32 x, s32 fy, int drop, int half)
 	return best;
 }
 
-static int support(s32 x, s32 fy, int drop)
-{
-	return support_w(x, fy, drop, HALF_W);
-}
-
 /* a body h px tall (BODY_H standing, CROUCH_H crouched) */
 static int body_blocked_h(s32 x, s32 fy, int h)
 {
@@ -655,11 +683,6 @@ static int body_blocked_h(s32 x, s32 fy, int h)
 		if (is_solid(cell_at(x, y)))
 			return 1;
 	return is_solid(cell_at(x, fy - h));
-}
-
-static int body_blocked(s32 x, s32 fy)
-{
-	return body_blocked_h(x, fy, BODY_H);
 }
 
 /* the first place feet can stand at x, searching down from y (px) */
@@ -704,6 +727,7 @@ static void crate_break(int i, struct player *by)
 	struct crate *k = &crate[i];
 	int q, j, n = k->cells;
 	k->broken = 1;
+	sfx(SFX_CRATE, k->col * 16 + k->cells * 8);
 	for (q = 0; q < n * n; q++)
 		if (cell(k->col + q % n, k->row + q / n) == T_CRATE)
 			clear_cell(k->col + q % n, k->row + q / n);
@@ -791,8 +815,11 @@ static void en_damage(int i, int n, struct player *by)
 	if (en[i].hp <= 0) {
 		en[i].state = EN_DOWN;
 		by->score += R->enemy_score;
-	} else
+		sfx(SFX_ENEMY_DOWN, en[i].x);
+	} else {
 		en[i].state = EN_HIT;
+		sfx(SFX_HIT, en[i].x);
+	}
 }
 
 static int enemy_at(s32 x, s32 y, int reach)
@@ -910,6 +937,7 @@ static void hurt(struct player *p, int fell)
 		respawn_near_camera(p); /* fell while protected: no energy lost */
 		return;
 	}
+	sfx(SFX_HURT, p->x);
 	if (--p->energy <= 0) {
 		p->energy = 0;
 		p->active = 0;
@@ -1128,16 +1156,19 @@ static void update_player(struct player *p)
 			} else {
 				p->crouch = 0;
 				p->vy = p->look->jump_vy;
+				sfx(SFX_JUMP, p->x);
 				p->on_ground = 0;
 			}
 		} else if (!p->on_ground && PRESSED(p, BTN_1) && (D->flags & WM_F_DOUBLE_JUMP) && !p->air_jumps) {
 			p->vy = p->look->double_vy;
+			sfx(SFX_JUMP, p->x);
 			p->air_jumps = 1;
 		}
 		/* jump kick: Down + B2 in the air */
 		if (!p->on_ground && (p->pad & BTN_DOWN) && PRESSED(p, BTN_2) && !p->kick_t) {
 			p->kick_t = KICK_FRAMES;
 			p->kick_hit = 0;
+			sfx(SFX_KICK, p->x);
 		}
 		if (p->on_ground && !support_w(p->x, fy, 0, p->look->half_w)) {
 			p->on_ground = 0;
@@ -1168,8 +1199,10 @@ static void update_player(struct player *p)
 						p->y = py * 16;
 						p->vy = 0;
 						p->on_ground = 1;
-						if (p->air_t >= LAND_AFTER)
+						if (p->air_t >= LAND_AFTER) {
 							p->land_t = LAND_FRAMES;
+							sfx(SFX_LAND, p->x);
+						}
 						p->air_t = 0;
 						p->air_jumps = 0;
 						p->fuel = JET_FUEL;
@@ -1201,6 +1234,7 @@ static void update_player(struct player *p)
 		d = k->x - p->x;
 		if (k->live && d > -14 && d < 14 && fy - k->fy > -8 && fy - k->fy < 8) {
 			k->live = 0;
+			sfx(SFX_PICKUP, p->x);
 			if (k->item == WM_ITEM_BAZOOKA) {
 				p->special = WM_ITEM_BAZOOKA;
 				p->ammo = BAZOOKA_AMMO;
@@ -1214,6 +1248,7 @@ static void update_player(struct player *p)
 		p->bazooka_t--;
 	if (PRESSED(p, BTN_3) && p->special == WM_ITEM_BAZOOKA && p->ammo > 0 && !p->rocket.live && p->on_ground) {
 		p->rocket.live = 1;
+		sfx(SFX_ROCKET, p->x);
 		p->rocket.dir = p->flip ? -1 : 1;
 		p->rocket.x = (s16)(p->x + (p->flip ? -30 : 10));
 		p->rocket.y = (s16)(fy - p->look->rocket_y);
@@ -1233,8 +1268,11 @@ static void update_player(struct player *p)
 		if (ei >= 0) {
 			en_damage(ei, 9, p);
 			p->rocket.live = 0;
-		} else if (hit_cell((int)(tip >> 4), (p->rocket.y + 8) >> 4, 9, p))
+			sfx(SFX_EXPLOSION, tip);
+		} else if (hit_cell((int)(tip >> 4), (p->rocket.y + 8) >> 4, 9, p)) {
 			p->rocket.live = 0;
+			sfx(SFX_EXPLOSION, tip);
+		}
 		else if (cell_at(tip, p->rocket.y + 8) == T_SOLID || p->rocket.x < cam_x - 48 || p->rocket.x > cam_x + SCREEN_W + 48)
 			p->rocket.live = 0;
 	}
@@ -1246,6 +1284,7 @@ static void update_player(struct player *p)
 		int ei = enemy_at(p->x + (p->flip ? -p->look->knife_reach : p->look->knife_reach), fy - p->look->knife_y, 16);
 		if (ei >= 0) {
 			p->knife_t = KNIFE_FRAMES;
+			sfx(SFX_KNIFE, p->x);
 			en_damage(ei, 2, p);
 		}
 	}
@@ -1260,6 +1299,7 @@ static void update_player(struct player *p)
 				p->shots[i].x = (s16)(p->x + (p->flip ? -20 : 20));
 				p->shots[i].y = (s16)(fy - (p->crouch ? p->look->crouch_shot_y : p->look->shot_y));
 				p->fire_wait = FIRE_EVERY;
+				sfx(SFX_SHOT, p->x);
 				break;
 			}
 	/* the kick's first enemy in front, body to body, takes 2 hits once */
@@ -1399,6 +1439,7 @@ static void update_civilians(void)
 				civ[i].rescued = 1;
 				civ[i].t = 0;
 				rescued++;
+				sfx(SFX_RESCUE, civ[i].x);
 				pl[k].score += R->rescue_score;
 				pl[k].thumbs_t = THUMBS_FRAMES;
 				break;
@@ -1824,6 +1865,7 @@ static int title(void)
 	clear_text();
 	game_reset();
 	draw_screen(WM_SCR_TITLE, 0);
+	MUSIC(MUSIC_TITLE);
 	for (;;) {
 		int on;
 		wait_vblank();
@@ -1858,6 +1900,7 @@ static int title(void)
 			if ((credits || free_play()) && start_pressed(k)) {
 				if (!free_play())
 					credits--;
+				SFX_CENTRE(SFX_START);
 				return k;
 			}
 	}
@@ -1939,6 +1982,7 @@ static int play(int first)
 	update_camera(1);
 	stream();
 	draw_screen(WM_SCR_HUD, 1);
+	MUSIC(MUSIC_PLAY);
 	for (;;) {
 		int alive = 0;
 		wait_vblank();
@@ -1948,10 +1992,12 @@ static int play(int first)
 				if (!pl[k].active && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
+					SFX_CENTRE(SFX_START);
 					if (cont) {
 						cont = 0;
 						clear_text();
 						draw_screen(WM_SCR_HUD, 1);
+						MUSIC(MUSIC_PLAY);
 					}
 					player_join(k);
 				}
@@ -1993,6 +2039,7 @@ static int play(int first)
 				outcome = END_CLEAR;
 				end_t = frame_count;
 				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
 				break;
 			}
 		if (exit_msg && outcome < 0) {
@@ -2009,6 +2056,7 @@ static int play(int first)
 				clear_text();
 				draw_screen(WM_SCR_CONTINUE, 1);
 				draw_screen(WM_SCR_HUD, 1); /* the overlay keeps the HUD whole (J-10) */
+				MUSIC(MUSIC_CONTINUE);
 			}
 			print_num(23, 12, (u32)(9 - (frame_count - end_t) / 60), 1, INK_WHITE);
 			continue_prompt((frame_count / 20) & 1);
@@ -2018,6 +2066,7 @@ static int play(int first)
 				end_t = frame_count;
 				clear_text();
 				draw_screen(WM_SCR_GAMEOVER, 1);
+				MUSIC(MUSIC_GAMEOVER);
 			}
 		}
 		lab_mode = outcome == END_CLEAR ? LAB_MODE_CLEAR : outcome == END_OVER ? LAB_MODE_GAME_OVER : LAB_MODE_PLAYING;

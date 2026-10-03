@@ -73,3 +73,29 @@ export function encodeOpcodes(plain: Uint8Array, keys: KabukiKeys): Uint8Array {
   }
   return out;
 }
+
+/** Data-side select for address a (kabuki_decode: operands and data reads). */
+const dataSelect = (a: number, k: KabukiKeys) => ((a ^ 0x1fc0) + k.addr + 1) & 0xffff;
+
+/**
+ * Encodes a whole Z80 program for the first 0x8000 bytes (T-26, the
+ * QSound driver): `opcode[a]` says whether the Z80 fetches byte a as an
+ * opcode (the opcode table) or reads it as an operand or data (the data
+ * table). Bytes past 0x8000 stay as they are (not decoded).
+ */
+export function encodeProgram(plain: Uint8Array, opcode: Uint8Array, keys: KabukiKeys): Uint8Array {
+  const out = new Uint8Array(plain);
+  for (let a = 0; a < plain.length && a < 0x8000; a++) {
+    const k = { ...keys, select: opcode[a] ? opSelect(a, keys) : dataSelect(a, keys) };
+    let found = -1;
+    for (let c = 0; c < 256 && found < 0; c++) if (bytedecode(c, k) === plain[a]) found = c;
+    if (found < 0) throw new Error(`kabuki: no byte decodes to ${plain[a]} at ${a}`);
+    out[a] = found;
+  }
+  return out;
+}
+
+/** The decode the core does, for tests: the byte the Z80 sees at a as an opcode or as data. */
+export function decodeAt(rom: number, a: number, asOpcode: boolean, keys: KabukiKeys): number {
+  return bytedecode(rom, { ...keys, select: asOpcode ? opSelect(a, keys) : dataSelect(a, keys) });
+}

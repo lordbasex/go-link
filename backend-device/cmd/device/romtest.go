@@ -58,6 +58,7 @@ func cmdRomTest(args []string) error {
 	framesDir := fs.String("frames-dir", "", "replay: the folder for the PNG frames")
 	pngEvery := fs.Int("png-every", 0, "replay: also save every K-th frame")
 	mp4 := fs.String("mp4", "", "replay: record every frame into this MP4 (needs ffmpeg)")
+	wav := fs.String("wav", "", "replay: record the core's stereo sound into this WAV (48 kHz)")
 	// Flags may come before or after the zip.
 	var zips []string
 	for rest := args; ; {
@@ -71,7 +72,7 @@ func cmdRomTest(args []string) error {
 		rest = fs.Args()[1:]
 	}
 	if len(zips) != 1 {
-		return errors.New("usage: device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP\n       device romtest --input FILE [--frames N] [--checkpoints LIST] [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--json] ZIP")
+		return errors.New("usage: device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP\n       device romtest --input FILE [--frames N] [--checkpoints LIST] [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--wav FILE] [--json] ZIP")
 	}
 	zipPath := zips[0]
 	base, err := dataDir()
@@ -88,7 +89,7 @@ func cmdRomTest(args []string) error {
 		return errors.New("the emulator core is not installed; run: device core download")
 	}
 	if *inputFile != "" {
-		o := replayOptions{Input: *inputFile, FramesDir: *framesDir, PNGEvery: *pngEvery, MP4: *mp4, Core: *corePath,
+		o := replayOptions{Input: *inputFile, FramesDir: *framesDir, PNGEvery: *pngEvery, MP4: *mp4, WAV: *wav, Core: *corePath,
 			Work: filepath.Join(base, "tmp", fmt.Sprintf("romreplay-%d", os.Getpid()))}
 		frameSet := false
 		fs.Visit(func(f *flag.Flag) { frameSet = frameSet || f.Name == "frames" })

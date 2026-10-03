@@ -89,10 +89,17 @@ let program = fs.readFileSync(binPath);
 if (program.length > DATA_ADDR) throw new Error(`the engine is ${program.length} bytes: it must end before the data at 0x${DATA_ADDR.toString(16)}`);
 if (program.length & 1) program = Buffer.concat([program, Buffer.from([0xff])]);
 
-// 3. The Z80 program (plain: Create ROM encrypts it for the board).
+// 3. The Z80 program, the QSound driver (rom/engine/sound.z80, T-26; plain:
+//    Create ROM encrypts it for the board, byte by byte as opcode or data).
 const z80Path = path.join(OUT, "sound.bin");
-run("z80asm", ["-o", z80Path, path.join(SRC, "sound-qsound.z80")]);
+const z80Labels = path.join(OUT, "sound.lbl");
+run("z80asm", ["-o", z80Path, `--label=${z80Labels}`, path.join(ROOT, "engine", "sound.z80")]);
 const z80 = fs.readFileSync(z80Path);
+const z80Label = (name) => {
+  const m = new RegExp(`^${name}:\\s+equ\\s+\\$([0-9a-f]+)`, "mi").exec(fs.readFileSync(z80Labels, "utf8"));
+  if (!m) throw new Error(`sound.z80 has no ${name}`);
+  return parseInt(m[1], 16);
+};
 
 // 4. One file: program | sprite tiles | Z80, and the manifest.
 const sprites = Buffer.from(gfx.data.subarray(SPRITE_BASE * 128, spriteEnd * 128));
@@ -103,7 +110,7 @@ const manifest = {
   dataAddr: DATA_ADDR,
   program: { offset: 0, size: program.length },
   sprites: { offset: program.length, size: sprites.length, code: SPRITE_BASE },
-  z80: { offset: program.length + sprites.length, size: z80.length },
+  z80: { offset: program.length + sprites.length, size: z80.length, codeEnd: z80Label("code_end"), data: z80Label("DATA") },
   kabuki: "slammast",
   recruits: RECRUIT_SHIRTS,
   spritePalettes,

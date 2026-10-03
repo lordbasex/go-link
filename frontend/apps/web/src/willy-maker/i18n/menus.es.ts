@@ -38,7 +38,7 @@ export const menusEs: MenusMessages = {
   color: "Color",
   music: "Música",
   musicSlots: { none: "Ninguna", title: "Tema del título", select: "Tema de selección", stage: "Tema del nivel", boss: "Tema del jefe", continue: "Jingle de continuar", "game-over": "Jingle de fin del juego", "high-scores": "Tema de récords" },
-  musicNote: "El sonido llega en la fase 2: el espacio se guarda con el juego.",
+  musicNote: "La ROM toca este tema con el chip QSound de la placa, en estéreo (el modo de juego todavía no tiene sonido).",
   credits: "Créditos",
   showCredits: "Mostrar la línea de créditos en esta pantalla",
   creditsLine: "Línea de créditos (todas las pantallas)",

@@ -812,7 +812,7 @@ export const docsPt: Docs = {
           ],
         },
         { t: "h2", id: "menus", text: "A aba Menus" },
-        { t: "p", text: "Desenhe as telas **Título**, **Demo**, **Escolher jogador**, **HUD**, **Continuar**, **Fim de jogo** e **Recordes** com uma prévia ao vivo de 384 × 224 na fonte de 8 × 8 da placa: os textos, o fundo, a música e a linha de créditos. Cada linha indica se cabe na tela, se fica dentro da **Área segura** e se usa só letras que a fonte tem, e a revisão avisa quando duas linhas se cobrem, contando o que a ROM acrescenta (contadores de créditos e inimigos, o HUD sob Continuar). Em Continuar o aviso segue os créditos: INSERT COIN sem crédito, o aviso do título com um." },
+        { t: "p", text: "Desenhe as telas **Título**, **Demo**, **Escolher jogador**, **HUD**, **Continuar**, **Fim de jogo** e **Recordes** com uma prévia ao vivo de 384 × 224 na fonte de 8 × 8 da placa: os textos, o fundo, a música e a linha de créditos. Na ROM a música toca: um tema incluído para o título, a fase, o chefe, continuar e fim de jogo (ou silêncio com **Nenhuma**), em estéreo com o chip QSound da placa, e os efeitos soam do lado da tela onde acontecem. Cada linha indica se cabe na tela, se fica dentro da **Área segura** e se usa só letras que a fonte tem, e a revisão avisa quando duas linhas se cobrem, contando o que a ROM acrescenta (contadores de créditos e inimigos, o HUD sob Continuar). Em Continuar o aviso segue os créditos: INSERT COIN sem crédito, o aviso do título com um." },
         { t: "h2", id: "export", text: "Exportar" },
         {
           t: "list",

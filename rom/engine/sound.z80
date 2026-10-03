@@ -1,0 +1,452 @@
+; Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+; Willy Maker's QSound driver (experiment 1, T-26): the Z80 of the slammast
+; board plays sound effects and music on the QSound chip's 16 stereo
+; channels. The 68000 sends commands through shared RAM 1 (Z80 0xc000, the
+; 68000's 0xf18000, low bytes): an 8-entry queue of (id, pan) pairs at
+; 0xc000 and its write index at 0xc010. Ids 1-63 are effects (channels
+; 8-15 in turn), 0x40 + n starts song n (channels 0-7), 0x7f stops it.
+;
+; The game's sound data (effects, instruments, songs and the note pitches)
+; is written by Create ROM at DATA (rom/sound.ts); without it the driver
+; stays silent. Everything sits in the first 0x8000 bytes, which the board
+; decrypts (kabuki.ts), with no IX or IY: z80.ts classifies every byte.
+;
+; QSound chip (src/sound/qsound.c of the core): data high at 0xd000, low
+; at 0xd001, then the register at 0xd002. Per channel ch, registers ch*8+:
+; 0 bank (of channel ch+1), 1 start, 2 pitch (0x1000 = 24096 Hz), 3 always
+; 0x8000, 4 loop length back from the end, 5 end, 6 volume (0 key off,
+; from 0 key on); 0x80+ch balance (0x110 left, 0x120 centre, 0x130 right).
+
+DATA:	equ 0x4000		; the game's sound data (magic "QS")
+QUEUE:	equ 0xc000		; 8 x (id, pan)
+QHEAD:	equ 0xc010		; written by the 68000 after an entry
+
+; work RAM (shared RAM 2)
+q_tail:	equ 0xf000
+sfx_ch:	equ 0xf001		; the next effect channel (8-15)
+song_on:	equ 0xf002
+tick:	equ 0xf003
+tempo:	equ 0xf004
+chans:	equ 0xf005
+row_ptr:	equ 0xf006		; u16
+rows_left:	equ 0xf008		; u16
+loop_ptr:	equ 0xf00a		; u16
+loop_rows:	equ 0xf00c		; u16
+pans:	equ 0xf00e		; u16, the song's channel balances
+tmp_pan:	equ 0xf010
+tmp_pitch:	equ 0xf012		; u16, 0 = the sample's own
+cur_ch:	equ 0xf014
+cur_reg:	equ 0xf015
+cur_entry:	equ 0xf016		; u16
+ready:	equ 0xf018		; 1 when DATA holds sound data
+
+	org 0
+	di
+	ld sp,0xfff0
+	jp init
+
+	ds 0x38 - $, 0		; z80asm's org does not pad: fill to the IM 1 vector
+	jp irq
+
+	ds 0x40 - $, 0
+init:
+	im 1
+	xor a
+	ld (0xd003),a		; bank 0 (unused)
+	ld hl,0xf000		; clear the work RAM
+	ld b,0x40
+clear:
+	ld (hl),a
+	inc hl
+	djnz clear
+	ld a,8
+	ld (sfx_ch),a
+	ld a,(QHEAD)		; start where the 68000 is
+	and 7
+	ld (q_tail),a
+	; every channel off, centred, register 3 as the games write it
+	ld b,0
+init_ch:
+	ld a,b
+	ld (cur_ch),a
+	call key_off
+	ld a,b
+	add a,a
+	add a,a
+	add a,a
+	add a,3
+	ld c,a
+	ld de,0x8000
+	call qs_write
+	ld a,b
+	add a,0x80
+	ld c,a
+	ld de,0x0120
+	call qs_write
+	inc b
+	ld a,b
+	cp 16
+	jr nz,init_ch
+	; sound data?
+	ld a,(DATA)
+	cp 'Q'
+	jr nz,idle
+	ld a,(DATA+1)
+	cp 'S'
+	jr nz,idle
+	ld a,1
+	ld (ready),a
+idle:
+	ei
+loop:
+	halt
+	jr loop
+
+; ------------------------------------------------------------------ chip
+
+; C = register, DE = value
+qs_write:
+	ld a,d
+	ld (0xd000),a
+	ld a,e
+	ld (0xd001),a
+	ld a,c
+	ld (0xd002),a
+	ret
+
+; channel (cur_ch): volume 0, the key off
+key_off:
+	ld a,(cur_ch)
+	add a,a
+	add a,a
+	add a,a
+	add a,6
+	ld c,a
+	ld de,0
+	jp qs_write
+
+; C = register offset: writes cur_ch*8+offset with DE
+ch_write:
+	ld a,(cur_ch)
+	add a,a
+	add a,a
+	add a,a
+	add a,c
+	ld c,a
+	jp qs_write
+
+; plays the sample entry at HL on channel B (balance tmp_pan 0-32, pitch tmp_pitch)
+; entry: bank, pad, start, end, loop, pitch, volume (u16 little-endian)
+play:
+	ld a,b
+	ld (cur_ch),a
+	ld (cur_entry),hl
+	call key_off
+	; the bank goes through the previous channel's register 0
+	ld a,(cur_ch)
+	dec a
+	and 15
+	add a,a
+	add a,a
+	add a,a
+	ld c,a
+	ld hl,(cur_entry)
+	ld e,(hl)
+	ld d,0x80
+	call qs_write
+	ld hl,(cur_entry)
+	inc hl
+	inc hl
+	ld e,(hl)		; start
+	inc hl
+	ld d,(hl)
+	inc hl
+	push hl
+	ld c,1
+	call ch_write
+	pop hl
+	ld e,(hl)		; end
+	inc hl
+	ld d,(hl)
+	inc hl
+	push hl
+	ld c,5
+	call ch_write
+	pop hl
+	ld e,(hl)		; loop
+	inc hl
+	ld d,(hl)
+	inc hl
+	push hl
+	ld c,4
+	call ch_write
+	pop hl
+	ld e,(hl)		; pitch
+	inc hl
+	ld d,(hl)
+	inc hl
+	push hl
+	ld hl,(tmp_pitch)
+	ld a,h
+	or l
+	jr z,own_pitch
+	ex de,hl
+own_pitch:
+	ld c,2
+	call ch_write
+	ld a,(cur_ch)		; balance
+	add a,0x80
+	ld c,a
+	ld a,(tmp_pan)
+	cp 33
+	jr c,pan_ok
+	ld a,16
+pan_ok:
+	add a,0x10
+	ld e,a
+	ld d,1
+	call qs_write
+	pop hl
+	ld e,(hl)		; volume: the key on
+	inc hl
+	ld d,(hl)
+	ld c,6
+	jp ch_write
+
+; HL = table + A * 12: a sample entry (bank, pad, start, end, loop, pitch,
+; volume); clobbers BC and DE
+entry12:
+	ld e,a
+	ld d,0
+	ex de,hl		; HL = index, DE = table
+	add hl,hl
+	add hl,hl
+	push hl
+	add hl,hl
+	pop bc
+	add hl,bc		; index * 12
+	add hl,de
+	ret
+
+; ------------------------------------------------------------------ IRQ (250 Hz)
+
+irq:
+	push af
+	push bc
+	push de
+	push hl
+	ld a,(ready)
+	or a
+	jr z,irq_done
+	call queue
+	call song_tick
+irq_done:
+	pop hl
+	pop de
+	pop bc
+	pop af
+	ei
+	reti
+
+queue:
+	ld a,(QHEAD)
+	and 7
+	ld b,a
+	ld a,(q_tail)
+	cp b
+	ret z
+	ld l,a
+	ld h,0
+	add hl,hl
+	ld de,QUEUE
+	add hl,de
+	ld c,(hl)		; id
+	inc hl
+	ld a,(hl)		; pan 0-32
+	ld (tmp_pan),a
+	ld a,(q_tail)
+	inc a
+	and 7
+	ld (q_tail),a
+	ld a,c
+	call command
+	jr queue
+
+; A = command id
+command:
+	or a
+	ret z
+	cp 0x7f
+	jp z,song_stop
+	cp 0x40
+	jr nc,song_start
+	; an effect: id 1-63 is entry id-1
+	dec a
+	ld b,a
+	ld a,(DATA+6)		; effects in the table
+	ld c,a
+	ld a,b
+	cp c
+	ret nc
+	ld hl,(DATA+4)
+	call entry12
+	ld de,0
+	ld (tmp_pitch),de
+	ld a,(sfx_ch)
+	ld b,a
+	inc a
+	cp 16
+	jr c,sfx_next
+	ld a,8
+sfx_next:
+	ld (sfx_ch),a
+	jp play
+
+; A = 0x40 + song number
+song_start:
+	sub 0x40
+	ld b,a
+	ld a,(DATA+7)		; songs
+	ld c,a
+	ld a,b
+	cp c
+	ret nc
+	push af
+	call music_off
+	pop af
+	ld l,a
+	ld h,0
+	add hl,hl
+	ld de,(DATA+8)		; the song pointers
+	add hl,de
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ex de,hl		; HL = the song's header
+	ld a,h			; no song for this screen: silence
+	or l
+	ret z
+	ld a,(hl)		; ticks per row
+	ld (tempo),a
+	inc hl
+	ld a,(hl)		; channels
+	ld (chans),a
+	inc hl
+	ld e,(hl)		; rows
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (rows_left),de
+	ld e,(hl)		; loop pointer
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (loop_ptr),de
+	ld e,(hl)		; loop rows
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (loop_rows),de
+	ld (pans),hl		; 8 balances
+	ld de,8
+	add hl,de
+	ld (row_ptr),hl		; the rows
+	ld a,1
+	ld (tick),a
+	ld (song_on),a
+	ret
+
+song_stop:
+	xor a
+	ld (song_on),a
+	; fall through
+
+music_off:
+	ld b,0
+music_off_ch:
+	ld a,b
+	ld (cur_ch),a
+	push bc
+	call key_off
+	pop bc
+	inc b
+	ld a,b
+	cp 8
+	jr nz,music_off_ch
+	ret
+
+song_tick:
+	ld a,(song_on)
+	or a
+	ret z
+	ld a,(tick)
+	dec a
+	ld (tick),a
+	ret nz
+	ld a,(tempo)
+	ld (tick),a
+	ld hl,(row_ptr)
+	ld b,0
+row:
+	ld a,(chans)
+	cp b
+	jr z,row_done
+	ld a,(hl)		; note: 0 hold, 0xff off, else a MIDI note
+	inc hl
+	ld c,(hl)		; instrument
+	inc hl
+	push hl
+	push bc
+	or a
+	jr z,row_next
+	cp 0xff
+	jr nz,row_note
+	ld a,b
+	ld (cur_ch),a
+	call key_off
+	jr row_next
+row_note:
+	ld l,a			; the note's pitch
+	ld h,0
+	add hl,hl
+	ld de,(DATA+12)
+	add hl,de
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ld (tmp_pitch),de
+	ld hl,(pans)		; this channel's balance
+	ld e,b
+	ld d,0
+	add hl,de
+	ld a,(hl)
+	ld (tmp_pan),a
+	ld a,c			; the instrument's entry
+	ld hl,(DATA+10)
+	push bc
+	call entry12
+	pop bc
+	call play
+row_next:
+	pop bc
+	pop hl
+	inc b
+	jr row
+row_done:
+	ld (row_ptr),hl
+	ld hl,(rows_left)
+	dec hl
+	ld (rows_left),hl
+	ld a,h
+	or l
+	ret nz
+	ld hl,(loop_ptr)
+	ld a,h
+	or l
+	jp z,song_stop
+	ld (row_ptr),hl
+	ld hl,(loop_rows)
+	ld (rows_left),hl
+	ret
+
+code_end:

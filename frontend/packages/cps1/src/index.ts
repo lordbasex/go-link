@@ -10,3 +10,4 @@ export * from "./sprites.ts";
 export * from "./font.ts";
 export * from "./sets.ts";
 export * from "./screen.ts";
+export * from "./z80.ts";

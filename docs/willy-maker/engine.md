@@ -158,9 +158,19 @@ Create ROM lists these as notes under its result; none of them stops it.
 - Every **enemy kind** is drawn as the Lag android, and the civilians as the prototype's woman and child: the engine carries the prototype's art for them. The players' own heroes are drawn ([looks](#the-players-looks)); a hero's **shirt variants** are not (every player using it wears its own colors).
 - **Bosses, camera locks and checkpoints** are left out; **water** plays as air; civilians trapped in crates start free; crates and pickups give only the bazooka and health.
 - The **mid layer** and extra tile layers are left out (the board has one far layer); each layer loads the palettes its tiles use, up to 32 ([layer palettes](#layer-palettes)).
-- **Sound**: the Z80 program is the prototype's silent one.
+- **Sound** (T-26): see [Sound](#sound-qsound): QSound effects and music; play mode stays silent for now.
 - The ROM is always laid out as `slammast` (a `captcomm` game is noted).
 - **Play on my go-link** powers the set on with the real core of the linked device (validation level 4); opening a room with it needs the device to accept a user's own set under its own identity, which is not built yet.
+
+## Sound (QSound)
+
+Task T-26 of [experiment 1's verdict](../experiments/verdict.md). The slammast board's Z80 runs go-link's QSound driver ([`rom/engine/sound.z80`](../../rom/engine/sound.z80), built by `engine.mjs` with its `code_end` and `DATA` labels in `engine.json`), and Create ROM writes the sound itself (`rom/sound.ts` `packSound`):
+
+- **The chip** (the core's `src/sound/qsound.c`): 16 channels of 8-bit signed samples at 24096 Hz (pitch 0x1000), each with its own balance from left to right. Effects play on channels 8-15 in turn, music on 0-7.
+- **The 68000 talks to it** through shared RAM 1 (`0xf18000`, the Z80's `0xc000`): an 8-entry queue of (id, balance) and its write index. Ids 1-15 are effects (shot, knife, jump, hit, enemy down, hurt, crate, pickup, rescue, coin, start, rocket, explosion, kick, land), each panned to where it happens on screen; `0x40 + n` plays the music of screen n (title, play, clear, continue, game over), `0x7f` stops it.
+- **Everything is made from code**, the same bytes for the same game: effects and instruments (bass, lead, arpeggio, pad, kick, snare, hi-hat) are synthesized with seeded noise into the `mb_q1`-`mb_q8` sample ROMs (about 0.4 MB, each sample inside one 64 KB bank as the chip addresses them), and six built-in tunes (title, stage, boss, continue, game over and the clear fanfare) are tracker rows of (note, instrument) per channel at 250 Hz. Each screen plays the tune of its music slot (the Menus tab), or nothing with "none".
+- **Encryption:** the board decrypts only the Z80 ROM's first 0x8000 bytes, opcodes and operands with different Kabuki tables, and the core fetches opcodes only from that decrypted area, so the driver (with no IX or IY) and its data (at 0x4000) both live there: `@go-link/cps1` `z80OpcodeMap` sorts every byte into opcode or data and `encodeProgram` encodes each with its table.
+- **Checked on the real core:** `device romtest --wav FILE` records the core's stereo sound; on the spec level's clear the tunes' notes came out within a few cents of their pitch, the channels differ left to right, nothing clips, and the pictures still match the board model at tolerance 0. Play mode in the browser is silent for now.
 
 ## Create ROM from the command line
 

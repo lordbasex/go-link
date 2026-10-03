@@ -91,7 +91,7 @@ Live meters in the top bar, from the board profile, always visible while buildin
 | Unique tiles and sprite cells vs graphics ROM | 6 MB |
 | Sprites on screen | 256 entries |
 | Program and data size | 2 MB (68000 program ROM: the engine in the first megabyte, the game's data in the second) |
-| Sound samples | 4 MB (QSound; go-link's engine is silent for now) |
+| Sound samples | 4 MB (QSound: go-link's engine uses about 0.4 MB of synthesized effects and instruments) |
 
 A meter turns amber near its limit and red over it. The meters count what go-link's engine already takes (its sprites, the font, 25 of the 32 sprite palettes and its program, from `engine.json`). **Board usage** (since experiment 1's verdict, T-27): the top bar's **CPS-1 · %** chip shows the most used limit; it opens a panel with every meter as a bar, the live estimate while building, and **Measure exactly**, which packs the game as Create ROM does and shows the real graphics, program and sprite palette numbers (`rom/usage.ts`, `ui/organisms/BoardUsage.tsx`).
 
