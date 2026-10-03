@@ -14,6 +14,8 @@ import { pairingCode, stack } from "../stack";
 // tunnelled (docs/experiments/hd-streaming.md has the command).
 
 test.skip(!process.env.E2E_HD, "go-link HD's experiment runs only with E2E_HD");
+// E2E_HD_VIDEO=1 also records what the guest sees (Playwright's screencast, about 25 fps), in test-results/
+test.use(process.env.E2E_HD_VIDEO ? { viewport: { width: 1600, height: 900 }, video: { mode: "on", size: { width: 1600, height: 900 } } } : {});
 
 test("the HD scene reaches a room: frames, size and the device's CPU", async ({ page }) => {
   test.setTimeout(180_000);
