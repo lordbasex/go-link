@@ -184,8 +184,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   test.setTimeout(150_000);
   const stage = page.locator(".video-stage");
   // The owner picks CRT arcade and makes it the room's default.
-  await wake(page);
-  await page.getByRole("button", { name: "Picture" }).click();
+  await clickControl(page, "Picture");
   const settings = page.getByRole("dialog", { name: "Picture" });
   await settings.getByRole("combobox", { name: "Style" }).click();
   await page.getByRole("option", { name: /^CRT arcade/ }).click();
@@ -206,8 +205,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   await expect(freshStage).toHaveAttribute("data-picture-style", "crt");
   await expect(freshStage).toHaveAttribute("data-picture-bands", "black");
   await expect(freshStage).toHaveAttribute("data-picture", /^webgl2?$/);
-  await wake(fresh.page);
-  await fresh.page.getByRole("button", { name: "Picture" }).click();
+  await clickControl(fresh.page, "Picture");
   const guestSettings = fresh.page.getByRole("dialog", { name: "Picture" });
   await expect(guestSettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
   // Guests never change the room.
@@ -225,8 +223,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   await expectVideoPlaying(picky.page);
   const pickyStage = picky.page.locator(".video-stage");
   await expect(pickyStage).toHaveAttribute("data-picture-style", "sharp");
-  await wake(picky.page);
-  await picky.page.getByRole("button", { name: "Picture" }).click();
+  await clickControl(picky.page, "Picture");
   const pickySettings = picky.page.getByRole("dialog", { name: "Picture" });
   await expect(pickySettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
   await expect(pickySettings.getByRole("button", { name: "Use the room's default" })).toBeVisible();
@@ -247,8 +244,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   // Back to the room, with the owner's own picture back to Smooth.
   await page.getByRole("link", { name: "Test pattern" }).click();
   await expectVideoPlaying(page);
-  await wake(page);
-  await page.getByRole("button", { name: "Picture" }).click();
+  await clickControl(page, "Picture");
   await expect(settings.getByText("Room default:")).toHaveCount(0);
   await settings.getByRole("combobox", { name: "Style" }).click();
   await page.getByRole("option", { name: /^Smooth(?! edges)/ }).click();
@@ -274,6 +270,18 @@ async function wake(p: Page) {
   const box = await stage.boundingBox();
   if (box) await p.mouse.move(box.x + box.width / 2 + Math.random() * 10, box.y + box.height / 3, { steps: 4 });
   await expect(stage).not.toHaveClass(/is-idle/);
+}
+
+/**
+ * Clicks one of the video's controls. They hide again after 3 s without
+ * the mouse moving, which a slow runner can spend between waking them and
+ * the click, so both are tried again together until the click lands.
+ */
+async function clickControl(p: Page, name: string) {
+  await expect(async () => {
+    await wake(p);
+    await p.getByRole("button", { name }).click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 /** A new invitation from the owner's room: the 9 digit code and its PIN. */
@@ -332,8 +340,7 @@ test("only the host pauses: a player asks, the host accepts or declines, a guest
   await expect(g.locator(".video-paused")).toHaveCount(0);
 
   // Ask; the host accepts: paused for everyone, in the requester's name.
-  await wake(g);
-  await g.getByRole("button", { name: "Ask the host for a pause" }).click();
+  await clickControl(g, "Ask the host for a pause");
   await expect(g.getByText("You asked the host for a pause…")).toBeVisible();
   const ask = page.getByRole("alertdialog", { name: "bZoëb wants to pause" });
   await expect(ask).toBeVisible();
@@ -348,15 +355,13 @@ test("only the host pauses: a player asks, the host accepts or declines, a guest
   await expect(g.locator(".video-paused")).toHaveCount(0);
 
   // Ask again; the host would rather keep playing.
-  await wake(g);
-  await g.getByRole("button", { name: "Ask the host for a pause" }).click();
+  await clickControl(g, "Ask the host for a pause");
   await page.getByRole("alertdialog", { name: "bZoëb wants to pause" }).getByRole("button", { name: "Keep playing" }).click();
   await expect(g.locator(".pause-note")).toHaveText("The host would rather keep playing");
   await expect(g.locator(".video-paused")).toHaveCount(0);
 
   // Asking and withdrawing leaves nothing for the host.
-  await wake(g);
-  await g.getByRole("button", { name: "Ask the host for a pause" }).click();
+  await clickControl(g, "Ask the host for a pause");
   await expect(page.getByRole("alertdialog", { name: "bZoëb wants to pause" })).toBeVisible();
   await g.getByRole("button", { name: "Cancel the request for a pause" }).first().click();
   await expect(page.getByRole("alertdialog", { name: "bZoëb wants to pause" })).toHaveCount(0);
@@ -365,8 +370,7 @@ test("only the host pauses: a player asks, the host accepts or declines, a guest
   // still gets the request, naming the room.
   const roomUrl = page.url();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Rooms" }).click();
-  await wake(g);
-  await g.getByRole("button", { name: "Ask the host for a pause" }).click();
+  await clickControl(g, "Ask the host for a pause");
   const notice = page.getByRole("alertdialog", { name: "bZoëb wants to pause \u201cTest pattern\u201d" });
   await expect(notice).toBeVisible();
   await expectAccessible(page, "pause request notice");
