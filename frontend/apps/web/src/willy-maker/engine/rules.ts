@@ -633,3 +633,26 @@ export const QUIZ_SCORE = 100;
 export const QUIZ_BONUS = 10;
 /** The most questions a game holds (their screens are 0x40 + n in the ROM's texts). */
 export const QUIZ_MAX = 60;
+
+/**
+ * The quiz's minigames (genres.md, quiz and party, phase 2), the ROM's
+ * numbers too. Mash: B1 as many times as you can in MASH_TIME frames,
+ * MASH_SCORE a press. Timing: a marker crosses TIMING_W cells and back, a
+ * cell every TIMING_STEP frames, for TIMING_TIME frames; your first B1 stops
+ * it for you, worth TIMING_SCORE less TIMING_LOSS for every cell from the
+ * middle. Memory: MEM_LEN letters show MEM_LETTER frames each (lit for
+ * MEM_LIT of them), then MEM_INPUT frames to press them back with B1 B2 B3,
+ * MEM_SCORE a letter right in order (a wrong press ends your turn).
+ */
+export const MASH_TIME = 300;
+export const MASH_SCORE = 10;
+export const TIMING_W = 40;
+export const TIMING_STEP = 3;
+export const TIMING_TIME = 360;
+export const TIMING_SCORE = 200;
+export const TIMING_LOSS = 10;
+export const MEM_LEN = 4;
+export const MEM_LETTER = 40;
+export const MEM_LIT = 30;
+export const MEM_INPUT = 360;
+export const MEM_SCORE = 50;

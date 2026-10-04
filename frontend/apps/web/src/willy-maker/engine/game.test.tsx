@@ -6,8 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL, STONE } from "./rules";
 import { markMatches } from "./puzzle";
-import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES } from "./rules";
-import { quizLines, quizText } from "./quiz";
+import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
+import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
@@ -1538,5 +1538,44 @@ describe("the quiz (genres.md, phase 1)", () => {
     const lines = quizLines({ q: "word ".repeat(30), a: ["x", "y", "z"], right: 0 });
     expect(lines.filter((l) => l.answer < 0).every((l) => l.text.length <= 40)).toBe(true);
     expect(lines.filter((l) => l.answer >= 0).map((l) => l.text)).toEqual(["A  X", "B  Y", "C  Z"]);
+  });
+});
+
+describe("the quiz's minigames (phase 2)", () => {
+  const games = [
+    { kind: "mash" as const, q: "", a: ["", "", ""] as [string, string, string], right: 0 },
+    { kind: "timing" as const, q: "", a: ["", "", ""] as [string, string, string], right: 0 },
+    { kind: "memory" as const, q: "", a: ["", "", ""] as [string, string, string], right: 0 },
+  ];
+  it("mash counts B1 presses for its whole time; timing scores how near the middle the marker stopped; memory scores the letters pressed back in order", () => {
+    const g = new Game(flat(), { rules: QUIZ_RULES, players: 2, questions: games });
+    const [a, b] = g.players;
+    // mash: player 1 presses 10 times, player 2 twice; it runs its whole time even so
+    for (let i = 0; i < 20; i++) g.step([i % 2 ? 0 : Input.B1, i < 4 && !(i % 2) ? Input.B1 : 0, 0, 0]);
+    expect([a!.count, b!.count]).toEqual([10, 2]);
+    run(g, MASH_TIME - 20, 0);
+    expect(g.quizPhase).toBe(1);
+    expect([a!.score, b!.score]).toEqual([10 * MASH_SCORE, 2 * MASH_SCORE]);
+    run(g, REVEAL_FRAMES, 0);
+    // timing: player 1 stops it in the middle (cell 19), player 2 at the left edge (cell 0)
+    g.step([0, Input.B1, 0, 0]);
+    while (timingCell(g.quizT, TIMING_W, TIMING_STEP) !== 19) g.step([0, 0, 0, 0]);
+    g.step([Input.B1, 0, 0, 0]);
+    expect(g.quizPhase).toBe(1);
+    expect(a!.score - 10 * MASH_SCORE).toBe(TIMING_SCORE);
+    expect(b!.score - 2 * MASH_SCORE).toBe(TIMING_SCORE - 19 * TIMING_LOSS);
+    run(g, REVEAL_FRAMES, 0);
+    // memory: after the letters show, player 1 presses them all back, player 2 misses the first
+    const seq = memorySeq(2, MEM_LEN);
+    const btn = [Input.B1, Input.B2, Input.B3];
+    run(g, MEM_LEN * MEM_LETTER, 0);
+    for (const k of seq) {
+      g.step([btn[k]!, btn[(k + 1) % 3]!, 0, 0]);
+      g.step([0, 0, 0, 0]);
+    }
+    expect(g.quizPhase).toBe(1);
+    expect([a!.count, b!.count]).toEqual([MEM_LEN, 0]);
+    run(g, REVEAL_FRAMES, 0);
+    expect(g.outcome).toBe("cleared");
   });
 });

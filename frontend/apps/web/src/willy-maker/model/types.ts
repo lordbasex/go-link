@@ -303,8 +303,13 @@ export interface Project {
   [unknown: string]: unknown;
 }
 
-/** A quiz question: three answers, one per button (B1 B2 B3), `right` the correct one's index. */
+/**
+ * A quiz question: three answers, one per button (B1 B2 B3), `right` the
+ * correct one's index; or a minigame (phase 2), `q` its instructions.
+ */
 export interface QuizQuestion {
+  /** A question (the default), or a minigame: mash B1, stop the marker in the middle, repeat a sequence. */
+  kind?: "question" | "mash" | "timing" | "memory";
   q: string;
   a: [string, string, string];
   right: number;

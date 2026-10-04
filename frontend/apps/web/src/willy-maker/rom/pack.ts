@@ -14,7 +14,7 @@ import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Pr
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
 import { BOSS_HP, GUNSHIP_HP, QUIZ_MAX, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
-import { quizLines } from "../engine/quiz";
+import { QUIZ_KINDS, kindOf, quizLines } from "../engine/quiz";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -70,7 +70,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 21;
+const WM_VERSION = 22;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -286,7 +286,8 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
   // the quiz: a screen per question, its lines as play mode draws them (engine/quiz.ts), the right answer marked
   if (rulesWith(project.settings.rules).quiz)
     (project.quiz ?? []).slice(0, QUIZ_MAX).forEach((q, k) => {
-      for (const l of quizLines(q)) add(SCR_QUIZ + k, { field: "quiz", text: l.text, row: l.row, col: l.col, scale: 1, ink: "white" }, l.answer >= 0 && l.answer === q.right ? TXT_RIGHT : 0);
+      // the item's kind on its first line (bits 2-3): a question or a minigame
+      quizLines(q).forEach((l, i) => add(SCR_QUIZ + k, { field: "quiz", text: l.text, row: l.row, col: l.col, scale: 1, ink: "white" }, (l.answer >= 0 && l.answer === q.right ? TXT_RIGHT : 0) | (i === 0 ? QUIZ_KINDS.indexOf(kindOf(q)) << 2 : 0)));
     });
   const single = (scr: number, screen: MenuScreenId, field: string, row: number) => {
     const text = menuText(project, screen, field).toUpperCase();

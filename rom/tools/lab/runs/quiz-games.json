@@ -1,0 +1,1074 @@
+{
+ "name": "quiz-games",
+ "description": "The quiz's minigames (WM_ROM_OUT/quizgames of rom.test.tsx, rom/quizFixture.ts quizGamesProject: mash, timing (no instructions: the board's own title), memory, then a question). Two coins; mash: player 1 presses B1 every 4 frames, player 2 joins in it and presses every 6 (frame 462: 10 a press); timing: player 2 stops the marker early on cell 5, player 1 on cell 20 on its second pass (frame 790: 200 less 10 a cell from the middle); memory: player 1 presses the four letters back, player 2 two then a wrong one (frame 1131: 50 a letter); then a question both answer; past it the level clears. Play mode gives both players' scores every frame.",
+ "frames": 1521,
+ "checkpoints": [
+  300,
+  467,
+  600,
+  795,
+  931,
+  1136
+ ],
+ "expect": [
+  {
+   "frame": 462,
+   "path": "players.0.score",
+   "equals": 750
+  },
+  {
+   "frame": 462,
+   "path": "players.1.score",
+   "equals": 380
+  },
+  {
+   "frame": 790,
+   "path": "players.0.score",
+   "equals": 950
+  },
+  {
+   "frame": 1131,
+   "path": "players.1.score",
+   "equals": 540
+  },
+  {
+   "frame": 1465,
+   "path": "players.0.score",
+   "equals": 1340
+  }
+ ],
+ "steps": [
+  {
+   "from": 100,
+   "to": 105,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 161,
+   "to": 162,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 165,
+   "to": 166,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 169,
+   "to": 170,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 173,
+   "to": 174,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 177,
+   "to": 178,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 181,
+   "to": 182,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 185,
+   "to": 186,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 189,
+   "to": 190,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 193,
+   "to": 194,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 197,
+   "to": 198,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 201,
+   "to": 202,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 205,
+   "to": 206,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 209,
+   "to": 210,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 213,
+   "to": 214,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 217,
+   "to": 218,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 221,
+   "to": 222,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 225,
+   "to": 226,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 229,
+   "to": 230,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 233,
+   "to": 234,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 237,
+   "to": 238,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 241,
+   "to": 242,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 245,
+   "to": 246,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 249,
+   "to": 250,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 253,
+   "to": 254,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 257,
+   "to": 258,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 261,
+   "to": 262,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 265,
+   "to": 266,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 269,
+   "to": 270,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 273,
+   "to": 274,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 277,
+   "to": 278,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 281,
+   "to": 282,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 285,
+   "to": 286,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 289,
+   "to": 290,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 293,
+   "to": 294,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 297,
+   "to": 298,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 301,
+   "to": 302,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 305,
+   "to": 306,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 309,
+   "to": 310,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 313,
+   "to": 314,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 317,
+   "to": 318,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 321,
+   "to": 322,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 325,
+   "to": 326,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 329,
+   "to": 330,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 333,
+   "to": 334,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 337,
+   "to": 338,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 341,
+   "to": 342,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 345,
+   "to": 346,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 349,
+   "to": 350,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 353,
+   "to": 354,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 357,
+   "to": 358,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 361,
+   "to": 362,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 365,
+   "to": 366,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 369,
+   "to": 370,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 373,
+   "to": 374,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 377,
+   "to": 378,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 381,
+   "to": 382,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 385,
+   "to": 386,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 389,
+   "to": 390,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 393,
+   "to": 394,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 397,
+   "to": 398,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 401,
+   "to": 402,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 405,
+   "to": 406,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 409,
+   "to": 410,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 413,
+   "to": 414,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 417,
+   "to": 418,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 421,
+   "to": 422,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 425,
+   "to": 426,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 429,
+   "to": 430,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 433,
+   "to": 434,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 437,
+   "to": 438,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 441,
+   "to": 442,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 445,
+   "to": 446,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 449,
+   "to": 450,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 453,
+   "to": 454,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 457,
+   "to": 458,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 788,
+   "to": 789,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1099,
+   "to": 1100,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 1109,
+   "to": 1110,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1119,
+   "to": 1120,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 1129,
+   "to": 1130,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1310,
+   "to": 1311,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 221,
+   "to": 222,
+   "port": 2,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 233,
+   "to": 234,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 239,
+   "to": 240,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 245,
+   "to": 246,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 251,
+   "to": 252,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 257,
+   "to": 258,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 263,
+   "to": 264,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 269,
+   "to": 270,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 275,
+   "to": 276,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 281,
+   "to": 282,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 287,
+   "to": 288,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 293,
+   "to": 294,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 299,
+   "to": 300,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 305,
+   "to": 306,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 311,
+   "to": 312,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 317,
+   "to": 318,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 323,
+   "to": 324,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 329,
+   "to": 330,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 335,
+   "to": 336,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 341,
+   "to": 342,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 347,
+   "to": 348,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 353,
+   "to": 354,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 359,
+   "to": 360,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 365,
+   "to": 366,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 371,
+   "to": 372,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 377,
+   "to": 378,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 383,
+   "to": 384,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 389,
+   "to": 390,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 395,
+   "to": 396,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 401,
+   "to": 402,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 407,
+   "to": 408,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 413,
+   "to": 414,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 419,
+   "to": 420,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 425,
+   "to": 426,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 431,
+   "to": 432,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 437,
+   "to": 438,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 443,
+   "to": 444,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 449,
+   "to": 450,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 455,
+   "to": 456,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 626,
+   "to": 627,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1099,
+   "to": 1100,
+   "port": 2,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 1109,
+   "to": 1110,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1119,
+   "to": 1120,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1129,
+   "to": 1130,
+   "port": 2,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 1310,
+   "to": 1311,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  }
+ ]
+}

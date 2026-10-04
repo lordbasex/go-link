@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 21
+#define WM_VERSION 22
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -68,6 +68,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_TXT_COUNT 0x20 /* the engine writes a count after it (rescued) */
 #define WM_TXT_BLINK 0x40 /* blinks; the title's prompt */
 #define WM_TXT_RIGHT 0x80 /* the quiz: the right answer's line */
+#define WM_TXT_KIND 0x0c  /* the quiz: on an item's first line, 0 a question, 1 mash, 2 timing, 3 memory (wm_data 22) */
 #define WM_SCR_QUIZ 0x40  /* the quiz's question n is screen WM_SCR_QUIZ + n (wm_data 21) */
 
 #define WM_F_FREE_PLAY 0x0001

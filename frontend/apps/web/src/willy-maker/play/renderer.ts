@@ -8,8 +8,8 @@
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
 import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, QUIZ_TIME, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
-import { LETTERS, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, quizLines } from "../engine/quiz";
+import { CLEAR_FRAMES, FLY_MID, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -199,13 +199,31 @@ function drawQuiz(ctx: CanvasRenderingContext2D, game: Game): void {
   const q = game.questions[game.quizK];
   if (!q) return;
   const at = (col: number, row: number, text: string, ink: string) => drawBoardText(ctx, text, col * 8, row * 8, 1, ink);
-  for (const l of quizLines(q)) at(l.col, l.row, l.text, game.quizPhase === 1 && l.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.white);
-  if (game.quizPhase === 0) at(21, TIME_ROW, `TIME ${Math.max(0, Math.ceil((QUIZ_TIME - game.quizT) / 60))}`, TEXT_INKS.white);
+  const kind = kindOf(q);
+  const show = MEM_LEN * MEM_LETTER;
+  for (const l of quizLines(q)) at(l.col, l.row, l.text, kind === "question" && game.quizPhase === 1 && l.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.white);
+  const time = kind === "mash" ? MASH_TIME : kind === "timing" ? TIMING_TIME : kind === "memory" ? show + MEM_INPUT : QUIZ_TIME;
+  if (game.quizPhase === 0) at(21, TIME_ROW, `TIME ${String(Math.max(0, Math.ceil((time - game.quizT) / 60))).padStart(2, "0")}`, TEXT_INKS.white);
+  if (kind === "timing") {
+    // the bar, its middle, and the marker while it runs
+    const cells: string[] = Array.from({ length: TIMING_W }, (_, i) => (i === TIMING_W / 2 - 1 || i === TIMING_W / 2 ? "+" : "-"));
+    if (game.quizPhase === 0) cells[timingCell(game.quizT, TIMING_W, TIMING_STEP)] = "#";
+    at(BAR_COL, BAR_ROW, cells.join(""), TEXT_INKS.white);
+  }
+  if (kind === "memory" && game.quizPhase === 0) {
+    if (game.quizT < show) {
+      if (game.quizT % MEM_LETTER < MEM_LIT) at(MEM_COL, MEM_ROW, LETTERS[memorySeq(game.quizK, MEM_LEN)[Math.floor(game.quizT / MEM_LETTER)]!]!, TEXT_INKS.cyan);
+    } else at(MEM_COL - 2, MEM_ROW, "GO!", TEXT_INKS.accent);
+  }
   for (const p of game.players) {
     if (!p.active || p.index >= PLAYER_COLS.length) continue;
     const col = PLAYER_COLS[p.index]!;
-    if (game.quizPhase === 0) at(col, PLAYERS_ROW, `${p.index + 1}P`, p.answer >= 0 ? TEXT_INKS.cyan : TEXT_INKS.white);
-    else at(col, PLAYERS_ROW, `${p.index + 1}P ${p.answer >= 0 ? LETTERS[p.answer] : "-"}`, p.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.red);
+    const tag = `${p.index + 1}P`;
+    if (kind === "question") {
+      if (game.quizPhase === 0) at(col, PLAYERS_ROW, tag, p.answer >= 0 ? TEXT_INKS.cyan : TEXT_INKS.white);
+      else at(col, PLAYERS_ROW, `${tag} ${p.answer >= 0 ? LETTERS[p.answer] : "-"}`, p.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.red);
+    } else if (game.quizPhase === 0) at(col, PLAYERS_ROW, kind === "timing" ? tag : `${tag} ${p.count}`, p.done ? TEXT_INKS.cyan : TEXT_INKS.white);
+    else at(col, PLAYERS_ROW, kind === "mash" ? `${tag} ${p.count}` : kind === "memory" ? `${tag} ${p.count}` : `${tag} ${p.done ? p.answer : "-"}`, TEXT_INKS.cyan);
   }
 }
 

@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
+import type { QuizQuestion } from "../model/types";
 // The Game tab's texts (the reference shape for es and pt).
 
 export const gameEn = {
@@ -63,6 +64,10 @@ export const gameEn = {
     actions: { up: "Up", down: "Down", left: "Left", right: "Right", b1: "B1", b2: "B2", b3: "B3", start: "Start", coin: "Coin" },
   },
   quiz: {
+    kind: "Kind",
+    kinds: { question: "Question", mash: "Mash B1", timing: "Stop in the middle", memory: "Memory" },
+    defaults: { mash: "Mash B1 as fast as you can!", timing: "Stop the marker in the middle with B1", memory: "Remember the letters, then press them" },
+    instructions: "Instructions",
     title: "Questions",
     help: "The quiz asks them in this order: each has three answers, answered with B1 B2 B3 (A B C). The board's font prints upper case letters, digits and simple signs: accents and other characters are dropped.",
     empty: "No questions yet: add the first one.",
@@ -77,7 +82,10 @@ export const gameEn = {
       { q: "How many players can play at once on a go-link room?", a: ["Two", "Three", "Four"], right: 2 },
       { q: "Which button answers C?", a: ["B1", "B2", "B3"], right: 2 },
       { q: "Where do the games run in go-link?", a: ["On the host's computer", "In the cloud", "On every phone"], right: 0 },
-    ] as { q: string; a: [string, string, string]; right: number }[],
+      { kind: "mash", q: "Mash B1 as fast as you can!", a: ["", "", ""], right: 0 },
+      { kind: "timing", q: "Stop the marker in the middle with B1", a: ["", "", ""], right: 0 },
+      { kind: "memory", q: "Remember the letters, then press them", a: ["", "", ""], right: 0 },
+    ] as QuizQuestion[],
   },
   dip: {
     title: "Board (DIP switches)",

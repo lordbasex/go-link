@@ -9,6 +9,19 @@ import { QUIZ_RULES } from "../engine/rules";
 import type { Project } from "../model";
 import { projectFromTemplate } from "../templates";
 
+/** The minigames' lab game (rom/tools/lab/runs/quiz-games.json): one of each, then a question. */
+export function quizGamesProject(): Project {
+  const p = quizProject();
+  p.title = "Quiz games";
+  p.quiz = [
+    { kind: "mash", q: "Mash B1 as fast as you can!", a: ["", "", ""], right: 0 },
+    { kind: "timing", q: "", a: ["", "", ""], right: 0 },
+    { kind: "memory", q: "Remember the letters, then press them", a: ["", "", ""], right: 0 },
+    { q: "Was that fun?", a: ["Yes", "Very", "Both"], right: 2 },
+  ];
+  return p;
+}
+
 export function quizProject(): Project {
   const p = projectFromTemplate("empty", { title: "Quiz", layout: "slammast", players: 2, levelName: "Quiz", screens: 1, height: 224 });
   p.genre = "quiz-party";

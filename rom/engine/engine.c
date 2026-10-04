@@ -758,6 +758,7 @@ struct player {
 	int mdx, mdy, wdx, wdy;                     /* the maze: the way it moves, the way the stick last asked for */
 	int cpu;                                    /* the puzzle: the CPU rival plays this well */
 	int answer, answer_left;                    /* the quiz: this question's answer (0-2, -1 none) and the frames left then */
+	int count, done;                            /* the minigames: presses or letters right, and whether its turn is over */
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
@@ -785,6 +786,26 @@ static int quiz;       /* the quiz (WM_F2_QUIZ) */
 #define QUIZ_ANSWER_ROW 12
 static const u8 quiz_cols[4] = { 8, 18, 28, 38 };
 static int quiz_n, quiz_k, quiz_phase, quiz_t, quiz_revealed;
+/* the minigames (phase 2, engine/rules.ts): the item's kind and the memory letters */
+enum { QK_QUESTION, QK_MASH, QK_TIMING, QK_MEMORY };
+#define MASH_TIME 300
+#define MASH_SCORE 10
+#define TIMING_W 40
+#define TIMING_STEP 3
+#define TIMING_TIME 360
+#define TIMING_SCORE 200
+#define TIMING_LOSS 10
+#define MEM_LEN 4
+#define MEM_LETTER 40
+#define MEM_LIT 30
+#define MEM_INPUT 360
+#define MEM_SCORE 50
+#define BAR_ROW 14
+#define BAR_COL 4
+#define MEM_ROW 13
+#define MEM_COL 23
+static int quiz_kind, quiz_marker;
+static u8 quiz_seq[MEM_LEN];
 /* the puzzle's wells (engine/puzzle.ts Well), players 1 and 2 */
 #define WELLS 2
 #define WELL_COLS 6
@@ -1674,15 +1695,64 @@ static void draw_wells(void)
 
 /* ------------------------------------------------------------- the quiz */
 
-/* a player's first press of B1 B2 B3 while the question is asked is its answer */
+/* the timing marker's cell at frame t: across the bar and back (engine/quiz.ts timingCell) */
+static int timing_cell(int t)
+{
+	int i = (t / TIMING_STEP) % (2 * TIMING_W);
+	return i < TIMING_W ? i : 2 * TIMING_W - 1 - i;
+}
+
+/* item k's kind (its first line's WM_TXT_KIND bits), and the memory letters when it has them */
+static void quiz_item(int k)
+{
+	struct line l;
+	int pos = 0, i;
+	u32 s = (u32)(k + 1) * 7919u;
+	quiz_kind = k < quiz_n && next_line(WM_SCR_QUIZ + k, &pos, &l) ? (l.attr & WM_TXT_KIND) >> 2 : QK_QUESTION;
+	if (quiz_kind == QK_MEMORY)
+		for (i = 0; i < MEM_LEN; i++) {
+			s = s * 1103515245u + 12345u;
+			quiz_seq[i] = (u8)((u16)(s >> 16) % 3);
+		}
+	quiz_marker = -1;
+}
+
+/* a player's press while the item runs (engine/game.ts answerQuiz): a question's first
+   answer, a mash press, the timing stop, or the next memory letter */
 static void answer_quiz(struct player *p)
 {
 	int k;
 	p->t++;
-	if (quiz_phase != 0 || p->answer >= 0)
+	if (quiz_phase != 0)
 		return;
 	k = PRESSED(p, BTN_1) ? 0 : PRESSED(p, BTN_2) ? 1 : PRESSED(p, BTN_3) ? 2 : -1;
 	if (k < 0)
+		return;
+	if (quiz_kind == QK_MASH) {
+		if (k == 0)
+			p->count++;
+		return;
+	}
+	if (quiz_kind == QK_TIMING) {
+		if (k != 0 || p->done)
+			return;
+		p->answer = timing_cell(quiz_t);
+		p->done = 1;
+		sfx(SFX_SHOT, p->x);
+		return;
+	}
+	if (quiz_kind == QK_MEMORY) {
+		if (p->done || quiz_t < MEM_LEN * MEM_LETTER)
+			return;
+		if (k == quiz_seq[p->count])
+			p->count++;
+		else
+			p->done = 1;
+		if (p->count >= MEM_LEN)
+			p->done = 1;
+		return;
+	}
+	if (p->answer >= 0)
 		return;
 	p->answer = k;
 	p->answer_left = QUIZ_TIME - quiz_t;
@@ -1708,19 +1778,42 @@ static void update_quiz(void)
 		return;
 	quiz_t++;
 	if (quiz_phase == 0) {
+		int all, over, show = MEM_LEN * MEM_LETTER;
 		for (k = 0; k < nplayers; k++)
 			if (pl[k].active) {
 				ins++;
-				answered += pl[k].answer >= 0;
+				answered += quiz_kind == QK_QUESTION ? pl[k].answer >= 0 : pl[k].done;
 			}
-		if (quiz_t < QUIZ_TIME && !(ins && answered == ins))
+		all = ins && answered == ins;
+		/* each item's time, or sooner once every player in is through (a mash always runs its time) */
+		over = quiz_kind == QK_MASH ? quiz_t >= MASH_TIME
+			: quiz_kind == QK_TIMING ? quiz_t >= TIMING_TIME || all
+			: quiz_kind == QK_MEMORY ? quiz_t >= show + MEM_INPUT || (quiz_t >= show && all)
+			: quiz_t >= QUIZ_TIME || all;
+		if (!over)
 			return;
-		right = quiz_right(quiz_k);
-		for (k = 0; k < nplayers; k++)
-			if (pl[k].active && pl[k].answer == right) {
-				pl[k].score += (u32)(QUIZ_SCORE + (pl[k].answer_left / 60) * QUIZ_BONUS);
-				sfx(SFX_PICKUP, pl[k].x);
+		right = quiz_kind == QK_QUESTION ? quiz_right(quiz_k) : -1;
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			int pts = 0;
+			if (!p->active)
+				continue;
+			if (quiz_kind == QK_MASH)
+				pts = p->count * MASH_SCORE;
+			else if (quiz_kind == QK_TIMING) {
+				int d = 2 * p->answer - (TIMING_W - 1);
+				pts = p->done ? TIMING_SCORE - ((d < 0 ? -d : d) >> 1) * TIMING_LOSS : 0;
+				if (pts < 0)
+					pts = 0;
+			} else if (quiz_kind == QK_MEMORY)
+				pts = p->count * MEM_SCORE;
+			else if (p->answer == right)
+				pts = QUIZ_SCORE + (p->answer_left / 60) * QUIZ_BONUS;
+			if (pts) {
+				p->score += (u32)pts;
+				sfx(SFX_PICKUP, p->x);
 			}
+		}
 		quiz_phase = 1;
 		quiz_t = 0;
 		return;
@@ -1730,8 +1823,11 @@ static void update_quiz(void)
 	quiz_k++;
 	quiz_phase = 0;
 	quiz_t = 0;
-	for (k = 0; k < nplayers; k++)
+	for (k = 0; k < nplayers; k++) {
 		pl[k].answer = -1;
+		pl[k].count = pl[k].done = 0;
+	}
+	quiz_item(quiz_k);
 }
 
 /* the quiz's screen on the text layer (play/renderer.ts drawQuiz): a new question is put
@@ -1761,6 +1857,13 @@ static void quiz_draw(void)
 	if (quiz_step == 2) {
 		blank(0, QUIZ_TIME_ROW, 48);
 		blank(0, QUIZ_PLAYERS_ROW, 48);
+		quiz_step = 4;
+		return;
+	}
+	if (quiz_step == 4) {
+		/* the minigames' rows: the timing bar, the memory letter */
+		blank(0, BAR_ROW, 48);
+		blank(0, MEM_ROW, 48);
 		quiz_step = 3;
 		quiz_pos = 0;
 		return;
@@ -1776,20 +1879,49 @@ static void quiz_draw(void)
 		return;
 	right = -1;
 	if (quiz_phase == 0) {
-		int left = QUIZ_TIME - quiz_t;
+		int show = MEM_LEN * MEM_LETTER;
+		int time = quiz_kind == QK_MASH ? MASH_TIME : quiz_kind == QK_TIMING ? TIMING_TIME : quiz_kind == QK_MEMORY ? show + MEM_INPUT : QUIZ_TIME;
+		int left = time - quiz_t;
 		print(21, QUIZ_TIME_ROW, "TIME", INK_WHITE);
 		print_num(26, QUIZ_TIME_ROW, (u32)(left > 0 ? (left + 59) / 60 : 0), 2, INK_WHITE);
+		if (quiz_kind == QK_TIMING) {
+			/* the bar once, then only the marker's two cells */
+			int c = timing_cell(quiz_t);
+			if (quiz_marker == -1) {
+				for (k = 0; k < TIMING_W; k++)
+					put_char(BAR_COL + k, BAR_ROW, k == TIMING_W / 2 - 1 || k == TIMING_W / 2 ? '+' : '-', INK_WHITE);
+				quiz_marker = -2;
+			}
+			if (c != quiz_marker) {
+				if (quiz_marker >= 0)
+					put_char(BAR_COL + quiz_marker, BAR_ROW, quiz_marker == TIMING_W / 2 - 1 || quiz_marker == TIMING_W / 2 ? '+' : '-', INK_WHITE);
+				put_char(BAR_COL + c, BAR_ROW, '#', INK_WHITE);
+				quiz_marker = c;
+			}
+		}
+		if (quiz_kind == QK_MEMORY) {
+			if (quiz_t < show)
+				put_char(MEM_COL, MEM_ROW, quiz_t % MEM_LETTER < MEM_LIT ? 'A' + quiz_seq[quiz_t / MEM_LETTER] : ' ', INK_CYAN);
+			else
+				print(MEM_COL - 2, MEM_ROW, "GO!", INK_ACCENT);
+		}
 	} else {
-		right = quiz_right(quiz_k);
+		if (quiz_kind == QK_QUESTION)
+			right = quiz_right(quiz_k);
 		if (!quiz_revealed) {
-			/* only the right answer's line, again in cyan */
 			int pos = 0;
 			blank(0, QUIZ_TIME_ROW, 48);
-			while (next_line(WM_SCR_QUIZ + quiz_k, &pos, &l))
-				if (l.attr & WM_TXT_RIGHT) {
-					l.attr = (l.attr & ~WM_TXT_INK) | INK_CYAN;
-					draw_line(&l, 1);
-				}
+			if (quiz_kind == QK_QUESTION) {
+				/* only the right answer's line, again in cyan */
+				while (next_line(WM_SCR_QUIZ + quiz_k, &pos, &l))
+					if (l.attr & WM_TXT_RIGHT) {
+						l.attr = (l.attr & ~WM_TXT_INK) | INK_CYAN;
+						draw_line(&l, 1);
+					}
+			} else if (quiz_kind == QK_TIMING && quiz_marker >= 0)
+				put_char(BAR_COL + quiz_marker, BAR_ROW, quiz_marker == TIMING_W / 2 - 1 || quiz_marker == TIMING_W / 2 ? '+' : '-', INK_WHITE);
+			else if (quiz_kind == QK_MEMORY)
+				blank(MEM_COL - 2, MEM_ROW, 4);
 			quiz_revealed = 1;
 			return;
 		}
@@ -1798,14 +1930,25 @@ static void quiz_draw(void)
 		const struct player *p = &pl[k];
 		int col = quiz_cols[k], ink;
 		if (!p->active) {
-			blank(col, QUIZ_PLAYERS_ROW, 4);
+			blank(col, QUIZ_PLAYERS_ROW, 6);
 			continue;
 		}
-		ink = quiz_phase == 0 ? (p->answer >= 0 ? INK_CYAN : INK_WHITE) : (p->answer == right ? INK_CYAN : INK_RED);
+		if (quiz_kind == QK_QUESTION)
+			ink = quiz_phase == 0 ? (p->answer >= 0 ? INK_CYAN : INK_WHITE) : (p->answer == right ? INK_CYAN : INK_RED);
+		else
+			ink = quiz_phase == 1 || p->done ? INK_CYAN : INK_WHITE;
 		put_char(col, QUIZ_PLAYERS_ROW, '1' + k, ink);
 		put_char(col + 1, QUIZ_PLAYERS_ROW, 'P', ink);
 		put_char(col + 2, QUIZ_PLAYERS_ROW, ' ', ink);
-		put_char(col + 3, QUIZ_PLAYERS_ROW, quiz_phase == 0 ? ' ' : p->answer >= 0 ? 'A' + p->answer : '-', ink);
+		if (quiz_kind == QK_QUESTION)
+			put_char(col + 3, QUIZ_PLAYERS_ROW, quiz_phase == 0 ? ' ' : p->answer >= 0 ? 'A' + p->answer : '-', ink);
+		else if (quiz_kind == QK_TIMING) {
+			if (quiz_phase == 1 && p->done)
+				print_num(col + 3, QUIZ_PLAYERS_ROW, (u32)p->answer, 2, ink);
+			else
+				blank(col + 3, QUIZ_PLAYERS_ROW, 2);
+		} else
+			print_num(col + 3, QUIZ_PLAYERS_ROW, (u32)p->count, 2, ink);
 	}
 }
 
@@ -1880,6 +2023,7 @@ static void player_join(int k)
 	if (topdown)
 		p->bombs = GRENADES;
 	p->answer = -1;
+	p->count = p->done = 0;
 	if (crosshair) {
 		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -2003,6 +2147,7 @@ static void game_reset(void)
 				break;
 			quiz_n++;
 		}
+		quiz_item(0);
 	}
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;

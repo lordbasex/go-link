@@ -131,6 +131,17 @@ import {
   REVEAL_FRAMES,
   QUIZ_SCORE,
   QUIZ_BONUS,
+  MASH_TIME,
+  MASH_SCORE,
+  TIMING_W,
+  TIMING_STEP,
+  TIMING_TIME,
+  TIMING_SCORE,
+  TIMING_LOSS,
+  MEM_LEN,
+  MEM_LETTER,
+  MEM_INPUT,
+  MEM_SCORE,
   MAZE_HASTE,
   chaseOf,
   WELL_X,
@@ -157,6 +168,7 @@ import {
   type GameRules,
 } from "./rules";
 import { cpuPad, emptyWell, fallFrames, garbageOf, lockTrio, markMatches, newWell, settleWell, shiftTrio, spawnTrio, turnTrio, wellFree, type Well } from "./puzzle";
+import { kindOf, memorySeq, timingCell } from "./quiz";
 import type { QuizQuestion } from "../model/types";
 
 export const MAX_PLAYERS = 4;
@@ -259,6 +271,9 @@ export interface Player {
   /** The quiz: this question's answer (0-2, -1 none yet) and the frames that were left when it came. */
   answer: number;
   answerLeft: number;
+  /** The quiz's minigames: presses (mash) or letters right (memory), and whether its turn is over (timing, memory). */
+  count: number;
+  done: boolean;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -900,6 +915,8 @@ export class Game {
     p.invulnerable = this.rules.hurtFrames;
     if (this.rules.topdown) p.bombs = GRENADES;
     p.answer = -1;
+    p.count = 0;
+    p.done = false;
     if (this.rules.crosshair) {
       p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -1950,12 +1967,43 @@ export class Game {
   /** The quiz: a player's first press of B1 B2 B3 while the question is asked is its answer. */
   private answerQuiz(p: Player): void {
     p.t++;
-    if (this.quizPhase !== 0 || p.answer >= 0) return;
+    if (this.quizPhase !== 0) return;
+    const kind = kindOf(this.questions[this.quizK]);
     const k = this.pressed(p, Input.B1) ? 0 : this.pressed(p, Input.B2) ? 1 : this.pressed(p, Input.B3) ? 2 : -1;
     if (k < 0) return;
+    if (kind === "mash") {
+      if (k === 0) p.count++;
+      return;
+    }
+    if (kind === "timing") {
+      // the first B1 stops the marker where it is, for this player
+      if (k !== 0 || p.done) return;
+      p.answer = timingCell(this.quizT, TIMING_W, TIMING_STEP);
+      p.done = true;
+      this.events.push({ kind: "shot", player: p.index });
+      return;
+    }
+    if (kind === "memory") {
+      // once the letters were shown: each press the next letter, a wrong one ends the turn
+      if (p.done || this.quizT < MEM_LEN * MEM_LETTER) return;
+      if (k === memorySeq(this.quizK, MEM_LEN)[p.count]) p.count++;
+      else p.done = true;
+      if (p.count >= MEM_LEN) p.done = true;
+      return;
+    }
+    if (p.answer >= 0) return;
     p.answer = k;
     p.answerLeft = QUIZ_TIME - this.quizT;
     this.events.push({ kind: "shot", player: p.index });
+  }
+
+  /** The points a player's turn at this item is worth. */
+  private quizPoints(p: Player, q: QuizQuestion): number {
+    const kind = kindOf(q);
+    if (kind === "mash") return p.count * MASH_SCORE;
+    if (kind === "timing") return p.done ? Math.max(0, TIMING_SCORE - (Math.abs(2 * p.answer - (TIMING_W - 1)) >> 1) * TIMING_LOSS) : 0;
+    if (kind === "memory") return p.count * MEM_SCORE;
+    return p.answer === q.right ? QUIZ_SCORE + Math.floor(p.answerLeft / 60) * QUIZ_BONUS : 0;
   }
 
   /**
@@ -1969,12 +2017,21 @@ export class Game {
     this.quizT++;
     if (this.quizPhase === 0) {
       const ins = this.players.filter((p) => p.active);
-      if (this.quizT < QUIZ_TIME && !(ins.length && ins.every((p) => p.answer >= 0))) return;
-      for (const p of ins)
-        if (p.answer === q.right) {
-          p.score += QUIZ_SCORE + Math.floor(p.answerLeft / 60) * QUIZ_BONUS;
-          this.events.push({ kind: "pickup", item: "right", player: p.index });
-        }
+      const kind = kindOf(q);
+      const all = ins.length > 0 && ins.every((p) => (kind === "question" ? p.answer >= 0 : p.done));
+      // each item's time, or sooner once every player in is through (a mash always runs its time)
+      const over =
+        kind === "mash" ? this.quizT >= MASH_TIME
+        : kind === "timing" ? this.quizT >= TIMING_TIME || all
+        : kind === "memory" ? this.quizT >= MEM_LEN * MEM_LETTER + MEM_INPUT || (this.quizT >= MEM_LEN * MEM_LETTER && all)
+        : this.quizT >= QUIZ_TIME || all;
+      if (!over) return;
+      for (const p of ins) {
+        const pts = this.quizPoints(p, q);
+        if (!pts) continue;
+        p.score += pts;
+        this.events.push({ kind: "pickup", item: "right", player: p.index });
+      }
       this.quizPhase = 1;
       this.quizT = 0;
       return;
@@ -1983,7 +2040,11 @@ export class Game {
     this.quizK++;
     this.quizPhase = 0;
     this.quizT = 0;
-    for (const p of this.players) p.answer = -1;
+    for (const p of this.players) {
+      p.answer = -1;
+      p.count = 0;
+      p.done = false;
+    }
   }
 
   private updatePlayer(p: Player): void {
@@ -2756,6 +2817,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     cpu: false,
     answer: -1,
     answerLeft: 0,
+    count: 0,
+    done: false,
   };
 }
 

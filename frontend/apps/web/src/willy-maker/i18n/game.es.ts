@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
+import type { QuizQuestion } from "../model/types";
 // The Game tab's texts in Spanish (same shape as game.en.ts).
 
 import type { GameMessages } from "./game.en";
@@ -65,6 +66,10 @@ export const gameEs: GameMessages = {
     actions: { up: "Arriba", down: "Abajo", left: "Izquierda", right: "Derecha", b1: "B1", b2: "B2", b3: "B3", start: "Start", coin: "Moneda" },
   },
   quiz: {
+    kind: "Tipo",
+    kinds: { question: "Pregunta", mash: "Apretar B1", timing: "Frenar en el medio", memory: "Memoria" },
+    defaults: { mash: "¡Aprieta B1 lo más rápido que puedas!", timing: "Frena la marca en el medio con B1", memory: "Recuerda las letras y después apriétalas" },
+    instructions: "Instrucciones",
     title: "Preguntas",
     help: "El juego las hace en este orden: cada una tiene tres respuestas, que se contestan con B1 B2 B3 (A B C). La fuente de la placa imprime mayúsculas, números y signos simples: los acentos y otros caracteres se quitan.",
     empty: "Todavía no hay preguntas: agrega la primera.",
@@ -79,7 +84,10 @@ export const gameEs: GameMessages = {
       { q: "¿Cuántos jugadores pueden jugar a la vez en una sala de go-link?", a: ["Dos", "Tres", "Cuatro"], right: 2 },
       { q: "¿Qué botón contesta la C?", a: ["B1", "B2", "B3"], right: 2 },
       { q: "¿Dónde corren los juegos en go-link?", a: ["En la computadora del anfitrión", "En la nube", "En cada teléfono"], right: 0 },
-    ] as { q: string; a: [string, string, string]; right: number }[],
+      { kind: "mash", q: "¡Aprieta B1 lo más rápido que puedas!", a: ["", "", ""], right: 0 },
+      { kind: "timing", q: "Frena la marca en el medio con B1", a: ["", "", ""], right: 0 },
+      { kind: "memory", q: "Recuerda las letras y después apriétalas", a: ["", "", ""], right: 0 },
+    ] as QuizQuestion[],
   },
   dip: {
     title: "Placa (DIP switches)",
