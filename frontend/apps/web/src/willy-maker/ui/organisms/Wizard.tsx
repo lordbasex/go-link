@@ -5,8 +5,8 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
-import { shapePuzzleLevel } from "../../editor/puzzleLevel";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, VERSUS_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { shapeArenaLevel, shapePuzzleLevel } from "../../editor/puzzleLevel";
 import { useGameText } from "../../game/texts";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
@@ -148,6 +148,11 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
     // a maze game: grid moves, dots in every empty cell, chasers
     if (genre === "maze") p.settings.rules = { ...(p.settings.rules ?? {}), ...MAZE_RULES };
+    // a versus fighting game: two fighters on a one-screen floor
+    if (genre === "versus-fighting") {
+      p.settings.rules = { ...(p.settings.rules ?? {}), ...VERSUS_RULES };
+      for (const level of p.levels) shapeArenaLevel(level);
+    }
     // a quiz game: questions on the screen, a few samples in the editor's language to start from
     if (genre === "quiz-party") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...QUIZ_RULES };

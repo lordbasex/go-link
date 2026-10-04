@@ -125,6 +125,7 @@ export const gameEs: GameMessages = {
     puzzle: "Puzle (un pozo de gemas que caen por jugador, jugadores 1 y 2: B1 rota los colores, tres o más en línea se borran)",
     puzzleCpu: "Rival de la CPU (puzle: mientras el jugador 2 no está, la CPU juega el segundo pozo y te manda piedras)",
     quiz: "Preguntas (las preguntas del juego en la pantalla, se contestan con B1 B2 B3; nadie camina)",
+    versus: "Lucha uno contra uno (los jugadores 1 y 2 se enfrentan: B1 golpea, B2 patea, sostener atrás bloquea; al mejor de tres rondas, la CPU pelea si falta un jugador)",
     jump: "Medido en el motor, el salto llega a {peak} px: repisas de hasta {ledge} px de alto.",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",

@@ -8,6 +8,7 @@ import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL,
 import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
+import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
@@ -1577,5 +1578,66 @@ describe("the quiz's minigames (phase 2)", () => {
     expect([a!.count, b!.count]).toEqual([MEM_LEN, 0]);
     run(g, REVEAL_FRAMES, 0);
     expect(g.outcome).toBe("cleared");
+  });
+});
+
+describe("versus fighting (genres.md, phase 1)", () => {
+  const fight = (players = 2) => new Game(flat(), { rules: VERSUS_RULES, players, maxPlayers: 2 });
+  it("fighters face each other, a punch in reach hurts and stuns, holding away blocks, a crouch ducks a punch", () => {
+    const g = fight();
+    const [a, b] = g.players;
+    expect([a!.x, b!.x, a!.lives, b!.lives]).toEqual([VS_START[0], VS_START[1], VS_HP, VS_HP]);
+    run(g, VS_INTRO, 0);
+    // walk together until the gap stops them
+    for (let i = 0; i < 80; i++) g.step([Input.Right, Input.Left, 0, 0]);
+    expect(b!.x - a!.x).toBeGreaterThanOrEqual(VS_GAP);
+    expect(b!.x - a!.x).toBeLessThan(VS_GAP + 2 * VS_WALK);
+    // a punch: player 2 stands still
+    g.step([Input.B1, 0, 0, 0]);
+    run(g, PUNCH_FRAMES, 0);
+    expect(b!.lives).toBe(VS_HP - VS_PUNCH_DMG);
+    expect(a!.score).toBe(VS_PUNCH_DMG * 10);
+    run(g, VS_HIT_STUN + 2, 0);
+    // a punch blocked: player 2 holds away (right)
+    const hp = b!.lives;
+    const gap = () => b!.x - a!.x;
+    while (gap() > VS_PUNCH_REACH - 4) g.step([Input.Right, 0, 0, 0]);
+    g.step([Input.B1, Input.Right, 0, 0]);
+    for (let i = 0; i < PUNCH_FRAMES; i++) g.step([0, Input.Right, 0, 0]);
+    expect(b!.lives).toBe(hp - VS_CHIP);
+    run(g, 20, 0);
+    // a punch over a crouching fighter misses
+    while (gap() > VS_PUNCH_REACH - 4) g.step([Input.Right, 0, 0, 0]);
+    g.step([Input.B1, Input.Down, 0, 0]);
+    for (let i = 0; i < PUNCH_FRAMES; i++) g.step([0, Input.Down, 0, 0]);
+    expect(b!.lives).toBe(hp - VS_CHIP);
+  });
+
+  it("a round goes to the fighter with more health when the time is up; two rounds win the match and clear the level", () => {
+    const g = fight();
+    const [a, b] = g.players;
+    for (let r = 0; r < 2; r++) {
+      run(g, VS_INTRO, 0);
+      b!.lives -= 5;
+      run(g, VS_TIME, 0);
+      expect(g.vsPhase).toBe(2);
+      expect(g.vsWins[0]).toBe(r + 1);
+      run(g, VS_PAUSE, 0);
+    }
+    expect(a!.score).toBe(2 * (VS_ROUND_SCORE + VS_HP * 10));
+    expect(g.outcome).toBe("cleared");
+  });
+
+  it("the CPU fights an empty corner, and beating player 1 ends the game; player 2's Start takes its place", () => {
+    const g = fight(1);
+    const cpu = g.players[1]!;
+    expect([cpu.active, cpu.cpu]).toEqual([true, true]);
+    run(g, 200, 0);
+    expect(cpu.x).toBeLessThan(VS_START[1]);
+    g.step([0, Input.Start, 0, 0]);
+    expect([cpu.cpu, g.vsRound, g.vsPhase]).toEqual([false, 1, 0]);
+    const h = new Game(flat(), { rules: VERSUS_RULES, players: 1, maxPlayers: 2 });
+    for (let i = 0; i < 20000 && h.outcome === "playing"; i++) h.step([0, 0, 0, 0]);
+    expect(h.outcome).toBe("over");
   });
 });

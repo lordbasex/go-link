@@ -8,7 +8,7 @@
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
 import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { CLEAR_FRAMES, FLY_MID, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -187,6 +187,34 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   drawHud(ctx, game, colors, o);
   if (game.rules.crosshair) drawCrosshairs(ctx, game);
   if (game.rules.quiz) drawQuiz(ctx, game);
+  if (game.rules.versus) drawVersus(ctx, game);
+}
+
+/**
+ * Versus fighting's HUD, as the ROM prints it on its text layer: a health
+ * bar per fighter (VS_BAR cells, one a VS_HP / VS_BAR points), the seconds
+ * left between them, a star a round won, and the round's call and end.
+ */
+function drawVersus(ctx: CanvasRenderingContext2D, game: Game): void {
+  const at = (col: number, row: number, text: string, ink: string) => drawBoardText(ctx, text, col * 8, row * 8, 1, ink);
+  for (let i = 0; i < 2; i++) {
+    const p = game.players[i];
+    if (!p) continue;
+    const n = Math.max(0, Math.ceil((p.lives * VS_BAR) / VS_HP));
+    const bar = i === 0 ? "=".repeat(n).padStart(VS_BAR, " ") : "=".repeat(n).padEnd(VS_BAR, " ");
+    at(i === 0 ? 2 : 26, VS_BAR_ROW, bar, n * 4 <= VS_BAR ? TEXT_INKS.red : TEXT_INKS.accent);
+    at(i === 0 ? 2 : 26, VS_BAR_ROW + 1, "O".repeat(game.vsWins[i]!), TEXT_INKS.cyan);
+  }
+  at(23, VS_BAR_ROW, String(Math.ceil(game.vsTime / 60)).padStart(2, "0"), TEXT_INKS.white);
+  const msg = versusCall(game);
+  if (msg) at(Math.floor((48 - msg.length) / 2), VS_CALL_ROW, msg, TEXT_INKS.accent);
+}
+
+/** The round's call: ROUND n, then FIGHT!, and at its end K.O., TIME or DRAW. */
+export function versusCall(game: Game): string {
+  if (game.vsPhase === 0) return game.vsT < VS_INTRO / 2 ? `ROUND ${game.vsRound}` : "FIGHT!";
+  if (game.vsPhase === 2) return game.vsWinner < 0 ? "DRAW" : game.players.slice(0, 2).some((p) => p.lives <= 0) ? "K.O." : "TIME";
+  return "";
 }
 
 /**
@@ -730,7 +758,8 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
       continue;
     }
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
-    for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
+    // versus fighting shows health as bars (drawVersus), not as lives
+    if (!game.rules.versus) for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);

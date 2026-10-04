@@ -130,6 +130,33 @@ import {
   QUIZ_TIME,
   REVEAL_FRAMES,
   QUIZ_SCORE,
+  VS_FLOOR,
+  VS_START,
+  VS_WALK,
+  VS_WALK_BACK,
+  VS_GAP,
+  VS_EDGE,
+  VS_JUMP_VY,
+  VS_GRAVITY,
+  VS_PUNCH_AT,
+  VS_PUNCH_REACH,
+  VS_PUNCH_DMG,
+  VS_KICK_AT,
+  VS_KICK_REACH,
+  VS_KICK_DMG,
+  VS_CHIP,
+  VS_BLOCK_STUN,
+  VS_BLOCK_PUSH,
+  VS_HIT_STUN,
+  VS_HIT_PUSH,
+  VS_HP,
+  VS_INTRO,
+  VS_TIME,
+  VS_PAUSE,
+  VS_WINS,
+  VS_ROUNDS,
+  VS_ROUND_SCORE,
+  VS_CPU_EVERY,
   QUIZ_BONUS,
   MASH_TIME,
   MASH_SCORE,
@@ -469,6 +496,14 @@ export class Game {
   quizK = 0;
   quizPhase = 0;
   quizT = 0;
+  /** Versus fighting: the round (from 1), its phase (0 the call, 1 the fight, 2 its end), frames into the phase, the fight's frames left, rounds won, the round's winner (-1 a draw) and the match's (-1 still on). */
+  vsRound = 1;
+  vsPhase = 0;
+  vsT = 0;
+  vsTime = VS_TIME;
+  readonly vsWins = [0, 0];
+  vsWinner = -1;
+  vsMatch = -1;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -538,6 +573,14 @@ export class Game {
       this.join(1);
       this.players[1].cpu = true;
     }
+    // versus fighting: the CPU fights for an empty corner (players 1 and 2)
+    if (this.rules.versus)
+      for (let i = 0; i < 2; i++) {
+        const p = this.players[i];
+        if (!p || p.active) continue;
+        this.join(i);
+        p.cpu = true;
+      }
     this.updateCamera(true);
   }
 
@@ -868,6 +911,16 @@ export class Game {
   join(i: number): void {
     const p = this.players[i];
     if (!p || p.active || p.lives <= 0) return;
+    // versus fighting: players 1 and 2 at their corners
+    if (this.rules.versus) {
+      if (i > 1) return;
+      spawn(p, VS_START[i]!, VS_FLOOR);
+      p.lives = VS_HP;
+      p.invulnerable = 0;
+      p.flip = i === 1;
+      this.events.push({ kind: "join", player: i });
+      return;
+    }
     // the puzzle: a well for players 1 and 2
     if (this.rules.puzzle) {
       if (i >= WELL_X.length) return;
@@ -2047,7 +2100,176 @@ export class Game {
     }
   }
 
+  // ------------------------------------------------------------- versus
+
+  /** The other fighter. */
+  private foe(p: Player): Player {
+    return this.players[1 - p.index]!;
+  }
+
+  /**
+   * A fighter, a frame (versus fighting): it falls and lands; stunned it
+   * does nothing; an attack runs its frames and strikes once; on the ground
+   * it faces its foe and punches (B1), kicks (B2), jumps (Up), crouches
+   * (Down) or walks, never nearer than VS_GAP.
+   */
+  private fight(p: Player): void {
+    const foe = this.foe(p);
+    p.t++;
+    if (!p.onGround) {
+      p.vy += VS_GRAVITY;
+      p.y += p.vy;
+      if (p.y >= VS_FLOOR * 16) {
+        p.y = VS_FLOOR * 16;
+        p.vy = 0;
+        p.onGround = true;
+      }
+    }
+    p.running = false;
+    if (this.vsPhase !== 1) {
+      p.punchT = 0;
+      p.crouching = false;
+      return;
+    }
+    if (p.invulnerable) {
+      p.invulnerable--;
+      return;
+    }
+    if (p.punchT) {
+      p.punchT--;
+      const len = p.combo === 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+      if (!p.struck && len - p.punchT === (p.combo === 3 ? VS_KICK_AT : VS_PUNCH_AT)) this.vsStrike(p, foe);
+      return;
+    }
+    if (!p.onGround) return;
+    p.flip = foe.x < p.x;
+    p.crouching = (p.pad & Input.Down) !== 0;
+    if (this.pressed(p, Input.B1) || this.pressed(p, Input.B2)) {
+      const kick = this.pressed(p, Input.B2) && !this.pressed(p, Input.B1);
+      p.punchT = kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+      p.combo = kick ? 3 : 1;
+      p.struck = false;
+      p.crouching = false;
+      this.events.push({ kind: kick ? "kick" : "shot", player: p.index });
+      return;
+    }
+    if (this.pressed(p, Input.Up)) {
+      p.vy = VS_JUMP_VY;
+      p.onGround = false;
+      p.crouching = false;
+      this.events.push({ kind: "jump", player: p.index });
+      return;
+    }
+    if (p.crouching) return;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    if (!dx) return;
+    const toward = Math.sign(foe.x - p.x) === dx;
+    const nx = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, p.x + dx * (toward ? VS_WALK : VS_WALK_BACK)));
+    if (toward && Math.abs(foe.x - nx) < VS_GAP) return;
+    p.x = nx;
+    p.running = true;
+  }
+
+  /** An attack's one strike: a hit, a block (the foe holding away on the ground), or nothing out of reach. */
+  private vsStrike(p: Player, foe: Player): void {
+    p.struck = true;
+    const kick = p.combo === 3;
+    const dir = p.flip ? -1 : 1;
+    const dx = foe.x - p.x;
+    if (Math.sign(dx) !== dir || Math.abs(dx) > (kick ? VS_KICK_REACH : VS_PUNCH_REACH)) return;
+    // a punch goes over a crouching foe; nothing reaches one high in the air
+    if (!kick && foe.crouching && foe.onGround) return;
+    if ((p.y >> 4) - (foe.y >> 4) > 40) return;
+    const away = dx > 0 ? Input.Right : Input.Left;
+    const push = (n: number) => (foe.x = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, foe.x + dir * n)));
+    if (foe.onGround && !foe.punchT && !foe.invulnerable && foe.pad & away) {
+      foe.lives -= VS_CHIP;
+      foe.invulnerable = VS_BLOCK_STUN;
+      push(VS_BLOCK_PUSH);
+      this.events.push({ kind: "land", player: foe.index });
+      return;
+    }
+    const dmg = kick ? VS_KICK_DMG : VS_PUNCH_DMG;
+    foe.lives -= dmg;
+    foe.invulnerable = VS_HIT_STUN;
+    foe.punchT = 0;
+    push(VS_HIT_PUSH);
+    p.score += dmg * 10;
+    this.events.push({ kind: "hurt", player: foe.index });
+  }
+
+  /** The CPU fighter's pad: block a near attack, close in, and attack every VS_CPU_EVERY frames when near. */
+  private fightCpuPad(p: Player): number {
+    const foe = this.foe(p);
+    const d = Math.abs(foe.x - p.x);
+    const toward = foe.x > p.x ? Input.Right : Input.Left;
+    const away = toward === Input.Right ? Input.Left : Input.Right;
+    if (foe.punchT && d < 48) return away;
+    if (d > 40) return toward;
+    if (this.frame % VS_CPU_EVERY === 0) return d > VS_PUNCH_REACH ? Input.B2 : Input.B1;
+    return 0;
+  }
+
+  /** Both fighters back in their corners with full health, for a new round. */
+  private newRound(): void {
+    for (let i = 0; i < 2; i++) {
+      const p = this.players[i]!;
+      if (!p.active) continue;
+      spawn(p, VS_START[i]!, VS_FLOOR);
+      p.lives = VS_HP;
+      p.invulnerable = 0;
+      p.punchT = 0;
+      p.flip = i === 1;
+    }
+    this.vsPhase = 0;
+    this.vsT = 0;
+    this.vsTime = VS_TIME;
+    this.vsWinner = -1;
+  }
+
+  /** A match from its first round. */
+  private newMatch(): void {
+    this.vsWins[0] = this.vsWins[1] = 0;
+    this.vsRound = 1;
+    this.vsMatch = -1;
+    this.newRound();
+  }
+
+  /** The round's flow: the call, the fight until a fighter is down or the time is up, its end, then the next round or the match's end. */
+  private updateVersus(): void {
+    const [a, b] = this.players as [Player, Player];
+    this.vsT++;
+    if (this.vsPhase === 0) {
+      if (this.vsT >= VS_INTRO) {
+        this.vsPhase = 1;
+        this.vsT = 0;
+      }
+      return;
+    }
+    if (this.vsPhase === 1) {
+      this.vsTime--;
+      if (a.lives > 0 && b.lives > 0 && this.vsTime > 0) return;
+      this.vsWinner = a.lives > b.lives ? 0 : b.lives > a.lives ? 1 : -1;
+      if (this.vsWinner >= 0) {
+        const w = this.players[this.vsWinner]!;
+        this.vsWins[this.vsWinner]!++;
+        w.score += VS_ROUND_SCORE + Math.max(0, w.lives) * 10;
+      }
+      this.vsPhase = 2;
+      this.vsT = 0;
+      return;
+    }
+    if (this.vsT < VS_PAUSE) return;
+    if (this.vsWins[0]! >= VS_WINS || this.vsWins[1]! >= VS_WINS || this.vsRound >= VS_ROUNDS) {
+      this.vsMatch = this.vsWins[1]! > this.vsWins[0]! ? 1 : 0;
+      return;
+    }
+    this.vsRound++;
+    this.newRound();
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.versus) return this.fight(p);
     if (this.rules.quiz) return this.answerQuiz(p);
     if (this.rules.puzzle) return this.playWell(p);
     if (this.rules.maze) return this.walkMaze(p);
@@ -2344,6 +2566,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.versus) return this.updateVersus();
     if (this.rules.quiz) return this.updateQuiz();
     if (this.rules.puzzle) return;
     if (this.rules.maze) return this.updateMazeChasers();
@@ -2545,7 +2768,7 @@ export class Game {
    */
   updateCamera(snap = false): void {
     // the maze and the puzzle: one screen, the camera still at its top left
-    if (this.rules.maze || this.rules.puzzle || this.rules.quiz) {
+    if (this.rules.maze || this.rules.puzzle || this.rules.quiz || this.rules.versus) {
       this.camX = 0;
       this.camY = 0;
       return;
@@ -2635,6 +2858,8 @@ export class Game {
           p.score = 0;
           this.humanLast[p.index] = pad;
           this.join(p.index);
+          // versus fighting: a new challenger starts the match over
+          if (this.rules.versus) this.newMatch();
           p.last = pad;
           p.pad = pad;
           this.updatePlayer(p);
@@ -2642,7 +2867,7 @@ export class Game {
         }
         this.humanLast[p.index] = pad;
         p.last = p.pad;
-        p.pad = cpuPad(p.well!);
+        p.pad = this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
         this.updatePlayer(p);
         continue;
       }
@@ -2661,7 +2886,15 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.quiz) {
+    if (this.rules.versus) {
+      // versus fighting: the match's winner clears the level, or the CPU's win ends the game
+      if (this.vsMatch >= 0) {
+        const human = !this.players[this.vsMatch]!.cpu;
+        this.outcome = human ? "cleared" : "over";
+        this.events.push({ kind: human ? "cleared" : "over" });
+        return;
+      }
+    } else if (this.rules.quiz) {
       // the quiz: past the last question the level clears
       if (this.quizK >= this.questions.length && this.players.some((p) => p.active)) {
         this.outcome = "cleared";

@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 22
+#define WM_VERSION 23
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -89,6 +89,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 /* flags2 (wm_data 19), the bits after flags ran out */
 #define WM_F2_PUZZLE_CPU 0x0001 /* with WM_F_PUZZLE: the CPU plays the second well while player 2 is out */
 #define WM_F2_QUIZ 0x0002       /* the quiz: the questions on screens WM_SCR_QUIZ + n, answered with B1 B2 B3 (wm_data 21) */
+#define WM_F2_VERSUS 0x0004     /* versus fighting: players 1 and 2 fight rounds on one screen, the CPU in an empty corner (wm_data 23) */
 
 struct wm_data {
 	u32 magic;                /* 00 */

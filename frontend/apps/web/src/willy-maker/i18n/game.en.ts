@@ -123,6 +123,7 @@ export const gameEn = {
     puzzle: "Puzzle (a well of falling gems per player, players 1 and 2: B1 turns the colors, three or more in a line clear)",
     puzzleCpu: "CPU rival (puzzle: while player 2 is out, the CPU plays the second well and sends you stones)",
     quiz: "Quiz (the game's questions on the screen, answered with B1 B2 B3; nobody walks)",
+    versus: "Versus fighting (players 1 and 2 face each other: B1 punches, B2 kicks, holding away blocks; best of three rounds, the CPU fights an empty corner)",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",

@@ -776,6 +776,39 @@ static int maze;      /* the maze (WM_F_MAZE) */
 static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
 static int puzzle_cpu; /* its CPU rival (WM_F2_PUZZLE_CPU) */
 static int quiz;       /* the quiz (WM_F2_QUIZ) */
+static int versus;     /* versus fighting (WM_F2_VERSUS) */
+/* versus fighting (engine/rules.ts VS_*, engine/game.ts fight) */
+#define VS_FLOOR 192
+#define VS_WALK 2
+#define VS_WALK_BACK 1
+#define VS_GAP 28
+#define VS_EDGE 16
+#define VS_JUMP_VY (-88)
+#define VS_GRAVITY 5
+#define VS_PUNCH_AT 4
+#define VS_PUNCH_REACH 34
+#define VS_PUNCH_DMG 6
+#define VS_KICK_AT 7
+#define VS_KICK_REACH 42
+#define VS_KICK_DMG 10
+#define VS_CHIP 1
+#define VS_BLOCK_STUN 8
+#define VS_BLOCK_PUSH 4
+#define VS_HIT_STUN 16
+#define VS_HIT_PUSH 8
+#define VS_HP 100
+#define VS_INTRO 90
+#define VS_TIME 3600
+#define VS_PAUSE 120
+#define VS_WINS 2
+#define VS_ROUNDS 5
+#define VS_ROUND_SCORE 1000
+#define VS_CPU_EVERY 20
+#define VS_BAR 20
+#define VS_BAR_ROW 3
+#define VS_CALL_ROW 10
+static const s16 vs_start[2] = { 112, 272 };
+static int vs_round, vs_phase, vs_t, vs_time, vs_wins[2], vs_winner, vs_match;
 /* the quiz (engine/game.ts updateQuiz): its questions, the one asked, its phase (0 asked, 1 the answer shown), frames into it */
 #define QUIZ_TIME 600
 #define REVEAL_FRAMES 150
@@ -980,6 +1013,9 @@ static u16 port_pad(int k, u16 p12)
 	}
 }
 
+/* each port's pad as read, also while the CPU plays it (a player taking over starts from it) */
+static u16 hw_pad[MAX_PLAYERS];
+
 static void read_inputs(void)
 {
 	u16 p12 = (u16)~IN_P12, p3 = (u16)~IN_P3, p4 = (u16)~IN_P4, coins;
@@ -991,6 +1027,10 @@ static void read_inputs(void)
 			v &= (u16)~(BTN_LEFT | BTN_RIGHT);
 		if ((v & (BTN_UP | BTN_DOWN)) == (BTN_UP | BTN_DOWN))
 			v &= (u16)~(BTN_UP | BTN_DOWN);
+		/* a CPU player keeps its own pad (update_player makes the next), as play mode's */
+		hw_pad[k] = v;
+		if (pl[k].cpu)
+			continue;
 		pl[k].last = pl[k].pad;
 		pl[k].pad = v;
 	}
@@ -1693,6 +1733,240 @@ static void draw_wells(void)
 	}
 }
 
+/* ------------------------------------------------------------- versus */
+
+static s32 vs_abs(s32 v)
+{
+	return v < 0 ? -v : v;
+}
+
+static int sgn(s32 v)
+{
+	return v > 0 ? 1 : v < 0 ? -1 : 0;
+}
+
+static s32 vs_clamp(s32 x)
+{
+	return x < VS_EDGE ? VS_EDGE : x > SCREEN_W - VS_EDGE ? SCREEN_W - VS_EDGE : x;
+}
+
+/* an attack's one strike (engine/game.ts vsStrike): a hit, a block, or nothing out of reach */
+static void vs_strike(struct player *p, struct player *foe)
+{
+	int kick = p->combo == 3, dir = p->flip ? -1 : 1, dmg;
+	s32 dx = foe->x - p->x;
+	u16 away = dx > 0 ? BTN_RIGHT : BTN_LEFT;
+	p->struck = 1;
+	if (sgn(dx) != dir || vs_abs(dx) > (kick ? VS_KICK_REACH : VS_PUNCH_REACH))
+		return;
+	/* a punch goes over a crouching foe; nothing reaches one high in the air */
+	if (!kick && foe->crouch && foe->on_ground)
+		return;
+	if ((p->y >> 4) - (foe->y >> 4) > 40)
+		return;
+	if (foe->on_ground && !foe->punch_t && !foe->hurt && (foe->pad & away)) {
+		foe->energy -= VS_CHIP;
+		foe->hurt = VS_BLOCK_STUN;
+		foe->x = vs_clamp(foe->x + dir * VS_BLOCK_PUSH);
+		sfx(SFX_LAND, foe->x);
+		return;
+	}
+	dmg = kick ? VS_KICK_DMG : VS_PUNCH_DMG;
+	foe->energy -= dmg;
+	foe->hurt = VS_HIT_STUN;
+	foe->punch_t = 0;
+	foe->x = vs_clamp(foe->x + dir * VS_HIT_PUSH);
+	p->score += (u32)(dmg * 10);
+	sfx(SFX_HIT, foe->x);
+}
+
+/* a fighter, a frame (engine/game.ts fight) */
+static void fight(struct player *p)
+{
+	struct player *foe = &pl[1 - (p - pl)];
+	int dx, toward;
+	s32 nx;
+	p->t++;
+	if (!p->on_ground) {
+		p->vy += VS_GRAVITY;
+		p->y += p->vy;
+		if (p->y >= VS_FLOOR * 16) {
+			p->y = VS_FLOOR * 16;
+			p->vy = 0;
+			p->on_ground = 1;
+		}
+	}
+	p->running = 0;
+	if (vs_phase != 1) {
+		p->punch_t = 0;
+		p->crouch = 0;
+		return;
+	}
+	if (p->hurt) {
+		p->hurt--;
+		return;
+	}
+	if (p->punch_t) {
+		int len = p->combo == 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+		p->punch_t--;
+		if (!p->struck && len - p->punch_t == (p->combo == 3 ? VS_KICK_AT : VS_PUNCH_AT))
+			vs_strike(p, foe);
+		return;
+	}
+	if (!p->on_ground)
+		return;
+	p->flip = foe->x < p->x;
+	p->crouch = (p->pad & BTN_DOWN) != 0;
+	if (p->crouch) {
+		if (p->crouch_t < 30)
+			p->crouch_t++;
+	} else
+		p->crouch_t = 0;
+	if (PRESSED(p, BTN_1) || PRESSED(p, BTN_2)) {
+		int kick = PRESSED(p, BTN_2) && !PRESSED(p, BTN_1);
+		p->punch_t = kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+		p->combo = kick ? 3 : 1;
+		p->struck = 0;
+		p->crouch = 0;
+		sfx(kick ? SFX_KICK : SFX_SHOT, p->x);
+		return;
+	}
+	if (PRESSED(p, BTN_UP)) {
+		p->vy = VS_JUMP_VY;
+		p->on_ground = 0;
+		p->crouch = 0;
+		sfx(SFX_JUMP, p->x);
+		return;
+	}
+	if (p->crouch)
+		return;
+	dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	if (!dx)
+		return;
+	toward = sgn(foe->x - p->x) == dx;
+	nx = vs_clamp(p->x + dx * (toward ? VS_WALK : VS_WALK_BACK));
+	if (toward && vs_abs(foe->x - nx) < VS_GAP)
+		return;
+	p->x = nx;
+	p->running = 1;
+}
+
+/* the CPU fighter's pad (engine/game.ts fightCpuPad) */
+static u16 fight_cpu_pad(struct player *p)
+{
+	struct player *foe = &pl[1 - (p - pl)];
+	s32 d = vs_abs(foe->x - p->x);
+	u16 toward = foe->x > p->x ? BTN_RIGHT : BTN_LEFT, away = toward == BTN_RIGHT ? BTN_LEFT : BTN_RIGHT;
+	if (foe->punch_t && d < 48)
+		return away;
+	if (d > 40)
+		return toward;
+	if (plat_t % VS_CPU_EVERY == 0)
+		return d > VS_PUNCH_REACH ? BTN_2 : BTN_1;
+	return 0;
+}
+
+/* both fighters back in their corners with full health */
+static void vs_new_round(void)
+{
+	int i;
+	for (i = 0; i < 2; i++) {
+		struct player *p = &pl[i];
+		int energy;
+		u32 score = p->score;
+		if (!p->active)
+			continue;
+		energy = VS_HP;
+		player_spawn(p, vs_start[i], VS_FLOOR);
+		p->energy = energy;
+		p->score = score;
+		p->hurt = 0;
+		p->punch_t = 0;
+		p->flip = i == 1;
+	}
+	vs_phase = vs_t = 0;
+	vs_time = VS_TIME;
+	vs_winner = -1;
+}
+
+static void vs_new_match(void)
+{
+	vs_wins[0] = vs_wins[1] = 0;
+	vs_round = 1;
+	vs_match = -1;
+	vs_new_round();
+}
+
+/* the round's flow (engine/game.ts updateVersus) */
+static void update_versus(void)
+{
+	struct player *a = &pl[0], *b = &pl[1];
+	vs_t++;
+	if (vs_phase == 0) {
+		if (vs_t >= VS_INTRO) {
+			vs_phase = 1;
+			vs_t = 0;
+		}
+		return;
+	}
+	if (vs_phase == 1) {
+		vs_time--;
+		if (a->energy > 0 && b->energy > 0 && vs_time > 0)
+			return;
+		vs_winner = a->energy > b->energy ? 0 : b->energy > a->energy ? 1 : -1;
+		if (vs_winner >= 0) {
+			struct player *w = &pl[vs_winner];
+			vs_wins[vs_winner]++;
+			w->score += (u32)(VS_ROUND_SCORE + (w->energy > 0 ? w->energy : 0) * 10);
+		}
+		vs_phase = 2;
+		vs_t = 0;
+		return;
+	}
+	if (vs_t < VS_PAUSE)
+		return;
+	if (vs_wins[0] >= VS_WINS || vs_wins[1] >= VS_WINS || vs_round >= VS_ROUNDS) {
+		vs_match = vs_wins[1] > vs_wins[0] ? 1 : 0;
+		return;
+	}
+	vs_round++;
+	vs_new_round();
+}
+
+/* versus fighting's HUD on the text layer (play/renderer.ts drawVersus) */
+static void vs_draw(void)
+{
+	int i, k;
+	const char *msg = 0;
+	char buf[10];
+	for (i = 0; i < 2; i++) {
+		const struct player *p = &pl[i];
+		int n = p->energy > 0 ? (p->energy * VS_BAR + VS_HP - 1) / VS_HP : 0, col = i == 0 ? 2 : 26;
+		int ink = n * 4 <= VS_BAR ? INK_RED : INK_ACCENT;
+		for (k = 0; k < VS_BAR; k++)
+			put_char(col + k, VS_BAR_ROW, (i == 0 ? k >= VS_BAR - n : k < n) ? '=' : ' ', ink);
+		for (k = 0; k < VS_WINS; k++)
+			put_char(col + k, VS_BAR_ROW + 1, k < vs_wins[i] ? 'O' : ' ', INK_CYAN);
+	}
+	print_num(23, VS_BAR_ROW, (u32)((vs_time + 59) / 60), 2, INK_WHITE);
+	if (vs_phase == 0) {
+		if (vs_t < VS_INTRO / 2) {
+			buf[0] = 'R', buf[1] = 'O', buf[2] = 'U', buf[3] = 'N', buf[4] = 'D', buf[5] = ' ';
+			buf[6] = (char)('0' + vs_round), buf[7] = 0;
+			msg = buf;
+		} else
+			msg = "FIGHT!";
+	} else if (vs_phase == 2)
+		msg = vs_winner < 0 ? "DRAW" : (pl[0].energy <= 0 || pl[1].energy <= 0) ? "K.O." : "TIME";
+	blank(18, VS_CALL_ROW, 12);
+	if (msg) {
+		int len = 0;
+		while (msg[len])
+			len++;
+		print((48 - len) / 2, VS_CALL_ROW, msg, INK_ACCENT);
+	}
+}
+
 /* ------------------------------------------------------------- the quiz */
 
 /* the timing marker's cell at frame t: across the bar and back (engine/quiz.ts timingCell) */
@@ -1962,6 +2236,16 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
+	if (versus) {
+		/* versus fighting: players 1 and 2 at their corners */
+		if (k > 1)
+			return;
+		player_spawn(p, vs_start[k], VS_FLOOR);
+		p->energy = VS_HP;
+		p->hurt = 0;
+		p->flip = k == 1;
+		return;
+	}
 	if (puzzle) {
 		/* the puzzle: a well for players 1 and 2 */
 		if (k < WELLS) {
@@ -2135,6 +2419,12 @@ static void game_reset(void)
 	puzzle = (D->flags & WM_F_PUZZLE) != 0;
 	puzzle_cpu = puzzle && (D->flags2 & WM_F2_PUZZLE_CPU) != 0;
 	quiz = (D->flags2 & WM_F2_QUIZ) != 0;
+	versus = (D->flags2 & WM_F2_VERSUS) != 0;
+	vs_round = 1;
+	vs_phase = vs_t = 0;
+	vs_time = VS_TIME;
+	vs_wins[0] = vs_wins[1] = 0;
+	vs_winner = vs_match = -1;
 	quiz_k = quiz_phase = quiz_t = quiz_revealed = quiz_step = 0;
 	quiz_n = 0;
 	if (quiz) {
@@ -3078,14 +3368,25 @@ static void update_player(struct player *p)
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (versus) {
+		/* the CPU fighter's pad in place of the port's */
+		if (p->cpu) {
+			p->last = p->pad;
+			p->pad = fight_cpu_pad(p);
+		}
+		fight(p);
+		return;
+	}
 	if (quiz) {
 		answer_quiz(p);
 		return;
 	}
 	if (puzzle) {
-		/* the CPU rival's pad in place of the port's (read_inputs kept its last one as last) */
-		if (p->cpu)
+		/* the CPU rival's pad in place of the port's */
+		if (p->cpu) {
+			p->last = p->pad;
 			p->pad = cpu_pad(&wells[p - pl]);
+		}
 		play_well(p);
 		return;
 	}
@@ -3947,6 +4248,10 @@ static void update_maze_chasers(void)
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (versus) {
+		update_versus();
+		return;
+	}
 	if (quiz) {
 		update_quiz();
 		return;
@@ -4214,7 +4519,7 @@ static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
 	/* the maze and the puzzle: one screen, the camera still at its top left */
-	if (maze || puzzle || quiz) {
+	if (maze || puzzle || quiz || versus) {
 		cam_x = cam_y = 0;
 		return;
 	}
@@ -4777,8 +5082,10 @@ static void hud(void)
 			int e;
 			print_num(col + 3, 0, p->score, 6, INK_WHITE);
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
-			for (e = 0; e < 9 && e < room; e++)
-				put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
+			/* versus fighting shows health as bars (vs_draw), not as energy */
+			if (!versus)
+				for (e = 0; e < 9 && e < room; e++)
+					put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
 			/* the shooter's bombs and the top-down grenades under the energy */
 			if (ship || topdown)
 				for (e = 0; e < (topdown ? GRENADES : BOMBS) && e < room; e++)
@@ -4998,6 +5305,13 @@ static int play(int first)
 		player_join(1);
 		pl[1].cpu = 1;
 	}
+	/* versus fighting: the CPU fights for an empty corner */
+	if (versus)
+		for (k = 0; k < 2 && k < nplayers; k++)
+			if (!pl[k].active) {
+				player_join(k);
+				pl[k].cpu = 1;
+			}
 	update_camera(1);
 	stream();
 	hud_screen();
@@ -5012,7 +5326,7 @@ static int play(int first)
 		read_inputs();
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
-				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (credits || free_play()) && start_pressed(k)) {
+				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
 					SFX_CENTRE(SFX_START);
@@ -5027,8 +5341,13 @@ static int play(int first)
 						pl[k].cpu = 0;
 						pl[k].active = 0;
 						pl[k].score = 0;
-					}
-					player_join(k);
+						pl[k].last = pl[k].pad = hw_pad[k];
+						player_join(k);
+						/* versus fighting: a new challenger starts the match over */
+						if (versus)
+							vs_new_match();
+					} else
+						player_join(k);
 				}
 		if (outcome < 0)
 			move_platforms();
@@ -5072,6 +5391,23 @@ static int play(int first)
 				end_t = frame_count;
 				draw_screen(WM_SCR_CLEAR, 1);
 				MUSIC(MUSIC_CLEAR);
+			}
+		}
+		/* versus fighting: its HUD; the match's winner clears the level, or the CPU's win ends the game */
+		if (versus && outcome < 0) {
+			vs_draw();
+			if (vs_match >= 0 && !pl[vs_match].cpu) {
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
+			} else if (vs_match >= 0) {
+				outcome = END_OVER;
+				end_t = frame_count;
+				clear_text();
+				draw_screen(WM_SCR_GAMEOVER, 1);
+				MUSIC(MUSIC_GAMEOVER);
 			}
 		}
 		/* the quiz: its screen, and past the last question the level clears */

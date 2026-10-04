@@ -225,6 +225,12 @@ export interface GameRules {
    * another on the screen, answered with B1 B2 B3; nobody walks.
    */
   quiz: boolean;
+  /**
+   * Versus fighting (genres.md): players 1 and 2 face each other on one
+   * screen, rounds of punches, kicks and blocks; the CPU fights in an empty
+   * corner.
+   */
+  versus: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -259,6 +265,7 @@ export const DEFAULT_RULES: GameRules = {
   puzzle: false,
   puzzleCpu: false,
   quiz: false,
+  versus: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -284,6 +291,9 @@ export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, puzzleCpu: true,
 
 /** A new quiz game's rules: questions on the screen, no walking, no enemies, no exit. */
 export const QUIZ_RULES: Partial<GameRules> = { quiz: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
+
+/** A new versus fighting game's rules: two fighters on one screen, no weapons, no exit. */
+export const VERSUS_RULES: Partial<GameRules> = { versus: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -369,6 +379,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     puzzle: bool(r.puzzle, false),
     puzzleCpu: bool(r.puzzleCpu, false),
     quiz: bool(r.quiz, false),
+    versus: bool(r.versus, false),
   };
 }
 
@@ -656,3 +667,51 @@ export const MEM_LETTER = 40;
 export const MEM_LIT = 30;
 export const MEM_INPUT = 360;
 export const MEM_SCORE = 50;
+
+/**
+ * Versus fighting (genres.md, phase 1), the ROM's numbers too. Fighters
+ * stand on VS_FLOOR, start at VS_START, walk VS_WALK px a frame (VS_WALK_BACK backing off; never
+ * nearer than VS_GAP, inside VS_EDGE of the screen's sides), jump straight
+ * up (VS_JUMP_VY, VS_GRAVITY in 1/16 px) and crouch. B1 punches (PUNCH_FRAMES
+ * long, hitting VS_PUNCH_AT frames in, VS_PUNCH_REACH px ahead for
+ * VS_PUNCH_DMG; a crouching fighter ducks it), B2 kicks (COMBO_KICK_FRAMES,
+ * VS_KICK_AT, VS_KICK_REACH, VS_KICK_DMG). Holding away from the attacker on
+ * the ground blocks: VS_CHIP and VS_BLOCK_STUN frames; a hit stuns
+ * VS_HIT_STUN frames, pushes VS_HIT_PUSH px and scores 10 a point of damage.
+ * A round: VS_INTRO frames, then up to VS_TIME frames with VS_HP each; the
+ * fighter with more left wins it (VS_ROUND_SCORE plus 10 a point left), then
+ * VS_PAUSE frames; VS_WINS rounds win the match (at most VS_ROUNDS rounds).
+ */
+export const VS_FLOOR = 192;
+export const VS_START = [112, 272] as const;
+export const VS_WALK = 2;
+/** Walking back (away from the foe, which is also blocking) is slower. */
+export const VS_WALK_BACK = 1;
+export const VS_GAP = 28;
+export const VS_EDGE = 16;
+export const VS_JUMP_VY = -88;
+export const VS_GRAVITY = 5;
+export const VS_PUNCH_AT = 4;
+export const VS_PUNCH_REACH = 34;
+export const VS_PUNCH_DMG = 6;
+export const VS_KICK_AT = 7;
+export const VS_KICK_REACH = 42;
+export const VS_KICK_DMG = 10;
+export const VS_CHIP = 1;
+export const VS_BLOCK_STUN = 8;
+export const VS_BLOCK_PUSH = 4;
+export const VS_HIT_STUN = 16;
+export const VS_HIT_PUSH = 8;
+export const VS_HP = 100;
+export const VS_INTRO = 90;
+export const VS_TIME = 3600;
+export const VS_PAUSE = 120;
+export const VS_WINS = 2;
+export const VS_ROUNDS = 5;
+export const VS_ROUND_SCORE = 1000;
+/** The CPU fighter: it presses an attack every VS_CPU_EVERY frames when near, and blocks a near attack. */
+export const VS_CPU_EVERY = 20;
+/** Versus fighting's HUD on the text layer: the health bars' cells and row, the round's call's row. */
+export const VS_BAR = 20;
+export const VS_BAR_ROW = 3;
+export const VS_CALL_ROW = 10;
