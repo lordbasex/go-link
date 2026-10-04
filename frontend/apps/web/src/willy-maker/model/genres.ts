@@ -29,7 +29,7 @@ export type GenreId = (typeof GENRES)[number];
 export const DEFAULT_GENRE: GenreId = "platform-shooter";
 
 /** The genres the engine can play and build today. */
-export const AVAILABLE_GENRES: ReadonlySet<GenreId> = new Set<GenreId>(["platform-shooter", "platformer", "beat-em-up", "light-gun", "horizontal-shooter", "vertical-shooter", "top-down-shooter", "maze"]);
+export const AVAILABLE_GENRES: ReadonlySet<GenreId> = new Set<GenreId>(["platform-shooter", "platformer", "beat-em-up", "light-gun", "horizontal-shooter", "vertical-shooter", "top-down-shooter", "maze", "puzzle"]);
 
 export function isGenre(v: unknown): v is GenreId {
   return typeof v === "string" && (GENRES as readonly string[]).includes(v);

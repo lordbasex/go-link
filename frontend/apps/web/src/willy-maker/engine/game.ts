@@ -127,6 +127,13 @@ import {
   HOME_FRAMES,
   AMBUSH_AHEAD,
   WANDER_NEAR,
+  WELL_X,
+  WELL_Y,
+  SOFT_DROP,
+  MOVE_FIRST,
+  MOVE_EVERY,
+  GEM_SCORE,
+  PUZZLE_GOAL,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -143,6 +150,7 @@ import {
   type Difficulty,
   type GameRules,
 } from "./rules";
+import { emptyWell, fallFrames, lockTrio, markMatches, newWell, settleWell, shiftTrio, spawnTrio, turnTrio, wellFree, type Well } from "./puzzle";
 
 export const MAX_PLAYERS = 4;
 /** How long the "defeat every enemy" message stays after a player leaves the closed exit. */
@@ -237,6 +245,8 @@ export interface Player {
   /** The top-down grenade in flight (x, y at its middle, frames flown), and its burst while it shows. */
   grenade: { x: number; y: number; dx: number; dy: number; t: number } | null;
   boom: { x: number; y: number; t: number } | null;
+  /** The puzzle's well (players 1 and 2 only). */
+  well: Well | null;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -819,6 +829,16 @@ export class Game {
   join(i: number): void {
     const p = this.players[i];
     if (!p || p.active || p.lives <= 0) return;
+    // the puzzle: a well for players 1 and 2
+    if (this.rules.puzzle) {
+      if (i >= WELL_X.length) return;
+      p.active = true;
+      p.well = newWell(i);
+      spawnTrio(p.well);
+      this.placeAtTrio(p);
+      this.events.push({ kind: "join", player: i });
+      return;
+    }
     const start = this.startAt ?? this.level.objects.find((o) => o.type === "player_start" && num(o.player, 1) === i + 1);
     const lead = this.players.find((q) => q.active);
     let x: number;
@@ -1777,7 +1797,81 @@ export class Game {
     }
   }
 
+  /** The puzzle: the player stands for its trio (x at its middle, feet under its bottom gem). */
+  private placeAtTrio(p: Player): void {
+    const w = p.well!;
+    p.x = WELL_X[p.index]! + w.col * 16 + 8;
+    p.y = (WELL_Y + (w.row + 1) * 16) * 16;
+  }
+
+  /**
+   * The puzzle's well, a frame (puzzle.ts): the clear's flash, then the
+   * trio's moves (left and right with a repeat, B1 turns it), its fall, and
+   * when it lands the matches it makes, chain after chain, before the next.
+   */
+  private playWell(p: Player): void {
+    const w = p.well!;
+    p.t++;
+    if (w.clearT) {
+      if (--w.clearT === 0) {
+        settleWell(w);
+        this.resolveWell(p);
+      }
+      return;
+    }
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    if (dx) {
+      if (!(p.last & (dx < 0 ? Input.Left : Input.Right))) {
+        shiftTrio(w, dx);
+        w.moveT = MOVE_FIRST;
+      } else if (--w.moveT <= 0) {
+        shiftTrio(w, dx);
+        w.moveT = MOVE_EVERY;
+      }
+    }
+    if (this.pressed(p, Input.B1)) turnTrio(w);
+    if (++w.fallT >= (p.pad & Input.Down ? SOFT_DROP : fallFrames(w))) {
+      w.fallT = 0;
+      if (wellFree(w, w.col, w.row + 1)) w.row++;
+      else if (!lockTrio(w)) this.topOut(p);
+      else {
+        this.events.push({ kind: "land", player: p.index });
+        this.resolveWell(p);
+      }
+    }
+    this.placeAtTrio(p);
+  }
+
+  /** After a landing or a clear: score the matches, or bring the next trio. */
+  private resolveWell(p: Player): void {
+    const w = p.well!;
+    const n = markMatches(w);
+    if (n) {
+      p.score += GEM_SCORE * n * w.chain;
+      w.gems += n;
+      this.events.push({ kind: "pickup", item: "gems", player: p.index });
+      return;
+    }
+    if (!spawnTrio(w)) this.topOut(p);
+    this.placeAtTrio(p);
+  }
+
+  /** A well topped out: a life, and an empty well to start again. */
+  private topOut(p: Player): void {
+    const w = p.well!;
+    p.lives--;
+    this.events.push({ kind: "hurt", player: p.index });
+    if (p.lives <= 0) {
+      p.active = false;
+      return;
+    }
+    emptyWell(w);
+    spawnTrio(w);
+    this.placeAtTrio(p);
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.puzzle) return this.playWell(p);
     if (this.rules.maze) return this.walkMaze(p);
     if (this.rules.topdown) return this.walkTop(p);
     if (this.rules.crosshair) return this.aim(p);
@@ -2072,6 +2166,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.puzzle) return;
     if (this.rules.maze) return this.updateMazeChasers();
     if (this.rules.topdown) {
       this.updateChasers();
@@ -2270,8 +2365,8 @@ export class Game {
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
-    // the maze: one screen, the camera still at its top left
-    if (this.rules.maze) {
+    // the maze and the puzzle: one screen, the camera still at its top left
+    if (this.rules.maze || this.rules.puzzle) {
       this.camX = 0;
       this.camY = 0;
       return;
@@ -2368,7 +2463,14 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.maze) {
+    if (this.rules.puzzle) {
+      // the puzzle: a player with PUZZLE_GOAL gems cleared clears the level
+      if (this.players.some((p) => p.active && p.well && p.well.gems >= PUZZLE_GOAL)) {
+        this.outcome = "cleared";
+        this.events.push({ kind: "cleared" });
+        return;
+      }
+    } else if (this.rules.maze) {
       // the maze: every dot eaten clears the level
       if (this.dotsLeft <= 0 && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
@@ -2505,6 +2607,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     wdy: 0,
     grenade: null,
     boom: null,
+    well: null,
   };
 }
 

@@ -210,6 +210,12 @@ export interface GameRules {
    * level; a power pickup turns the chasers into prey for a while.
    */
   maze: boolean;
+  /**
+   * The puzzle (genres.md): each player has a well where trios of gems
+   * fall; three or more of a color in a line clear, and enough cleared gems
+   * clear the level. Nobody walks and there are no enemies.
+   */
+  puzzle: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -240,6 +246,7 @@ export const DEFAULT_RULES: GameRules = {
   vertical: false,
   topdown: false,
   maze: false,
+  puzzle: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -259,6 +266,9 @@ export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false
 
 /** A new maze game's rules: chasers that hurt by touch, the level cleared by its dots (no exit). */
 export const MAZE_RULES: Partial<GameRules> = { maze: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: true };
+
+/** A new puzzle game's rules: wells of falling gems, no walking, no enemies, no exit. */
+export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -340,6 +350,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     vertical: bool(r.vertical, false),
     topdown: bool(r.topdown, false),
     maze: bool(r.maze, false),
+    puzzle: bool(r.puzzle, false),
   };
 }
 
@@ -532,3 +543,34 @@ export const HOME_FRAMES = 180;
  */
 export const AMBUSH_AHEAD = 64;
 export const WANDER_NEAR = 128;
+
+/**
+ * The puzzle (genres.md, phase 1), the ROM's numbers too: a well of
+ * WELL_COLS x WELL_ROWS cells of 16 px per player (players 1 and 2, the
+ * wells' left edges at WELL_X, their tops at WELL_Y). A trio of gems in
+ * GEM_COLORS colors falls a row every FALL_START frames, FALL_STEP fewer for
+ * every LEVEL_GEMS gems the player cleared, down to FALL_MIN (SOFT_DROP while
+ * Down is held); left and right move it at once, then every MOVE_EVERY frames
+ * after MOVE_FIRST; B1 turns its colors (the bottom one to the top). Three or
+ * more of a color in a row, a column or a diagonal clear after CLEAR_FRAMES,
+ * worth GEM_SCORE each times the chain (1, 2, 3... as clears make new ones);
+ * a trio that cannot come in tops the well out, costing a life and emptying
+ * it. PUZZLE_GOAL gems cleared by a player clear the level.
+ */
+export const WELL_COLS = 6;
+export const WELL_ROWS = 12;
+export const WELL_X = [48, 240] as const;
+export const WELL_Y = 16;
+export const GEM_COLORS = 5;
+export const FALL_START = 30;
+export const FALL_STEP = 3;
+export const FALL_MIN = 6;
+export const LEVEL_GEMS = 15;
+export const SOFT_DROP = 2;
+export const MOVE_FIRST = 12;
+export const MOVE_EVERY = 4;
+export const CLEAR_FRAMES = 24;
+export const GEM_SCORE = 10;
+export const PUZZLE_GOAL = 60;
+/** The gems' random sequence: a 32-bit LCG per well, seeded with PUZZLE_SEED + the player's index × 7919. */
+export const PUZZLE_SEED = 0x2545f491;

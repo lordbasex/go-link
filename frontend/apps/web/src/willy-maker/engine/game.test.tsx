@@ -4,6 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
+import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL } from "./rules";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
@@ -1357,5 +1358,67 @@ describe("the maze (genres.md, phase 1)", () => {
     expect([a!.x, a!.fy > 48]).toEqual([11 * 16 + 8, true]);
     expect([b!.x < 11 * 16 + 8, b!.fy]).toEqual([true, 48]);
     expect(c!.x).toBeLessThan(11 * 16 + 8);
+  });
+});
+
+describe("the puzzle (genres.md, phase 1)", () => {
+  const puzzle = (players = 1) => new Game(flat(), { rules: PUZZLE_RULES, players });
+
+  it("a trio falls a row at a time, moves, turns, and lands on the floor", () => {
+    const g = puzzle();
+    const w = g.players[0]!.well!;
+    expect([w.col, w.row]).toEqual([2, 0]);
+    const colors = [...w.piece];
+    run(g, FALL_START, 0);
+    expect(w.row).toBe(1);
+    run(g, 1, Input.Left);
+    expect(w.col).toBe(1);
+    run(g, 1, 0);
+    run(g, 1, Input.B1);
+    expect(w.piece).toEqual([colors[2], colors[0], colors[1]]);
+    run(g, 30, Input.Down);
+    expect(w.cells.some((v) => v !== 0)).toBe(true);
+    expect(w.cells[(WELL_ROWS - 1) * WELL_COLS + 1]).toBe(colors[1]);
+  });
+
+  it("three of a color in a line clear, the gems above fall and the score counts the chain", () => {
+    const g = puzzle();
+    const p = g.players[0]!;
+    const w = p.well!;
+    const bottom = (WELL_ROWS - 1) * WELL_COLS;
+    w.cells[bottom + 0] = 1;
+    w.cells[bottom + 1] = 1;
+    w.piece = [2, 3, 1];
+    // lands in 24 frames, flashes CLEAR_FRAMES, then the gems above fall
+    run(g, 24 + 24 + 2, Input.Down);
+    expect(p.score).toBeGreaterThanOrEqual(3 * GEM_SCORE);
+    expect(w.gems).toBeGreaterThanOrEqual(3);
+    expect(w.cells[bottom + 0]).not.toBe(1);
+    expect(w.cells[bottom + 2]).toBe(3);
+  });
+
+  it("a well that tops out costs a life and starts empty; the goal clears the level", () => {
+    const g = puzzle();
+    const p = g.players[0]!;
+    const w = p.well!;
+    const lives = p.lives;
+    for (let r = 1; r < WELL_ROWS; r++) w.cells[r * WELL_COLS + 2] = (r % 2) + 4;
+    run(g, 200, 0);
+    expect(p.lives).toBe(lives - 1);
+    w.gems = PUZZLE_GOAL - 3;
+    const bottom = (WELL_ROWS - 1) * WELL_COLS;
+    w.cells.fill(0);
+    w.cells[bottom + 0] = 1;
+    w.cells[bottom + 1] = 1;
+    w.piece = [2, 3, 1];
+    w.col = 2;
+    w.row = 0;
+    run(g, 200, Input.Down);
+    expect(g.outcome).toBe("cleared");
+  });
+
+  it("players 1 and 2 have a well each; players 3 and 4 cannot join", () => {
+    const g = puzzle(4);
+    expect(g.players.map((p) => p.active)).toEqual([true, true, false, false]);
   });
 });

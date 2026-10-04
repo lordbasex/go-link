@@ -96,6 +96,7 @@ export const gamePt: GameMessages = {
     vertical: "Subindo (com Naves: a nave vertical, a câmera sobe pela fase e as naves atiram para cima)",
     topdown: "Vista de cima (tiro visto de cima: andar e mirar em 8 direções, B1 segurado atira, B3 segurado mantém a mira)",
     maze: "Labirinto (andar de célula em célula, comer todos os pontos para completar a fase; uma melhoria transforma os perseguidores em presas)",
+    puzzle: "Quebra-cabeça (um poço de gemas que caem por jogador, jogadores 1 e 2: B1 gira as cores, três ou mais em linha somem)",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

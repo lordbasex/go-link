@@ -765,6 +765,33 @@ static int ship;      /* the horizontal shooter (WM_F_SHIP) */
 static int vertical;  /* with ship, the vertical shooter (WM_F_VERTICAL) */
 static int topdown;   /* the top-down run and gun (WM_F_TOPDOWN) */
 static int maze;      /* the maze (WM_F_MAZE) */
+static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
+/* the puzzle's wells (engine/puzzle.ts Well), players 1 and 2 */
+#define WELLS 2
+#define WELL_COLS 6
+#define WELL_ROWS 12
+#define WELL_Y 16
+#define GEM_COLORS 5
+#define FALL_START 30
+#define FALL_STEP 3
+#define FALL_MIN 6
+#define LEVEL_GEMS 15
+#define SOFT_DROP 2
+#define MOVE_FIRST 12
+#define MOVE_EVERY 4
+#define CLEAR_FRAMES 24
+#define GEM_SCORE 10
+#define PUZZLE_GOAL 60
+#define PUZZLE_SEED 0x2545f491u
+static const s16 well_x[WELLS] = { 48, 240 };
+struct well {
+	u8 cells[WELL_COLS * WELL_ROWS], marks[WELL_COLS * WELL_ROWS];
+	u8 piece[3], next[3];
+	int col, row, fall_t, move_t, clear_t, chain;
+	u32 seed;
+	int gems;
+};
+static struct well wells[WELLS];
 /* the maze's dots, a bit per cell, how many are left, the frames the chasers flee, and a redraw after the text is cleared */
 static u8 dots[24576 / 8];
 static int dots_left, fright_t;
@@ -1220,6 +1247,246 @@ static void place_near(s32 x, s32 y, s32 max_y, const s8 *offs, const struct wm_
 }
 
 /* a player comes in: at their start, or next to a player already in */
+/* ---------------------------------------------------------- the puzzle's well
+   (engine/puzzle.ts, the same steps: a trio of gems falls, turns, lands,
+   three or more of a color in a line clear, chain after chain) */
+
+/* the next gem's color, 1 to GEM_COLORS (a 32-bit LCG) */
+static int next_gem(struct well *w)
+{
+	w->seed = w->seed * 1103515245u + 12345u;
+	return (int)((u16)(w->seed >> 16) % GEM_COLORS) + 1;
+}
+
+static void new_well(int k)
+{
+	struct well *w = &wells[k];
+	int i;
+	for (i = 0; i < WELL_COLS * WELL_ROWS; i++)
+		w->cells[i] = w->marks[i] = 0;
+	w->col = w->row = w->fall_t = w->move_t = w->clear_t = w->chain = w->gems = 0;
+	w->seed = PUZZLE_SEED + (u32)k * 7919u;
+	for (i = 0; i < 3; i++)
+		w->next[i] = (u8)next_gem(w);
+}
+
+/* whether (c, r) is free: inside the sides and the floor, over the top or empty */
+static int well_free(const struct well *w, int c, int r)
+{
+	if (c < 0 || c >= WELL_COLS || r >= WELL_ROWS)
+		return 0;
+	return r < 0 || w->cells[r * WELL_COLS + c] == 0;
+}
+
+/* frames a row while not held down: faster for every LEVEL_GEMS gems cleared */
+static int fall_frames(const struct well *w)
+{
+	int f = FALL_START - (w->gems / LEVEL_GEMS) * FALL_STEP;
+	return f < FALL_MIN ? FALL_MIN : f;
+}
+
+/* the next trio at the top of the third column; 0 when it cannot come in */
+static int spawn_trio(struct well *w)
+{
+	int i;
+	for (i = 0; i < 3; i++)
+		w->piece[i] = w->next[i];
+	for (i = 0; i < 3; i++)
+		w->next[i] = (u8)next_gem(w);
+	w->col = 2;
+	w->row = 0;
+	w->fall_t = 0;
+	w->chain = 0;
+	return well_free(w, w->col, 0);
+}
+
+static void shift_trio(struct well *w, int dx)
+{
+	int c = w->col + dx;
+	if (well_free(w, c, w->row) && well_free(w, c, w->row - 1) && well_free(w, c, w->row - 2))
+		w->col = c;
+}
+
+/* the bottom color goes to the top */
+static void turn_trio(struct well *w)
+{
+	u8 b = w->piece[2];
+	w->piece[2] = w->piece[1];
+	w->piece[1] = w->piece[0];
+	w->piece[0] = b;
+}
+
+/* the trio into the well; 0 when a gem of it is still over the top */
+static int lock_trio(struct well *w)
+{
+	int k;
+	if (w->row - 2 < 0)
+		return 0;
+	for (k = 0; k < 3; k++)
+		w->cells[(w->row - 2 + k) * WELL_COLS + w->col] = w->piece[k];
+	return 1;
+}
+
+/* marks every gem in a line of three or more of its color; returns how many
+   (additions only, no multiplying: it runs on the frame a trio lands) */
+static int mark_matches(struct well *w)
+{
+	static const s8 dxs[4] = { 1, 0, 1, -1 };
+	int r, c, d, n, k, i = 0, count = 0;
+	for (r = 0; r < WELL_ROWS; r++)
+		for (c = 0; c < WELL_COLS; c++, i++) {
+			int v = w->cells[i];
+			if (!v)
+				continue;
+			for (d = 0; d < 4; d++) {
+				int dx = dxs[d], dy = d ? 1 : 0, step = dy ? WELL_COLS + dx : dx, pc = c - dx, cc, rr, j;
+				/* only from a line's first gem */
+				if (pc >= 0 && pc < WELL_COLS && r - dy >= 0 && w->cells[i - step] == v)
+					continue;
+				n = 1;
+				cc = c + dx;
+				rr = r + dy;
+				j = i + step;
+				while (cc >= 0 && cc < WELL_COLS && rr < WELL_ROWS && w->cells[j] == v) {
+					n++;
+					cc += dx;
+					rr += dy;
+					j += step;
+				}
+				if (n >= 3)
+					for (k = 0, j = i; k < n; k++, j += step)
+						w->marks[j] = 1;
+			}
+		}
+	for (k = 0; k < WELL_COLS * WELL_ROWS; k++)
+		count += w->marks[k];
+	if (count) {
+		w->chain++;
+		w->clear_t = CLEAR_FRAMES;
+	}
+	return count;
+}
+
+/* takes the marked gems out and lets the ones above fall */
+static void settle_well(struct well *w)
+{
+	int c, r, to;
+	for (c = 0; c < WELL_COLS; c++) {
+		to = WELL_ROWS - 1;
+		for (r = WELL_ROWS - 1; r >= 0; r--) {
+			int i = r * WELL_COLS + c, v = w->marks[i] ? 0 : w->cells[i];
+			w->marks[i] = 0;
+			w->cells[i] = 0;
+			if (v)
+				w->cells[to-- * WELL_COLS + c] = (u8)v;
+		}
+	}
+}
+
+/* the player stands for its trio: x at its middle, feet under its bottom gem */
+static void place_at_trio(struct player *p)
+{
+	const struct well *w = &wells[p - pl];
+	p->x = well_x[p - pl] + w->col * 16 + 8;
+	p->y = (s32)(WELL_Y + (w->row + 1) * 16) * 16;
+}
+
+/* a well topped out: a life, and an empty well to start again */
+static void top_out(struct player *p)
+{
+	struct well *w = &wells[p - pl];
+	int i;
+	sfx(SFX_HURT, p->x);
+	if (--p->energy <= 0) {
+		p->energy = 0;
+		p->active = 0;
+		p->dead = 1;
+		return;
+	}
+	for (i = 0; i < WELL_COLS * WELL_ROWS; i++)
+		w->cells[i] = w->marks[i] = 0;
+	w->clear_t = 0;
+	spawn_trio(w);
+	place_at_trio(p);
+}
+
+/* after a landing or a clear: score the matches, or bring the next trio */
+static void resolve_well(struct player *p)
+{
+	struct well *w = &wells[p - pl];
+	int n = mark_matches(w);
+	if (n) {
+		p->score += (u32)(GEM_SCORE * n * w->chain);
+		w->gems += n;
+		sfx(SFX_COIN, p->x);
+		return;
+	}
+	if (!spawn_trio(w))
+		top_out(p);
+	place_at_trio(p);
+}
+
+/* the well, a frame (engine/game.ts playWell) */
+static void play_well(struct player *p)
+{
+	struct well *w = &wells[p - pl];
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	p->t++;
+	if (w->clear_t) {
+		if (--w->clear_t == 0) {
+			settle_well(w);
+			resolve_well(p);
+		}
+		return;
+	}
+	if (dx) {
+		if (!(p->last & (dx < 0 ? BTN_LEFT : BTN_RIGHT))) {
+			shift_trio(w, dx);
+			w->move_t = MOVE_FIRST;
+		} else if (--w->move_t <= 0) {
+			shift_trio(w, dx);
+			w->move_t = MOVE_EVERY;
+		}
+	}
+	if (PRESSED(p, BTN_1))
+		turn_trio(w);
+	if (++w->fall_t >= ((p->pad & BTN_DOWN) ? SOFT_DROP : fall_frames(w))) {
+		w->fall_t = 0;
+		if (well_free(w, w->col, w->row + 1))
+			w->row++;
+		else if (!lock_trio(w))
+			top_out(p);
+		else {
+			sfx(SFX_LAND, p->x);
+			resolve_well(p);
+		}
+	}
+	place_at_trio(p);
+}
+
+/* the wells' gems as sprites: the ones a match clears flash white, the trio, the next one beside the well */
+static void draw_wells(void)
+{
+	int k, r, c, i;
+	for (k = 0; k < WELLS && k < nplayers; k++) {
+		const struct well *w = &wells[k];
+		int x0 = well_x[k], flash;
+		if (!pl[k].active)
+			continue;
+		flash = w->clear_t > 0 && (((CLEAR_FRAMES - w->clear_t) >> 2) & 1);
+		if (!w->clear_t)
+			for (i = 0; i < 3; i++)
+				if (w->row - 2 + i >= 0)
+					put_sprite(x0 + w->col * 16, WELL_Y + (w->row - 2 + i) * 16, (u16)(TILE_GEM + w->piece[i] - 1), PAL_GEMS);
+		for (i = 0; i < 3; i++)
+			put_sprite(x0 + WELL_COLS * 16 + 16, WELL_Y + i * 16, (u16)(TILE_GEM + w->next[i] - 1), PAL_GEMS);
+		for (r = 0, i = 0; r < WELL_ROWS; r++)
+			for (c = 0; c < WELL_COLS; c++, i++)
+				if (w->cells[i])
+					put_sprite(x0 + c * 16, WELL_Y + r * 16, (u16)(TILE_GEM + (w->marks[i] && flash ? 5 : w->cells[i] - 1)), PAL_GEMS);
+	}
+}
+
 static void player_join(int k)
 {
 	struct player *p = &pl[k];
@@ -1230,6 +1497,18 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
+	if (puzzle) {
+		/* the puzzle: a well for players 1 and 2 */
+		if (k < WELLS) {
+			player_spawn(p, 0, 0);
+			p->energy = R->energy;
+			p->hurt = 0;
+			new_well(k);
+			spawn_trio(&wells[k]);
+			place_at_trio(p);
+		}
+		return;
+	}
 	if (maze) {
 		/* the maze: at its start, on a cell's middle (feet at the cell's bottom) */
 		s32 sx = D->start_x[k] >= 0 ? D->start_x[k] : cam_x + (SCREEN_W >> 1) + k * 32;
@@ -1370,6 +1649,7 @@ static void game_reset(void)
 	vertical = ship && (D->flags & WM_F_VERTICAL) != 0;
 	topdown = (D->flags & WM_F_TOPDOWN) != 0;
 	maze = (D->flags & WM_F_MAZE) != 0;
+	puzzle = (D->flags & WM_F_PUZZLE) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -2273,6 +2553,10 @@ static void update_player(struct player *p)
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (puzzle) {
+		play_well(p);
+		return;
+	}
 	if (maze) {
 		walk_maze(p);
 		return;
@@ -3123,6 +3407,8 @@ static void update_maze_chasers(void)
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (puzzle)
+		return;
 	if (maze) {
 		update_maze_chasers();
 		return;
@@ -3383,8 +3669,8 @@ static void update_top_camera(int snap)
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
-	/* the maze: one screen, the camera still at its top left */
-	if (maze) {
+	/* the maze and the puzzle: one screen, the camera still at its top left */
+	if (maze || puzzle) {
 		cam_x = cam_y = 0;
 		return;
 	}
@@ -3751,6 +4037,11 @@ static void draw_actors_by_depth(void)
 static void draw_world(void)
 {
 	int k;
+	if (puzzle) {
+		draw_wells();
+		flush_sprites();
+		return;
+	}
 	for (k = 0; k < nplayers; k++)
 		draw_shots(&pl[k]);
 	if (depth) {
@@ -3914,6 +4205,18 @@ static void soon_update(void)
 	} else
 		blank(17, 23, 14);
 }
+/* the HUD's screen; with nobody to rescue its rescued line goes, as in play mode */
+static void hud_screen(void)
+{
+	struct line l;
+	int pos = 0;
+	draw_screen(WM_SCR_HUD, 1);
+	if (!nciv)
+		while (next_line(WM_SCR_HUD, &pos, &l))
+			if (l.attr & WM_TXT_COUNT)
+				blank(l.col, l.row, l.len + 4);
+}
+
 
 static void hud(void)
 {
@@ -3964,7 +4267,7 @@ static void hud(void)
 				blank(col + 3, 0, room);
 		}
 	}
-	{
+	if (nciv) {
 		struct line l;
 		int pos = 0;
 		while (next_line(WM_SCR_HUD, &pos, &l))
@@ -4145,7 +4448,7 @@ static int play(int first)
 	player_join(first);
 	update_camera(1);
 	stream();
-	draw_screen(WM_SCR_HUD, 1);
+	hud_screen();
 	MUSIC(MUSIC_PLAY);
 	/* setting the level up takes a few frames, ending near a vblank on some levels, where the real
 	   core and the board model could disagree by one: play always starts SETUP_FRAMES after Start */
@@ -4157,14 +4460,14 @@ static int play(int first)
 		read_inputs();
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
-				if (!pl[k].active && (credits || free_play()) && start_pressed(k)) {
+				if (!pl[k].active && (!puzzle || k < WELLS) && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
 					SFX_CENTRE(SFX_START);
 					if (cont) {
 						cont = 0;
 						clear_text();
-						draw_screen(WM_SCR_HUD, 1);
+						hud_screen();
 						MUSIC(MUSIC_PLAY);
 					}
 					player_join(k);
@@ -4203,6 +4506,19 @@ static int play(int first)
 			for (k = 0; k < nplayers; k++)
 				any |= pl[k].active;
 			if (dots_left <= 0 && any) {
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
+			}
+		}
+		/* the puzzle: a player with PUZZLE_GOAL gems cleared clears the level */
+		if (puzzle && outcome < 0) {
+			int won = 0;
+			for (k = 0; k < WELLS && k < nplayers; k++)
+				won |= pl[k].active && wells[k].gems >= PUZZLE_GOAL;
+			if (won) {
 				blank(15, 16, 18);
 				outcome = END_CLEAR;
 				end_t = frame_count;
@@ -4255,7 +4571,7 @@ static int play(int first)
 				end_t = frame_count;
 				clear_text();
 				draw_screen(WM_SCR_CONTINUE, 1);
-				draw_screen(WM_SCR_HUD, 1); /* the overlay keeps the HUD whole (J-10) */
+				hud_screen(); /* the overlay keeps the HUD whole (J-10) */
 				MUSIC(MUSIC_CONTINUE);
 			}
 			print_num(23, 12, (u32)(9 - (frame_count - end_t) / 60), 1, INK_WHITE);

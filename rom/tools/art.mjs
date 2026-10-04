@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { dronePen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -750,6 +750,17 @@ export function addArt(gfx, defs, genDir, opts = {}) {
     h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define TILE_DRONE ${hex4(code + 13)} /* a 2 x 1 block */`, `#define TILE_POWER ${hex4(code + 15)}`, `#define TILE_GUNSHIP ${hex4(code + 16)} /* 4 x 2 tiles, left to right, top row first */`, `#define TILE_SHIPUP ${hex4(code + 24)} /* + 2 * player: top, then bottom */`, `#define PAL_CROSS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
     code += 32;
+    // the puzzle's gems (engine/shipArt.ts gemPen), one tile per color, then the white one a clear flashes:
+    // pens 1-5 the colors (GEM_BODY), 6-10 their shades (GEM_SHADE), 11 the shine, 12 the flash's shade
+    for (let k = 0; k < 6; k++)
+      gfx.tile16(code + k, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => {
+        const pen = gemPen(x, y);
+        if (k === 5) return [15, 11, 11, 0, 12][pen];
+        return [15, 1 + k, 11, 0, 6 + k][pen];
+      })));
+    h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash */`, `#define PAL_GEMS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xfe34, 0xf3c5, 0xf38f, 0xffc2, 0xfb5e, 0xf912, 0xf173, 0xf149, 0xfa71, 0xf629, 0xffff, 0xfccd, 0, 0, 0]);
+    code += 6;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

@@ -17,6 +17,7 @@ import { shipProject } from "./shipFixture";
 import { verticalProject } from "./verticalFixture";
 import { topdownProject } from "./topdownFixture";
 import { mazeProject } from "./mazeFixture";
+import { puzzleProject } from "./puzzleFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -53,7 +54,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(17);
+    expect(u16(d, 4)).toBe(18);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -223,6 +224,10 @@ describe("Create ROM", () => {
       mkdirSync(td, { recursive: true });
       writeFileSync(resolve(td, "slammast.zip"), await zipSet(packGame(topdownProject(), engine, (id) => pictures.get(id) ?? null).files));
       writeFileSync(resolve(td, "symbols.json"), romSymbols(engine));
+      // the puzzle: two wells of falling gems (rom/tools/lab/runs/puzzle-gems.json)
+      const pz = resolve(out, "puzzle");
+      mkdirSync(pz, { recursive: true });
+      writeFileSync(resolve(pz, "slammast.zip"), await zipSet(packGame(puzzleProject(), engine, (id) => pictures.get(id) ?? null).files));
       // the maze: one screen of corridors (rom/tools/lab/runs/maze-dots.json)
       const md = resolve(out, "maze");
       mkdirSync(md, { recursive: true });

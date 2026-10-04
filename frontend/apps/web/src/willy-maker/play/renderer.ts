@@ -7,8 +7,8 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
-import { SHIP_H, SHIP_W, dronePen, powerPen, shipPen } from "../engine/shipArt";
-import { FLY_MID } from "../engine/rules";
+import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
+import { CLEAR_FRAMES, FLY_MID, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -166,7 +166,8 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (!far) for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
   drawCells(ctx, game, play);
   drawExits(ctx, game);
-  drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
+  if (game.rules.puzzle) drawWells(ctx, game);
+  else drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
   if (o.ghost) {
@@ -182,6 +183,29 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (o.overlays.camera) drawCamera(ctx, game, colors);
   drawHud(ctx, game, colors, o);
   if (game.rules.crosshair) drawCrosshairs(ctx, game);
+}
+
+/**
+ * The puzzle's wells (engine/puzzle.ts): the gems in them, the ones a match
+ * clears flashing white, the falling trio, and the next one beside the well
+ * (rom/tools/art.mjs TILE_GEM, the ROM draws them as sprites).
+ */
+function drawWells(ctx: CanvasRenderingContext2D, game: Game): void {
+  const gem = (x: number, y: number, v: number, flash = false) =>
+    drawPens(ctx, x, y, 16, 16, gemPen, flash ? ["", "#ffffff", "#ffffff", "#000000", "#ccccdd"] : ["", GEM_BODY[v - 1]!, "#ffffff", "#000000", GEM_SHADE[v - 1]!]);
+  for (const p of game.players) {
+    const w = p.well;
+    if (!p.active || !w) continue;
+    const x0 = WELL_X[p.index]!;
+    const flash = w.clearT > 0 && ((CLEAR_FRAMES - w.clearT) >> 2) & 1;
+    for (let r = 0; r < WELL_ROWS; r++)
+      for (let c = 0; c < WELL_COLS; c++) {
+        const v = w.cells[r * WELL_COLS + c]!;
+        if (v) gem(x0 + c * 16, WELL_Y + r * 16, v, w.marks[r * WELL_COLS + c] === 1 && flash === 1);
+      }
+    if (!w.clearT) for (let k = 0; k < 3; k++) if (w.row - 2 + k >= 0) gem(x0 + w.col * 16, WELL_Y + (w.row - 2 + k) * 16, w.piece[k]!);
+    for (let k = 0; k < 3; k++) gem(x0 + WELL_COLS * 16 + 16, WELL_Y + k * 16, w.next[k]!);
+  }
 }
 
 /** The light gun's crosshairs, in each player's color, and a flash where a shot lands (rom/tools/art.mjs TILE_CROSS). */

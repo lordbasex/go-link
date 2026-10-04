@@ -5,7 +5,8 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { shapePuzzleLevel } from "../../editor/puzzleLevel";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
@@ -145,6 +146,11 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
     // a maze game: grid moves, dots in every empty cell, chasers
     if (genre === "maze") p.settings.rules = { ...(p.settings.rules ?? {}), ...MAZE_RULES };
+    // a puzzle game: a well of falling gems per player, framed by the level's walls
+    if (genre === "puzzle") {
+      p.settings.rules = { ...(p.settings.rules ?? {}), ...PUZZLE_RULES };
+      for (const level of p.levels) shapePuzzleLevel(level);
+    }
     if (genre === "beat-em-up") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...BEATEMUP_RULES };
       for (const level of p.levels) level.walk = defaultWalk(level);
