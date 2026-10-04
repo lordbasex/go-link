@@ -342,6 +342,8 @@ export class Game {
   readonly rules: GameRules;
   /** The beat 'em up's walkable band (feet y, px), with the depth rule only. */
   readonly walkBand?: { y0: number; y1: number };
+  /** How far the camera may go back (the level's camera: its back margin, or a free camera's whole width). */
+  readonly backtrack: number;
   /** The difficulty's enemy fire interval (frames) and shot speed (px per frame). */
   readonly fireEvery: number;
   readonly shotSpeed: number;
@@ -359,6 +361,7 @@ export class Game {
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
     this.rules = rulesWith(opts.rules);
     if (this.rules.depth) this.walkBand = walkBandOf(level.height, level.walk);
+    this.backtrack = level.backtrack ?? BACKTRACK;
     this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
     this.shotSpeed = difficultyOf(opts.difficulty).shotSpeed;
     for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives, opts.heights?.[i] ? bodyFor(opts.heights[i]) : WILLY_BODY));
@@ -1413,8 +1416,8 @@ export class Game {
 
   /**
    * Keeps every player in view and only moves forward: it aims a third of
-   * a screen ahead of the players' middle, never goes back more than
-   * BACKTRACK pixels from the farthest point reached, and players cannot
+   * a screen ahead of the players' middle, never goes back more than the
+   * level's backtrack from the farthest point reached, and players cannot
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
@@ -1429,7 +1432,7 @@ export class Game {
       }
     if (!n) return;
     let tx = Math.trunc(sx / n) - Math.trunc(SCREEN_W / 3);
-    if (tx < this.camFar - BACKTRACK) tx = this.camFar - BACKTRACK;
+    if (tx < this.camFar - this.backtrack) tx = this.camFar - this.backtrack;
     let ty = Math.trunc(sy / n) - 150;
     const fit = this.cameraFit();
     if (fit.loY <= fit.hiY) ty = Math.min(fit.hiY, Math.max(fit.loY, ty));

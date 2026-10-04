@@ -772,7 +772,7 @@ export const docsEs: Docs = {
           t: "list",
           items: [
             "**Objetos y contenido de cajas**: hoy solo funciona la **Bazuca**. El lanzallamas, el arma de abanico, las granadas y la salud se recogen sin efecto, y la página de Lattenza se recoge pero nada la cuenta.",
-            "**Un civil dentro de una caja** todavía no sale, los **jefes** quedan fuera del modo de juego, los **controles** no hacen nada (quien pierde una vida vuelve junto a la cámara) y el **agua** se juega como aire.",
+            "**Un civil dentro de una caja** todavía no sale, los **jefes**, salvo el Matón del beat 'em up, quedan fuera del modo de juego, los **controles** no hacen nada (quien pierde una vida vuelve junto a la cámara) y el **agua** se juega como aire.",
             "**Enemigos**: por ahora todos los tipos caminan, persiguen y disparan igual; la revisión lo muestra como una nota.",
             "**Solo en la ROM**: el juego libre, el sonido en la demo y el límite de tiempo de un nivel se guardan para la ROM; el modo de juego los ignora.",
           ],
@@ -792,7 +792,7 @@ export const docsEs: Docs = {
         {
           t: "list",
           items: [
-            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px y una cámara que solo avanza, espera al jugador que va más atrás y mantiene a todos en pantalla, siguiéndolos también hacia arriba y hacia abajo: un nivel puede ser una torre de hasta 8192 px de alto, y la ROM la va cargando mientras subes. Quien se une entra junto al que ya juega, sobre un piso. Al completar el nivel el mundo se detiene y un resumen muestra los enemigos vencidos, los rescatados y cada puntaje.",
+            "**Jugar** (P) corre el nivel con las mismas reglas que la ROM: un salto que alcanza repisas de 48 px, cajas de 32 px y una cámara que solo avanza (según el **Margen atrás** del nivel en su Inspector; con **Solo avanza** apagado es una cámara libre que vuelve hasta el principio), espera al jugador que va más atrás y mantiene a todos en pantalla, siguiéndolos también hacia arriba y hacia abajo: un nivel puede ser una torre de hasta 8192 px de alto, y la ROM la va cargando mientras subes. Quien se une entra junto al que ya juega, sobre un piso. Al completar el nivel el mundo se detiene y un resumen muestra los enemigos vencidos, los rescatados y cada puntaje.",
             "**Los movimientos**: **Abajo** te agacha (los disparos a la altura de alguien parado pasan por encima, y disparas bajo); **Izquierda/Derecha** agachado gatea, también bajo un techo a 32 px del suelo; **Abajo + B2 en el aire** es una patada voladora (2 golpes); el héroe además aterriza, gira, levanta el pulgar al rescatar, festeja al terminar y bosteza tras 5 s quieto. La tarjeta Reglas suma un **doble salto** (B1 otra vez en el aire) y una **mochila propulsora** (mantén B1 al caer). Cada movimiento usa su propia animación si tu héroe la tiene (los nombres están en Personajes), si no la más parecida.",
             "Juega con el teclado (flechas, Z, X, C), mandos o los botones en pantalla en pantallas táctiles; aprieta un botón para unirte, hasta 4 jugadores.",
             "**Editar mientras juego**: coloca piezas (caja, plataforma, escalera, enemigo, civil, arma) mientras el juego sigue corriendo, o usa **Pausar y editar** y sigue **Desde aquí** o **Desde el inicio**.",

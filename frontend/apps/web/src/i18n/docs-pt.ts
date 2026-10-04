@@ -772,7 +772,7 @@ export const docsPt: Docs = {
           t: "list",
           items: [
             "**Itens e conteúdo das caixas**: hoje só a **Bazuca** funciona. O lança-chamas, a arma de leque, as granadas e a saúde são pegos sem efeito, e a página de Lattenza é pega mas nada a conta.",
-            "**Um civil dentro de uma caixa** ainda não sai, os **chefes** ficam fora do modo de jogo, os **checkpoints** não fazem nada (quem perde uma vida volta perto da câmera) e a **água** funciona como ar.",
+            "**Um civil dentro de uma caixa** ainda não sai, os **chefes**, menos o Brigão do beat 'em up, ficam fora do modo de jogo, os **checkpoints** não fazem nada (quem perde uma vida volta perto da câmera) e a **água** funciona como ar.",
             "**Inimigos**: por enquanto todos os tipos andam, perseguem e atiram do mesmo jeito; a revisão mostra isso como uma nota.",
             "**Só na ROM**: o jogo livre, o som na demo e o limite de tempo de uma fase são salvos para a ROM; o modo de jogo os ignora.",
           ],
@@ -792,7 +792,7 @@ export const docsPt: Docs = {
         {
           t: "list",
           items: [
-            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança, espera o jogador mais atrás e mantém todos na tela, seguindo-os também para cima e para baixo: uma fase pode ser uma torre de até 8192 px de altura, e a ROM a carrega enquanto você sobe. Quem entra aparece ao lado de quem já joga, sobre um piso. Ao completar a fase o mundo para e um resumo mostra os inimigos derrotados, os resgatados e cada pontuação.",
+            "**Jogar** (P) roda a fase com as mesmas regras da ROM: um pulo que alcança plataformas de 48 px, caixas de 32 px e uma câmera que só avança (conforme a **Margem para trás** da fase no Inspetor; com **Só avança** desligado é uma câmera livre que volta até o começo), espera o jogador mais atrás e mantém todos na tela, seguindo-os também para cima e para baixo: uma fase pode ser uma torre de até 8192 px de altura, e a ROM a carrega enquanto você sobe. Quem entra aparece ao lado de quem já joga, sobre um piso. Ao completar a fase o mundo para e um resumo mostra os inimigos derrotados, os resgatados e cada pontuação.",
             "**Os movimentos**: **Baixo** agacha (os tiros na altura de alguém em pé passam por cima, e você atira baixo); **Esquerda/Direita** agachado rasteja, também sob um teto a 32 px do chão; **Baixo + B2 no ar** é uma voadora (2 golpes); o herói também aterrissa, vira, faz joinha ao resgatar, comemora ao terminar e boceja após 5 s parado. O cartão Regras soma um **pulo duplo** (B1 de novo no ar) e uma **mochila a jato** (segure B1 ao cair). Cada movimento usa a própria animação se o seu herói tiver (os nomes estão em Personagens), senão a mais parecida.",
             "Jogue com o teclado (setas, Z, X, C), controles ou os botões na tela em telas de toque; aperte um botão para entrar, até 4 jogadores.",
             "**Editar enquanto jogo**: coloque peças (caixa, plataforma, escada, inimigo, civil, arma) enquanto o jogo continua rodando, ou use **Pausar e editar** e continue **Daqui** ou **Do início**.",

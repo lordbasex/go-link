@@ -1,0 +1,69 @@
+{
+ "name": "free-camera",
+ "description": "A free camera (WM_ROM_OUT/free of rom.test.tsx: the spec level with the level's Only forward off, so backtrack is its whole width): player 1 walks right until the camera is at x 420, then left, and the camera follows back to x 101 (with Only forward it would stop 48 px back), then right again. Play mode gives the same places every frame.",
+ "frames": 1320,
+ "checkpoints": [
+  700,
+  1100,
+  1300
+ ],
+ "expect": [
+  {
+   "frame": 700,
+   "path": "cam.x",
+   "equals": 420
+  },
+  {
+   "frame": 1100,
+   "path": "cam.x",
+   "equals": 101
+  },
+  {
+   "frame": 1300,
+   "path": "cam.x",
+   "equals": 290
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 165,
+   "to": 700,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 710,
+   "to": 1100,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1110,
+   "to": 1300,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

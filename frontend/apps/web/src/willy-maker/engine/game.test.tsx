@@ -926,3 +926,28 @@ describe("the beat 'em up: crates, the knife and the boss (genres.md, phase 4)",
     expect(e.fireWait).toBeLessThanOrEqual(BOSS_REST);
   });
 });
+
+describe("the level's camera", () => {
+  it("goes back only its back margin with Only forward, and all the way as a free camera", () => {
+    const walk = (backtrack?: number) => {
+      const view = flat();
+      if (backtrack !== undefined) view.backtrack = backtrack;
+      const g = new Game(view);
+      run(g, 500, Input.Right);
+      const far = g.camFar;
+      run(g, 500, Input.Left);
+      return { far, back: far - g.camX };
+    };
+    const fixed = walk();
+    expect(fixed.far).toBeGreaterThan(200);
+    expect(fixed.back).toBeLessThanOrEqual(48);
+    const free = walk(64 * 16);
+    expect(free.back).toBeGreaterThan(150);
+  });
+
+  it("takes the level's settings from the project", () => {
+    const level = { size: { w: 2048, h: 448 }, camera: { forwardOnly: true, backtrack: 96 } };
+    expect(levelFromProject(level).backtrack).toBe(96);
+    expect(levelFromProject({ ...level, camera: { forwardOnly: false, backtrack: 96 } }).backtrack).toBe(2048);
+  });
+});

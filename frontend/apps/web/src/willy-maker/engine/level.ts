@@ -46,6 +46,12 @@ export interface LevelView {
   bands?: { r0: number; r1: number; speed: number }[];
   /** The beat 'em up's walkable band: the feet y range (px) with the depth rule. */
   walk?: { y0: number; y1: number };
+  /**
+   * How far (px) the camera may go back from the farthest point it reached:
+   * the level's back margin with "Only forward", its whole width without it
+   * (a free camera), as rom/pack.ts writes `backtrack`. BACKTRACK when unset.
+   */
+  backtrack?: number;
 }
 
 /**
@@ -80,6 +86,7 @@ export interface ProjectLevelLike {
   size?: { w: number; h: number };
   parallax?: ParallaxBand[];
   walk?: { y0: number; y1: number };
+  camera?: { forwardOnly: boolean; backtrack: number };
   layers?: {
     id?: string;
     kind?: string;
@@ -109,6 +116,7 @@ export function levelFromProject(level: ProjectLevelLike): LevelView {
     bands: level.size && level.parallax ? parallaxBands({ size: level.size, parallax: level.parallax }) : undefined,
     sections: level.sections,
     ...(level.walk ? { walk: { y0: level.walk.y0, y1: level.walk.y1 } } : {}),
+    ...(level.camera && level.size ? { backtrack: level.camera.forwardOnly ? Math.max(0, Math.min(level.size.w, level.camera.backtrack)) : level.size.w } : {}),
   };
 }
 

@@ -239,6 +239,15 @@ describe("Create ROM", () => {
       writeFileSync(resolve(out, "slammast.zip"), zip);
       writeFileSync(resolve(out, "slammast.symbols.json"), romSymbols(engine));
       writeFileSync(resolve(out, "symbols.json"), romSymbols(engine));
+      // the same level with a free camera ("Only forward" off: it may go back all the way, rom/tools/lab/runs/free-camera.json)
+      const free = specProject();
+      free.levels[0]!.camera = { forwardOnly: false, backtrack: 48 };
+      const fd = assembleProgram(SLAMMAST, packGame(free, engine, (id) => pictures.get(id) ?? null).files).subarray(WM_DATA_ADDR);
+      expect(u16(fd, 0x58 + 2)).toBe(free.levels[0]!.size.w);
+      const fdir = resolve(out, "free");
+      mkdirSync(fdir, { recursive: true });
+      writeFileSync(resolve(fdir, "slammast.zip"), await zipSet(packGame(free, engine, (id) => pictures.get(id) ?? null).files));
+      writeFileSync(resolve(fdir, "symbols.json"), romSymbols(engine));
     }
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);

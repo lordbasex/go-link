@@ -772,7 +772,7 @@ export const docsEn: Docs = {
           t: "list",
           items: [
             "**Pickups and crate contents**: only the **Bazooka** works today. The flamethrower, the spread gun, the grenades and health are picked up with no effect, and the Lattenza page is picked up but nothing counts it.",
-            "**A civilian inside a crate** does not come out yet, **bosses** are left out of play mode, **checkpoints** do nothing (a player who loses a life comes back next to the camera) and **water** plays like air.",
+            "**A civilian inside a crate** does not come out yet, **bosses** other than the beat 'em up's Brawler are left out of play mode, **checkpoints** do nothing (a player who loses a life comes back next to the camera) and **water** plays like air.",
             "**Enemies**: every kind walks, chases and shoots the same way for now; the review shows this as a note.",
             "**ROM only**: the free play and demo sound switches, and a level's time limit, are saved for the ROM; play mode ignores them.",
           ],
@@ -792,7 +792,7 @@ export const docsEn: Docs = {
         {
           t: "list",
           items: [
-            "**Play** (P) runs the level with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates and a camera that only moves forward, waits for the player furthest behind and keeps everyone in the picture, following them up and down too: a level can be a tower as tall as 8192 px, and the ROM streams it as it climbs. A player who joins comes in beside the one already playing, on a floor. On the clear the world stands still and a tally shows the enemies down, the rescued and every score.",
+            "**Play** (P) runs the level with the same rules as the ROM: a jump that reaches 48 px ledges, 32 px crates and a camera that only moves forward (by the level's **Margin back** in its Inspector; with **Only moves forward** off it is a free camera that goes back all the way), waits for the player furthest behind and keeps everyone in the picture, following them up and down too: a level can be a tower as tall as 8192 px, and the ROM streams it as it climbs. A player who joins comes in beside the one already playing, on a floor. On the clear the world stands still and a tally shows the enemies down, the rescued and every score.",
             "**The moves**: **Down** crouches (shots at standing height pass over you, and you fire low); **Left/Right** while crouched crawls, also under a ceiling 32 px over the floor; **Down + B2 in the air** is a jump kick (2 hits); a hero also lands, turns, gives a thumbs up on a rescue, celebrates the clear and yawns after 5 s still. The Rules card adds a **double jump** (B1 again in the air) and a **jet pack** (hold B1 while falling). Each move uses its own animation when your hero has one (the names are in Characters), else the closest one.",
             "Play with the keyboard (arrows, Z, X, C), controllers or the on-screen buttons on touch screens; press a button to join, up to 4 players.",
             "**Edit while playing**: place pieces (crate, platform, ladder, enemy, civilian, weapon) while the game keeps running, or **Pause and edit** and go on **From here** or **From the start**.",

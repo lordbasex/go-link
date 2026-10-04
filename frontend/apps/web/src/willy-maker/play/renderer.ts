@@ -5,7 +5,7 @@
 // placeholder tiles until the project has its own art, the characters from
 // their sheets, the HUD, and the debug overlays play mode can switch on.
 
-import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
+import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -556,7 +556,7 @@ function drawCamera(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayCo
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
   // how far back the camera may still go
-  const back = game.camFar - BACKTRACK - game.camX;
+  const back = game.camFar - game.backtrack - game.camX;
   if (back > -SCREEN_W) {
     ctx.beginPath();
     ctx.moveTo(Math.max(0, back) + 0.5, 0);

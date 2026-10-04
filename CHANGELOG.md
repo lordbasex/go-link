@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Fixed (website)
+
+- **Willy Maker › play mode's camera** follows the level's **Only moves forward** and **Margin back** (Inspector), as the ROM always did: it had kept a fixed 48 px margin, so a free camera (Only moves forward off) went back in the ROM but not in play mode. A walk forward and back matches the real core and play mode on every frame (`free-camera.json`).
+
 ## [0.1.8] - 2026-10-04
 
 ### Added (lab)
