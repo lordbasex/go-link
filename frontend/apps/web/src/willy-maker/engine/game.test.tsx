@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, BOMBS, CLIP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1099,6 +1099,39 @@ describe("the horizontal shooter (genres.md, phase 1)", () => {
     p.invulnerable = 0;
     (g as unknown as { hurt: (q: typeof p) => void }).hurt(p);
     expect(p.power).toBe(0);
+  });
+
+  it("enemies fly their paths: straight, or diving toward the ship's height", () => {
+    const g = sky([{ ...flier(500, 300), path: "straight" } as LevelObject, { ...flier(520, 400), path: "dive" } as LevelObject]);
+    const [straight, dive] = g.enemies;
+    const ys = new Set<number>();
+    for (let f = 0; f < 450; f++) {
+      run(g, 1, 0);
+      if (straight!.state === "walk") ys.add(straight!.fy);
+    }
+    expect([...ys]).toEqual([300]);
+    const ship = g.camY + g.players[0]!.cy + 20;
+    expect(Math.abs(dive!.fy - ship)).toBeLessThan(Math.abs(400 - ship));
+  });
+
+  it("the gunship holds at the screen's right, bobs, fires and takes many hits", () => {
+    const g = sky([{ name: "boss", type: "boss", x: 600, y: 330, kind: "gunship" } as LevelObject]);
+    const e = g.enemies[0]!;
+    expect([e.boss, e.hp, e.path]).toEqual([true, GUNSHIP_HP, 3]);
+    const ys = new Set<number>();
+    let shots = 0;
+    for (let f = 0; f < 700; f++) {
+      run(g, 1, 0);
+      ys.add(e.fy);
+      shots = Math.max(shots, g.enemyShots.length);
+    }
+    // (the camera moves after the enemies: a pixel behind at most)
+    expect(Math.abs(e.x - (g.camX + 384 - GUNSHIP_HOLD))).toBeLessThanOrEqual(1);
+    expect(ys.size).toBeGreaterThan(20);
+    expect(shots).toBeGreaterThan(0);
+    // a bomb takes only some of its hits
+    run(g, 1, Input.B2);
+    expect(e.hp).toBe(GUNSHIP_HP - 5);
   });
 
   it("a wall hurts the ship, and a bomb takes down every enemy on the screen", () => {

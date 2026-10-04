@@ -42,7 +42,7 @@ describe("parts the engine plays (editor/support.ts)", () => {
     for (const i of ["flamethrower", "spread", "grenades", "health", "lattenza_page"]) expect(optionSupport("item", i).status, i).toBe("soon");
     expect(optionSupport("contents", "civilian").status).toBe("soon");
     expect(optionSupport("contents", "nothing").status).toBe("works");
-    expect(partSupport("boss:gunship").status).toBe("soon");
+    expect(partSupport("boss:armored_truck").status).toBe("soon");
     expect(partSupport("checkpoint:checkpoint").status).toBe("soon");
     expect(partSupport("tag:water").status).toBe("soon");
     expect(partSupport("enemy:shield_trooper")).toEqual({ status: "works", shared: true });

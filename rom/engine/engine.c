@@ -668,6 +668,16 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define POWER_REACH_X 14
 #define POWER_REACH_Y 12
 #define POWER_GAP 4
+#define DIVE_RANGE 160
+#define GUNSHIP_HOLD 48
+#define GUNSHIP_BOB 40
+#define GUNSHIP_FIRE 50
+#define SHIP_SHOT_SPEED 3
+#define SHIP_SHOT_X 12
+#define SHIP_SHOT_Y 6
+#define GUNSHIP_HIT_X 36
+#define GUNSHIP_HIT_Y 20
+#define BOMB_BOSS_HITS 5
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -736,6 +746,7 @@ static struct enemy {
 	int boss; /* the beat 'em up's brawler (phase 4): tougher, never grabbed, quicker to strike again */
 	int appear, stay, shown; /* the light gun: frames on the screen before it shows and before it leaves (0 never), and frames there */
 	s32 base_y;              /* the shooter: the feet y its wave flies around */
+	int path;                /* the shooter: 0 wave, 1 straight, 2 dive, 3 the gunship boss */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -1321,6 +1332,9 @@ static void game_reset(void)
 		en[i].stay = crosshair && !en[i].boss ? o->b : 0;
 		en[i].shown = 0;
 		en[i].base_y = o->y;
+		en[i].path = ship ? o->a : 0;
+		if (en[i].path == 3)
+			en[i].fire_wait = GUNSHIP_FIRE;
 		if (en[i].appear > 0)
 			en[i].state = EN_HIDDEN;
 		en[i].look = actor_look(D->enemy_looks, i);
@@ -1822,6 +1836,16 @@ static void aim(struct player *p)
 	}
 }
 
+/* the gunship hit by a point: its 64 x 32 body around its middle */
+static int gunship_at(s32 x, s32 y)
+{
+	int i;
+	for (i = 0; i < nen; i++)
+		if (en[i].path == 3 && en_alive(i) && iabs(en[i].x - x) <= 32 && iabs(en[i].fy - FLY_MID - y) <= 16)
+			return i;
+	return -1;
+}
+
 /* the shooter's player (engine/game.ts fly): the stick flies the ship on the
    screen, B1 held fires ahead, B2 drops a bomb; a wall it touches hurts it */
 static void fly(struct player *p)
@@ -1853,7 +1877,7 @@ static void fly(struct player *p)
 		for (i = 0; i < nen; i++) {
 			struct enemy *e = &en[i];
 			if ((e->state == EN_WALK || e->state == EN_HIT) && e->x >= cam_x && e->x <= cam_x + SCREEN_W)
-				en_damage(i, e->hp, p);
+				en_damage(i, e->boss && e->hp > BOMB_BOSS_HITS ? BOMB_BOSS_HITS : e->hp, p);
 		}
 	}
 	/* a power pickup it flies over */
@@ -1895,8 +1919,14 @@ static void fly(struct player *p)
 		b->x += 6;
 		b->y += b->vy;
 		ei = enemy_at(b->x, b->y, 10);
+		if (ei < 0)
+			ei = gunship_at(b->x, b->y);
 		if (ei >= 0) {
 			en_damage(ei, 1, p);
+			if (en[ei].boss) {
+				last_hit = ei;
+				last_hit_t = 120;
+			}
 			b->live = 0;
 		} else if (hit_cell(b->x >> 4, b->y >> 4, 1, p))
 			b->live = 0;
@@ -2373,10 +2403,15 @@ static void update_targets(void)
    are gone past the screen's left */
 static void update_fliers(void)
 {
-	int i, k;
+	int i, k, lead = -1;
+	if (last_hit_t)
+		last_hit_t--;
+	for (k = 0; k < nplayers && lead < 0; k++)
+		if (pl[k].active)
+			lead = k;
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
-		int ph;
+		int ph, hx, hy;
 		e->t++;
 		if (e->state == EN_HIT) {
 			if (e->t > 14) {
@@ -2390,24 +2425,82 @@ static void update_fliers(void)
 		}
 		if (e->state != EN_WALK && e->state != EN_HIT)
 			continue;
-		if (e->x > cam_x + SCREEN_W + 16)
+		if (e->x > cam_x + SCREEN_W + (e->path == 3 ? 48 : 16))
 			continue;
-		e->x -= FLY_SPEED;
 		e->shown++;
-		ph = (e->shown + i * 32) & 127;
-		e->fy = e->base_y + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
 		e->flip = 1;
-		if (e->x < cam_x - 32) {
-			e->state = EN_OFF;
-			continue;
+		if (e->path == 3) {
+			/* the gunship: in until it holds near the screen's right, bobbing, firing left */
+			if (e->x > cam_x + SCREEN_W - GUNSHIP_HOLD)
+				e->x -= FLY_SPEED;
+			else
+				e->x = cam_x + SCREEN_W - GUNSHIP_HOLD;
+			ph = e->shown & 255;
+			e->fy = e->base_y + (((ph < 128 ? ph : 256 - ph) * 5) >> 3) - GUNSHIP_BOB;
+			if (e->fire_wait)
+				e->fire_wait--;
+			else {
+				int live = 0;
+				for (k = 0; k < MAX_EN_SHOTS; k++)
+					live += en_shots[k].live != 0;
+				if (live < MAX_EN_SHOTS) {
+					for (k = 0; en_shots[k].live; k++)
+						;
+					en_shots[k].live = 1;
+					en_shots[k].x = (s16)(e->x - 32);
+					en_shots[k].y = (s16)(e->fy - FLY_MID);
+					en_shots[k].dir = -1;
+					en_shots[k].vy = 0;
+				}
+				e->fire_wait = GUNSHIP_FIRE;
+				sfx(SFX_SHOT, e->x);
+			}
+		} else {
+			e->x -= FLY_SPEED;
+			if (e->path == 1)
+				e->fy = e->base_y;
+			else if (e->path == 2) {
+				/* a dive: toward the first ship's height once it is near */
+				if (lead >= 0 && iabs(cam_x + pl[lead].cx - e->x) <= DIVE_RANGE) {
+					s32 ty = cam_y + pl[lead].cy + FLY_MID;
+					e->base_y += (ty > e->base_y) - (ty < e->base_y);
+				}
+				e->fy = e->base_y;
+			} else {
+				ph = (e->shown + i * 32) & 127;
+				e->fy = e->base_y + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+			}
+			if (e->x < cam_x - 32) {
+				e->state = EN_OFF;
+				continue;
+			}
 		}
+		hx = e->path == 3 ? GUNSHIP_HIT_X : SHIP_HIT_X;
+		hy = e->path == 3 ? GUNSHIP_HIT_Y : SHIP_HIT_Y;
 		for (k = 0; k < nplayers; k++) {
 			struct player *p = &pl[k];
 			if (!p->active || p->hurt)
 				continue;
-			if (iabs(cam_x + p->cx - e->x) <= SHIP_HIT_X && iabs(cam_y + p->cy - (e->fy - FLY_MID)) <= SHIP_HIT_Y)
+			if (iabs(cam_x + p->cx - e->x) <= hx && iabs(cam_y + p->cy - (e->fy - FLY_MID)) <= hy)
 				hurt(p, 0);
 		}
+	}
+	/* the gunship's shots, against the ships */
+	for (i = 0; i < MAX_EN_SHOTS; i++) {
+		struct bullet *s = &en_shots[i];
+		if (!s->live)
+			continue;
+		s->x += s->dir * SHIP_SHOT_SPEED;
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (p->active && !p->hurt && iabs(cam_x + p->cx - s->x) <= SHIP_SHOT_X && iabs(cam_y + p->cy - s->y) <= SHIP_SHOT_Y) {
+				hurt(p, 0);
+				s->live = 0;
+				break;
+			}
+		}
+		if (s->live && (is_solid(cell_at(s->x, s->y)) || s->x < cam_x - 32 || s->x > cam_x + SCREEN_W + 32))
+			s->live = 0;
 	}
 }
 
@@ -2834,6 +2927,13 @@ static void draw_enemy(int i)
 	if (ship) {
 		if (e->state == EN_DOWN && (e->t > 30 || ((e->t >> 2) & 1)))
 			return;
+		/* the gunship: the drone at twice the size, eight tiles */
+		if (e->path == 3) {
+			int t;
+			for (t = 0; t < 8; t++)
+				put_sprite(sx - 32 + (t & 3) * 16, sy - FLY_MID - 16 + (t >> 2) * 16, (u16)(TILE_GUNSHIP + t), PAL_CROSS);
+			return;
+		}
 		put_sprite(sx - 16, sy - FLY_MID - 8, TILE_DRONE, (u16)(PAL_CROSS | (1 << 8)));
 		return;
 	}
@@ -3176,8 +3276,8 @@ static void hud(void)
 		print(37, 26, "CREDITS", INK_WHITE);
 		print_num(45, 26, (u32)credits, 1, INK_WHITE);
 	}
-	/* the beat 'em up and the light gun: the health of the enemy last hit, for two seconds */
-	if (depth || crosshair) {
+	/* the beat 'em up, the light gun and the shooter: the health of the enemy last hit, for two seconds */
+	if (depth || crosshair || ship) {
 		int hp = last_hit >= 0 && last_hit_t ? en[last_hit].hp : 0;
 		int boss = hp > 0 && en[last_hit].boss;
 		/* a boss's in BOSS_HUD_STEP hits a mark, in the accent ink */

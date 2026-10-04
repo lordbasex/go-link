@@ -13,7 +13,7 @@ import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, 
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
-import { BOSS_HP, difficultyOf, rulesWith, secondsToFrames } from "../engine/rules";
+import { BOSS_HP, GUNSHIP_HP, difficultyOf, flyPathOf, rulesWith, secondsToFrames } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -416,6 +416,7 @@ export function packGame(
   let exit: [number, number, number, number] = [0, 0, 0, 0];
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const crosshairRule = rulesWith(project.settings.rules).crosshair;
+  const shipRule = rulesWith(project.settings.rules).ship;
   for (const o of objects) {
     switch (o.type) {
       case "player_start": {
@@ -431,6 +432,8 @@ export function packGame(
         const patrol = num(o.patrol, 6 * CELL);
         // the light gun's targets carry when they show and leave (frames) instead of a patrol
         if (crosshairRule) enemies.push([o.x, o.y, secondsToFrames(o.appear), secondsToFrames(o.stay), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
+        // the shooter's enemies carry their path (0 wave, 1 straight, 2 dive)
+        else if (shipRule) enemies.push([o.x, o.y, flyPathOf(o.path), 0, num(o.hp, 0), -1]);
         else enemies.push([o.x, o.y, Math.round(o.x - patrol / 2), Math.round(o.x + patrol / 2), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         break;
       }
@@ -477,6 +480,10 @@ export function packGame(
         if (o.kind === "brawler") {
           enemyKinds.push("brawler");
           enemies.push([o.x, o.y, o.x - 3 * CELL, o.x + 3 * CELL, num(o.hp, BOSS_HP), o.facing === "right" ? 2 : -2]);
+        } else if (o.kind === "gunship" && shipRule) {
+          // the shooter's gunship: a boss row whose path is 3
+          enemyKinds.push("gunship");
+          enemies.push([o.x, o.y, 3, 0, num(o.hp, GUNSHIP_HP), -2]);
         } else note("boss");
         break;
     }
@@ -492,7 +499,7 @@ export function packGame(
   while (slots.length < 4) slots.push(slots.length);
   const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8), pickups: pickupLooks.slice(0, 64) });
   // enemy kinds with no enemy character of their own are the engine's android (T-30)
-  const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper" && k !== "brawler");
+  const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper" && k !== "brawler" && k !== "gunship");
   if (android.length) note("enemyArt", { kinds: android.join(", ") });
 
   const rules = rulesWith(project.settings.rules);

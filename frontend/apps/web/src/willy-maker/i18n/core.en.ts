@@ -288,6 +288,8 @@ export const coreEn = {
     appear: "Appears after (s)",
     stay: "Stays (s)",
     timingHelp: "The light gun: seconds on the screen before the target shows, and before it leaves unshot (0: at once, and until it is down).",
+    path: "Path",
+    paths: { wave: "Wave", straight: "Straight", dive: "Dive at the ship" },
     size: "Size",
     hp: "Hits",
     breakable: "Breakable",

@@ -288,6 +288,8 @@ export const coreEs: CoreMessages = {
     appear: "Aparece a los (s)",
     stay: "Se queda (s)",
     timingHelp: "Pistola de luz: segundos en pantalla antes de que el blanco aparezca, y antes de que se vaya si no le disparaste (0: enseguida, y hasta que caiga).",
+    path: "Recorrido",
+    paths: { wave: "Ondulado", straight: "Recto", dive: "En picada hacia la nave" },
     size: "Tamaño",
     hp: "Golpes",
     breakable: "Rompible",

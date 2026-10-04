@@ -740,9 +740,12 @@ export function addArt(gfx, defs, genDir, opts = {}) {
     for (let half = 0; half < 2; half++)
       gfx.tile16(code + 13 + half, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 4, 5, 0, 6][dronePen(half * 16 + x, y)])));
     gfx.tile16(code + 15, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 3, 5, 0][powerPen(x, y)])));
-    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define TILE_DRONE ${hex4(code + 13)} /* a 2 x 1 block */`, `#define TILE_POWER ${hex4(code + 15)}`, `#define PAL_CROSS ${objPalettes.length}`);
+    // the gunship: the drone doubled, 4 x 2 tiles (hull pink, dome yellow, lights white)
+    for (let t = 0; t < 8; t++)
+      gfx.tile16(code + 16 + t, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 4, 6, 0, 5][dronePen(((t & 3) * 16 + x) >> 1, ((t >> 2) * 16 + y) >> 1)])));
+    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define TILE_DRONE ${hex4(code + 13)} /* a 2 x 1 block */`, `#define TILE_POWER ${hex4(code + 15)}`, `#define TILE_GUNSHIP ${hex4(code + 16)} /* 4 x 2 tiles, left to right, top row first */`, `#define PAL_CROSS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
-    code += 16;
+    code += 24;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

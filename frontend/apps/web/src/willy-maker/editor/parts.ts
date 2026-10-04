@@ -5,7 +5,7 @@
 // types and properties follow docs/rom/art-spec.md section 4.
 
 import type { ObjectType, Tag } from "../model";
-import { BOSS_HP } from "../engine/rules";
+import { BOSS_HP, GUNSHIP_HP } from "../engine/rules";
 
 export type PartGroup = "terrain" | "objects" | "enemies" | "civilians" | "helpers" | "tiles";
 
@@ -43,7 +43,7 @@ export const PARTS: Part[] = [
   obj("objects", "platform", "platform", { w: 48, axis: "x", range: 96, speed: 1 }),
   ...ENEMY_KINDS.map((kind) => obj("enemies", "enemy", kind, { kind, facing: "left", patrol: 96 })),
   // the beat 'em up's brawler is a tough enemy (engine/game.ts); the others hold an arena
-  ...BOSS_KINDS.map((kind) => obj("enemies", "boss", kind, kind === "brawler" ? { kind, facing: "left", hp: BOSS_HP } : { kind, w: 384, h: 224 })),
+  ...BOSS_KINDS.map((kind) => obj("enemies", "boss", kind, kind === "brawler" ? { kind, facing: "left", hp: BOSS_HP } : kind === "gunship" ? { kind, hp: GUNSHIP_HP } : { kind, w: 384, h: 224 })),
   ...CIVILIAN_KINDS.map((kind) => obj("civilians", "civilian", kind, { kind, trapped_in: "" })),
   ...[1, 2, 3, 4].map((player) => obj("helpers", "player_start", `p${player}`, { player })),
   obj("helpers", "checkpoint", "checkpoint"),

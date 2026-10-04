@@ -288,6 +288,8 @@ export const corePt: CoreMessages = {
     appear: "Aparece após (s)",
     stay: "Fica (s)",
     timingHelp: "Pistola de luz: segundos na tela antes de o alvo aparecer, e antes de ir embora sem levar tiro (0: logo, e até cair).",
+    path: "Percurso",
+    paths: { wave: "Ondulado", straight: "Reto", dive: "Mergulho na nave" },
     size: "Tamanho",
     hp: "Golpes",
     breakable: "Quebrável",

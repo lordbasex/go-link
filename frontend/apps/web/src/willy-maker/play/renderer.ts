@@ -452,7 +452,9 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     // the shooter's enemies are drones (engine/shipArt.ts); a downed one blinks out
     if (game.rules.ship) {
       if (e.state === "down" && (e.t > 30 || (e.t >> 2) & 1)) return;
-      drawPens(ctx, e.x - (SHIP_W >> 1), e.fy - FLY_MID - (SHIP_H >> 1), SHIP_W, SHIP_H, dronePen, ["", "#ee6677", "#ffffff", "#000000", "#ffcc22"]);
+      // the gunship is the drone at twice the size, in its own colors
+      if (e.path === 3) drawPens(ctx, e.x - SHIP_W, e.fy - FLY_MID - SHIP_H, SHIP_W, SHIP_H, dronePen, ["", "#ee6677", "#ffcc22", "#000000", "#ffffff"], 2);
+      else drawPens(ctx, e.x - (SHIP_W >> 1), e.fy - FLY_MID - (SHIP_H >> 1), SHIP_W, SHIP_H, dronePen, ["", "#ee6677", "#ffffff", "#000000", "#ffcc22"]);
       return;
     }
     const en = e.boss ? (sprites?.boss ?? sprites?.enemy) : sprites?.enemy;
@@ -719,13 +721,13 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, player: n
   drawPens(ctx, x, y, SHIP_W, SHIP_H, shipPen, ["", CROSS_COLORS[player] ?? "#ffffff", "#ffffff", "#000000", "#ffcc22"]);
 }
 
-/** A shape of engine/shipArt.ts, pen by pen in the given colors. */
-function drawPens(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pen: (px: number, py: number) => number, colors: string[]): void {
+/** A shape of engine/shipArt.ts, pen by pen in the given colors (scale 2: each pixel doubled). */
+function drawPens(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pen: (px: number, py: number) => number, colors: string[], scale = 1): void {
   for (let py = 0; py < h; py++)
     for (let px = 0; px < w; px++) {
       const c = pen(px, py);
       if (!c) continue;
       ctx.fillStyle = colors[c] ?? "#ffffff";
-      ctx.fillRect(x + px, y + py, 1, 1);
+      ctx.fillRect(x + px * scale, y + py * scale, scale, scale);
     }
 }

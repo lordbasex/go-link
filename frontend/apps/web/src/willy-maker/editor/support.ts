@@ -56,7 +56,7 @@ export const SUPPORT: Record<string, Support> = {
   "crate:object": works,
   ...Object.fromEntries(PICKUP_ITEMS.map((i) => [`pickup:${i}`, i === "bazooka" || i === "coin" || i === "spring" || i === "pipe" || i === "knife" || i === "power" ? works : i === "lattenza_page" ? soon("page") : soon(WEAPON_SOON[i]!)])),
   ...Object.fromEntries(ENEMY_KINDS.map((k) => [`enemy:${k}`, { status: "works", shared: true } satisfies Support])),
-  ...Object.fromEntries(BOSS_KINDS.map((k) => [`boss:${k}`, k === "brawler" ? works : soon("boss")])),
+  ...Object.fromEntries(BOSS_KINDS.map((k) => [`boss:${k}`, k === "brawler" || k === "gunship" ? works : soon("boss")])),
   ...Object.fromEntries(CIVILIAN_KINDS.map((k) => [`civilian:${k}`, works])),
   "player_start:p1": works,
   "player_start:p2": works,

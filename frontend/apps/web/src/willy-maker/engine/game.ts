@@ -88,6 +88,18 @@ import {
   POWER_REACH_X,
   POWER_REACH_Y,
   POWER_GAP,
+  flyPathOf,
+  DIVE_RANGE,
+  GUNSHIP_HP,
+  GUNSHIP_HOLD,
+  GUNSHIP_BOB,
+  GUNSHIP_FIRE,
+  SHIP_SHOT_SPEED,
+  SHIP_SHOT_X,
+  SHIP_SHOT_Y,
+  GUNSHIP_HIT_X,
+  GUNSHIP_HIT_Y,
+  BOMB_BOSS_HITS,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -214,8 +226,9 @@ export interface Enemy {
   appear: number;
   stay: number;
   shown: number;
-  /** The horizontal shooter: the feet y its wave flies around. */
+  /** The horizontal shooter: the feet y its wave flies around, and its path (0 wave, 1 straight, 2 dive, 3 the gunship boss). */
   baseY: number;
+  path: number;
 }
 
 export interface Civilian {
@@ -466,6 +479,7 @@ export class Game {
             stay: this.rules.crosshair ? secondsToFrames(o.stay) : 0,
             shown: 0,
             baseY: o.y,
+            path: this.rules.ship ? flyPathOf(o.path) : 0,
           });
           if (this.enemies[this.enemies.length - 1]!.appear) this.enemies[this.enemies.length - 1]!.state = "hidden";
           break;
@@ -493,6 +507,31 @@ export class Game {
               stay: 0,
               shown: 0,
               baseY: o.y,
+              path: 0,
+            });
+          // the horizontal shooter's boss
+          else if (o.kind === "gunship" && this.rules.ship)
+            this.enemies.push({
+              name: o.name,
+              kind: "gunship",
+              x: o.x,
+              fy: o.y,
+              min: o.x,
+              max: o.x,
+              state: "walk",
+              hp: num(o.hp, GUNSHIP_HP),
+              dir: -1,
+              flip: true,
+              t: this.enemies.length * 11,
+              fireWait: GUNSHIP_FIRE,
+              maxHp: num(o.hp, GUNSHIP_HP),
+              lane: 0,
+              boss: true,
+              appear: 0,
+              stay: 0,
+              shown: 0,
+              baseY: o.y,
+              path: 3,
             });
           break;
         case "civilian":
@@ -1151,7 +1190,7 @@ export class Game {
     if (this.pressed(p, Input.B2) && p.bombs > 0) {
       p.bombs--;
       this.events.push({ kind: "explosion", x: this.camX + (SCREEN_W >> 1) });
-      for (const e of this.enemies) if ((e.state === "walk" || e.state === "hit") && e.x >= this.camX && e.x <= this.camX + SCREEN_W) this.damage(e, e.hp, p);
+      for (const e of this.enemies) if ((e.state === "walk" || e.state === "hit") && e.x >= this.camX && e.x <= this.camX + SCREEN_W) this.damage(e, e.boss ? Math.min(e.hp, BOMB_BOSS_HITS) : e.hp, p);
     }
     // a power pickup it flies over
     for (const k of this.pickups)
@@ -1171,9 +1210,13 @@ export class Game {
     p.shots = p.shots.filter((b) => {
       b.x += SHOT_SPEED;
       b.y += b.vy ?? 0;
-      const e = this.enemyAt(b.x, b.y, 10);
+      const e = this.enemyAt(b.x, b.y, 10) ?? this.gunshipAt(b.x, b.y);
       if (e) {
         this.damage(e, 1, p);
+        if (e.boss) {
+          this.lastHit = e;
+          this.lastHitT = 120;
+        }
         return false;
       }
       if (this.hitCell(Math.floor(b.x / CELL), Math.floor(b.y / CELL), 1, p)) return false;
@@ -1181,8 +1224,14 @@ export class Game {
     });
   }
 
-  /** The horizontal shooter's enemies: still until the screen reaches them, then they fly left on a wave, hurting a ship they touch, and are gone past the screen's left. */
+  /** The gunship hit by a point: its 64 x 32 body around its middle (FLY_MID px over its feet). */
+  private gunshipAt(x: number, y: number): Enemy | undefined {
+    return this.enemies.find((e) => e.path === 3 && this.alive(e) && Math.abs(e.x - x) <= 32 && Math.abs(e.fy - FLY_MID - y) <= 16);
+  }
+
+  /** The horizontal shooter's enemies: still until the screen reaches them, then they fly left on their path, hurting a ship they touch, and are gone past the screen's left; the gunship holds at the right, bobs and fires. */
   private updateFliers(): void {
+    if (this.lastHitT) this.lastHitT--;
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
       e.t++;
@@ -1196,21 +1245,55 @@ export class Game {
         continue;
       }
       if (e.state !== "walk" && e.state !== "hit") continue;
-      if (e.x > this.camX + SCREEN_W + 16) continue;
-      e.x -= FLY_SPEED;
+      if (e.x > this.camX + SCREEN_W + (e.path === 3 ? 48 : 16)) continue;
       e.shown++;
-      const ph = (e.shown + i * 32) & 127;
-      e.fy = e.baseY + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
       e.flip = true;
-      if (e.x < this.camX - 32) {
-        e.state = "off";
-        continue;
+      const lead = this.players.find((q) => q.active);
+      if (e.path === 3) {
+        // the gunship: in until it holds near the screen's right, bobbing, firing left
+        if (e.x > this.camX + SCREEN_W - GUNSHIP_HOLD) e.x -= FLY_SPEED;
+        else e.x = this.camX + SCREEN_W - GUNSHIP_HOLD;
+        const ph = e.shown & 255;
+        e.fy = e.baseY + (((ph < 128 ? ph : 256 - ph) * 5) >> 3) - GUNSHIP_BOB;
+        if (e.fireWait) e.fireWait--;
+        else {
+          if (this.enemyShots.length < 8) this.enemyShots.push({ x: e.x - 32, y: e.fy - FLY_MID, dir: -1 });
+          e.fireWait = GUNSHIP_FIRE;
+          this.events.push({ kind: "enemy_shot", x: e.x });
+        }
+      } else {
+        e.x -= FLY_SPEED;
+        if (e.path === 1) e.fy = e.baseY;
+        else if (e.path === 2) {
+          // a dive: toward the first ship's height once it is near
+          if (lead && Math.abs(this.camX + lead.cx - e.x) <= DIVE_RANGE) e.baseY += Math.sign(this.camY + lead.cy + FLY_MID - e.baseY);
+          e.fy = e.baseY;
+        } else {
+          const ph = (e.shown + i * 32) & 127;
+          e.fy = e.baseY + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+        }
+        if (e.x < this.camX - 32) {
+          e.state = "off";
+          continue;
+        }
       }
+      const hx = e.path === 3 ? GUNSHIP_HIT_X : SHIP_HIT_X;
+      const hy = e.path === 3 ? GUNSHIP_HIT_Y : SHIP_HIT_Y;
       for (const p of this.players) {
         if (!p.active || p.invulnerable) continue;
-        if (Math.abs(this.camX + p.cx - e.x) <= SHIP_HIT_X && Math.abs(this.camY + p.cy - (e.fy - FLY_MID)) <= SHIP_HIT_Y) this.hurt(p);
+        if (Math.abs(this.camX + p.cx - e.x) <= hx && Math.abs(this.camY + p.cy - (e.fy - FLY_MID)) <= hy) this.hurt(p);
       }
     }
+    // the gunship's shots, against the ships
+    this.enemyShots = this.enemyShots.filter((s) => {
+      s.x += s.dir * SHIP_SHOT_SPEED;
+      for (const p of this.players)
+        if (p.active && !p.invulnerable && Math.abs(this.camX + p.cx - s.x) <= SHIP_SHOT_X && Math.abs(this.camY + p.cy - s.y) <= SHIP_SHOT_Y) {
+          this.hurt(p);
+          return false;
+        }
+      return !this.isSolid(this.cellAt(s.x, s.y)) && s.x >= this.camX - 32 && s.x <= this.camX + SCREEN_W + 32;
+    });
   }
 
   private updatePlayer(p: Player): void {

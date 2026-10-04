@@ -4,15 +4,15 @@
  "dataAddr": 1048576,
  "program": {
   "offset": 0,
-  "size": 58356
+  "size": 59760
  },
  "sprites": {
-  "offset": 58356,
-  "size": 65024,
+  "offset": 59760,
+  "size": 66048,
   "code": 4096
  },
  "z80": {
-  "offset": 123380,
+  "offset": 125808,
   "size": 667,
   "codeEnd": 667,
   "data": 16384
@@ -40,7 +40,7 @@
   "recruitOffset": 4,
   "recruits": 3
  },
- "sha256": "47e2aa51fdf0320c32ab38d54ae3ceb89a7377bd0cb83a0a760fa4cd0361b306",
+ "sha256": "cf65fa9a53aa2eae13d3c4d4df3d4ac270fb1e15483550fdb8c567b63e38e00b",
  "lab_state": {
   "address": 16711680,
   "size": 200,
@@ -119,921 +119,921 @@
   },
   "game_reset": {
    "address": 4504,
-   "size": 2078,
+   "size": 2174,
    "type": "t"
   },
   "blink_line": {
-   "address": 6582,
+   "address": 6678,
    "size": 130,
    "type": "t"
   },
   "enemy_at": {
-   "address": 6712,
+   "address": 6808,
    "size": 116,
    "type": "t"
   },
   "enemies_left": {
-   "address": 6828,
-   "size": 98,
+   "address": 6924,
+   "size": 94,
    "type": "t"
   },
   "draw_screen": {
-   "address": 6926,
+   "address": 7018,
    "size": 154,
    "type": "t"
   },
   "active_lock": {
-   "address": 7080,
+   "address": 7172,
    "size": 278,
    "type": "t"
   },
   "update_camera": {
-   "address": 7358,
+   "address": 7450,
    "size": 1116,
    "type": "t"
   },
   "draw_platforms": {
-   "address": 8474,
+   "address": 8566,
    "size": 322,
    "type": "t"
   },
   "lab_update": {
-   "address": 8796,
+   "address": 8888,
    "size": 1116,
    "type": "t"
   },
   "print.constprop.0": {
-   "address": 9912,
+   "address": 10004,
    "size": 164,
    "type": "t"
   },
   "soon_update": {
-   "address": 10076,
+   "address": 10168,
    "size": 366,
    "type": "t"
   },
   "read_inputs": {
-   "address": 10442,
+   "address": 10534,
    "size": 512,
    "type": "t"
   },
   "draw_frame": {
-   "address": 10954,
+   "address": 11046,
    "size": 260,
    "type": "t"
   },
   "draw_pickups": {
-   "address": 11214,
+   "address": 11306,
    "size": 486,
    "type": "t"
   },
   "draw_civilian": {
-   "address": 11700,
+   "address": 11792,
    "size": 842,
    "type": "t"
   },
   "en_damage": {
-   "address": 12542,
-   "size": 374,
+   "address": 12634,
+   "size": 370,
    "type": "t"
   },
   "draw_enemy": {
-   "address": 12916,
-   "size": 1338,
+   "address": 13004,
+   "size": 1536,
    "type": "t"
   },
   "body_blocked_h": {
-   "address": 14254,
+   "address": 14540,
    "size": 256,
    "type": "t"
   },
   "cell_support.part.0": {
-   "address": 14510,
+   "address": 14796,
    "size": 334,
    "type": "t"
   },
   "ground_below_b": {
-   "address": 14844,
+   "address": 15130,
    "size": 140,
    "type": "t"
   },
   "crate_break": {
-   "address": 14984,
+   "address": 15270,
    "size": 804,
    "type": "t"
   },
   "hit_cell": {
-   "address": 15788,
+   "address": 16074,
    "size": 470,
    "type": "t"
   },
   "strike": {
-   "address": 16258,
+   "address": 16544,
    "size": 440,
    "type": "t"
   },
   "place_near": {
-   "address": 16698,
+   "address": 16984,
    "size": 316,
    "type": "t"
   },
   "player_join": {
-   "address": 17014,
+   "address": 17300,
    "size": 1230,
    "type": "t"
   },
   "respawn_near_camera": {
-   "address": 18244,
+   "address": 18530,
    "size": 806,
    "type": "t"
   },
   "hurt": {
-   "address": 19050,
+   "address": 19336,
    "size": 220,
    "type": "t"
   },
   "update_enemies_in_depth": {
-   "address": 19270,
+   "address": 19556,
    "size": 1030,
    "type": "t"
   },
   "update_targets": {
-   "address": 20300,
+   "address": 20586,
    "size": 864,
    "type": "t"
   },
-  "update_fliers": {
-   "address": 21164,
-   "size": 424,
-   "type": "t"
-  },
   "update_enemies.part.0": {
-   "address": 21588,
+   "address": 21450,
    "size": 1628,
    "type": "t"
   },
+  "update_fliers": {
+   "address": 23078,
+   "size": 1492,
+   "type": "t"
+  },
   "draw_player": {
-   "address": 23216,
+   "address": 24570,
    "size": 2452,
    "type": "t"
   },
   "draw_world": {
-   "address": 25668,
+   "address": 27022,
    "size": 1338,
    "type": "t"
   },
   "update_player": {
-   "address": 27006,
-   "size": 14150,
+   "address": 28360,
+   "size": 14126,
    "type": "t"
   },
   "memset": {
-   "address": 41156,
+   "address": 42486,
    "size": 32,
    "type": "T"
   },
   "memcpy": {
-   "address": 41188,
+   "address": 42518,
    "size": 30,
    "type": "T"
   },
   "main": {
-   "address": 41218,
-   "size": 11678,
+   "address": 42548,
+   "size": 11750,
    "type": "T"
   },
   "__mulsi3": {
-   "address": 52896,
+   "address": 54300,
    "size": 0,
    "type": "T"
   },
   "__mulsi3_internal": {
-   "address": 52896,
+   "address": 54300,
    "size": 0,
    "type": "T"
   },
   "__udivsi3": {
-   "address": 52932,
+   "address": 54336,
    "size": 0,
    "type": "T"
   },
   "__udivsi3_internal": {
-   "address": 52932,
+   "address": 54336,
    "size": 0,
    "type": "T"
   },
   "L3": {
-   "address": 53066,
+   "address": 54470,
    "size": 0,
    "type": "t"
   },
   "L4": {
-   "address": 52974,
+   "address": 54378,
    "size": 0,
    "type": "t"
   },
   "L5": {
-   "address": 53018,
+   "address": 54422,
    "size": 0,
    "type": "t"
   },
   "L6": {
-   "address": 53020,
+   "address": 54424,
    "size": 0,
    "type": "t"
   },
   "__divsi3": {
-   "address": 53024,
+   "address": 54428,
    "size": 0,
    "type": "T"
   },
   "__divsi3_internal": {
-   "address": 53024,
+   "address": 54428,
    "size": 0,
    "type": "T"
   },
   "L1": {
-   "address": 53038,
+   "address": 54442,
    "size": 0,
    "type": "t"
   },
   "L2": {
-   "address": 53048,
+   "address": 54452,
    "size": 0,
    "type": "t"
   },
   "__umodsi3": {
-   "address": 53072,
+   "address": 54476,
    "size": 0,
    "type": "T"
   },
   "__modsi3": {
-   "address": 53120,
+   "address": 54524,
    "size": 0,
    "type": "T"
   },
   "beside": {
-   "address": 53276,
+   "address": 54680,
    "size": 5,
    "type": "t"
   },
   "around": {
-   "address": 53281,
+   "address": 54685,
    "size": 5,
    "type": "t"
   },
   "shot_speed_of": {
-   "address": 53286,
+   "address": 54690,
    "size": 4,
    "type": "t"
   },
   "fire_every_of": {
-   "address": 53290,
+   "address": 54694,
    "size": 4,
    "type": "t"
   },
   "willy_look": {
-   "address": 53294,
+   "address": 54698,
    "size": 90,
    "type": "t"
   },
   "obj_palettes": {
-   "address": 53384,
+   "address": 54788,
    "size": 960,
    "type": "T"
   },
   "anim_robot_defeated": {
-   "address": 54344,
+   "address": 55748,
    "size": 8,
    "type": "T"
   },
   "frames_robot_defeated": {
-   "address": 54352,
+   "address": 55756,
    "size": 50,
    "type": "t"
   },
   "tiles_robot_defeated_16": {
-   "address": 54402,
+   "address": 55806,
    "size": 30,
    "type": "t"
   },
   "tiles_robot_defeated_15": {
-   "address": 54432,
+   "address": 55836,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_defeated_14": {
-   "address": 54468,
+   "address": 55872,
    "size": 54,
    "type": "t"
   },
   "tiles_robot_defeated_13": {
-   "address": 54522,
+   "address": 55926,
    "size": 30,
    "type": "t"
   },
   "tiles_robot_defeated_12": {
-   "address": 54552,
+   "address": 55956,
    "size": 30,
    "type": "t"
   },
   "anim_robot_hit": {
-   "address": 54582,
+   "address": 55986,
    "size": 8,
    "type": "T"
   },
   "frames_robot_hit": {
-   "address": 54590,
+   "address": 55994,
    "size": 60,
    "type": "t"
   },
   "tiles_robot_hit_11": {
-   "address": 54650,
+   "address": 56054,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_hit_10": {
-   "address": 54686,
+   "address": 56090,
    "size": 24,
    "type": "t"
   },
   "tiles_robot_hit_9": {
-   "address": 54710,
+   "address": 56114,
    "size": 30,
    "type": "t"
   },
   "tiles_robot_hit_8": {
-   "address": 54740,
+   "address": 56144,
    "size": 24,
    "type": "t"
   },
   "tiles_robot_hit_7": {
-   "address": 54764,
+   "address": 56168,
    "size": 30,
    "type": "t"
   },
   "tiles_robot_hit_6": {
-   "address": 54794,
+   "address": 56198,
    "size": 36,
    "type": "t"
   },
   "anim_robot_walk": {
-   "address": 54830,
+   "address": 56234,
    "size": 8,
    "type": "T"
   },
   "frames_robot_walk": {
-   "address": 54838,
+   "address": 56242,
    "size": 50,
    "type": "t"
   },
   "tiles_robot_walk_5": {
-   "address": 54888,
+   "address": 56292,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_walk_4": {
-   "address": 54924,
+   "address": 56328,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_walk_3": {
-   "address": 54960,
+   "address": 56364,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_walk_2": {
-   "address": 54996,
+   "address": 56400,
    "size": 36,
    "type": "t"
   },
   "tiles_robot_walk_1": {
-   "address": 55032,
+   "address": 56436,
    "size": 36,
    "type": "t"
   },
   "anim_child_happy": {
-   "address": 55068,
+   "address": 56472,
    "size": 8,
    "type": "T"
   },
   "frames_child_happy": {
-   "address": 55076,
+   "address": 56480,
    "size": 30,
    "type": "t"
   },
   "tiles_child_happy_6": {
-   "address": 55106,
+   "address": 56510,
    "size": 24,
    "type": "t"
   },
   "tiles_child_happy_5": {
-   "address": 55130,
+   "address": 56534,
    "size": 24,
    "type": "t"
   },
   "tiles_child_happy_4": {
-   "address": 55154,
+   "address": 56558,
    "size": 24,
    "type": "t"
   },
   "anim_child_worried": {
-   "address": 55178,
+   "address": 56582,
    "size": 8,
    "type": "T"
   },
   "frames_child_worried": {
-   "address": 55186,
+   "address": 56590,
    "size": 30,
    "type": "t"
   },
   "tiles_child_worried_3": {
-   "address": 55216,
+   "address": 56620,
    "size": 18,
    "type": "t"
   },
   "tiles_child_worried_2": {
-   "address": 55234,
+   "address": 56638,
    "size": 24,
    "type": "t"
   },
   "tiles_child_worried_1": {
-   "address": 55258,
+   "address": 56662,
    "size": 12,
    "type": "t"
   },
   "anim_woman_happy": {
-   "address": 55270,
+   "address": 56674,
    "size": 8,
    "type": "T"
   },
   "frames_woman_happy": {
-   "address": 55278,
+   "address": 56682,
    "size": 30,
    "type": "t"
   },
   "tiles_woman_happy_6": {
-   "address": 55308,
+   "address": 56712,
    "size": 24,
    "type": "t"
   },
   "tiles_woman_happy_5": {
-   "address": 55332,
+   "address": 56736,
    "size": 30,
    "type": "t"
   },
   "tiles_woman_happy_4": {
-   "address": 55362,
+   "address": 56766,
    "size": 36,
    "type": "t"
   },
   "anim_woman_worried": {
-   "address": 55398,
+   "address": 56802,
    "size": 8,
    "type": "T"
   },
   "frames_woman_worried": {
-   "address": 55406,
+   "address": 56810,
    "size": 30,
    "type": "t"
   },
   "tiles_woman_worried_3": {
-   "address": 55436,
+   "address": 56840,
    "size": 24,
    "type": "t"
   },
   "tiles_woman_worried_2": {
-   "address": 55460,
+   "address": 56864,
    "size": 30,
    "type": "t"
   },
   "tiles_woman_worried_1": {
-   "address": 55490,
+   "address": 56894,
    "size": 36,
    "type": "t"
   },
   "anim_willy_punch": {
-   "address": 55526,
+   "address": 56930,
    "size": 8,
    "type": "T"
   },
   "frames_willy_punch": {
-   "address": 55534,
+   "address": 56938,
    "size": 40,
    "type": "t"
   },
   "tiles_willy_punch_58": {
-   "address": 55574,
+   "address": 56978,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_punch_57": {
-   "address": 55610,
+   "address": 57014,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_punch_56": {
-   "address": 55646,
+   "address": 57050,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_punch_55": {
-   "address": 55682,
+   "address": 57086,
    "size": 36,
    "type": "t"
   },
   "anim_willy_thumbs_up": {
-   "address": 55718,
+   "address": 57122,
    "size": 8,
    "type": "T"
   },
   "frames_willy_thumbs_up": {
-   "address": 55726,
+   "address": 57130,
    "size": 70,
    "type": "t"
   },
   "tiles_willy_thumbs_up_54": {
-   "address": 55796,
+   "address": 57200,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_53": {
-   "address": 55832,
+   "address": 57236,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_52": {
-   "address": 55868,
+   "address": 57272,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_51": {
-   "address": 55904,
+   "address": 57308,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_50": {
-   "address": 55940,
+   "address": 57344,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_49": {
-   "address": 55976,
+   "address": 57380,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_thumbs_up_48": {
-   "address": 56012,
+   "address": 57416,
    "size": 36,
    "type": "t"
   },
   "anim_willy_yawn": {
-   "address": 56048,
+   "address": 57452,
    "size": 8,
    "type": "T"
   },
   "frames_willy_yawn": {
-   "address": 56056,
+   "address": 57460,
    "size": 60,
    "type": "t"
   },
   "tiles_willy_yawn_47": {
-   "address": 56116,
+   "address": 57520,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_yawn_46": {
-   "address": 56152,
+   "address": 57556,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_yawn_45": {
-   "address": 56188,
+   "address": 57592,
    "size": 42,
    "type": "t"
   },
   "tiles_willy_yawn_44": {
-   "address": 56230,
+   "address": 57634,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_yawn_43": {
-   "address": 56266,
+   "address": 57670,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_yawn_42": {
-   "address": 56302,
+   "address": 57706,
    "size": 36,
    "type": "t"
   },
   "anim_willy_crawl": {
-   "address": 56338,
+   "address": 57742,
    "size": 8,
    "type": "T"
   },
   "frames_willy_crawl": {
-   "address": 56346,
+   "address": 57750,
    "size": 20,
    "type": "t"
   },
   "tiles_willy_crawl_41": {
-   "address": 56366,
+   "address": 57770,
    "size": 30,
    "type": "t"
   },
   "tiles_willy_crawl_40": {
-   "address": 56396,
+   "address": 57800,
    "size": 30,
    "type": "t"
   },
   "anim_willy_crouch": {
-   "address": 56426,
+   "address": 57830,
    "size": 8,
    "type": "T"
   },
   "frames_willy_crouch": {
-   "address": 56434,
+   "address": 57838,
    "size": 30,
    "type": "t"
   },
   "tiles_willy_crouch_39": {
-   "address": 56464,
+   "address": 57868,
    "size": 30,
    "type": "t"
   },
   "tiles_willy_crouch_38": {
-   "address": 56494,
+   "address": 57898,
    "size": 24,
    "type": "t"
   },
   "tiles_willy_crouch_37": {
-   "address": 56518,
+   "address": 57922,
    "size": 24,
    "type": "t"
   },
   "anim_willy_jump_kick": {
-   "address": 56542,
+   "address": 57946,
    "size": 8,
    "type": "T"
   },
   "frames_willy_jump_kick": {
-   "address": 56550,
+   "address": 57954,
    "size": 70,
    "type": "t"
   },
   "tiles_willy_jump_kick_36": {
-   "address": 56620,
+   "address": 58024,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_kick_35": {
-   "address": 56656,
+   "address": 58060,
    "size": 42,
    "type": "t"
   },
   "tiles_willy_jump_kick_34": {
-   "address": 56698,
+   "address": 58102,
    "size": 48,
    "type": "t"
   },
   "tiles_willy_jump_kick_33": {
-   "address": 56746,
+   "address": 58150,
    "size": 42,
    "type": "t"
   },
   "tiles_willy_jump_kick_32": {
-   "address": 56788,
+   "address": 58192,
    "size": 48,
    "type": "t"
   },
   "tiles_willy_jump_kick_31": {
-   "address": 56836,
+   "address": 58240,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_kick_30": {
-   "address": 56872,
+   "address": 58276,
    "size": 36,
    "type": "t"
   },
   "anim_willy_turn": {
-   "address": 56908,
+   "address": 58312,
    "size": 8,
    "type": "T"
   },
   "frames_willy_turn": {
-   "address": 56916,
+   "address": 58320,
    "size": 60,
    "type": "t"
   },
   "tiles_willy_turn_29": {
-   "address": 56976,
+   "address": 58380,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_turn_28": {
-   "address": 57012,
+   "address": 58416,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_turn_27": {
-   "address": 57048,
+   "address": 58452,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_turn_26": {
-   "address": 57084,
+   "address": 58488,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_turn_25": {
-   "address": 57120,
+   "address": 58524,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_turn_24": {
-   "address": 57156,
+   "address": 58560,
    "size": 36,
    "type": "t"
   },
   "anim_willy_knife": {
-   "address": 57192,
+   "address": 58596,
    "size": 8,
    "type": "T"
   },
   "frames_willy_knife": {
-   "address": 57200,
+   "address": 58604,
    "size": 40,
    "type": "t"
   },
   "tiles_willy_knife_23": {
-   "address": 57240,
+   "address": 58644,
    "size": 54,
    "type": "t"
   },
   "tiles_willy_knife_22": {
-   "address": 57294,
+   "address": 58698,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_knife_21": {
-   "address": 57330,
+   "address": 58734,
    "size": 48,
    "type": "t"
   },
   "tiles_willy_knife_20": {
-   "address": 57378,
+   "address": 58782,
    "size": 36,
    "type": "t"
   },
   "anim_willy_bazooka": {
-   "address": 57414,
+   "address": 58818,
    "size": 8,
    "type": "T"
   },
   "frames_willy_bazooka": {
-   "address": 57422,
+   "address": 58826,
    "size": 10,
    "type": "t"
   },
   "tiles_willy_bazooka_19": {
-   "address": 57432,
+   "address": 58836,
    "size": 36,
    "type": "t"
   },
   "anim_willy_machine_gun": {
-   "address": 57468,
+   "address": 58872,
    "size": 8,
    "type": "T"
   },
   "frames_willy_machine_gun": {
-   "address": 57476,
+   "address": 58880,
    "size": 40,
    "type": "t"
   },
   "tiles_willy_machine_gun_18": {
-   "address": 57516,
+   "address": 58920,
    "size": 48,
    "type": "t"
   },
   "tiles_willy_machine_gun_17": {
-   "address": 57564,
+   "address": 58968,
    "size": 42,
    "type": "t"
   },
   "tiles_willy_machine_gun_16": {
-   "address": 57606,
+   "address": 59010,
    "size": 48,
    "type": "t"
   },
   "tiles_willy_machine_gun_15": {
-   "address": 57654,
+   "address": 59058,
    "size": 48,
    "type": "t"
   },
   "anim_willy_jump": {
-   "address": 57702,
+   "address": 59106,
    "size": 8,
    "type": "T"
   },
   "frames_willy_jump": {
-   "address": 57710,
+   "address": 59114,
    "size": 50,
    "type": "t"
   },
   "tiles_willy_jump_14": {
-   "address": 57760,
+   "address": 59164,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_13": {
-   "address": 57796,
+   "address": 59200,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_12": {
-   "address": 57832,
+   "address": 59236,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_11": {
-   "address": 57868,
+   "address": 59272,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_jump_10": {
-   "address": 57904,
+   "address": 59308,
    "size": 24,
    "type": "t"
   },
   "anim_willy_run": {
-   "address": 57928,
+   "address": 59332,
    "size": 8,
    "type": "T"
   },
   "frames_willy_run": {
-   "address": 57936,
+   "address": 59340,
    "size": 50,
    "type": "t"
   },
   "tiles_willy_run_9": {
-   "address": 57986,
+   "address": 59390,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_run_8": {
-   "address": 58022,
+   "address": 59426,
    "size": 30,
    "type": "t"
   },
   "tiles_willy_run_7": {
-   "address": 58052,
+   "address": 59456,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_run_6": {
-   "address": 58088,
+   "address": 59492,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_run_5": {
-   "address": 58124,
+   "address": 59528,
    "size": 36,
    "type": "t"
   },
   "anim_willy_idle": {
-   "address": 58160,
+   "address": 59564,
    "size": 8,
    "type": "T"
   },
   "frames_willy_idle": {
-   "address": 58168,
+   "address": 59572,
    "size": 40,
    "type": "t"
   },
   "tiles_willy_idle_4": {
-   "address": 58208,
+   "address": 59612,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_idle_3": {
-   "address": 58244,
+   "address": 59648,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_idle_2": {
-   "address": 58280,
+   "address": 59684,
    "size": 36,
    "type": "t"
   },
   "tiles_willy_idle_1": {
-   "address": 58316,
+   "address": 59720,
    "size": 36,
    "type": "t"
   },
   "_data_load": {
-   "address": 58352,
+   "address": 59756,
    "size": 0,
    "type": "A"
   },
@@ -1174,176 +1174,176 @@
   },
   "en": {
    "address": 16715418,
-   "size": 1088,
+   "size": 1152,
    "type": "b"
   },
   "start_last": {
-   "address": 16716506,
+   "address": 16716570,
    "size": 2,
    "type": "b"
   },
   "start_now": {
-   "address": 16716508,
+   "address": 16716572,
    "size": 2,
    "type": "b"
   },
   "last_hit_t": {
-   "address": 16716510,
+   "address": 16716574,
    "size": 4,
    "type": "b"
   },
   "lock_done": {
-   "address": 16716516,
+   "address": 16716580,
    "size": 8,
    "type": "b"
   },
   "walk_y1": {
-   "address": 16716524,
+   "address": 16716588,
    "size": 4,
    "type": "b"
   },
   "walk_y0": {
-   "address": 16716528,
+   "address": 16716592,
    "size": 4,
    "type": "b"
   },
   "ship": {
-   "address": 16716532,
+   "address": 16716596,
    "size": 4,
    "type": "b"
   },
   "crosshair": {
-   "address": 16716536,
+   "address": 16716600,
    "size": 4,
    "type": "b"
   },
   "depth": {
-   "address": 16716540,
+   "address": 16716604,
    "size": 4,
    "type": "b"
   },
   "pl": {
-   "address": 16716544,
+   "address": 16716608,
    "size": 1160,
    "type": "b"
   },
   "sys_now": {
-   "address": 16717704,
+   "address": 16717768,
    "size": 2,
    "type": "b"
   },
   "credits": {
-   "address": 16717706,
+   "address": 16717770,
    "size": 4,
    "type": "b"
   },
   "nobj": {
-   "address": 16717710,
+   "address": 16717774,
    "size": 4,
    "type": "b"
   },
   "q_head": {
-   "address": 16717714,
+   "address": 16717778,
    "size": 1,
    "type": "b"
   },
   "cam_far": {
-   "address": 16717716,
+   "address": 16717780,
    "size": 4,
    "type": "b"
   },
   "cam_y": {
-   "address": 16717720,
+   "address": 16717784,
    "size": 4,
    "type": "b"
   },
   "cam_x": {
-   "address": 16717724,
+   "address": 16717788,
    "size": 4,
    "type": "b"
   },
   "win3": {
-   "address": 16717728,
+   "address": 16717792,
    "size": 4,
    "type": "b"
   },
   "top3": {
-   "address": 16717732,
+   "address": 16717796,
    "size": 4,
    "type": "b"
   },
   "win2": {
-   "address": 16717736,
+   "address": 16717800,
    "size": 4,
    "type": "b"
   },
   "top2": {
-   "address": 16717740,
+   "address": 16717804,
    "size": 4,
    "type": "b"
   },
   "col_map": {
-   "address": 16717744,
+   "address": 16717808,
    "size": 24576,
    "type": "b"
   },
   "nbands": {
-   "address": 16742320,
+   "address": 16742384,
    "size": 4,
    "type": "b"
   },
   "band_x": {
-   "address": 16742324,
+   "address": 16742388,
    "size": 16,
    "type": "b"
   },
   "loaded_band": {
-   "address": 16742340,
+   "address": 16742404,
    "size": 512,
    "type": "b"
   },
   "band_of_row": {
-   "address": 16742852,
+   "address": 16742916,
    "size": 64,
    "type": "b"
   },
   "loaded3": {
-   "address": 16742916,
+   "address": 16742980,
    "size": 128,
    "type": "b"
   },
   "loaded2": {
-   "address": 16743044,
+   "address": 16743108,
    "size": 128,
    "type": "b"
   },
   "nplayers": {
-   "address": 16743172,
+   "address": 16743236,
    "size": 4,
    "type": "b"
   },
   "level_h": {
-   "address": 16743176,
+   "address": 16743240,
    "size": 4,
    "type": "b"
   },
   "level_w": {
-   "address": 16743180,
+   "address": 16743244,
    "size": 4,
    "type": "b"
   },
   "rows": {
-   "address": 16743184,
+   "address": 16743248,
    "size": 4,
    "type": "b"
   },
   "cols": {
-   "address": 16743188,
+   "address": 16743252,
    "size": 4,
    "type": "b"
   },
   "_bss_end": {
-   "address": 16743192,
+   "address": 16743256,
    "size": 0,
    "type": "B"
   }

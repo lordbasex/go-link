@@ -413,3 +413,30 @@ export const MAX_POWER = 2;
 export const POWER_REACH_X = 14;
 export const POWER_REACH_Y = 12;
 export const POWER_GAP = 4;
+/**
+ * The horizontal shooter's phase 3: an enemy's path (0 a wave, 1 straight,
+ * 2 a dive toward the first ship once it is within DIVE_RANGE px) and the
+ * gunship boss (path 3): GUNSHIP_HP hits, it holds GUNSHIP_HOLD px from the
+ * screen's right, bobs GUNSHIP_BOB px either way and fires a shot left
+ * every GUNSHIP_FIRE frames (SHIP_SHOT_SPEED px a frame, hurting a ship
+ * within SHIP_SHOT_X and SHIP_SHOT_Y); it hurts a ship within GUNSHIP_HIT_X
+ * and GUNSHIP_HIT_Y of its middle.
+ */
+export const FLY_PATHS = ["wave", "straight", "dive"] as const;
+export const DIVE_RANGE = 160;
+export const GUNSHIP_HP = 30;
+export const GUNSHIP_HOLD = 48;
+export const GUNSHIP_BOB = 40;
+export const GUNSHIP_FIRE = 50;
+export const SHIP_SHOT_SPEED = 3;
+export const SHIP_SHOT_X = 12;
+export const SHIP_SHOT_Y = 6;
+export const GUNSHIP_HIT_X = 36;
+export const GUNSHIP_HIT_Y = 20;
+/** A bomb's hits on a boss (every other enemy takes all of its hits). */
+export const BOMB_BOSS_HITS = 5;
+/** An enemy's path in the shooter (rom/pack.ts writes it in the row's a). */
+export function flyPathOf(path: unknown): number {
+  const i = FLY_PATHS.indexOf(path as (typeof FLY_PATHS)[number]);
+  return i < 0 ? 0 : i;
+}
