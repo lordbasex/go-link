@@ -118,6 +118,13 @@ import {
   TOP_EN_SHOT,
   TOP_EN_HIT_X,
   TOP_EN_HIT_Y,
+  MAZE_SPEED,
+  DOT_SCORE,
+  POWER_SCORE,
+  FRIGHT_FRAMES,
+  MAZE_TOUCH,
+  EAT_SCORE,
+  HOME_FRAMES,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -220,6 +227,11 @@ export interface Player {
   /** The top-down aim: -1, 0 or 1 each way (never both 0). */
   aimX: number;
   aimY: number;
+  /** The maze: the way it moves and the way the stick last asked for (-1, 0 or 1 each way). */
+  mdx: number;
+  mdy: number;
+  wdx: number;
+  wdy: number;
   /** The top-down grenade in flight (x, y at its middle, frames flown), and its burst while it shows. */
   grenade: { x: number; y: number; dx: number; dy: number; t: number } | null;
   boom: { x: number; y: number; t: number } | null;
@@ -255,6 +267,8 @@ export interface Enemy {
   path: number;
   /** The vertical shooter: the x its wave flies around. */
   baseX: number;
+  /** The maze: the way it moves up or down (dir is across). */
+  mdy: number;
 }
 
 export interface Civilian {
@@ -403,6 +417,10 @@ export class Game {
   civilians: Civilian[] = [];
   crates: Crate[] = [];
   pickups: Pickup[] = [];
+  /** The maze: a dot per cell (1: there), how many are left, and the frames the chasers still flee. */
+  dots: Uint8Array = new Uint8Array(0);
+  dotsLeft = 0;
+  frightT = 0;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -450,6 +468,23 @@ export class Game {
     this.shotSpeed = difficultyOf(opts.difficulty).shotSpeed;
     for (let i = 0; i < this.maxPlayers; i++) this.players.push(newPlayer(i, this.lives, opts.heights?.[i] ? bodyFor(opts.heights[i]) : WILLY_BODY));
     this.loadObjects(level.objects);
+    // the maze: a dot in every empty cell but the top and bottom rows (the HUD's), its chasers on cell middles
+    if (this.rules.maze) {
+      this.dots = new Uint8Array(this.cols * this.rows);
+      for (let r = 1; r < this.rows - 1; r++)
+        for (let c = 0; c < this.cols; c++)
+          if (this.cells[r * this.cols + c] === Tag.Air) {
+            this.dots[r * this.cols + c] = 1;
+            this.dotsLeft++;
+          }
+      for (const e of this.enemies) {
+        e.x = Math.floor(e.x / CELL) * CELL + 8;
+        e.fy = Math.floor((e.fy - 1) / CELL) * CELL + CELL;
+        e.min = e.x;
+        e.max = e.fy;
+        e.dir = 0;
+      }
+    }
     const n = Math.max(1, Math.min(this.maxPlayers, opts.players ?? 1));
     for (let i = 0; i < n; i++) this.join(i);
     this.updateCamera(true);
@@ -507,6 +542,7 @@ export class Game {
             baseY: o.y,
             path: this.rules.ship ? flyPathOf(o.path) : 0,
             baseX: o.x,
+            mdy: 0,
           });
           if (this.enemies[this.enemies.length - 1]!.appear) this.enemies[this.enemies.length - 1]!.state = "hidden";
           break;
@@ -536,6 +572,7 @@ export class Game {
               baseY: o.y,
               path: 0,
               baseX: o.x,
+              mdy: 0,
             });
           // the horizontal shooter's boss
           else if (o.kind === "gunship" && this.rules.ship)
@@ -561,6 +598,7 @@ export class Game {
               baseY: o.y,
               path: 3,
               baseX: o.x,
+              mdy: 0,
             });
           break;
         case "civilian":
@@ -787,6 +825,12 @@ export class Game {
       // the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left
       x = this.camX;
       fy = 0;
+    } else if (this.rules.maze) {
+      // the maze: at its start, on a cell's middle (feet at the cell's bottom)
+      const sx = start ? start.x + (this.startAt ? i * 24 : 0) : this.camX + (SCREEN_W >> 1) + i * 32;
+      const sy = start ? start.y : this.camY + (SCREEN_H >> 1);
+      x = Math.floor(sx / CELL) * CELL + 8;
+      fy = Math.floor((sy - 1) / CELL) * CELL + CELL;
     } else if (this.rules.topdown) {
       // the top-down run and gun: beside the player already in, at the start, or in the screen's middle
       x = lead ? lead.x + 24 : start ? start.x + (this.startAt ? i * 24 : 0) : this.camX + (SCREEN_W >> 1) + i * 24;
@@ -846,6 +890,18 @@ export class Game {
     }
     p.invulnerable = this.rules.hurtFrames;
     if (!fell && !this.rules.respawnOnHurt) return;
+    // the maze: back at the start
+    if (this.rules.maze) {
+      const keep = p.invulnerable;
+      const lives = p.lives;
+      const score = p.score;
+      p.active = false;
+      this.join(p.index);
+      p.lives = lives;
+      p.score = score;
+      p.invulnerable = keep;
+      return;
+    }
     const at = this.walkBand ? { x: Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), fy: this.inWalk(p.y >> 4) } : this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
     const keep = p.invulnerable;
     spawn(p, at.x, at.fy);
@@ -1567,7 +1623,139 @@ export class Game {
     if (this.camX > this.camFar) this.camFar = this.camX;
   }
 
+  /** The maze: cell (c, r) can be walked into (not solid). */
+  private mazeOpen(c: number, r: number): boolean {
+    return !this.isSolid(this.cell(c, r));
+  }
+
+  /**
+   * The maze's player (the maze rule): it moves MAZE_SPEED px a frame,
+   * turning the way the stick last asked for at a cell's middle (or back
+   * at once), stopping at a wall, eating the dot of the cell it is in.
+   */
+  private walkMaze(p: Player): void {
+    p.t++;
+    if (p.invulnerable) p.invulnerable--;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    const dy = dx ? 0 : p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    if (dx || dy) {
+      p.wdx = dx;
+      p.wdy = dy;
+    }
+    for (let step = 0; step < MAZE_SPEED; step++) {
+      const fy = p.y >> 4;
+      const c = Math.floor(p.x / CELL);
+      const r = Math.floor((fy - 1) / CELL);
+      if (p.wdx === -p.mdx && p.wdy === -p.mdy && (p.mdx || p.mdy)) {
+        p.mdx = p.wdx;
+        p.mdy = p.wdy;
+      }
+      if (p.x % CELL === 8 && fy % CELL === 0) {
+        if ((p.wdx || p.wdy) && this.mazeOpen(c + p.wdx, r + p.wdy)) {
+          p.mdx = p.wdx;
+          p.mdy = p.wdy;
+        } else if (!this.mazeOpen(c + p.mdx, r + p.mdy)) {
+          p.mdx = 0;
+          p.mdy = 0;
+        }
+      }
+      p.x += p.mdx;
+      p.y = (fy + p.mdy) * 16;
+    }
+    if (p.mdx) p.flip = p.mdx < 0;
+    p.onGround = true;
+    p.running = p.mdx !== 0 || p.mdy !== 0;
+    // the dot of the cell it is in, and a power pickup it reaches
+    const i = Math.floor(((p.y >> 4) - 1) / CELL) * this.cols + Math.floor(p.x / CELL);
+    if (this.dots[i]) {
+      this.dots[i] = 0;
+      this.dotsLeft--;
+      p.score += DOT_SCORE;
+      this.events.push({ kind: "pickup", item: "dot", player: p.index });
+    }
+    for (const k of this.pickups)
+      if (k.live && k.item === "power" && Math.abs(k.x - p.x) <= 8 && Math.abs(k.fy - (p.y >> 4)) <= 8) {
+        k.live = false;
+        p.score += POWER_SCORE;
+        this.frightT = FRIGHT_FRAMES;
+        this.events.push({ kind: "pickup", item: k.item, player: p.index });
+      }
+  }
+
+  /**
+   * The maze's chasers: a pixel a frame (every other frame while they
+   * flee), at a cell's middle the open way, not back, that brings them
+   * nearest the nearest player (farthest while they flee; ties: up, left,
+   * down, right); a fleeing one a player touches is eaten and goes home.
+   */
+  private updateMazeChasers(): void {
+    if (this.frightT) this.frightT--;
+    const ways = [[0, -1], [-1, 0], [0, 1], [1, 0]] as const;
+    for (const e of this.enemies) {
+      e.t++;
+      if (e.state === "down") {
+        if (e.t >= HOME_FRAMES) {
+          e.state = "walk";
+          e.x = e.min;
+          e.fy = e.max;
+          e.dir = 0;
+          e.mdy = 0;
+          e.t = 0;
+        }
+        continue;
+      }
+      if (e.state !== "walk") continue;
+      let target: Player | undefined;
+      let best = Infinity;
+      for (const p of this.players) {
+        if (!p.active) continue;
+        const d = Math.abs(p.x - e.x) + Math.abs((p.y >> 4) - e.fy);
+        if (d < best) {
+          best = d;
+          target = p;
+        }
+      }
+      const flee = this.frightT > 0;
+      if (target && (!flee || this.frame & 1)) {
+        if (e.x % CELL === 8 && e.fy % CELL === 0) {
+          const c = Math.floor(e.x / CELL);
+          const r = Math.floor((e.fy - 1) / CELL);
+          let pick: readonly [number, number] | undefined;
+          let score = flee ? -1 : Infinity;
+          for (const w of ways) {
+            if (w[0] === -e.dir && w[1] === -e.mdy && (e.dir || e.mdy)) continue;
+            if (!this.mazeOpen(c + w[0], r + w[1])) continue;
+            const d = Math.abs(target.x - (e.x + w[0] * CELL)) + Math.abs((target.y >> 4) - (e.fy + w[1] * CELL));
+            if (flee ? d > score : d < score) {
+              score = d;
+              pick = w;
+            }
+          }
+          // a dead end: back the way it came
+          if (!pick && (e.dir || e.mdy) && this.mazeOpen(c - e.dir, r - e.mdy)) pick = [-e.dir, -e.mdy];
+          e.dir = pick ? pick[0] : 0;
+          e.mdy = pick ? pick[1] : 0;
+        }
+        e.x += e.dir;
+        e.fy += e.mdy;
+        if (e.dir) e.flip = e.dir < 0;
+      }
+      for (const p of this.players) {
+        if (!p.active || Math.abs(p.x - e.x) > MAZE_TOUCH || Math.abs((p.y >> 4) - e.fy) > MAZE_TOUCH) continue;
+        if (flee) {
+          e.state = "down";
+          e.t = 0;
+          p.score += EAT_SCORE;
+          this.events.push({ kind: "enemy_down", name: e.name, x: e.x });
+          break;
+        }
+        if (!p.invulnerable && this.rules.touchHurts) this.hurt(p);
+      }
+    }
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.maze) return this.walkMaze(p);
     if (this.rules.topdown) return this.walkTop(p);
     if (this.rules.crosshair) return this.aim(p);
     if (this.rules.ship) return this.fly(p);
@@ -1861,6 +2049,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.maze) return this.updateMazeChasers();
     if (this.rules.topdown) {
       this.updateChasers();
       this.updateTopShots();
@@ -2058,6 +2247,12 @@ export class Game {
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
+    // the maze: one screen, the camera still at its top left
+    if (this.rules.maze) {
+      this.camX = 0;
+      this.camY = 0;
+      return;
+    }
     if (this.rules.topdown) return this.updateTopCamera(snap);
     if (this.rules.crosshair || this.rules.ship) return this.updateRoute(snap);
     let sx = 0;
@@ -2150,7 +2345,14 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.crosshair || this.rules.ship) {
+    if (this.rules.maze) {
+      // the maze: every dot eaten clears the level
+      if (this.dotsLeft <= 0 && this.players.some((p) => p.active)) {
+        this.outcome = "cleared";
+        this.events.push({ kind: "cleared" });
+        return;
+      }
+    } else if (this.rules.crosshair || this.rules.ship) {
       const end = (this.rules.vertical ? this.camY <= 0 : this.camX >= this.level.width - SCREEN_W) && !this.activeLock();
       if (end && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
@@ -2274,6 +2476,10 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     power: 0,
     aimX: 1,
     aimY: 0,
+    mdx: 0,
+    mdy: 0,
+    wdx: 0,
+    wdy: 0,
     grenade: null,
     boom: null,
   };
@@ -2319,6 +2525,7 @@ function spawn(p: Player, x: number, fy: number): void {
   p.aimY = 0;
   p.grenade = null;
   p.boom = null;
+  p.mdx = p.mdy = p.wdx = p.wdy = 0;
 }
 
 function num(v: unknown, fallback: number): number {

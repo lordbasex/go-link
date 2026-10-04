@@ -93,6 +93,7 @@ export const gameEn = {
     ship: "Ships (horizontal shooter: the stick flies, B1 held shoots ahead, B2 drops a bomb; the camera moves by itself)",
     vertical: "Climbing (with Ships: the vertical shooter, the camera climbs the level and the ships fire up)",
     topdown: "Seen from above (top-down run and gun: walk and aim in 8 directions, B1 held shoots, B3 held keeps the aim)",
+    maze: "Maze (move cell to cell, eat every dot to clear the level; a power-up turns the chasers into prey)",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",

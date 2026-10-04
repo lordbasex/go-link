@@ -374,6 +374,11 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, game: Game): void {
 function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, variants?: number[], ownHeroes?: (Sheet | null)[], pickupLooks?: Record<string, Sheet | null>): void {
   const f = game.frame;
   drawPlatforms(ctx, game);
+  // the maze's dots, one at each cell's middle (the ROM prints them on its text layer)
+  if (game.rules.maze) {
+    ctx.fillStyle = "#ffcc88";
+    for (let i = 0; i < game.dots.length; i++) if (game.dots[i]) ctx.fillRect((i % game.cols) * 16 + 7, Math.floor(i / game.cols) * 16 + 7, 2, 2);
+  }
   for (const k of game.pickups) {
     if (!k.live) continue;
     const own = k.look ? pickupLooks?.[k.look] : undefined;
@@ -459,7 +464,10 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     }
     const en = e.boss ? (sprites?.boss ?? sprites?.enemy) : sprites?.enemy;
     const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" || e.state === "held" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
-    const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
+    // the maze: an eaten chaser is gone until it is home again; a fleeing one is faint, blinking at the end
+    if (game.rules.maze && e.state === "down") return;
+    const fleeing = game.rules.maze && game.frightT > 0 ? (game.frightT < 90 && (game.frightT >> 3) & 1 ? 1 : 0.45) : 1;
+    const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : fleeing;
     if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
   } });

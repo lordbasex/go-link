@@ -152,12 +152,16 @@ static void blank(int x, int y, int n)
 		put_char(x + i, y, ' ', INK_WHITE);
 }
 
+/* the maze's dots must be printed again once the text is cleared (maze_draw_dots) */
+static int dots_dirty;
+
 static void clear_text(void)
 {
 	int c, r;
 	for (c = 0; c < 64; c++)
 		for (r = 0; r < 32; r++)
 			scroll1_cell(c, r)[0] = 0x0020;
+	dots_dirty = 1;
 }
 
 /* the text lines of the data block */
@@ -697,6 +701,14 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define TOP_EN_SHOT 3
 #define TOP_EN_HIT_X 8
 #define TOP_EN_HIT_Y 12
+/* the maze (WM_F_MAZE, engine/rules.ts) */
+#define MAZE_SPEED 2
+#define DOT_SCORE 10
+#define POWER_SCORE 50
+#define FRIGHT_FRAMES 360
+#define MAZE_TOUCH 10
+#define EAT_SCORE 200
+#define HOME_FRAMES 180
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -736,6 +748,7 @@ struct player {
 	int cx, cy, shot_t, reload_t, bombs;        /* the light gun's crosshair (screen px), its flash, the reload, the bombs left */
 	int power;                                  /* the shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three */
 	int aim_x, aim_y;                           /* the top-down aim: -1, 0 or 1 each way (never both 0) */
+	int mdx, mdy, wdx, wdy;                     /* the maze: the way it moves, the way the stick last asked for */
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
@@ -749,6 +762,10 @@ static int crosshair; /* the light gun (WM_F_CROSSHAIR) */
 static int ship;      /* the horizontal shooter (WM_F_SHIP) */
 static int vertical;  /* with ship, the vertical shooter (WM_F_VERTICAL) */
 static int topdown;   /* the top-down run and gun (WM_F_TOPDOWN) */
+static int maze;      /* the maze (WM_F_MAZE) */
+/* the maze's dots, a bit per cell, how many are left, the frames the chasers flee, and a redraw after the text is cleared */
+static u8 dots[24576 / 8];
+static int dots_left, fright_t;
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -772,6 +789,7 @@ static struct enemy {
 	s32 base_y;              /* the shooter: the feet y its wave flies around */
 	int path;                /* the shooter: 0 wave, 1 straight, 2 dive, 3 the gunship boss */
 	s32 base_x;              /* the vertical shooter: the x its wave flies around */
+	int mdy;                 /* the maze: the way it moves up or down (dir is across) */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -1167,6 +1185,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->aim_y = 0;
 	p->grenade.live = 0;
 	p->boom.t = 0;
+	p->mdx = p->mdy = p->wdx = p->wdy = 0;
 }
 
 /* where place_near looks, in order */
@@ -1209,7 +1228,13 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
-	if (topdown) {
+	if (maze) {
+		/* the maze: at its start, on a cell's middle (feet at the cell's bottom) */
+		s32 sx = D->start_x[k] >= 0 ? D->start_x[k] : cam_x + (SCREEN_W >> 1) + k * 32;
+		s32 sy = D->start_x[k] >= 0 ? D->start_y[k] : cam_y + (SCREEN_H >> 1);
+		x = (sx >> 4) * 16 + 8;
+		fy = ((sy - 1) >> 4) * 16 + 16;
+	} else if (topdown) {
 		/* the top-down run and gun: beside the player already in, at the start, or in the screen's middle */
 		if (lead >= 0) {
 			x = pl[lead].x + 24;
@@ -1309,6 +1334,17 @@ static void hurt(struct player *p, int fell)
 		return;
 	}
 	p->hurt = R->hurt_frames;
+	/* the maze: back at the start (as play mode, only with the rule that brings a hurt player back) */
+	if (maze && (fell || R->respawn_on_hurt)) {
+		int energy = p->energy, hurt_t = p->hurt;
+		u32 score = p->score;
+		p->active = 0;
+		player_join((int)(p - pl));
+		p->energy = energy;
+		p->hurt = hurt_t;
+		p->score = score;
+		return;
+	}
 	if (fell || R->respawn_on_hurt)
 		respawn_near_camera(p);
 }
@@ -1331,6 +1367,7 @@ static void game_reset(void)
 	ship = (D->flags & WM_F_SHIP) != 0;
 	vertical = ship && (D->flags & WM_F_VERTICAL) != 0;
 	topdown = (D->flags & WM_F_TOPDOWN) != 0;
+	maze = (D->flags & WM_F_MAZE) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -1441,6 +1478,29 @@ static void game_reset(void)
 		en_shots[i].live = 0;
 	rescued = 0;
 	cam_x = cam_y = cam_far = 0;
+	/* the maze: a dot in every empty cell but the top and bottom rows (the HUD's), its chasers on cell middles */
+	dots_left = fright_t = 0;
+	dots_dirty = 1;
+	/* only the maze pays for its dots (a reset that runs long shifts the start: rom-frame-budget) */
+	if (maze) {
+		int c, r;
+		for (i = 0; i < (cols * rows + 7) >> 3; i++)
+			dots[i] = 0;
+		for (r = 1; r < rows - 1; r++)
+			for (c = 0; c < cols; c++)
+				if (col_map[r * cols + c] == T_AIR) {
+					dots[(r * cols + c) >> 3] |= (u8)(1 << ((r * cols + c) & 7));
+					dots_left++;
+				}
+		for (i = 0; i < nen; i++) {
+			en[i].x = (en[i].x >> 4) * 16 + 8;
+			en[i].fy = ((en[i].fy - 1) >> 4) * 16 + 16;
+			en[i].min = en[i].x;
+			en[i].max = en[i].fy;
+			en[i].dir = 0;
+			en[i].mdy = 0;
+		}
+	}
 }
 
 /* a falling platform's frame: at rest until stood on, then it shakes, falls out of the level and comes back */
@@ -2093,12 +2153,106 @@ static void walk_top(struct player *p)
 	}
 }
 
+/* the maze: cell (c, r) can be walked into (not solid) */
+static int maze_open(int c, int r)
+{
+	return !is_solid(cell(c, r));
+}
+
+/* the maze's dot of a cell: there, and eaten */
+static int dot_at(int i)
+{
+	return (dots[i >> 3] >> (i & 7)) & 1;
+}
+
+/* the maze's player (engine/game.ts walkMaze): MAZE_SPEED px a frame, turning
+   the way the stick last asked for at a cell's middle (or back at once),
+   stopping at a wall, eating the dot of the cell it is in */
+static void walk_maze(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	int dy = dx ? 0 : (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	int step, i, c, r;
+	p->t++;
+	if (p->hurt)
+		p->hurt--;
+	if (dx || dy) {
+		p->wdx = dx;
+		p->wdy = dy;
+	}
+	for (step = 0; step < MAZE_SPEED; step++) {
+		s32 fy = p->y >> 4;
+		c = (int)(p->x >> 4);
+		r = (int)((fy - 1) >> 4);
+		if (p->wdx == -p->mdx && p->wdy == -p->mdy && (p->mdx || p->mdy)) {
+			p->mdx = p->wdx;
+			p->mdy = p->wdy;
+		}
+		if ((p->x & 15) == 8 && (fy & 15) == 0) {
+			if ((p->wdx || p->wdy) && maze_open(c + p->wdx, r + p->wdy)) {
+				p->mdx = p->wdx;
+				p->mdy = p->wdy;
+			} else if (!maze_open(c + p->mdx, r + p->mdy)) {
+				p->mdx = 0;
+				p->mdy = 0;
+			}
+		}
+		p->x += p->mdx;
+		p->y = (fy + p->mdy) * 16;
+	}
+	if (p->mdx)
+		p->flip = p->mdx < 0;
+	p->on_ground = 1;
+	p->running = p->mdx || p->mdy;
+	/* the dot of the cell it is in, and a power pickup it reaches */
+	i = (int)((((p->y >> 4) - 1) >> 4) * cols + (p->x >> 4));
+	if (dot_at(i)) {
+		dots[i >> 3] &= (u8)~(1 << (i & 7));
+		dots_left--;
+		p->score += DOT_SCORE;
+		put_char((i % cols) * 2 + 1, (i / cols) * 2, ' ', INK_ACCENT);
+		sfx(SFX_COIN, p->x);
+	}
+	for (i = 0; i < npickups; i++) {
+		struct pickup *k = &pickup[i];
+		if (k->live && k->item == WM_ITEM_POWER && iabs(k->x - p->x) <= 8 && iabs(k->fy - (p->y >> 4)) <= 8) {
+			k->live = 0;
+			p->score += POWER_SCORE;
+			fright_t = FRIGHT_FRAMES;
+			sfx(SFX_PICKUP, p->x);
+		}
+	}
+}
+
+/* the maze's dots on the text layer after the text was cleared: a row a frame,
+   so no frame runs long (a whole screen of them at once overran a frame) */
+static int dots_row;
+
+static void maze_draw_dots(void)
+{
+	int c, i;
+	if (dots_dirty == 1) {
+		dots_row = 0;
+		dots_dirty = 2;
+	}
+	i = dots_row * cols;
+	for (c = 0; c < cols; c++, i++)
+		if (dot_at(i))
+			put_char(c * 2 + 1, dots_row * 2, '.', INK_ACCENT);
+	if (++dots_row >= rows)
+		dots_dirty = 0;
+}
+
 static void update_player(struct player *p)
 {
 	int i, dir = 0, jet_was;
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (maze) {
+		walk_maze(p);
+		return;
+	}
 	if (topdown) {
 		walk_top(p);
 		return;
@@ -2842,9 +2996,99 @@ static void update_top_shots(void)
 	}
 }
 
+/* the maze's chasers (engine/game.ts updateMazeChasers): a pixel a frame (every
+   other frame while they flee), at a cell's middle the open way, not back,
+   that brings them nearest the nearest player (farthest while they flee;
+   ties: up, left, down, right); a fleeing one a player touches is eaten */
+static void update_maze_chasers(void)
+{
+	static const s8 ways[4][2] = { { 0, -1 }, { -1, 0 }, { 0, 1 }, { 1, 0 } };
+	int i, k, flee;
+	if (fright_t)
+		fright_t--;
+	flee = fright_t > 0;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		int target = -1;
+		s32 best = 0x7fffffff;
+		e->t++;
+		if (e->state == EN_DOWN) {
+			if (e->t >= HOME_FRAMES) {
+				e->state = EN_WALK;
+				e->x = e->min;
+				e->fy = e->max;
+				e->dir = 0;
+				e->mdy = 0;
+				e->t = 0;
+			}
+			continue;
+		}
+		if (e->state != EN_WALK)
+			continue;
+		for (k = 0; k < nplayers; k++) {
+			s32 d;
+			if (!pl[k].active)
+				continue;
+			d = iabs(pl[k].x - e->x) + iabs((pl[k].y >> 4) - e->fy);
+			if (d < best) {
+				best = d;
+				target = k;
+			}
+		}
+		if (target >= 0 && (!flee || (plat_t & 1))) {
+			if ((e->x & 15) == 8 && (e->fy & 15) == 0) {
+				int c = (int)(e->x >> 4), r = (int)((e->fy - 1) >> 4), w, pick = -1;
+				s32 score = flee ? -1 : 0x7fffffff;
+				for (w = 0; w < 4; w++) {
+					s32 d;
+					if (ways[w][0] == -e->dir && ways[w][1] == -e->mdy && (e->dir || e->mdy))
+						continue;
+					if (!maze_open(c + ways[w][0], r + ways[w][1]))
+						continue;
+					d = iabs(pl[target].x - (e->x + ways[w][0] * 16)) + iabs((pl[target].y >> 4) - (e->fy + ways[w][1] * 16));
+					if (flee ? d > score : d < score) {
+						score = d;
+						pick = w;
+					}
+				}
+				/* a dead end: back the way it came */
+				if (pick < 0 && (e->dir || e->mdy) && maze_open(c - e->dir, r - e->mdy)) {
+					e->dir = -e->dir;
+					e->mdy = -e->mdy;
+				} else {
+					e->dir = pick >= 0 ? ways[pick][0] : 0;
+					e->mdy = pick >= 0 ? ways[pick][1] : 0;
+				}
+			}
+			e->x += e->dir;
+			e->fy += e->mdy;
+			if (e->dir)
+				e->flip = e->dir < 0;
+		}
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (!p->active || iabs(p->x - e->x) > MAZE_TOUCH || iabs((p->y >> 4) - e->fy) > MAZE_TOUCH)
+				continue;
+			if (flee) {
+				e->state = EN_DOWN;
+				e->t = 0;
+				p->score += EAT_SCORE;
+				sfx(SFX_ENEMY_DOWN, e->x);
+				break;
+			}
+			if (!p->hurt && R->touch_hurts)
+				hurt(p, 0);
+		}
+	}
+}
+
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (maze) {
+		update_maze_chasers();
+		return;
+	}
 	if (topdown) {
 		update_chasers();
 		update_top_shots();
@@ -3101,6 +3345,11 @@ static void update_top_camera(int snap)
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
+	/* the maze: one screen, the camera still at its top left */
+	if (maze) {
+		cam_x = cam_y = 0;
+		return;
+	}
 	if (topdown) {
 		update_top_camera(snap);
 		return;
@@ -3715,10 +3964,12 @@ static void hud(void)
 	}
 }
 
+#define SETUP_FRAMES 10 /* more than setting up any level takes */
+
 /* the title: the camera tours the level; returns the port whose Start began */
 static int title(void)
 {
-	u32 t = 0;
+	u32 t = 0, entry = frame_count;
 	int last_credits = -1, k;
 	struct line prompt, coin;
 	int has_prompt = 0, has_coin = first_line(WM_SCR_COIN, &coin);
@@ -3734,6 +3985,11 @@ static int title(void)
 	clear_text();
 	game_reset();
 	draw_screen(WM_SCR_TITLE, 0);
+	/* as play's start (SETUP_FRAMES): the tour begins a fixed number of frames
+	   after the title began, whatever setting it up took, so the real core and
+	   the board model, whose cycle counts differ a little, never part by a frame */
+	while (frame_count - entry < SETUP_FRAMES)
+		wait_vblank();
 	MUSIC(MUSIC_TITLE);
 	for (;;) {
 		int on;
@@ -3840,7 +4096,6 @@ static void continue_prompt(int on)
 	draw_line(&coin, on);
 }
 
-#define SETUP_FRAMES 10 /* more than setting up any level takes */
 
 static int play(int first)
 {
@@ -3902,6 +4157,21 @@ static int play(int first)
 			alive += pl[k].active;
 		if (outcome < 0)
 			soon_update();
+		/* the maze: its dots on the text layer, and every dot eaten clears the level */
+		if (maze && outcome < 0) {
+			int any = 0;
+			if (dots_dirty)
+				maze_draw_dots();
+			for (k = 0; k < nplayers; k++)
+				any |= pl[k].active;
+			if (dots_left <= 0 && any) {
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
+			}
+		}
 		/* the light gun: the level ends where the camera's route does, with no lock holding it */
 		if (outcome < 0 && (crosshair || ship) && (vertical ? cam_y <= 0 : cam_x >= level_w - SCREEN_W) && active_lock() < 0) {
 			int any = 0;

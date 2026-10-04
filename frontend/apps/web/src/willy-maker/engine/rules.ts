@@ -204,6 +204,12 @@ export interface GameRules {
    * and fire with B1 held; enemies come at them; the camera follows both ways.
    */
   topdown: boolean;
+  /**
+   * The maze (genres.md): players and enemies move cell to cell on the
+   * grid, every empty cell starts with a dot and eating them all clears the
+   * level; a power pickup turns the chasers into prey for a while.
+   */
+  maze: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -233,6 +239,7 @@ export const DEFAULT_RULES: GameRules = {
   ship: false,
   vertical: false,
   topdown: false,
+  maze: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -249,6 +256,9 @@ export const VERTICAL_RULES: Partial<GameRules> = { ...SHIP_RULES, vertical: tru
 
 /** A new top-down run and gun's rules: enemies that chase, shoot and hurt by touch, two hits each, the exit after every enemy is down. */
 export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: true, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 2, respawnOnHurt: false };
+
+/** A new maze game's rules: chasers that hurt by touch, the level cleared by its dots (no exit). */
+export const MAZE_RULES: Partial<GameRules> = { maze: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: true };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -329,6 +339,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     ship: bool(r.ship, false),
     vertical: bool(r.vertical, false),
     topdown: bool(r.topdown, false),
+    maze: bool(r.maze, false),
   };
 }
 
@@ -497,3 +508,19 @@ export const TOP_SIGHT = 160;
 export const TOP_EN_SHOT = 3;
 export const TOP_EN_HIT_X = 8;
 export const TOP_EN_HIT_Y = 12;
+
+/**
+ * The maze (genres.md, phase 1): a player moves MAZE_SPEED px a frame and
+ * an enemy 1 (every other frame while it flees), turning only at a cell's
+ * middle; a dot is worth DOT_SCORE, a power pickup POWER_SCORE and makes the
+ * chasers flee for FRIGHT_FRAMES; a fleeing chaser a player touches (within
+ * MAZE_TOUCH px) is eaten for EAT_SCORE and is back at its start after
+ * HOME_FRAMES; any other touch hurts the player, who is back at its start.
+ */
+export const MAZE_SPEED = 2;
+export const DOT_SCORE = 10;
+export const POWER_SCORE = 50;
+export const FRIGHT_FRAMES = 360;
+export const MAZE_TOUCH = 10;
+export const EAT_SCORE = 200;
+export const HOME_FRAMES = 180;

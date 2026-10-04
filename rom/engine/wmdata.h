@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 16
+#define WM_VERSION 17
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -81,6 +81,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_SHIP 0x0800        /* the horizontal shooter: ships, a camera that moves by itself (wm_data 14) */
 #define WM_F_VERTICAL 0x1000    /* with WM_F_SHIP, the vertical shooter: the camera climbs, ships fire up (wm_data 15) */
 #define WM_F_TOPDOWN 0x2000     /* the top-down run and gun: 8-direction walking and aiming (wm_data 16) */
+#define WM_F_MAZE 0x4000        /* the maze: grid moves, dots, chasers (wm_data 17) */
 
 struct wm_data {
 	u32 magic;                /* 00 */

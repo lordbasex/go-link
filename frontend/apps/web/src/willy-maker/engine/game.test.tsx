@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1271,5 +1271,63 @@ describe("the top-down run and gun (genres.md, phase 1)", () => {
     const lives = p.lives;
     for (let f = 0; f < 400 && p.lives === lives; f++) run(g, 1, 0);
     expect(p.lives).toBe(lives - 1);
+  });
+});
+
+describe("the maze (genres.md, phase 1)", () => {
+  // a box 10 x 6 cells of corridors: walls around rows 1-6 and cols 1-10, a block in the middle
+  const box = (objects: LevelObject[]) => {
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let r = 2; r <= 6; r++) for (let c = 2; c <= 10; c++) set(c, r, Tag.Air);
+      for (let r = 4; r <= 4; r++) for (let c = 4; c <= 8; c++) set(c, r, Tag.Solid);
+    }, objects);
+    view.objects[0] = { name: "p1", type: "player_start", x: 2 * 16 + 8, y: 3 * 16, player: 1 };
+    return new Game(view, { rules: MAZE_RULES });
+  };
+
+  it("moves cell to cell, turns at a cell's middle, stops at a wall and eats the dots", () => {
+    const g = box([]);
+    const p = g.players[0]!;
+    expect([p.x, p.y >> 4]).toEqual([40, 48]);
+    const dots = g.dotsLeft;
+    run(g, 10, Input.Right);
+    expect(p.x).toBe(60);
+    expect(p.y >> 4).toBe(48);
+    run(g, 200, Input.Right);
+    expect(p.x).toBe(10 * 16 + 8);
+    expect(p.score).toBe((dots - g.dotsLeft) * DOT_SCORE);
+    run(g, 40, Input.Down);
+    expect(p.x).toBe(10 * 16 + 8);
+    expect(p.y >> 4).toBeGreaterThan(48);
+  });
+
+  it("chasers come for the player and hurt it; after a power pickup they flee and can be eaten", () => {
+    const g = box([{ name: "c", type: "enemy", x: 10 * 16 + 8, y: 7 * 16, kind: "trooper", facing: "left", patrol: 0 } as LevelObject, { name: "pp", type: "pickup", x: 3 * 16 + 8, y: 3 * 16, item: "power" }]);
+    const p = g.players[0]!;
+    const e = g.enemies[0]!;
+    run(g, 8, Input.Right);
+    expect(g.frightT).toBeGreaterThan(FRIGHT_FRAMES - 10);
+    let eaten = false;
+    for (let f = 0; f < 300 && !eaten; f++) {
+      run(g, 1, e.x > p.x ? Input.Right : e.x < p.x ? Input.Left : (e.fy > p.y >> 4 ? Input.Down : Input.Up));
+      eaten = e.state === "down";
+    }
+    expect(eaten).toBe(true);
+    expect(p.score).toBeGreaterThanOrEqual(EAT_SCORE);
+  });
+
+  it("eating every dot clears the level", () => {
+    // a corridor one row long: walking it to the end eats them all
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let c = 2; c <= 10; c++) set(c, 2, Tag.Air);
+    });
+    view.objects[0] = { name: "p1", type: "player_start", x: 2 * 16 + 8, y: 3 * 16, player: 1 };
+    const g = new Game(view, { rules: MAZE_RULES });
+    expect(g.dotsLeft).toBe(9);
+    run(g, 80, Input.Right);
+    expect(g.dotsLeft).toBe(0);
+    expect(g.outcome).toBe("cleared");
   });
 });

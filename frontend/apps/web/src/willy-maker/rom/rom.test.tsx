@@ -16,6 +16,7 @@ import { gunProject } from "./gunFixture";
 import { shipProject } from "./shipFixture";
 import { verticalProject } from "./verticalFixture";
 import { topdownProject } from "./topdownFixture";
+import { mazeProject } from "./mazeFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -52,7 +53,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(16);
+    expect(u16(d, 4)).toBe(17);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -222,6 +223,11 @@ describe("Create ROM", () => {
       mkdirSync(td, { recursive: true });
       writeFileSync(resolve(td, "slammast.zip"), await zipSet(packGame(topdownProject(), engine, (id) => pictures.get(id) ?? null).files));
       writeFileSync(resolve(td, "symbols.json"), romSymbols(engine));
+      // the maze: one screen of corridors (rom/tools/lab/runs/maze-dots.json)
+      const md = resolve(out, "maze");
+      mkdirSync(md, { recursive: true });
+      writeFileSync(resolve(md, "slammast.zip"), await zipSet(packGame(mazeProject(), engine, (id) => pictures.get(id) ?? null).files));
+      writeFileSync(resolve(md, "symbols.json"), romSymbols(engine));
       // phase 4: a crate with a knife, a throw and a brawler behind a lock (rom/tools/lab/runs/street-brawl.json)
       const brawl = packGame(brawlProject(), engine, (id) => pictures.get(id) ?? null);
       expect(brawl.notes.map((n) => n.id)).not.toContain("boss");
