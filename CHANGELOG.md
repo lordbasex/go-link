@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-04
+
 ### Added (lab)
 
 - **go-link HD sends each guest the size it needs**: the HD test room keeps up to three sizes (the source and its halves, each encoded only while someone watches it) and gives every guest the smallest that fills its picture, from the web's new `video_want` (a phone 540p, a laptop window 1080p, a television 4K), moving it when the window, the phone's turn or full screen change it. Each guest has its own video track, so a switch never breaks its stream.
