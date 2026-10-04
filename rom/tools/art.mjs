@@ -704,6 +704,33 @@ export function addArt(gfx, defs, genDir, opts = {}) {
     h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define TILE_PIPE ${hex4(code + 8)}`, `#define TILE_KNIFE ${hex4(code + 9)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, 0xf843, 0xfc85, 0xf311, 0x0000]);
     code += 10;
+    // the light gun's crosshairs (play/renderer.ts drawCrosshairs): a ring of four arms
+    // and a dot over a black outline, one tile per player color, then the shot's flash
+    const ring = (dx, dy) => {
+      const arm = (x0, x1, y0, y1) => dx >= x0 && dx <= x1 && dy >= y0 && dy <= y1;
+      const color = arm(-6, -3, -1, 1) || arm(3, 6, -1, 1) || arm(-1, 1, -6, -3) || arm(-1, 1, 3, 6) || (dx === 0 && dy === 0);
+      const outline = arm(-7, -3, -2, 2) || arm(3, 7, -2, 2) || arm(-2, 2, -7, -3) || arm(-2, 2, 3, 7);
+      return color ? 1 : outline ? 0 : 15;
+    };
+    for (let k = 0; k < 4; k++)
+      gfx.tile16(
+        code + k,
+        Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => { const pen = ring(x - 8, y - 8); return pen === 1 ? 1 + k : pen; })),
+      );
+    gfx.tile16(
+      code + 4,
+      Array.from({ length: 16 }, (_, y) =>
+        Array.from({ length: 16 }, (_, x) => {
+          const dx = x - 8;
+          const dy = y - 8;
+          if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2) return 6;
+          return (dy === 0 && Math.abs(dx) <= 4) || (dx === 0 && Math.abs(dy) <= 4) ? 5 : 15;
+        }),
+      ),
+    );
+    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define PAL_CROSS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
+    code += 5;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

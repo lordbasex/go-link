@@ -12,6 +12,7 @@ import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { tallProject } from "./tallFixture";
 import { brawlProject, streetProject, waveProject } from "./streetFixture";
+import { gunProject } from "./gunFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -48,7 +49,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(12);
+    expect(u16(d, 4)).toBe(13);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -194,6 +195,13 @@ describe("Create ROM", () => {
       mkdirSync(dir, { recursive: true });
       writeFileSync(resolve(dir, "slammast.zip"), await zipSet(wave.files));
       writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+      // the light gun: crosshairs and a camera that moves by itself (rom/tools/lab/runs/gun-range.json)
+      const gun = packGame(gunProject(), engine, (id) => pictures.get(id) ?? null);
+      expect(u16(assembleProgram(SLAMMAST, gun.files).subarray(WM_DATA_ADDR), 0x0a) & 0x400).toBe(0x400);
+      const gdir = resolve(out, "gun");
+      mkdirSync(gdir, { recursive: true });
+      writeFileSync(resolve(gdir, "slammast.zip"), await zipSet(gun.files));
+      writeFileSync(resolve(gdir, "symbols.json"), romSymbols(engine));
       // phase 4: a crate with a knife, a throw and a brawler behind a lock (rom/tools/lab/runs/street-brawl.json)
       const brawl = packGame(brawlProject(), engine, (id) => pictures.get(id) ?? null);
       expect(brawl.notes.map((n) => n.id)).not.toContain("boss");
@@ -422,8 +430,8 @@ describe("Create ROM with the game's own hero", () => {
     expect([crouch, crawl, land, thumbs, victory, yawn]).toEqual([idle, idle, idle, idle, idle, idle]);
     expect(turn).toBe(run);
     expect([kick, doubleJump, jetpack]).toEqual([jump, jump, jump]);
-    // the palettes: the smallest free run that fits (recruit 1 is worn; the three after the engine's art, the boss's red included, fit exactly)
-    expect(u16(d, l + 0x40)).toBe(29);
+    // the palettes: the smallest free run that fits (recruit 1 is worn; after the engine's art, the boss's red and the crosshairs, only two are left, so recruit 2's four)
+    expect(u16(d, l + 0x40)).toBe(8);
     expect(u16(d, l + 0x42)).toBe(3);
     // the body, scaled to the hero's height (T-26), then the palette words
     const b = bodyFor(heroCharacter().height);
@@ -502,7 +510,7 @@ describe("Create ROM with the game's own hero", () => {
     // the records: Anim { frames, count, fps }
     expect([u16(d, jetpack! - WM_DATA_ADDR + 4), u16(d, jetpack! - WM_DATA_ADDR + 6)]).toEqual([2, 10]);
     expect([u16(d, kick! - WM_DATA_ADDR + 4), u16(d, kick! - WM_DATA_ADDR + 6)]).toEqual([1, 14]);
-    expect(u16(d, l + 0x40)).toBe(29);
+    expect(u16(d, l + 0x40)).toBe(8);
   });
 
   it("notes a hero it cannot draw and keeps that player Willy", () => {

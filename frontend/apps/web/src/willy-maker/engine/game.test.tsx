@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, CLIP, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -949,5 +949,71 @@ describe("the level's camera", () => {
     const level = { size: { w: 2048, h: 448 }, camera: { forwardOnly: true, backtrack: 96 } };
     expect(levelFromProject(level).backtrack).toBe(96);
     expect(levelFromProject({ ...level, camera: { forwardOnly: false, backtrack: 96 } }).backtrack).toBe(2048);
+  });
+});
+
+describe("the light gun (genres.md, phase 1)", () => {
+  const range = (objects: LevelObject[], shoot = true) => new Game(flat(undefined, objects), { rules: { ...LIGHTGUN_RULES, enemiesShoot: shoot } });
+  const target = (x: number, y = 400): LevelObject => ({ name: `t${x}`, type: "enemy", x, y, kind: "trooper", facing: "left", patrol: 0 } as LevelObject);
+  // moves player 1's crosshair onto world point (wx, wy) while the camera moves
+  const aimAt = (g: Game, wx: number, wy: number) => {
+    const p = g.players[0]!;
+    for (let f = 0; f < 200; f++) {
+      const x = wx - g.camX;
+      const y = wy - g.camY;
+      if (Math.abs(p.cx - x) < CROSS_SPEED && Math.abs(p.cy - y) < CROSS_SPEED) return;
+      let pad = 0;
+      if (p.cx < x - CROSS_SPEED + 1) pad |= Input.Right;
+      else if (p.cx > x + CROSS_SPEED - 1) pad |= Input.Left;
+      if (p.cy < y - CROSS_SPEED + 1) pad |= Input.Down;
+      else if (p.cy > y + CROSS_SPEED - 1) pad |= Input.Up;
+      run(g, 1, pad);
+    }
+  };
+
+  it("aims with the stick and shoots a target down where the crosshair points", () => {
+    const g = range([target(200)]);
+    const p = g.players[0]!;
+    expect([p.ammo, p.cy]).toEqual([CLIP, (224 - 32) >> 1]);
+    run(g, 5, Input.Right);
+    aimAt(g, 200, 380);
+    run(g, 1, Input.B1);
+    expect(p.ammo).toBe(CLIP - 1);
+    expect(g.enemies[0]!.state).toBe("down");
+  });
+
+  it("a hostage is not to be shot, and an empty gun reloads with B2", () => {
+    const g = range([{ name: "h", type: "civilian", x: 150, y: 400, kind: "woman" } as LevelObject]);
+    const p = g.players[0]!;
+    run(g, p.invulnerable + 1, 0);
+    aimAt(g, 150, 380);
+    const lives = p.lives;
+    run(g, 1, Input.B1);
+    expect(p.lives).toBe(lives - 1);
+    for (let k = 0; k < CLIP; k++) run(g, 2, (f) => (f === 0 ? Input.B1 : 0));
+    expect(p.ammo).toBe(0);
+    run(g, 1, Input.B2);
+    run(g, RELOAD_FRAMES, 0);
+    expect(p.ammo).toBe(CLIP);
+  });
+
+  it("a target on the screen aims and shoots the player", () => {
+    const g = range([target(200)]);
+    const p = g.players[0]!;
+    const lives = p.lives;
+    run(g, 400 + AIM_FRAMES, 0);
+    expect(p.lives).toBeLessThan(lives);
+  });
+
+  it("the camera moves by itself, holds at a lock until its targets are down, and the route's end clears the level", () => {
+    const g = range([target(600), { name: "lock", type: "camera_lock", x: 400, y: 224, w: 384, h: 224 } as LevelObject], false);
+    run(g, 100, 0);
+    expect(g.camX).toBe(Math.floor(100 / ROUTE_STEP));
+    run(g, 1200, 0);
+    expect(g.camX).toBe(400);
+    expect(g.outcome).toBe("playing");
+    g.enemies[0]!.state = "off";
+    run(g, 2 * (64 * 16 - 384 - 400) + 4, 0);
+    expect(g.outcome).toBe("cleared");
   });
 });

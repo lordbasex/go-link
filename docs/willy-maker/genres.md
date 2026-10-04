@@ -43,7 +43,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** stick walks in 8 directions, B1 attack (repeated for combos, toward an enemy to grab), B2 jump, B3 special (a costly clear-around move).
 - **Size:** L.
 
-## 4. Light gun / target shooter
+## 4. Light gun / target shooter (available, phase 1)
+
+**Phase 1 built** (2026-10-04): the rule `crosshair` (the Rules card's **Crosshairs**, on in a new light gun game with targets that take one hit and shoot back, and no exit to walk to). Each player is a crosshair (one color each) moved 3 px a frame by the stick; B1 shoots where it points (6 shots), B2 reloads (40 frames); a shot hits the first target within 10 px of its x and 40 px over its feet, else a hostage (a civilian: the shooter is hurt), else a crate or breakable cell. Nobody walks: the camera moves along the level a pixel every 2 frames, holds at a camera lock until its targets are down and the level clears where the route ends. A target on the screen waits, aims for a second and shoots the first player in (the rule Enemies shoot), then rests 2 seconds; a hit interrupts its aim. Play mode and the ROM alike (`wm_data` version 13); `rom/tools/lab/runs/gun-range.json` (a bot's inputs from play mode: targets along the route, a reload, a scene held at a lock, the clear) matches the real core at tolerance 0 on all its frames and play mode on every frame. Next: target timing (when a target appears and for how long), a camera route with stops, special (a bomb on B3).
 
 - **The player:** aims a crosshair on screen and shoots targets that pop up while the camera moves along a route or holds on each scene; reloads, rescues hostages by not shooting them.
 - **Engine:** reuses levels as backgrounds, the camera (now on a script: move, stop, move), camera locks (a scene ends when its targets are down) and enemies (as targets with pop-up timings). New: a crosshair per player moved by the stick, hits at the crosshair instead of shots that fly, reload, hostages.

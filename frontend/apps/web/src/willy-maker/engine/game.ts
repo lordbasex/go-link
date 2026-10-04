@@ -61,6 +61,18 @@ import {
   KNIFE_HITS,
   BOSS_HP,
   BOSS_REST,
+  CROSS_SPEED,
+  CROSS_BOTTOM,
+  CLIP,
+  RELOAD_FRAMES,
+  SHOT_FLASH,
+  TARGET_HALF,
+  TARGET_H,
+  HOSTAGE_HALF,
+  HOSTAGE_H,
+  AIM_FRAMES,
+  TARGET_REST,
+  ROUTE_STEP,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -149,6 +161,11 @@ export interface Player {
   /** The enemy held (its index + 1, 0 for none) and frames held. */
   grabbed: number;
   grabT: number;
+  /** The light gun's crosshair (screen px), its shot's flash and the reload's frames left. */
+  cx: number;
+  cy: number;
+  shotT: number;
+  reloadT: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held";
@@ -283,7 +300,8 @@ export type GameEvent =
   | { kind: "jump" | "shot" | "knife" | "kick" | "rocket" | "land"; player: number }
   | { kind: "crate"; name: string; x?: number }
   | { kind: "enemy_down" | "hit"; name: string; x?: number }
-  | { kind: "explosion"; x: number }
+  | { kind: "explosion" | "enemy_shot"; x: number }
+  | { kind: "hostage"; player: number }
   | { kind: "rescue"; name: string; player: number }
   | { kind: "pickup"; item: string; player: number }
   | { kind: "hurt" | "join"; player: number }
@@ -661,7 +679,11 @@ export class Game {
     const lead = this.players.find((q) => q.active);
     let x: number;
     let fy: number;
-    if (this.walkBand) {
+    if (this.rules.crosshair) {
+      // the light gun: nobody walks; the crosshair starts in the middle, the players side by side
+      x = this.camX;
+      fy = 0;
+    } else if (this.walkBand) {
       // the beat 'em up: at the start, beside the player already in, or near the camera, inside the band
       const lx = lead ? lead.x + (lead.x + 24 < this.camX + SCREEN_W - 12 ? 24 : -24) : start && !lead ? start.x + (this.startAt ? i * 24 : 0) : this.camX + 64 + i * 24;
       x = lx;
@@ -678,6 +700,11 @@ export class Game {
     }
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
+    if (this.rules.crosshair) {
+      p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
+      p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
+      p.ammo = CLIP;
+    }
     this.events.push({ kind: "join", player: i });
   }
 
@@ -945,7 +972,102 @@ export class Game {
     }
   }
 
+  /**
+   * The light gun's player (the crosshair rule): the stick moves the
+   * crosshair on the screen, B1 shoots where it points, B2 reloads.
+   */
+  private aim(p: Player): void {
+    p.t++;
+    if (p.invulnerable) p.invulnerable--;
+    if (p.shotT) p.shotT--;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    const dy = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    p.cx = Math.max(0, Math.min(SCREEN_W - 1, p.cx + dx * CROSS_SPEED));
+    p.cy = Math.max(0, Math.min(SCREEN_H - CROSS_BOTTOM - 1, p.cy + dy * CROSS_SPEED));
+    if (p.reloadT) {
+      if (--p.reloadT === 0) p.ammo = CLIP;
+      return;
+    }
+    if (this.pressed(p, Input.B2) && p.ammo < CLIP) {
+      p.reloadT = RELOAD_FRAMES;
+      return;
+    }
+    if (this.pressed(p, Input.B1) && p.ammo > 0) {
+      p.ammo--;
+      p.shotT = SHOT_FLASH;
+      this.events.push({ kind: "shot", player: p.index });
+      this.shootAt(p, this.camX + p.cx, this.camY + p.cy);
+    }
+  }
+
+  /** A shot at a world point: the first target there, else a hostage (which hurts the shooter), else a crate or breakable cell. */
+  private shootAt(p: Player, wx: number, wy: number): void {
+    for (const e of this.enemies) {
+      if (e.state !== "walk" && e.state !== "hit" && e.state !== "attack") continue;
+      if (Math.abs(wx - e.x) > TARGET_HALF || wy < e.fy - TARGET_H || wy >= e.fy) continue;
+      this.damage(e, 1, p);
+      this.lastHit = e;
+      this.lastHitT = 120;
+      return;
+    }
+    for (const v of this.civilians) {
+      if (v.rescued || Math.abs(wx - v.x) > HOSTAGE_HALF || wy < v.fy - HOSTAGE_H || wy >= v.fy) continue;
+      this.events.push({ kind: "hostage", player: p.index });
+      this.hurt(p);
+      return;
+    }
+    const t = this.cellAt(wx, wy);
+    if (t === Tag.Crate || t === Tag.Breakable) this.hitCell(Math.floor(wx / CELL), Math.floor(wy / CELL), 1, p);
+  }
+
+  /** The light gun's targets: they wait off the screen, aim, shoot the first player in and rest; a shot interrupts the aim. */
+  private updateTargets(): void {
+    if (this.lastHitT) this.lastHitT--;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i]!;
+      e.t++;
+      if (e.state === "walk") {
+        if (e.x < this.camX || e.x > this.camX + SCREEN_W) continue;
+        e.flip = e.x > this.camX + (SCREEN_W >> 1);
+        if (e.fireWait) e.fireWait--;
+        else if (this.rules.enemiesShoot) {
+          e.state = "attack";
+          e.t = 0;
+        }
+      } else if (e.state === "attack") {
+        if (e.t >= AIM_FRAMES) {
+          const target = this.players.find((q) => q.active && !q.invulnerable);
+          if (target) {
+            this.events.push({ kind: "enemy_shot", x: e.x });
+            this.hurt(target);
+          }
+          e.state = "walk";
+          e.t = 0;
+          e.fireWait = TARGET_REST;
+        }
+      } else if (e.state === "hit") {
+        if (e.t > 14) {
+          e.state = "walk";
+          e.t = 0;
+          e.fireWait = TARGET_REST;
+        }
+      } else if (e.state === "down" && e.t > 90) e.state = "off";
+    }
+  }
+
+  /** The light gun's camera: along the level a pixel every ROUTE_STEP frames, holding at a camera lock until its targets are down. */
+  private updateRoute(snap: boolean): void {
+    const lock = this.activeLock();
+    let maxX = this.level.width - SCREEN_W;
+    if (lock) maxX = Math.min(maxX, Math.max(lock.x, lock.x + lock.w - SCREEN_W));
+    this.camY = Math.max(0, this.level.height - SCREEN_H);
+    if (snap) this.camX = 0;
+    else if (this.frame % ROUTE_STEP === 0 && this.camX < maxX) this.camX++;
+    if (this.camX > this.camFar) this.camFar = this.camX;
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.crosshair) return this.aim(p);
     p.t++;
     if (p.dropT) p.dropT--;
     if (p.invulnerable) p.invulnerable--;
@@ -1236,6 +1358,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.crosshair) return this.updateTargets();
     if (this.walkBand) return this.updateEnemiesInDepth();
     for (const e of this.enemies) {
       e.t++;
@@ -1384,6 +1507,8 @@ export class Game {
   private updateCivilians(): void {
     for (const v of this.civilians) {
       v.t++;
+      // the light gun's hostages are only not to be shot
+      if (this.rules.crosshair) continue;
       if (v.rescued || v.trappedIn) continue;
       for (const p of this.players) {
         const dx = v.x - p.x;
@@ -1421,6 +1546,7 @@ export class Game {
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
+    if (this.rules.crosshair) return this.updateRoute(snap);
     let sx = 0;
     let sy = 0;
     let n = 0;
@@ -1510,20 +1636,29 @@ export class Game {
     this.updateCivilians();
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
-    const closed = this.rules.exitNeedsEnemies && this.enemies.some((e) => this.alive(e));
-    for (const p of this.players) {
-      if (!p.active) continue;
-      const fy = p.y >> 4;
-      if (!this.exits.some((x) => p.x >= x.x && p.x <= x.x + x.w && fy >= x.y && fy <= x.y + x.h)) continue;
-      if (closed) {
-        // tell the players why the exit does not open (experiment 1, J-11)
-        if (!this.exitClosed) this.events.push({ kind: "exit_closed" });
-        this.exitClosed = EXIT_CLOSED_FRAMES;
-        continue;
+    // the light gun: the level ends where the camera's route does, with no lock holding it
+    if (this.rules.crosshair) {
+      if (this.camX >= this.level.width - SCREEN_W && !this.activeLock() && this.players.some((p) => p.active)) {
+        this.outcome = "cleared";
+        this.events.push({ kind: "cleared" });
+        return;
       }
-      this.outcome = "cleared";
-      this.events.push({ kind: "cleared" });
-      return;
+    } else {
+      const closed = this.rules.exitNeedsEnemies && this.enemies.some((e) => this.alive(e));
+      for (const p of this.players) {
+        if (!p.active) continue;
+        const fy = p.y >> 4;
+        if (!this.exits.some((x) => p.x >= x.x && p.x <= x.x + x.w && fy >= x.y && fy <= x.y + x.h)) continue;
+        if (closed) {
+          // tell the players why the exit does not open (experiment 1, J-11)
+          if (!this.exitClosed) this.events.push({ kind: "exit_closed" });
+          this.exitClosed = EXIT_CLOSED_FRAMES;
+          continue;
+        }
+        this.outcome = "cleared";
+        this.events.push({ kind: "cleared" });
+        return;
+      }
     }
     if (this.players.every((p) => !p.active)) {
       // nobody left playing (in a go-link room a new credit would start again)
@@ -1617,6 +1752,10 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     struck: false,
     grabbed: 0,
     grabT: 0,
+    cx: 0,
+    cy: 0,
+    shotT: 0,
+    reloadT: 0,
   };
 }
 
@@ -1655,6 +1794,7 @@ function spawn(p: Player, x: number, fy: number): void {
   p.punchT = p.combo = p.comboT = 0;
   p.struck = false;
   p.grabbed = p.grabT = 0;
+  p.shotT = p.reloadT = 0;
 }
 
 function num(v: unknown, fallback: number): number {

@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (website)
+
+- **Willy Maker: the light gun genre** (phase 1). A new light gun game gives each player a crosshair moved by the stick: B1 shoots where it points (6 shots), B2 reloads, and shooting a hostage hurts. Nobody walks: the camera moves along the level by itself, holds at each camera lock until its targets are down, and the level clears at the end of the route. Targets aim for a second and shoot back unless hit first. The Rules card's **Crosshairs** turns it on. Play mode and the ROM alike (`wm_data` version 13): a bot's run through a range matches the real core at tolerance 0 and play mode on every frame.
+
 ## [0.1.9] - 2026-10-04
 
 ### Added (website and device)

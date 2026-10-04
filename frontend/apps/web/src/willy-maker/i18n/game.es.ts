@@ -91,6 +91,7 @@ export const gameEs: GameMessages = {
     weapons: "Armas (arma, cuchillo, patada, bazuca)",
     stomp: "Caer sobre un enemigo lo derriba",
     depth: "Caminar en profundidad (beat 'em up: arriba y abajo recorren la calle)",
+    crosshair: "Miras (pistola de luz: la palanca apunta, B1 dispara, B2 recarga; la cámara avanza sola)",
     jump: "Medido en el motor, el salto llega a {peak} px: repisas de hasta {ledge} px de alto.",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",

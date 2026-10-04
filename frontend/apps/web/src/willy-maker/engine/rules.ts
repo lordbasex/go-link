@@ -184,6 +184,12 @@ export interface GameRules {
    * platforms, ladders or gravity between floors; actors are drawn by depth.
    */
   depth: boolean;
+  /**
+   * The light gun (genres.md): each player aims a crosshair with the stick
+   * and shoots where it points (B1, B2 reloads); nobody walks, the camera
+   * moves along the level by itself and holds at camera locks.
+   */
+  crosshair: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -209,10 +215,14 @@ export const DEFAULT_RULES: GameRules = {
   weapons: true,
   stomp: false,
   depth: false,
+  crosshair: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
 export const PLATFORMER_RULES: Partial<GameRules> = { weapons: false, stomp: true, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false };
+
+/** A new light gun game's rules (genres.md): crosshairs, targets that take one shot and shoot back, no exit to walk to (the level ends where the camera's route does). */
+export const LIGHTGUN_RULES: Partial<GameRules> = { crosshair: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: true, enemiesChase: false, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -289,6 +299,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     weapons: bool(r.weapons, true),
     stomp: bool(r.stomp, false),
     depth: bool(r.depth, false),
+    crosshair: bool(r.crosshair, false),
   };
 }
 
@@ -328,3 +339,26 @@ export function cancelOpposites(pad: number): number {
   if ((v & Input.Up) && (v & Input.Down)) v &= ~(Input.Up | Input.Down);
   return v;
 }
+
+/**
+ * The light gun (genres.md, phase 1): a crosshair moves CROSS_SPEED px a
+ * frame on the screen (above the HUD's last CROSS_BOTTOM px); B1 shoots
+ * where it points, one of CLIP shots, and B2 reloads in RELOAD_FRAMES. A
+ * target is hit within TARGET_HALF px of its x and TARGET_H px over its
+ * feet; a hostage (a civilian) within HOSTAGE_HALF and HOSTAGE_H, which
+ * hurts the player who shot. A target on the screen waits, aims for
+ * AIM_FRAMES and shoots the first player in, then rests TARGET_REST; the
+ * camera moves a pixel every ROUTE_STEP frames and holds at camera locks.
+ */
+export const CROSS_SPEED = 3;
+export const CROSS_BOTTOM = 32;
+export const CLIP = 6;
+export const RELOAD_FRAMES = 40;
+export const SHOT_FLASH = 6;
+export const TARGET_HALF = 10;
+export const TARGET_H = 40;
+export const HOSTAGE_HALF = 8;
+export const HOSTAGE_H = 36;
+export const AIM_FRAMES = 60;
+export const TARGET_REST = 120;
+export const ROUTE_STEP = 2;

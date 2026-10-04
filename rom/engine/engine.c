@@ -640,6 +640,19 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define KNIFE_HITS 3
 #define BOSS_REST 25
 #define BOSS_HUD_STEP 3
+/* the light gun (WM_F_CROSSHAIR, engine/rules.ts) */
+#define CROSS_SPEED 3
+#define CROSS_BOTTOM 32
+#define CLIP 6
+#define RELOAD_FRAMES 40
+#define SHOT_FLASH 6
+#define TARGET_HALF 10
+#define TARGET_H 40
+#define HOSTAGE_HALF 8
+#define HOSTAGE_H 36
+#define AIM_FRAMES 60
+#define TARGET_REST 120
+#define ROUTE_STEP 2
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -675,6 +688,7 @@ struct player {
 	int punch_t, combo, combo_t, struck; /* the beat 'em up's fight: the punch, its place in the combo, the window to chain, landed */
 	int grabbed, grab_t;                 /* the enemy held (index + 1, 0 none) and frames held */
 	struct { int live, dir; s32 x, fy; } blade; /* the thrown knife (phase 4), along the lane it left from */
+	int cx, cy, shot_t, reload_t;               /* the light gun's crosshair (screen px), its flash, the reload */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -682,6 +696,7 @@ struct player {
 static struct player pl[MAX_PLAYERS];
 /* the beat 'em up (WM_F_DEPTH, engine/game.ts moveInDepth): its walkable band, feet y px */
 static int depth;
+static int crosshair; /* the light gun (WM_F_CROSSHAIR) */
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -1091,6 +1106,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 		p->shots[i].live = 0;
 	p->rocket.live = 0;
 	p->blade.live = 0;
+	p->shot_t = p->reload_t = 0;
 }
 
 /* where place_near looks, in order */
@@ -1133,7 +1149,11 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
-	if (depth) {
+	if (crosshair) {
+		/* the light gun: nobody walks; the crosshair starts in the middle, the players side by side */
+		x = cam_x;
+		fy = 0;
+	} else if (depth) {
 		/* the beat 'em up: beside the player already in, at the start, or near the camera, inside the band */
 		if (lead >= 0) {
 			x = pl[lead].x + (pl[lead].x + 24 < cam_x + SCREEN_W - 12 ? 24 : -24);
@@ -1157,6 +1177,11 @@ static void player_join(int k)
 	player_spawn(p, x, fy);
 	p->energy = R->energy;
 	p->hurt = R->hurt_frames;
+	if (crosshair) {
+		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
+		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
+		p->ammo = CLIP;
+	}
 }
 
 /* back on the ground near the camera's left side */
@@ -1215,6 +1240,7 @@ static void game_reset(void)
 			loaded_band[b][i] = -1;
 	}
 	depth = (D->flags & WM_F_DEPTH) != 0;
+	crosshair = (D->flags & WM_F_CROSSHAIR) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -1683,12 +1709,81 @@ static void move_in_depth(struct player *p, int dir)
 	}
 }
 
+/* a shot at a world point (engine/game.ts shootAt): the first target there,
+   else a hostage (which hurts the shooter), else a crate or breakable cell */
+static void shoot_at(struct player *p, s32 wx, s32 wy)
+{
+	int i, t;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		if (e->state != EN_WALK && e->state != EN_HIT && e->state != EN_ATTACK)
+			continue;
+		if (iabs(wx - e->x) > TARGET_HALF || wy < e->fy - TARGET_H || wy >= e->fy)
+			continue;
+		en_damage(i, 1, p);
+		last_hit = i;
+		last_hit_t = 120;
+		return;
+	}
+	for (i = 0; i < nciv; i++) {
+		if (civ[i].rescued || iabs(wx - civ[i].x) > HOSTAGE_HALF || wy < civ[i].fy - HOSTAGE_H || wy >= civ[i].fy)
+			continue;
+		hurt(p, 0);
+		return;
+	}
+	t = cell_at(wx, wy);
+	if (t == T_CRATE || t == T_BREAKABLE)
+		hit_cell((int)(wx >> 4), (int)(wy >> 4), 1, p);
+}
+
+/* the light gun's player (engine/game.ts aim): the stick moves the crosshair,
+   B1 shoots where it points, B2 reloads */
+static void aim(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	int dy = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	p->t++;
+	if (p->hurt)
+		p->hurt--;
+	if (p->shot_t)
+		p->shot_t--;
+	p->cx += dx * CROSS_SPEED;
+	p->cy += dy * CROSS_SPEED;
+	if (p->cx < 0)
+		p->cx = 0;
+	if (p->cx > SCREEN_W - 1)
+		p->cx = SCREEN_W - 1;
+	if (p->cy < 0)
+		p->cy = 0;
+	if (p->cy > SCREEN_H - CROSS_BOTTOM - 1)
+		p->cy = SCREEN_H - CROSS_BOTTOM - 1;
+	if (p->reload_t) {
+		if (--p->reload_t == 0)
+			p->ammo = CLIP;
+		return;
+	}
+	if (PRESSED(p, BTN_2) && p->ammo < CLIP) {
+		p->reload_t = RELOAD_FRAMES;
+		return;
+	}
+	if (PRESSED(p, BTN_1) && p->ammo > 0) {
+		p->ammo--;
+		p->shot_t = SHOT_FLASH;
+		sfx(SFX_SHOT, cam_x + p->cx);
+		shoot_at(p, cam_x + p->cx, cam_y + p->cy);
+	}
+}
+
 static void update_player(struct player *p)
 {
 	int i, dir = 0, jet_was;
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (crosshair) {
+		aim(p);
+		return;
+	}
 	p->t++;
 	if (p->drop_t)
 		p->drop_t--;
@@ -2080,9 +2175,56 @@ static void update_enemies_in_depth(void)
 	}
 }
 
+/* the light gun's targets (engine/game.ts updateTargets): they wait off the
+   screen, aim, shoot the first player in and rest; a shot interrupts the aim */
+static void update_targets(void)
+{
+	int i, k;
+	if (last_hit_t)
+		last_hit_t--;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		e->t++;
+		if (e->state == EN_WALK) {
+			if (e->x < cam_x || e->x > cam_x + SCREEN_W)
+				continue;
+			e->flip = e->x > cam_x + (SCREEN_W >> 1);
+			if (e->fire_wait)
+				e->fire_wait--;
+			else if (R->enemies_shoot) {
+				e->state = EN_ATTACK;
+				e->t = 0;
+			}
+		} else if (e->state == EN_ATTACK) {
+			if (e->t >= AIM_FRAMES) {
+				for (k = 0; k < nplayers; k++)
+					if (pl[k].active && !pl[k].hurt) {
+						sfx(SFX_SHOT, e->x);
+						hurt(&pl[k], 0);
+						break;
+					}
+				e->state = EN_WALK;
+				e->t = 0;
+				e->fire_wait = TARGET_REST;
+			}
+		} else if (e->state == EN_HIT) {
+			if (e->t > 14) {
+				e->state = EN_WALK;
+				e->t = 0;
+				e->fire_wait = TARGET_REST;
+			}
+		} else if (e->state == EN_DOWN && e->t > 90)
+			e->state = EN_OFF;
+	}
+}
+
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (crosshair) {
+		update_targets();
+		return;
+	}
 	if (depth) {
 		update_enemies_in_depth();
 		return;
@@ -2197,7 +2339,8 @@ static void update_civilians(void)
 	int i, k;
 	for (i = 0; i < nciv; i++) {
 		civ[i].t++;
-		if (civ[i].rescued)
+		/* the light gun's hostages are only not to be shot */
+		if (civ[i].rescued || crosshair)
 			continue;
 		for (k = 0; k < nplayers; k++) {
 			s32 dx = civ[i].x - pl[k].x, dy = (pl[k].y >> 4) - civ[i].fy;
@@ -2246,9 +2389,34 @@ static int active_lock(void)
 	return -1;
 }
 
+/* the light gun's camera (engine/game.ts updateRoute): along the level a pixel
+   every ROUTE_STEP frames, holding at a camera lock until its targets are down */
+static void update_route(int snap)
+{
+	s32 max_cx = level_w - SCREEN_W;
+	int lk = active_lock();
+	if (lk >= 0) {
+		const struct wm_object *l = (const struct wm_object *)D->locks + lk;
+		s32 end = l->x + l->a - SCREEN_W > l->x ? l->x + l->a - SCREEN_W : l->x;
+		if (end < max_cx)
+			max_cx = end;
+	}
+	cam_y = level_h - SCREEN_H > 0 ? level_h - SCREEN_H : 0;
+	if (snap)
+		cam_x = 0;
+	else if (plat_t % ROUTE_STEP == 0 && cam_x < max_cx)
+		cam_x++;
+	if (cam_x > cam_far)
+		cam_far = cam_x;
+}
+
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
+	if (crosshair) {
+		update_route(snap);
+		return;
+	}
 	s32 min_x = 0x7fffffff, max_x = -0x7fffffff, top = 0x7fffffff, feet = -0x7fffffff;
 	s32 lo_x, hi_x, lo_y, hi_y, before;
 	int n = 0, k;
@@ -2592,8 +2760,20 @@ static void draw_world(void)
 		flush_sprites();
 		return;
 	}
-	for (k = 0; k < nplayers; k++)
-		draw_player(&pl[k]);
+	/* the light gun's players are their crosshairs, in front of everything (the
+	   earlier sprite is drawn in front), each with its shot's flash behind it */
+	if (crosshair)
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (!p->active || (p->hurt && ((p->hurt >> 2) & 1)))
+				continue;
+			put_sprite(p->cx - 8, p->cy - 8, (u16)(TILE_CROSS + k), PAL_CROSS);
+			if (p->shot_t)
+				put_sprite(p->cx - 8, p->cy - 8, (u16)(TILE_CROSS + 4), PAL_CROSS);
+		}
+	else
+		for (k = 0; k < nplayers; k++)
+			draw_player(&pl[k]);
 	draw_enemies();
 	draw_pickups();
 	draw_civilians();
@@ -2735,6 +2915,17 @@ static void hud(void)
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			for (e = 0; e < 9 && e < room; e++)
 				put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
+			/* the light gun: the clip under the energy, or a prompt to reload (B2) */
+			if (crosshair) {
+				for (e = 0; e < CLIP && e < room; e++)
+					put_char(col + 3 + e, 2, e < p->ammo ? 'I' : ' ', INK_ACCENT);
+				if (!p->ammo && room >= 6) {
+					if (p->reload_t)
+						print(col + 3, 2, "...   ", INK_WHITE);
+					else if ((frame_count >> 4) & 1)
+						print(col + 3, 2, "RELOAD", INK_WHITE);
+				}
+			}
 			if ((p->special == WM_ITEM_BAZOOKA || p->special == WM_ITEM_PIPE) && has_ammo && room > 12) {
 				print_n(col + 3 + 4, 1, ammo.s, ammo.len < room - 6 ? ammo.len : room - 6, INK_WHITE);
 				put_char(col + 3 + 4 + (ammo.len < room - 6 ? ammo.len : room - 6) + 1, 1, '0' + p->ammo, INK_WHITE);
@@ -2742,6 +2933,8 @@ static void hud(void)
 		} else {
 			const struct line *l = credits || free_play() ? (has_join ? &join : 0) : (has_coin ? &coin : 0);
 			blank(col + 3, 1, room);
+			if (crosshair)
+				blank(col + 3, 2, room < CLIP ? room : CLIP);
 			if (l && ((frame_count / 20) & 1))
 				print_n(col + 3, 0, l->s, l->len < room ? l->len : room, INK_WHITE);
 			else
@@ -2762,8 +2955,8 @@ static void hud(void)
 		print(37, 26, "CREDITS", INK_WHITE);
 		print_num(45, 26, (u32)credits, 1, INK_WHITE);
 	}
-	/* the beat 'em up: the health of the enemy last hit, for two seconds */
-	if (depth) {
+	/* the beat 'em up and the light gun: the health of the enemy last hit, for two seconds */
+	if (depth || crosshair) {
 		int hp = last_hit >= 0 && last_hit_t ? en[last_hit].hp : 0;
 		int boss = hp > 0 && en[last_hit].boss;
 		/* a boss's in BOSS_HUD_STEP hits a mark, in the accent ink */
@@ -2961,7 +3154,9 @@ static int play(int first)
 		if (outcome < 0)
 			update_enemies(1);
 		update_civilians();
-		update_camera(0);
+		/* the light gun's camera moves only while playing, as play mode's */
+		if (!crosshair || outcome < 0)
+			update_camera(0);
 		stream();
 		set_scroll();
 		draw_world();
@@ -2971,6 +3166,19 @@ static int play(int first)
 			alive += pl[k].active;
 		if (outcome < 0)
 			soon_update();
+		/* the light gun: the level ends where the camera's route does, with no lock holding it */
+		if (outcome < 0 && crosshair && cam_x >= level_w - SCREEN_W && active_lock() < 0) {
+			int any = 0;
+			for (k = 0; k < nplayers; k++)
+				any |= pl[k].active;
+			if (any) {
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
+			}
+		}
 		/* the exit: any player in it, with every enemy down when the rules say so;
 		   too early, a message says why it does not open */
 		if (outcome < 0 && D->exit_w > 0)

@@ -5,7 +5,7 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, PLATFORMER_RULES } from "../../engine/rules";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, PLATFORMER_RULES } from "../../engine/rules";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
@@ -135,6 +135,8 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     // a platformer starts with its own rules (no weapons, stomping), changeable in the Rules card
     if (genre === "platformer") p.settings.rules = { ...(p.settings.rules ?? {}), ...PLATFORMER_RULES };
     // a beat 'em up walks a street in depth: its rules, and a band over each level's floor
+    // a light gun game: crosshairs, a camera that moves by itself and holds at camera locks
+    if (genre === "light-gun") p.settings.rules = { ...(p.settings.rules ?? {}), ...LIGHTGUN_RULES };
     if (genre === "beat-em-up") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...BEATEMUP_RULES };
       for (const level of p.levels) level.walk = defaultWalk(level);

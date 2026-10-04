@@ -94,7 +94,7 @@ export interface DrawOptions {
   ghost?: Ghost | null;
   fps?: number;
   /** HUD words: the game's own (Menus tab) or the translated defaults. */
-  words: { start: string; cleared: string; over: string; ammo: string; overLine?: string; enemies?: string; exitClosed?: string; rescued?: string; coins?: string };
+  words: { start: string; cleared: string; over: string; ammo: string; reload?: string; overLine?: string; enemies?: string; exitClosed?: string; rescued?: string; coins?: string };
   /** Each player's shirt (0 = Willy's own colors, 1-3 a recruit's); by player number when missing. */
   variants?: number[];
   /** Each player's own hero, drawn at its saved size; null or missing = the built-in Willy. */
@@ -179,7 +179,37 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   ctx.restore();
   if (o.overlays.camera) drawCamera(ctx, game, colors);
   drawHud(ctx, game, colors, o);
+  if (game.rules.crosshair) drawCrosshairs(ctx, game);
 }
+
+/** The light gun's crosshairs, in each player's color, and a flash where a shot lands (rom/tools/art.mjs TILE_CROSS). */
+function drawCrosshairs(ctx: CanvasRenderingContext2D, game: Game): void {
+  for (const p of game.players) {
+    if (!p.active) continue;
+    if (p.invulnerable && (p.invulnerable >> 2) & 1) continue;
+    const x = p.cx;
+    const y = p.cy;
+    if (p.shotT) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - 4, y, 9, 1);
+      ctx.fillRect(x, y - 4, 1, 9);
+      ctx.fillStyle = "#ffcc22";
+      ctx.fillRect(x - 2, y - 2, 5, 5);
+    }
+    // the ring with four gaps and a dot in the middle, over a dark outline
+    for (const [color, grow] of [["#000000", 1], [CROSS_COLORS[p.index] ?? "#ffffff", 0]] as const) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - 6 - grow, y - 1 - grow, 4 + grow, 3 + 2 * grow);
+      ctx.fillRect(x + 3, y - 1 - grow, 4 + grow, 3 + 2 * grow);
+      ctx.fillRect(x - 1 - grow, y - 6 - grow, 3 + 2 * grow, 4 + grow);
+      ctx.fillRect(x - 1 - grow, y + 3, 3 + 2 * grow, 4 + grow);
+    }
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+/** The crosshairs' colors, the ROM's PAL_CROSS. */
+const CROSS_COLORS = ["#ffaa33", "#77eeaa", "#44ccdd", "#ee6677"];
 
 function drawBackdrop(ctx: CanvasRenderingContext2D, game: Game): void {
   const g = ctx.createLinearGradient(0, 0, 0, SCREEN_H);
@@ -419,7 +449,8 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
   } });
   for (const p of game.players) actors.push({ fy: p.y >> 4, draw: () => {
-    if (!p.active) return;
+    // the light gun's players are their crosshairs (drawCrosshairs)
+    if (!p.active || game.rules.crosshair) return;
     if (p.invulnerable && (p.invulnerable >> 2) & 1) return;
     const sheet = sprites?.heroes[variants?.[p.index] ?? p.index] ?? sprites?.heroes[0];
     // a beat 'em up's hop: drawn over its shadow on the floor
@@ -589,6 +620,8 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
     for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
+    // the light gun: an empty gun says to reload (B2)
+    else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);
   }
   // the platformer's coins taken (T-22)
   if (game.coinTotal) {
