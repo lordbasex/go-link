@@ -664,6 +664,10 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define FLY_MID 20
 #define SHIP_HIT_X 18
 #define SHIP_HIT_Y 18
+#define MAX_POWER 2
+#define POWER_REACH_X 14
+#define POWER_REACH_Y 12
+#define POWER_GAP 4
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -677,6 +681,7 @@ static u16 sys_now, sys_last;
 
 struct bullet {
 	s16 x, y, dir, live;
+	s16 vy; /* the shooter's fan: px a frame up or down */
 };
 
 struct rocket {
@@ -700,6 +705,7 @@ struct player {
 	int grabbed, grab_t;                 /* the enemy held (index + 1, 0 none) and frames held */
 	struct { int live, dir; s32 x, fy; } blade; /* the thrown knife (phase 4), along the lane it left from */
 	int cx, cy, shot_t, reload_t, bombs;        /* the light gun's crosshair (screen px), its flash, the reload, the bombs left */
+	int power;                                  /* the shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -1200,6 +1206,7 @@ static void player_join(int k)
 		p->cx = 48;
 		p->cy = 40 + k * 36;
 		p->bombs = BOMBS;
+		p->power = 0;
 	}
 }
 
@@ -1234,6 +1241,8 @@ static void hurt(struct player *p, int fell)
 		return;
 	}
 	sfx(SFX_HURT, p->x);
+	/* the shooter's ship loses its power with a life */
+	p->power = 0;
 	if (--p->energy <= 0) {
 		p->energy = 0;
 		p->active = 0;
@@ -1847,25 +1856,44 @@ static void fly(struct player *p)
 				en_damage(i, e->hp, p);
 		}
 	}
+	/* a power pickup it flies over */
+	for (i = 0; i < npickups; i++) {
+		struct pickup *k = &pickup[i];
+		if (k->live && k->item == WM_ITEM_POWER && iabs(k->x - sx) <= POWER_REACH_X && iabs(k->fy - 8 - sy) <= POWER_REACH_Y) {
+			k->live = 0;
+			if (p->power < MAX_POWER)
+				p->power++;
+			sfx(SFX_PICKUP, sx);
+		}
+	}
 	if (p->fire_wait)
 		p->fire_wait--;
-	if ((p->pad & BTN_1) && !p->fire_wait)
+	if ((p->pad & BTN_1) && !p->fire_wait) {
+		/* the weapon's shots, each while there is room for one (engine/game.ts fly) */
+		int n = p->power == 0 ? 1 : p->power == 1 ? 2 : 3, s, live = 0;
 		for (i = 0; i < SHOTS; i++)
-			if (!p->shots[i].live) {
+			live += p->shots[i].live != 0;
+		if (live < SHOTS) {
+			for (s = 0; s < n && live < SHOTS; s++, live++) {
+				for (i = 0; i < SHOTS && p->shots[i].live; i++)
+					;
 				p->shots[i].live = 1;
 				p->shots[i].dir = 1;
 				p->shots[i].x = (s16)(sx + SHIP_HALF_W);
-				p->shots[i].y = (s16)sy;
-				p->fire_wait = SHIP_FIRE;
-				sfx(SFX_SHOT, sx);
-				break;
+				p->shots[i].y = (s16)(p->power == 1 ? sy + (s ? POWER_GAP : -POWER_GAP) : sy);
+				p->shots[i].vy = (s16)(p->power == 2 ? s - 1 : 0);
 			}
+			p->fire_wait = SHIP_FIRE;
+			sfx(SFX_SHOT, sx);
+		}
+	}
 	for (i = 0; i < SHOTS; i++) {
 		struct bullet *b = &p->shots[i];
 		int ei;
 		if (!b->live)
 			continue;
 		b->x += 6;
+		b->y += b->vy;
 		ei = enemy_at(b->x, b->y, 10);
 		if (ei >= 0) {
 			en_damage(ei, 1, p);
@@ -2802,6 +2830,13 @@ static void draw_enemy(int i)
 	int sx = (int)e->x - cam_x, sy = (int)e->fy - cam_y;
 	if (e->state == EN_OFF || e->state == EN_HIDDEN || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
 		return;
+	/* the shooter's enemies are drones (engine/shipArt.ts); a downed one blinks out */
+	if (ship) {
+		if (e->state == EN_DOWN && (e->t > 30 || ((e->t >> 2) & 1)))
+			return;
+		put_sprite(sx - 16, sy - FLY_MID - 8, TILE_DRONE, (u16)(PAL_CROSS | (1 << 8)));
+		return;
+	}
 	if (e->look) {
 		/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
 		const struct wm_look *l = e->look;
@@ -2874,6 +2909,8 @@ static void draw_pickups(void)
 			put_sprite(sx - 8, sy - 16, TILE_PIPE, PAL_PICKUPS);
 		else if (pickup[i].item == WM_ITEM_KNIFE)
 			put_sprite(sx - 8, sy - 16, TILE_KNIFE, PAL_PICKUPS);
+		else if (pickup[i].item == WM_ITEM_POWER)
+			put_sprite(sx - 8, sy - 16, TILE_POWER, PAL_CROSS);
 		else if (frame_count & 16)
 			put_sprite(sx - 16, sy - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
 	}

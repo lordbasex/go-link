@@ -402,3 +402,14 @@ export const FLY_WAVE = 8;
 export const FLY_MID = 20;
 export const SHIP_HIT_X = 18;
 export const SHIP_HIT_Y = 18;
+/**
+ * The horizontal shooter's phase 2: a power pickup a ship flies over
+ * (within POWER_REACH_X and POWER_REACH_Y of its middle, 8 px over its
+ * feet) raises its weapon up to MAX_POWER: two shots side by side
+ * (POWER_GAP px apart), then three in a fan (one up and one down a pixel a
+ * frame); a ship that loses a life loses its power.
+ */
+export const MAX_POWER = 2;
+export const POWER_REACH_X = 14;
+export const POWER_REACH_Y = 12;
+export const POWER_GAP = 4;

@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, BOMBS, CLIP, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, BOMBS, CLIP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1083,6 +1083,22 @@ describe("the horizontal shooter (genres.md, phase 1)", () => {
     const lives = p2.lives;
     for (let f = 0; f < 800 && p2.lives === lives; f++) run(g2, 1, p2.cy + g2.camY < g2.enemies[0]!.fy - 20 ? Input.Down : Input.Up);
     expect(p2.lives).toBe(lives - 1);
+  });
+
+  it("power-ups raise the weapon to two shots and then a fan of three, and a lost life loses them", () => {
+    // two power-ups right at the ship's nose
+    const g = sky([{ name: "p1", type: "pickup", x: 62, y: 282, item: "power" }, { name: "p2", type: "pickup", x: 70, y: 282, item: "power" }]);
+    const p = g.players[0]!;
+    run(g, 6, Input.Right);
+    expect(p.power).toBe(MAX_POWER);
+    expect(g.pickups.filter((k) => k.live)).toHaveLength(0); // both taken
+    run(g, 1, Input.B1);
+    expect(p.shots.map((b) => b.vy)).toEqual([-1, 0, 1]);
+    run(g, 3, 0);
+    expect(p.shots[0]!.y).toBeLessThan(p.shots[2]!.y);
+    p.invulnerable = 0;
+    (g as unknown as { hurt: (q: typeof p) => void }).hurt(p);
+    expect(p.power).toBe(0);
   });
 
   it("a wall hurts the ship, and a bomb takes down every enemy on the screen", () => {

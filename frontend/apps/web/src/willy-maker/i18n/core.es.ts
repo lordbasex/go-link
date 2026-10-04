@@ -233,6 +233,7 @@ export const coreEs: CoreMessages = {
     spring: "Resorte",
     pipe: "Caño",
     knife: "Cuchillo",
+    power: "Mejora de arma",
     nothing: "Nada",
     weapon: "Arma",
     civilian: "Civil",

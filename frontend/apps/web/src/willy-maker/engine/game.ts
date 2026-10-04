@@ -84,6 +84,10 @@ import {
   FLY_MID,
   SHIP_HIT_X,
   SHIP_HIT_Y,
+  MAX_POWER,
+  POWER_REACH_X,
+  POWER_REACH_Y,
+  POWER_GAP,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -109,6 +113,8 @@ export interface Shot {
   x: number;
   y: number;
   dir: number;
+  /** The shooter's fan: px a frame up or down. */
+  vy?: number;
 }
 
 export interface Rocket extends Shot {
@@ -179,6 +185,8 @@ export interface Player {
   reloadT: number;
   /** The light gun's bombs left (B3). */
   bombs: number;
+  /** The shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three. */
+  power: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -737,6 +745,7 @@ export class Game {
       p.cx = 48;
       p.cy = 40 + i * 36;
       p.bombs = BOMBS;
+      p.power = 0;
     }
     this.events.push({ kind: "join", player: i });
   }
@@ -750,6 +759,8 @@ export class Game {
       return;
     }
     p.lives--;
+    // the shooter's ship loses its power with a life
+    p.power = 0;
     this.events.push({ kind: "hurt", player: p.index });
     if (p.lives <= 0) {
       p.active = false;
@@ -1142,14 +1153,24 @@ export class Game {
       this.events.push({ kind: "explosion", x: this.camX + (SCREEN_W >> 1) });
       for (const e of this.enemies) if ((e.state === "walk" || e.state === "hit") && e.x >= this.camX && e.x <= this.camX + SCREEN_W) this.damage(e, e.hp, p);
     }
+    // a power pickup it flies over
+    for (const k of this.pickups)
+      if (k.live && k.item === "power" && Math.abs(k.x - sx) <= POWER_REACH_X && Math.abs(k.fy - 8 - sy) <= POWER_REACH_Y) {
+        k.live = false;
+        p.power = Math.min(MAX_POWER, p.power + 1);
+        this.events.push({ kind: "pickup", item: k.item, player: p.index });
+      }
     if (p.fireWait) p.fireWait--;
     if (p.pad & Input.B1 && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
-      p.shots.push({ dir: 1, x: sx + SHIP_HALF_W, y: sy });
+      // the weapon's shots, each while there is room for one
+      const burst: Shot[] = p.power === 0 ? [{ dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 0 }] : p.power === 1 ? [{ dir: 1, x: sx + SHIP_HALF_W, y: sy - POWER_GAP, vy: 0 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy + POWER_GAP, vy: 0 }] : [{ dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: -1 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 0 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 1 }];
+      for (const b of burst) if (p.shots.length < SHOTS_PER_PLAYER) p.shots.push(b);
       p.fireWait = SHIP_FIRE;
       this.events.push({ kind: "shot", player: p.index });
     }
     p.shots = p.shots.filter((b) => {
       b.x += SHOT_SPEED;
+      b.y += b.vy ?? 0;
       const e = this.enemyAt(b.x, b.y, 10);
       if (e) {
         this.damage(e, 1, p);
@@ -1885,6 +1906,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     shotT: 0,
     reloadT: 0,
     bombs: 0,
+    power: 0,
   };
 }
 

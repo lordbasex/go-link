@@ -233,6 +233,7 @@ export const corePt: CoreMessages = {
     spring: "Mola",
     pipe: "Cano",
     knife: "Faca",
+    power: "Melhoria de arma",
     nothing: "Nada",
     weapon: "Arma",
     civilian: "Civil",

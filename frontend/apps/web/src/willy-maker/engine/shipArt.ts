@@ -29,3 +29,37 @@ export function shipPen(x: number, y: number): ShipPen {
   for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if (body(x + dx, y + dy)) return 3;
   return 0;
 }
+
+/** The shooter's enemy, a drone 32 x 16 px: 0 none, 1 hull, 2 dome, 3 outline, 4 lights. */
+function hull(x: number, y: number): boolean {
+  const dx = (x - 16) / 13;
+  const dy = (y - 9) / 4;
+  if (dx * dx + dy * dy < 1) return true;
+  const ex = (x - 16) / 6;
+  const ey = (y - 6) / 4;
+  return ey <= 0 && ex * ex + ey * ey < 1;
+}
+
+export function dronePen(x: number, y: number): ShipPen {
+  if (hull(x, y)) {
+    if (y <= 6 && Math.abs(x - 16) <= 5) return 2;
+    if (y === 10 && (x === 8 || x === 13 || x === 19 || x === 24)) return 4;
+    return 1;
+  }
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if (hull(x + dx, y + dy)) return 3;
+  return 0;
+}
+
+/** The shooter's power-up, 16 x 16 px: a capsule with a P. 0 none, 1 capsule, 2 letter, 3 outline. */
+export function powerPen(x: number, y: number): ShipPen {
+  const inCap = (px: number, py: number) => px >= 2 && px <= 13 && py >= 4 && py <= 11 && !((px === 2 || px === 13) && (py === 4 || py === 11));
+  if (inCap(x, y)) {
+    const P = ["111.", "1..1", "111.", "1...", "1..."];
+    const r = y - 5;
+    const c = x - 6;
+    if (r >= 0 && r < 5 && c >= 0 && c < 4 && P[r]![c] === "1") return 2;
+    return 1;
+  }
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if (inCap(x + dx, y + dy)) return 3;
+  return 0;
+}

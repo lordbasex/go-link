@@ -58,7 +58,7 @@ struct wm_object {
 /* lock:     (x, y) its top left, a = width, b = height: the camera stops there while enemies stand in its x range */
 /* platform: (x, y) its top left at frame 0, a = width px (32-128, 16s), b = axis (0 across, 1 up and down),
              c = range px (0-512), d = speed px per frame (1-4); it goes there and back */
-enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING, WM_ITEM_PIPE, WM_ITEM_KNIFE };
+enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING, WM_ITEM_PIPE, WM_ITEM_KNIFE, WM_ITEM_POWER };
 
 /* text screens */
 enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER, WM_SCR_JOIN, WM_SCR_AMMO, WM_SCR_COIN, WM_SCR_END = 0xff };

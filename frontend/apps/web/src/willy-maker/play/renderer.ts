@@ -7,7 +7,8 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
-import { SHIP_H, SHIP_W, shipPen } from "../engine/shipArt";
+import { SHIP_H, SHIP_W, dronePen, powerPen, shipPen } from "../engine/shipArt";
+import { FLY_MID } from "../engine/rules";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -398,6 +399,11 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       ctx.fillRect(k.x - 1, y - 4, 2, 8);
       continue;
     }
+    if (k.item === "power") {
+      // the shooter's power-up (engine/shipArt.ts), as the ROM draws it
+      drawPens(ctx, k.x - 8, k.fy - 16, 16, 16, powerPen, ["", "#44ccdd", "#ffffff", "#000000"]);
+      continue;
+    }
     if (k.item === "knife") {
       // the beat 'em up's knife, as the ROM draws it: a brown handle and a steel blade
       drawKnife(ctx, k.x, k.fy - 3, 1);
@@ -443,6 +449,12 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   } });
   for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
     if (e.state === "off" || e.state === "hidden") return;
+    // the shooter's enemies are drones (engine/shipArt.ts); a downed one blinks out
+    if (game.rules.ship) {
+      if (e.state === "down" && (e.t > 30 || (e.t >> 2) & 1)) return;
+      drawPens(ctx, e.x - (SHIP_W >> 1), e.fy - FLY_MID - (SHIP_H >> 1), SHIP_W, SHIP_H, dronePen, ["", "#ee6677", "#ffffff", "#000000", "#ffcc22"]);
+      return;
+    }
     const en = e.boss ? (sprites?.boss ?? sprites?.enemy) : sprites?.enemy;
     const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" || e.state === "held" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
@@ -704,12 +716,16 @@ function drawKnife(ctx: CanvasRenderingContext2D, x: number, y: number, dir: num
 
 /** The shooter's ship in a player's color (engine/shipArt.ts, the ROM's TILE_SHIP). */
 function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, player: number): void {
-  const colors = ["", CROSS_COLORS[player] ?? "#ffffff", "#ffffff", "#000000", "#ffcc22"];
-  for (let py = 0; py < SHIP_H; py++)
-    for (let px = 0; px < SHIP_W; px++) {
-      const pen = shipPen(px, py);
-      if (!pen) continue;
-      ctx.fillStyle = colors[pen]!;
+  drawPens(ctx, x, y, SHIP_W, SHIP_H, shipPen, ["", CROSS_COLORS[player] ?? "#ffffff", "#ffffff", "#000000", "#ffcc22"]);
+}
+
+/** A shape of engine/shipArt.ts, pen by pen in the given colors. */
+function drawPens(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, pen: (px: number, py: number) => number, colors: string[]): void {
+  for (let py = 0; py < h; py++)
+    for (let px = 0; px < w; px++) {
+      const c = pen(px, py);
+      if (!c) continue;
+      ctx.fillStyle = colors[c] ?? "#ffffff";
       ctx.fillRect(x + px, y + py, 1, 1);
     }
 }

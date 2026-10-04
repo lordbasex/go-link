@@ -233,6 +233,7 @@ export const coreEn = {
     spring: "Spring",
     pipe: "Pipe",
     knife: "Knife",
+    power: "Power-up",
     nothing: "Nothing",
     weapon: "Weapon",
     civilian: "Civilian",

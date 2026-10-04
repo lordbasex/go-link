@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { dronePen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -736,9 +736,13 @@ export function addArt(gfx, defs, genDir, opts = {}) {
           code + 5 + 2 * k + half,
           Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 1 + k, 5, 0, 6][shipPen(half * 16 + x, y)])),
         );
-    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define PAL_CROSS ${objPalettes.length}`);
+    // the shooter's drone (a 2 x 1 block) and power-up, from engine/shipArt.ts too
+    for (let half = 0; half < 2; half++)
+      gfx.tile16(code + 13 + half, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 4, 5, 0, 6][dronePen(half * 16 + x, y)])));
+    gfx.tile16(code + 15, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 3, 5, 0][powerPen(x, y)])));
+    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define TILE_DRONE ${hex4(code + 13)} /* a 2 x 1 block */`, `#define TILE_POWER ${hex4(code + 15)}`, `#define PAL_CROSS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
-    code += 13;
+    code += 16;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));
