@@ -3,7 +3,7 @@
 // The maze's lab game (rom/tools/lab/runs/maze-dots.json): one screen, 24 x
 // 14 cells, walled around (the top and bottom rows sit under the HUD) but for
 // a tunnel on row 7, with pillars in a grid, three chasers in the middle (one
-// follows, one ambushes, one wanders), two power pickups.
+// follows, one wanders, one ambushes), two power pickups, two rounds.
 
 import { applyAutoArt } from "../editor/autoArt";
 import { MAZE_RULES } from "../engine/rules";
@@ -13,7 +13,9 @@ import { projectFromTemplate } from "../templates";
 export function mazeProject(): Project {
   const p = projectFromTemplate("empty", { title: "Maze", layout: "slammast", players: 1, levelName: "Maze", screens: 1, height: 224 });
   p.genre = "maze";
-  p.settings.rules = { ...p.settings.rules, ...MAZE_RULES };
+  p.settings.rules = { ...p.settings.rules, ...MAZE_RULES, mazeRounds: 2 };
+  // five lives: the second round's chasers are faster
+  p.settings.dip = { ...p.settings.dip, lives: 5 };
   const level = p.levels[0]!;
   const tags = tagGrid(level);
   const play = layerGrid(level, level.layers.find((l): l is TileLayer => l.id === "play")!);
@@ -30,8 +32,9 @@ export function mazeProject(): Project {
   const items = objectLayer(level).items;
   for (let i = items.length - 1; i >= 0; i--) if (items[i]!.type !== "player_start") items.splice(i, 1);
   Object.assign(items.find((o) => o.type === "player_start" && o.player === 1)!, { x: 12 * 16 + 8, y: 12 * 16 + 16 });
-  for (const [x, y] of [[11, 5], [12, 7], [13, 5]] as const)
-    items.push({ name: `chaser_${x}_${y}`, type: "enemy", x: x * 16 + 8, y: y * 16 + 16, kind: "trooper", facing: "left", patrol: 0 } as LevelObject);
+  // the first chases by its order (follows), the other two by their Chases, the other way round from their order
+  for (const [x, y, chase] of [[11, 5, "auto"], [12, 7, "wander"], [13, 5, "ambush"]] as const)
+    items.push({ name: `chaser_${x}_${y}`, type: "enemy", x: x * 16 + 8, y: y * 16 + 16, kind: "trooper", facing: "left", patrol: 0, chase } as LevelObject);
   items.push({ name: "power_a", type: "pickup", x: 1 * 16 + 8, y: 1 * 16 + 16, item: "power" } as LevelObject);
   items.push({ name: "power_b", type: "pickup", x: 22 * 16 + 8, y: 11 * 16 + 16, item: "power" } as LevelObject);
   return p;

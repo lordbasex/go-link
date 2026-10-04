@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 19
+#define WM_VERSION 20
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -128,7 +128,7 @@ struct wm_data {
 	u32 civ_looks;            /* a2 u32[n_civs]: a civilian's own look, 0 = the engine's woman or child */
 	u32 platforms;            /* a6 wm_object[n_platforms]: the moving platforms (the platformer) */
 	u16 n_platforms;          /* aa 0-16 */
-	u16 pad;                  /* ac */
+	u16 maze_rounds;          /* ac the maze's rounds, 0 or 1 = one (wm_data 20) */
 	u32 pickup_looks;         /* ae u32[n_pickups]: a pickup's own look (its idle animation), 0 = the engine's icon */
 	u16 walk_y0, walk_y1;     /* b2, b4 the beat 'em up's walkable band: feet y, px (WM_F_DEPTH) */
 	u32 locks;                /* b6 wm_object[n_locks]: the camera locks (a beat 'em up's waves) */

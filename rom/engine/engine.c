@@ -711,6 +711,7 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define HOME_FRAMES 180
 #define AMBUSH_AHEAD 64
 #define WANDER_NEAR 128
+static const u8 maze_haste[3] = { 0, 4, 2 }; /* a pixel more every n frames from the second round (engine/rules.ts MAZE_HASTE) */
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -806,7 +807,7 @@ static u8 cand[WELL_COLS * WELL_ROWS];
 static int ncand;
 /* the maze's dots, a bit per cell, how many are left, the frames the chasers flee, and a redraw after the text is cleared */
 static u8 dots[24576 / 8];
-static int dots_left, fright_t;
+static int dots_left, fright_t, maze_round;
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -1798,6 +1799,22 @@ static void hurt(struct player *p, int fell)
 		respawn_near_camera(p);
 }
 
+/* the maze: a dot in every empty cell but the top and bottom rows (the HUD's);
+   one index walked along, no multiplying (it runs mid game on a new round) */
+static void fill_dots(void)
+{
+	int i, c, r, n = cols * rows;
+	for (i = 0; i < ((n + 7) >> 3); i++)
+		dots[i] = 0;
+	dots_left = 0;
+	for (r = 1, i = cols; r < rows - 1; r++)
+		for (c = 0; c < cols; c++, i++)
+			if (col_map[i] == T_AIR) {
+				dots[i >> 3] |= (u8)(1 << (i & 7));
+				dots_left++;
+			}
+}
+
 static void game_reset(void)
 {
 	const struct wm_object *o = D_OBJ;
@@ -1871,8 +1888,9 @@ static void game_reset(void)
 		en[i].shown = 0;
 		en[i].base_y = o->y;
 		en[i].base_x = o->x;
-		en[i].path = ship ? o->a : 0;
-		if (en[i].path == 3)
+		/* the shooter's path, or the maze chaser's way of chasing (0 auto, 1 follow, 2 ambush, 3 wander) */
+		en[i].path = ship || maze ? o->a : 0;
+		if (ship && en[i].path == 3)
 			en[i].fire_wait = GUNSHIP_FIRE;
 		if (en[i].appear > 0)
 			en[i].state = EN_HIDDEN;
@@ -1930,19 +1948,11 @@ static void game_reset(void)
 	rescued = 0;
 	cam_x = cam_y = cam_far = 0;
 	/* the maze: a dot in every empty cell but the top and bottom rows (the HUD's), its chasers on cell middles */
-	dots_left = fright_t = 0;
+	dots_left = fright_t = maze_round = 0;
 	dots_dirty = 1;
 	/* only the maze pays for its dots (a reset that runs long shifts the start: rom-frame-budget) */
 	if (maze) {
-		int c, r;
-		for (i = 0; i < (cols * rows + 7) >> 3; i++)
-			dots[i] = 0;
-		for (r = 1; r < rows - 1; r++)
-			for (c = 0; c < cols; c++)
-				if (col_map[r * cols + c] == T_AIR) {
-					dots[(r * cols + c) >> 3] |= (u8)(1 << ((r * cols + c) & 7));
-					dots_left++;
-				}
+		fill_dots();
 		for (i = 0; i < nen; i++) {
 			en[i].x = (en[i].x >> 4) * 16 + 8;
 			en[i].fy = ((en[i].fy - 1) >> 4) * 16 + 16;
@@ -2694,6 +2704,39 @@ static void walk_maze(struct player *p)
 			fright_t = FRIGHT_FRAMES;
 			sfx(SFX_PICKUP, p->x);
 		}
+	}
+}
+
+/* the maze's next round (engine/game.ts nextRound): the dots and power-ups back,
+   chasers and players at their starts, lives and score kept */
+static void maze_next_round(void)
+{
+	int i, k;
+	maze_round++;
+	fill_dots();
+	dots_dirty = 1;
+	fright_t = 0;
+	for (i = 0; i < nen; i++) {
+		en[i].state = EN_WALK;
+		en[i].x = en[i].min;
+		en[i].fy = en[i].max;
+		en[i].dir = 0;
+		en[i].mdy = 0;
+		en[i].t = 0;
+	}
+	for (i = 0; i < npickups; i++)
+		if (pickup[i].item == WM_ITEM_POWER)
+			pickup[i].live = 1;
+	for (k = 0; k < nplayers; k++) {
+		struct player *p = &pl[k];
+		int energy = p->energy;
+		u32 score = p->score;
+		if (!p->active || p->cpu)
+			continue;
+		p->active = 0;
+		player_join(k);
+		p->energy = energy;
+		p->score = score;
 	}
 }
 
@@ -3483,7 +3526,7 @@ static void update_top_shots(void)
 static void update_maze_chasers(void)
 {
 	static const s8 ways[4][2] = { { 0, -1 }, { -1, 0 }, { 0, 1 }, { 1, 0 } };
-	int i, k, flee;
+	int i, k, flee, kind, steps, s;
 	if (fright_t)
 		fright_t--;
 	flee = fright_t > 0;
@@ -3520,16 +3563,24 @@ static void update_maze_chasers(void)
 			struct player *q = &pl[target];
 			tx = q->x;
 			ty = q->y >> 4;
-			if (!flee && i % 3 == 1) {
+			/* its way of chasing: chosen in the Inspector (Chases), else by its order */
+			kind = e->path ? e->path - 1 : i % 3;
+			if (!flee && kind == 1) {
 				int moving = q->mdx || q->mdy;
 				tx += (moving ? q->mdx : q->wdx) * AMBUSH_AHEAD;
 				ty += (moving ? q->mdy : q->wdy) * AMBUSH_AHEAD;
-			} else if (!flee && i % 3 == 2 && best < WANDER_NEAR) {
+			} else if (!flee && kind == 2 && best < WANDER_NEAR) {
 				tx = 0;
 				ty = (s32)rows << 4;
 			}
 		}
+		/* from the second round a pixel more every maze_haste frames, unless it flees */
+		steps = 0;
 		if (target >= 0 && (!flee || (plat_t & 1))) {
+			int haste = maze_haste[maze_round < 2 ? maze_round : 2];
+			steps = haste && !flee && (plat_t & (haste - 1)) == 0 ? 2 : 1;
+		}
+		for (s = 0; s < steps; s++) {
 			if ((e->x & 15) == 8 && (e->fy & 15) == 0) {
 				int c = (int)(e->x >> 4), r = (int)((e->fy - 1) >> 4), w, pick = -1;
 				s32 score = flee ? -1 : 0x7fffffff;
@@ -4690,7 +4741,10 @@ static int play(int first)
 				maze_draw_dots();
 			for (k = 0; k < nplayers; k++)
 				any |= pl[k].active;
-			if (dots_left <= 0 && any) {
+			/* every dot eaten: the next round, or the level clears after the last */
+			if (dots_left <= 0 && any && maze_round + 1 < D->maze_rounds)
+				maze_next_round();
+			else if (dots_left <= 0 && any) {
 				blank(15, 16, 18);
 				outcome = END_CLEAR;
 				end_t = frame_count;

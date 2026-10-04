@@ -290,6 +290,8 @@ export const coreEn = {
     timingHelp: "The light gun: seconds on the screen before the target shows, and before it leaves unshot (0: at once, and until it is down).",
     path: "Path",
     paths: { wave: "Wave", straight: "Straight", dive: "Dive at the ship" },
+    chase: "Chases",
+    chases: { auto: "By its order", follow: "Follows you", ambush: "Cuts you off ahead", wander: "Keeps off when near" },
     size: "Size",
     hp: "Hits",
     breakable: "Breakable",

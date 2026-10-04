@@ -13,7 +13,7 @@ import { optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
-import { BOSS_HP, CRATE_HP, FLY_PATHS, GUNSHIP_HP, rulesWith } from "../../engine/rules";
+import { BOSS_HP, CRATE_HP, FLY_PATHS, CHASE_KINDS, GUNSHIP_HP, rulesWith } from "../../engine/rules";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
@@ -472,6 +472,17 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
               <option value="right">{t.inspector.right}</option>
             </select>
           </PropRow>
+          {o.type === "enemy" && rulesWith(store.project.settings.rules).maze && (
+            <PropRow label={t.inspector.chase}>
+              <select className="wm-input is-sm" aria-label={t.inspector.chase} value={String(o.chase ?? "auto")} onChange={(e) => set({ chase: e.target.value })}>
+                {CHASE_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {t.inspector.chases[kind]}
+                  </option>
+                ))}
+              </select>
+            </PropRow>
+          )}
           {o.type === "enemy" && rulesWith(store.project.settings.rules).ship && (
             <PropRow label={t.inspector.path}>
               <select className="wm-input is-sm" aria-label={t.inspector.path} value={String(o.path ?? "wave")} onChange={(e) => set({ path: e.target.value })}>

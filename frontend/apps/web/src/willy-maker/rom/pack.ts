@@ -13,7 +13,7 @@ import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, 
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
-import { BOSS_HP, GUNSHIP_HP, difficultyOf, flyPathOf, rulesWith, secondsToFrames } from "../engine/rules";
+import { BOSS_HP, GUNSHIP_HP, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -69,7 +69,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 19;
+const WM_VERSION = 20;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -423,6 +423,7 @@ export function packGame(
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const crosshairRule = rulesWith(project.settings.rules).crosshair;
   const shipRule = rulesWith(project.settings.rules).ship;
+  const mazeRule = rulesWith(project.settings.rules).maze;
   for (const o of objects) {
     switch (o.type) {
       case "player_start": {
@@ -440,6 +441,8 @@ export function packGame(
         if (crosshairRule) enemies.push([o.x, o.y, secondsToFrames(o.appear), secondsToFrames(o.stay), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         // the shooter's enemies carry their path (0 wave, 1 straight, 2 dive)
         else if (shipRule) enemies.push([o.x, o.y, flyPathOf(o.path), 0, num(o.hp, 0), -1]);
+        // the maze's chasers carry their way of chasing (0 auto, 1 follow, 2 ambush, 3 wander)
+        else if (mazeRule) enemies.push([o.x, o.y, chaseOf(o.chase), 0, num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         else enemies.push([o.x, o.y, Math.round(o.x - patrol / 2), Math.round(o.x + patrol / 2), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         break;
       }
@@ -707,7 +710,7 @@ export function packGame(
   w32(civLooksAt);
   w32(platforms.length ? platAt : 0);
   w16(Math.min(MAX_PLATFORMS, platforms.length));
-  w16(0);
+  w16(rules.maze ? rules.mazeRounds : 0);
   w32(pickupLooksAt);
   // the beat 'em up's walkable band (WM_F_DEPTH), as play mode computes it
   const walk = walkBandOf(rows * CELL, level.walk);

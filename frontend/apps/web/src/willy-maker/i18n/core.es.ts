@@ -290,6 +290,8 @@ export const coreEs: CoreMessages = {
     timingHelp: "Pistola de luz: segundos en pantalla antes de que el blanco aparezca, y antes de que se vaya si no le disparaste (0: enseguida, y hasta que caiga).",
     path: "Recorrido",
     paths: { wave: "Ondulado", straight: "Recto", dive: "En picada hacia la nave" },
+    chase: "Persigue",
+    chases: { auto: "Según su orden", follow: "Te sigue", ambush: "Te corta el paso", wander: "Se aleja cuando está cerca" },
     size: "Tamaño",
     hp: "Golpes",
     breakable: "Rompible",

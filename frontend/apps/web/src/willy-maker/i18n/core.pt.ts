@@ -290,6 +290,8 @@ export const corePt: CoreMessages = {
     timingHelp: "Pistola de luz: segundos na tela antes de o alvo aparecer, e antes de ir embora sem levar tiro (0: logo, e até cair).",
     path: "Percurso",
     paths: { wave: "Ondulado", straight: "Reto", dive: "Mergulho na nave" },
+    chase: "Persegue",
+    chases: { auto: "Pela ordem", follow: "Segue você", ambush: "Corta o seu caminho", wander: "Se afasta quando está perto" },
     size: "Tamanho",
     hp: "Golpes",
     breakable: "Quebrável",

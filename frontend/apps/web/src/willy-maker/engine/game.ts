@@ -127,6 +127,8 @@ import {
   HOME_FRAMES,
   AMBUSH_AHEAD,
   WANDER_NEAR,
+  MAZE_HASTE,
+  chaseOf,
   WELL_X,
   WELL_Y,
   SOFT_DROP,
@@ -435,6 +437,8 @@ export class Game {
   dots: Uint8Array = new Uint8Array(0);
   dotsLeft = 0;
   frightT = 0;
+  /** The maze's round, from 0 (phase 3). */
+  round = 0;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -487,12 +491,7 @@ export class Game {
     // the maze: a dot in every empty cell but the top and bottom rows (the HUD's), its chasers on cell middles
     if (this.rules.maze) {
       this.dots = new Uint8Array(this.cols * this.rows);
-      for (let r = 1; r < this.rows - 1; r++)
-        for (let c = 0; c < this.cols; c++)
-          if (this.cells[r * this.cols + c] === Tag.Air) {
-            this.dots[r * this.cols + c] = 1;
-            this.dotsLeft++;
-          }
+      this.fillDots();
       for (const e of this.enemies) {
         e.x = Math.floor(e.x / CELL) * CELL + 8;
         e.fy = Math.floor((e.fy - 1) / CELL) * CELL + CELL;
@@ -561,7 +560,7 @@ export class Game {
             stay: this.rules.crosshair ? secondsToFrames(o.stay) : 0,
             shown: 0,
             baseY: o.y,
-            path: this.rules.ship ? flyPathOf(o.path) : 0,
+            path: this.rules.ship ? flyPathOf(o.path) : this.rules.maze ? chaseOf(o.chase) : 0,
             baseX: o.x,
             mdy: 0,
           });
@@ -1655,6 +1654,42 @@ export class Game {
   }
 
   /** The maze: cell (c, r) can be walked into (not solid). */
+  /** The maze: a dot in every empty cell but the top and bottom rows (the HUD's). */
+  private fillDots(): void {
+    this.dotsLeft = 0;
+    for (let r = 1; r < this.rows - 1; r++)
+      for (let c = 0; c < this.cols; c++)
+        if (this.cells[r * this.cols + c] === Tag.Air) {
+          this.dots[r * this.cols + c] = 1;
+          this.dotsLeft++;
+        }
+  }
+
+  /** The maze's next round: the dots and power-ups back, chasers and players at their starts (lives and score kept). */
+  private nextRound(): void {
+    this.round++;
+    this.fillDots();
+    this.frightT = 0;
+    for (const e of this.enemies) {
+      e.state = "walk";
+      e.x = e.min;
+      e.fy = e.max;
+      e.dir = 0;
+      e.mdy = 0;
+      e.t = 0;
+    }
+    for (const k of this.pickups) if (k.item === "power") k.live = true;
+    for (const p of this.players) {
+      if (!p.active || p.cpu) continue;
+      const lives = p.lives;
+      const score = p.score;
+      p.active = false;
+      this.join(p.index);
+      p.lives = lives;
+      p.score = score;
+    }
+  }
+
   private mazeOpen(c: number, r: number): boolean {
     // a row open at both sides is a tunnel: the left of the first column is the last one
     if (c < 0) c += this.cols;
@@ -1760,15 +1795,20 @@ export class Game {
       // where it heads: the player, a spot ahead of it, or the corner when near (AMBUSH_AHEAD, WANDER_NEAR)
       let tx = target ? target.x : 0;
       let ty = target ? target.y >> 4 : 0;
-      if (target && !flee && n % 3 === 1) {
+      // its way of chasing: chosen in the Inspector (Chases), else by its order
+      const kind = e.path ? e.path - 1 : n % 3;
+      if (target && !flee && kind === 1) {
         const moving = target.mdx !== 0 || target.mdy !== 0;
         tx += (moving ? target.mdx : target.wdx) * AMBUSH_AHEAD;
         ty += (moving ? target.mdy : target.wdy) * AMBUSH_AHEAD;
-      } else if (target && !flee && n % 3 === 2 && best < WANDER_NEAR) {
+      } else if (target && !flee && kind === 2 && best < WANDER_NEAR) {
         tx = 0;
         ty = this.rows * CELL;
       }
-      if (target && (!flee || this.frame & 1)) {
+      // from the second round a pixel more every MAZE_HASTE frames, unless it flees
+      const haste = MAZE_HASTE[Math.min(this.round, MAZE_HASTE.length - 1)]!;
+      const steps = target && (!flee || this.frame & 1) ? (haste && !flee && (this.frame & (haste - 1)) === 0 ? 2 : 1) : 0;
+      for (let s = 0; s < steps; s++) {
         if (e.x % CELL === 8 && e.fy % CELL === 0) {
           const c = Math.floor(e.x / CELL);
           const r = Math.floor((e.fy - 1) / CELL);
@@ -2510,8 +2550,9 @@ export class Game {
         return;
       }
     } else if (this.rules.maze) {
-      // the maze: every dot eaten clears the level
-      if (this.dotsLeft <= 0 && this.players.some((p) => p.active)) {
+      // the maze: every dot eaten starts the next round, or clears the level after the last
+      if (this.dotsLeft <= 0 && this.players.some((p) => p.active) && this.round + 1 < this.rules.mazeRounds) this.nextRound();
+      else if (this.dotsLeft <= 0 && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });
         return;

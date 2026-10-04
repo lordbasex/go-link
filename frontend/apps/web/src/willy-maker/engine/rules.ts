@@ -210,6 +210,8 @@ export interface GameRules {
    * level; a power pickup turns the chasers into prey for a while.
    */
   maze: boolean;
+  /** The maze's rounds (phase 3): every dot eaten starts the next, faster round, the last clears the level (1-9). */
+  mazeRounds: number;
   /**
    * The puzzle (genres.md): each player has a well where trios of gems
    * fall; three or more of a color in a line clear, and enough cleared gems
@@ -248,6 +250,7 @@ export const DEFAULT_RULES: GameRules = {
   vertical: false,
   topdown: false,
   maze: false,
+  mazeRounds: 1,
   puzzle: false,
   puzzleCpu: false,
 };
@@ -268,7 +271,7 @@ export const VERTICAL_RULES: Partial<GameRules> = { ...SHIP_RULES, vertical: tru
 export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: true, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 2, respawnOnHurt: false };
 
 /** A new maze game's rules: chasers that hurt by touch, the level cleared by its dots (no exit). */
-export const MAZE_RULES: Partial<GameRules> = { maze: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: true };
+export const MAZE_RULES: Partial<GameRules> = { maze: true, mazeRounds: 3, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: true };
 
 /** A new puzzle game's rules: wells of falling gems, a CPU rival in the second well, no walking, no enemies, no exit. */
 export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, puzzleCpu: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
@@ -353,6 +356,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     vertical: bool(r.vertical, false),
     topdown: bool(r.topdown, false),
     maze: bool(r.maze, false),
+    mazeRounds: int(r.mazeRounds, 1, 9, 1),
     puzzle: bool(r.puzzle, false),
     puzzleCpu: bool(r.puzzleCpu, false),
   };
@@ -547,6 +551,19 @@ export const HOME_FRAMES = 180;
  */
 export const AMBUSH_AHEAD = 64;
 export const WANDER_NEAR = 128;
+/**
+ * Phase 3: a chaser's Chases in the Inspector picks its way of chasing
+ * (auto: by its order, as in phase 2), kept in its row as CHASE_KINDS'
+ * index; from the second round the chasers move a pixel more every
+ * MAZE_HASTE[round] frames (the last value for later rounds) unless they flee.
+ */
+export const CHASE_KINDS = ["auto", "follow", "ambush", "wander"] as const;
+export const MAZE_HASTE = [0, 4, 2] as const;
+
+export function chaseOf(chase: unknown): number {
+  const i = CHASE_KINDS.indexOf(chase as (typeof CHASE_KINDS)[number]);
+  return i < 0 ? 0 : i;
+}
 
 /**
  * The puzzle (genres.md, phase 1), the ROM's numbers too: a well of

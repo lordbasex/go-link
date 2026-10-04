@@ -1326,7 +1326,7 @@ describe("the maze (genres.md, phase 1)", () => {
       for (let c = 2; c <= 10; c++) set(c, 2, Tag.Air);
     });
     view.objects[0] = { name: "p1", type: "player_start", x: 2 * 16 + 8, y: 3 * 16, player: 1 };
-    const g = new Game(view, { rules: MAZE_RULES });
+    const g = new Game(view, { rules: { ...MAZE_RULES, mazeRounds: 1 } });
     expect(g.dotsLeft).toBe(9);
     run(g, 80, Input.Right);
     expect(g.dotsLeft).toBe(0);
@@ -1465,5 +1465,42 @@ describe("the puzzle, phase 2: stones and the CPU rival", () => {
     g.step(inputs);
     expect([cpu.active, cpu.cpu, cpu.score]).toEqual([true, false, 0]);
     expect(cpu.well!.cells.every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("the maze, phase 3: rounds and chosen chasers", () => {
+  it("eating every dot starts the next round with the dots back, and the last round clears the level", () => {
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let c = 2; c <= 10; c++) set(c, 2, Tag.Air);
+    });
+    view.objects[0] = { name: "p1", type: "player_start", x: 2 * 16 + 8, y: 3 * 16, player: 1 };
+    const g = new Game(view, { rules: { ...MAZE_RULES, mazeRounds: 2 } });
+    const p = g.players[0]!;
+    for (let f = 0; f < 200 && g.round === 0; f++) run(g, 1, Input.Right);
+    expect([g.round, g.dotsLeft, g.outcome]).toEqual([1, 9, "playing"]);
+    // back at its start, with its score
+    expect(p.x).toBeLessThan(4 * 16);
+    expect(p.score).toBe(9 * DOT_SCORE);
+    run(g, 80, Input.Right);
+    expect(g.outcome).toBe("cleared");
+  });
+
+  it("a chaser's Chases picks its way of chasing, and later rounds make the chasers faster", () => {
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let r = 2; r <= 10; r++) for (let c = 2; c <= 20; c++) set(c, r, Tag.Air);
+    }, [{ name: "c0", type: "enemy", x: 11 * 16 + 8, y: 3 * 16, kind: "trooper", facing: "left", patrol: 0, chase: "ambush" } as LevelObject]);
+    view.objects[0] = { name: "p1", type: "player_start", x: 11 * 16 + 8, y: 7 * 16, player: 1 };
+    const g = new Game(view, { rules: MAZE_RULES });
+    run(g, 10, Input.Left);
+    // the first chaser ambushes (by its order it would follow, and go down)
+    expect([g.enemies[0]!.x < 11 * 16 + 8, g.enemies[0]!.fy]).toEqual([true, 48]);
+    const e = g.enemies[0]!;
+    const x0 = e.x;
+    g.round = 2;
+    run(g, 8, 0);
+    // a pixel a frame and one more every other frame: 12 px in 8 frames
+    expect(Math.abs(e.x - x0) + Math.abs(e.fy - 48)).toBe(12);
   });
 });
