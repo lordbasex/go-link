@@ -41,6 +41,13 @@ type TestImporter interface {
 	StoreTest(id, fileName string, r io.Reader) error
 }
 
+// MakerImporter keeps the game Willy Maker sends (purpose "maker"), apart
+// from the library.
+type MakerImporter interface {
+	CheckMakerUpload(name string, size int64) error
+	StoreMaker(r io.Reader) error
+}
+
 // UploadService receives ROM files from the owner's browser on the
 // "files" DataChannel, straight over WebRTC: no web server involved.
 //
@@ -52,11 +59,13 @@ type TestImporter interface {
 //
 // With "purpose":"rom_test" in begin, the file is a set to power on with
 // rom_test: it goes to the ROM test's folder (never the ROM folder, never
-// the library). The device answers with upload_result on the control
+// the library). With "purpose":"maker" it is the game Willy Maker made
+// (slammast.zip), kept in its own folder for the room of MakerRom. The device answers with upload_result on the control
 // channel.
 type UploadService struct {
 	lib   Importer
-	tests TestImporter // nil: tests are refused
+	tests TestImporter  // nil: tests are refused
+	maker MakerImporter // nil: Willy Maker games are refused
 	reply func(peerID string, r FileReply)
 
 	mu      sync.Mutex
@@ -80,12 +89,15 @@ func NewUploadService(lib Importer, reply func(peerID string, r FileReply)) *Upl
 // SetTests accepts uploads for ROM tests.
 func (u *UploadService) SetTests(t TestImporter) { u.tests = t }
 
+// SetMaker accepts the games Willy Maker sends.
+func (u *UploadService) SetMaker(m MakerImporter) { u.maker = m }
+
 type fileControl struct {
 	Type    string `json:"type"`
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Size    int64  `json:"size"`
-	Purpose string `json:"purpose,omitempty"` // "" (the library) or "rom_test"
+	Purpose string `json:"purpose,omitempty"` // "" (the library), "rom_test" or "maker"
 }
 
 // Handle processes one message of the files channel.
@@ -121,6 +133,15 @@ func (u *UploadService) begin(peerID string, msg fileControl) {
 			return u.tests.CheckTestUpload(msg.ID, msg.Name, msg.Size)
 		}
 		store = func(r io.Reader) error { return u.tests.StoreTest(msg.ID, msg.Name, r) }
+		maxSize = RomTestMaxSize
+	case "maker":
+		check = func() error {
+			if u.maker == nil {
+				return errors.New("this device cannot keep Willy Maker games")
+			}
+			return u.maker.CheckMakerUpload(msg.Name, msg.Size)
+		}
+		store = func(r io.Reader) error { return u.maker.StoreMaker(r) }
 		maxSize = RomTestMaxSize
 	default:
 		check = func() error { return errors.New("unknown upload purpose") }

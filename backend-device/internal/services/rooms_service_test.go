@@ -134,6 +134,7 @@ type roomsHarness struct {
 	video   bool
 	quality string
 	sources []RoomSource
+	lib     *LibraryService
 }
 
 func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts ...func(*roomsHarness)) *roomsHarness {
@@ -153,6 +154,7 @@ func newRoomsHarness(t *testing.T, maxRooms int, saved []models.SavedRoom, opts 
 	lib.SetCore(coresDir, "")
 	h := &roomsHarness{t: t, opener: NewRoomOpener(), sender: &recordingSender{}, status: status, saves: t.TempDir(), history: NewHistoryService(filepath.Join(t.TempDir(), "history.json"))}
 	h.opener.SetSender(h.sender)
+	h.lib = lib
 	h.recs = NewRecordingService(t.TempDir(), nil)
 	h.history.SetRecordings(h.recs)
 	for _, o := range opts {

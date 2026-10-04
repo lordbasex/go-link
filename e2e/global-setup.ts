@@ -61,6 +61,10 @@ export default async function globalSetup() {
     });
   }
 
+  // E2E_CORE_DIR: a folder with the emulator core (like ~/go-link/cores), copied into the
+  // device's throwaway HOME so game rooms can run (tests/maker-room.spec.ts); CI has none.
+  if (process.env.E2E_CORE_DIR) cpSync(process.env.E2E_CORE_DIR, join(state, "home", "go-link", "cores"), { recursive: true });
+
   const signalLog = openSync(join(state, "signal.log"), "a");
   const signal = spawn(join(bin, "signal"), [], {
     env: {

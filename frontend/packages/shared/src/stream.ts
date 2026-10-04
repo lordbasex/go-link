@@ -253,9 +253,10 @@ export class HostStream {
    * than 4 MB are buffered so large ROMs do not flood the connection.
    * The device answers upload_result (with the same id) on control.
    * purpose "rom_test" sends a set for rom_test instead of the library
-   * (see rom-test.ts).
+   * (see rom-test.ts), and "maker" the game Willy Maker made, for its own
+   * room (maker-play.ts).
    */
-  async sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void, purpose?: "rom_test"): Promise<void> {
+  async sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void, purpose?: "rom_test" | "maker"): Promise<void> {
     const ch = this.files;
     if (!ch || ch.readyState !== "open") throw new Error("files channel not open");
     const CHUNK = 16 * 1024;

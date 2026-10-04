@@ -91,6 +91,8 @@ func openLibrary(store *repositories.ConfigFile, cfg *models.Config, target, cor
 	}
 	status := services.NewStatusService(cfg.DeviceID, version, target, cfg.RomsDir)
 	library := services.NewLibraryService(cfg.RomsDir, status, logger)
+	// the game Willy Maker sends (purpose maker), in its own folder
+	library.SetMakerDir(filepath.Join(base, "maker"))
 	coresDir := filepath.Join(base, "cores")
 	if corePath != "" {
 		coresDir = filepath.Dir(corePath)

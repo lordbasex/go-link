@@ -18,6 +18,8 @@ export interface MakerDevice {
   name?: string;
   /** Opens the site's My device page. */
   openMyDevice?: () => void;
+  /** Opens a room of the site (/r/:roomId): the room of a game sent to the device. */
+  openRoom?: (roomId: string) => void;
 }
 
 /** Where My device lives on the site. */

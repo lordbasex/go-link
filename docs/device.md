@@ -134,7 +134,7 @@ Created on the first run with mode `0600`:
 
 - It is saved atomically (temporary file + rename), so a power cut never leaves it half written.
 - STUN and TURN are **not** stored here.
-- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600), `tmp/romtest/` (sets waiting for or under a [ROM test](#rom-test), deleted after each test and at startup) and `logs/device.log`.
+- Other files live in `~/go-link/`: `cores/` (emulator core and game list), `roms/` (default ROM folder), `thumbnails/MAME/`, `saves/<room>/` (save states), `rec/<room>/` (recordings, 0600, see [Recordings](protocol.md#recordings)), `history.json` (0600), `tmp/romtest/` (sets waiting for or under a [ROM test](#rom-test), deleted after each test and at startup), `maker/` (the game Willy Maker sent last, `slammast.zip` and `game.json` with its name and buttons, played by the room of `@maker`; apart from the ROM folder, so a real `slammast.zip` there is never touched) and `logs/device.log`.
 
 ### Video quality
 

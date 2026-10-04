@@ -16,7 +16,7 @@ import { Capsule, Card } from "../atoms";
 import { IconCheck, IconCircle, IconDownload, IconX } from "../icons";
 import { downloadBytes } from "../download";
 import { exportProjectZip, zipName } from "../../io/projectZip";
-import { DeviceRomTest } from "./PowerOnCard";
+import { PlayOnDevice } from "./PlayOnDevice";
 
 type Step = CreateStep | "test";
 const STEPS: Step[] = [...CREATE_STEPS, "test"];
@@ -31,7 +31,8 @@ export function CreateRomCard({ project, blocked }: { project: Project; blocked:
   const t = useExportMessages().rom;
   const p = useExportMessages().powerOn;
   const [state, setState] = useState<State>({ kind: "idle" });
-  const [play, setPlay] = useState(false);
+  // each Play on my go-link sends the game again (its room is replaced)
+  const [play, setPlay] = useState(0);
   const run = useRef<PowerOnRun | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const playRef = useRef<HTMLDivElement>(null);
@@ -39,7 +40,7 @@ export function CreateRomCard({ project, blocked }: { project: Project; blocked:
 
   const create = async () => {
     run.current?.cancel();
-    setPlay(false);
+    setPlay(0);
     let step: Step = "engine";
     setState({ kind: "working", step, tests: [] });
     try {
@@ -145,7 +146,7 @@ export function CreateRomCard({ project, blocked }: { project: Project; blocked:
             <Capsule tone="primary" size="lg" onClick={() => downloadBytes(state.rom.zip, state.rom.name, "application/zip")} data-testid="wm-rom-download">
               <IconDownload /> {t.download}
             </Capsule>
-            <Capsule size="lg" onClick={() => setPlay(true)} data-testid="wm-rom-play">
+            <Capsule size="lg" onClick={() => setPlay((n) => n + 1)} data-testid="wm-rom-play">
               {t.play}
             </Capsule>
             <Capsule size="sm" title={t.projectTip} onClick={() => void exportProjectZip(project).then((zip) => downloadBytes(zip, zipName(project), "application/zip"))} data-testid="wm-rom-project">
@@ -155,10 +156,10 @@ export function CreateRomCard({ project, blocked }: { project: Project; blocked:
               <IconDownload /> {t.symbols}
             </Capsule>
           </div>
-          {play && (
+          {play > 0 && (
             <div ref={playRef} className="wm-rom-play">
               <p className="wm-small wm-dim">{t.playText}</p>
-              {file && <DeviceRomTest key={file.size + state.rom.name + state.rom.pack.stats.dataBytes} file={file} browserSet="slammast" />}
+              {file && <PlayOnDevice key={`${play}-${file.size}-${state.rom.pack.stats.dataBytes}`} file={file} project={project} />}
             </div>
           )}
         </>

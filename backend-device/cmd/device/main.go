@@ -337,6 +337,8 @@ func run() error {
 	})
 	romTests.Cleanup()
 	uploads.SetTests(romTests)
+	// The game Willy Maker sends (purpose maker), for its own room.
+	uploads.SetMaker(library)
 	// Recordings to the owner, pulled piece by piece on the same channel.
 	downloads := services.NewDownloadService(recordings, stream.SendFiles)
 	stream.OnLinkFiles(func(peerID string, isString bool, data []byte) {

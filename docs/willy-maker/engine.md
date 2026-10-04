@@ -38,7 +38,7 @@ It was built in [experiment 1, case C](../experiments/README.md) (records in [`d
 2. **The pictures**: each tileset's PNG and the saved picture of each hero a player uses, from the browser's asset store, decoded in JavaScript (`io/png.ts`).
 3. **Pack** (`packGame`): the data block, the font and its double size, the sprites, the players' own heroes ([looks](#the-players-looks)), the play layer's 16 px tiles and the far layer's 32 px tiles in the board's graphics format (`@go-link/cps1` `GfxRegion`), the program space split into the program files (`splitProgram`), the Z80 program encrypted for the QSound board (`encodeOpcodes`, the `slammast` keys), silent samples.
 4. **Zip** (`zipSet`): every file with a fixed date, sorted: the same game always gives the same `.zip` byte for byte (the recorded session made three identical zips).
-5. **Power-on test** (validation level 3) runs on it at once in its Worker, with its picture. Then **Download ROM**, **Symbol map** (`symbols.json`, the engine's symbols: the harness reads the game's state through it) and **Play on my go-link** (the same zip on the linked device's real core, validation level 4).
+5. **Power-on test** (validation level 3) runs on it at once in its Worker, with its picture. Then **Download ROM**, **Symbol map** (`symbols.json`, the engine's symbols: the harness reads the game's state through it) and **Play on my go-link** (the same zip in its own room on the linked device's real core).
 
 Nothing is uploaded except by **Play on my go-link**, and only to the user's own device.
 
@@ -167,7 +167,7 @@ Create ROM lists these as notes under its result; none of them stops it.
 - The **mid layer** and extra tile layers are left out (the board has one far layer); each layer loads the palettes its tiles use, up to 32 ([layer palettes](#layer-palettes)).
 - **Sound** (T-26): see [Sound](#sound-qsound): QSound effects and music; play mode plays the same sounds in the browser (below).
 - The ROM is always laid out as `slammast` (a `captcomm` game is noted).
-- **Play on my go-link** powers the set on with the real core of the linked device (validation level 4); opening a room with it needs the device to accept a user's own set under its own identity, which is not built yet.
+- **Play on my go-link** opens the game's own room on the linked device with the real core (device 0.1.9: the game is `@maker`, kept apart from the ROM folder); the power-on test on the device (validation level 4) stays in the Power-on test card.
 
 ## Sound (QSound)
 

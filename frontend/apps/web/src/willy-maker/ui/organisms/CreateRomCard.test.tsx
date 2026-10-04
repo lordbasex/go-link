@@ -8,6 +8,8 @@ import { exportEs } from "../../i18n/export.es";
 import { newProject } from "../../model";
 import type { CreatedRom, CreateStep } from "../../rom/createRom";
 import { CreateRomCard } from "./CreateRomCard";
+import { DeviceProvider, type MakerDevice } from "../device";
+import { makerGameInfo } from "./PlayOnDevice";
 
 // The card's flow with the packer and the board model replaced: Create ROM
 // walks its steps, powers the result on (level 3) and then offers the
@@ -68,6 +70,72 @@ describe("Create ROM card", () => {
     expect(screen.getByText(exportEn.rom.playText)).toBeInTheDocument();
     expect(screen.getByText(exportEn.powerOn.device.noDevice)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: exportEn.rom.again })).toBeInTheDocument();
+  });
+
+  it("Play on my go-link sends the game, and the site opens the room the device opened", async () => {
+    const handlers = new Set<(m: unknown) => void>();
+    const deliver = (m: unknown) => handlers.forEach((h) => h(m));
+    const sent: Record<string, unknown>[] = [];
+    const opened: string[] = [];
+    const device: MakerDevice = {
+      linked: true,
+      name: "studio",
+      link: {
+        async sendFile(id) {
+          setTimeout(() => deliver({ type: "upload_result", id, ok: true }), 0);
+        },
+        sendControl(m) {
+          sent.push(m as Record<string, unknown>);
+          setTimeout(() => deliver({ type: "room_created", id: "g1", room_id: "ROOM-1", rom: "@maker" }), 0);
+          return true;
+        },
+      },
+      onMessage: (h) => {
+        handlers.add(h);
+        return () => handlers.delete(h);
+      },
+      openRoom: (id) => opened.push(id),
+    };
+    const project = newProject({ title: "My street", players: 2 });
+    render(
+      <DeviceProvider value={device}>
+        <CreateRomCard project={project} blocked={false} />
+      </DeviceProvider>,
+    );
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: exportEn.rom.create })));
+    await screen.findByText(exportEn.rom.passed);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: exportEn.rom.play })));
+    await vi.waitFor(() => expect(opened).toEqual(["ROOM-1"]));
+    expect(sent[0]).toMatchObject({ type: "create_room", rom: "@maker", maker: makerGameInfo(project) });
+    expect(makerGameInfo(project)).toEqual({ title: "My street", players: 2, labels: ["Jump", "Fire", "Special"] });
+  });
+
+  it("an older go-link that cannot open the room still powers the game on", async () => {
+    const handlers = new Set<(m: unknown) => void>();
+    const deliver = (m: unknown) => handlers.forEach((h) => h(m));
+    const device: MakerDevice = {
+      linked: true,
+      link: {
+        async sendFile(id) {
+          setTimeout(() => deliver({ type: "upload_result", id, ok: false, error: "unknown upload purpose" }), 0);
+        },
+        sendControl: () => true,
+      },
+      onMessage: (h) => {
+        handlers.add(h);
+        return () => handlers.delete(h);
+      },
+    };
+    render(
+      <DeviceProvider value={device}>
+        <CreateRomCard project={newProject({ title: "A", players: 2 })} blocked={false} />
+      </DeviceProvider>,
+    );
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: exportEn.rom.create })));
+    await screen.findByText(exportEn.rom.passed);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: exportEn.rom.play })));
+    expect(await screen.findByText(exportEn.rom.playing.update)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: exportEn.powerOn.device.test })).toBeInTheDocument();
   });
 
   it("says why when the ROM cannot be created, in the game's language", async () => {

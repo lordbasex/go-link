@@ -80,7 +80,7 @@ export function parseRomTestResult(msg: unknown): RomTestResult | null {
 
 /** What the helper needs from the owner's link (HostStream fits). */
 export interface RomTestLink {
-  sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void, purpose?: "rom_test"): Promise<void>;
+  sendFile(id: string, file: Blob, name: string, onProgress?: (sent: number, total: number) => void, purpose?: "rom_test" | "maker"): Promise<void>;
   sendControl(message: unknown): boolean;
 }
 

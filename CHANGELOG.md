@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (website and device)
+
+- **Willy Maker › Play on my go-link opens a room**: one click sends the game to the linked go-link, which opens its room with the real core, and the site takes you there to play. Each game has one room: sending it again replaces it. The device keeps the game in its own folder (`~/go-link/maker/`), never in the ROM folder, so a real `slammast.zip` is never touched; the room's touch pad and How to play name the buttons the genre uses. It needs the device's next release: an older one says so and still powers the game on. An end-to-end test runs it with the real core when one is given (`E2E_CORE_DIR`).
+
 ### Fixed (website)
 
 - **Willy Maker › play mode's camera** follows the level's **Only moves forward** and **Margin back** (Inspector), as the ROM always did: it had kept a fixed 48 px margin, so a free camera (Only moves forward off) went back in the ROM but not in play mode. A walk forward and back matches the real core and play mode on every frame (`free-camera.json`).

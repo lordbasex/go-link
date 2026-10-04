@@ -54,6 +54,7 @@ type LibraryService struct {
 	thumbKind  thumbnails.Kind
 	thumbCache *thumbnails.Cache
 	own        *ownsets.Matcher // go-link's own sets, by their files' hashes
+	makerDir   string           // the Willy Maker game's folder (maker_game.go)
 }
 
 // SetCore configures the libretro core: its folder and the buildbot URL
@@ -134,6 +135,9 @@ func (l *LibraryService) RefreshCatalog(ctx context.Context) {
 // CheckRom tells whether the core can run a set, without running it. ok
 // is false when the core's game list is not installed.
 func (l *LibraryService) CheckRom(name string) (res romcheck.Result, ok bool) {
+	if name == MakerRom {
+		return l.checkMaker()
+	}
 	cat := l.Catalog()
 	if cat == nil {
 		return romcheck.Result{}, false
@@ -156,6 +160,10 @@ func (l *LibraryService) HasCore() bool {
 
 // HasRom reports whether a ROM set is in the folder.
 func (l *LibraryService) HasRom(name string) bool {
+	if name == MakerRom {
+		_, err := os.Stat(l.makerPath())
+		return l.makerFolder() != "" && err == nil
+	}
 	if !romNameRE.MatchString(name) {
 		return false
 	}
@@ -164,7 +172,12 @@ func (l *LibraryService) HasRom(name string) bool {
 }
 
 // RomPath returns the file of a ROM set.
-func (l *LibraryService) RomPath(name string) string { return filepath.Join(l.Dir(), name+".zip") }
+func (l *LibraryService) RomPath(name string) string {
+	if name == MakerRom {
+		return l.makerPath()
+	}
+	return filepath.Join(l.Dir(), name+".zip")
+}
 
 // Own returns the go-link set a ROM of the folder is, or nil. It is decided
 // by the SHA-256 of every file inside the zip, never by the name: a real
@@ -178,6 +191,9 @@ func (l *LibraryService) Own(name string) *ownsets.Set {
 
 // Title returns the catalog title of a set, or its short name.
 func (l *LibraryService) Title(name string) string {
+	if name == MakerRom {
+		return l.Maker().Title
+	}
 	if lib := l.status.Snapshot().Library; lib != nil {
 		for _, r := range lib.Roms {
 			if r.Name == name && r.Title != "" {

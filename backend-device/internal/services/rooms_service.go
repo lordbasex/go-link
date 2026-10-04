@@ -55,6 +55,8 @@ type GameRequest struct {
 	// Picture is the room's default picture style for its guests; absent
 	// or with unknown values, the website's own default.
 	Picture *models.RoomPicture `json:"picture,omitempty"`
+	// Maker names the Willy Maker game and its buttons (rom MakerRom only).
+	Maker *MakerInfo `json:"maker,omitempty"`
 }
 
 // TooManyRoomsError says the device already runs its limit of games.
@@ -414,6 +416,16 @@ func (r *RoomsService) Create(req GameRequest, reply func(GameReply)) error {
 	}
 	if !lib.HasCore() {
 		return ErrNoCore
+	}
+	if req.Rom == MakerRom {
+		// Willy Maker's game has one room: a new game sent replaces the
+		// room of the one before (and its saves, which were of that build).
+		if req.Maker != nil {
+			if err := lib.SetMakerInfo(*req.Maker); err != nil {
+				return err
+			}
+		}
+		r.replaceMakerRooms()
 	}
 	// Refuse a set the core cannot run, before loading anything.
 	if res, ok := lib.CheckRom(req.Rom); ok && res.Status != romcheck.StatusOK {
@@ -1385,10 +1397,41 @@ func (r *RoomsService) art(rom, kind string) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
+// replaceMakerRooms stops and removes the rooms of the Willy Maker game.
+func (r *RoomsService) replaceMakerRooms() {
+	r.mu.Lock()
+	var old []*gameRoom
+	var running []bool
+	for _, gr := range r.rooms {
+		if gr.saved.Rom == MakerRom {
+			old = append(old, gr)
+			running = append(running, gr.cancel != nil)
+		}
+	}
+	r.mu.Unlock()
+	for i, gr := range old {
+		if running[i] {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			r.stop(ctx, gr, false, "replaced")
+			cancel()
+		}
+		r.purge(gr)
+	}
+}
+
 // controlsOf reads a game's control panel from the core's game list. An
 // unknown game offers all six buttons rather than too few.
 func (r *RoomsService) controlsOf(rom string) GameControls {
 	var game *romcheck.Game
+	if r.cfg.Library != nil && rom == MakerRom {
+		// a Willy Maker game: the buttons its genre uses, named
+		m := r.cfg.Library.Maker()
+		buttons := len(m.Labels)
+		if buttons == 0 {
+			buttons = 3
+		}
+		return GameControls{Players: m.Players, Buttons: buttons, Control: "joy8way", Labels: m.Labels}
+	}
 	if r.cfg.Library != nil {
 		// go-link's own games name their buttons.
 		if s := r.cfg.Library.Own(rom); s != nil {

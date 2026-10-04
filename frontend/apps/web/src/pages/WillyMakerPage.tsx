@@ -24,6 +24,7 @@ export function WillyMakerPage() {
       onMessage: onDeviceMessage,
       name,
       openMyDevice: () => navigate("/device"),
+      openRoom: (roomId) => navigate(`/r/${roomId}`),
     }),
     [hostLink, savedLink, online, onDeviceMessage, name, navigate],
   );
