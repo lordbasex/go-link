@@ -220,6 +220,11 @@ export interface GameRules {
   puzzle: boolean;
   /** The puzzle's CPU rival (phase 2): while player 2 is not in, the CPU plays the second well. */
   puzzleCpu: boolean;
+  /**
+   * The quiz (genres.md, quiz and party): the game's questions one after
+   * another on the screen, answered with B1 B2 B3; nobody walks.
+   */
+  quiz: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -253,6 +258,7 @@ export const DEFAULT_RULES: GameRules = {
   mazeRounds: 1,
   puzzle: false,
   puzzleCpu: false,
+  quiz: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -275,6 +281,9 @@ export const MAZE_RULES: Partial<GameRules> = { maze: true, mazeRounds: 3, weapo
 
 /** A new puzzle game's rules: wells of falling gems, a CPU rival in the second well, no walking, no enemies, no exit. */
 export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, puzzleCpu: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
+
+/** A new quiz game's rules: questions on the screen, no walking, no enemies, no exit. */
+export const QUIZ_RULES: Partial<GameRules> = { quiz: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -359,6 +368,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     mazeRounds: int(r.mazeRounds, 1, 9, 1),
     puzzle: bool(r.puzzle, false),
     puzzleCpu: bool(r.puzzleCpu, false),
+    quiz: bool(r.quiz, false),
   };
 }
 
@@ -609,3 +619,17 @@ export const STONE = 6;
 export const GARBAGE_CHAIN = 3;
 export const CPU_CANDIDATES = 18;
 export const CPU_STEP = 4;
+
+/**
+ * The quiz (genres.md, quiz and party, phase 1), the ROM's numbers too: a
+ * question stays QUIZ_TIME frames or until every player in answered (the
+ * first press of B1 B2 B3 counts), then the right answer shows for
+ * REVEAL_FRAMES; a right answer is worth QUIZ_SCORE plus QUIZ_BONUS for
+ * every whole second left. After the last question the level clears.
+ */
+export const QUIZ_TIME = 600;
+export const REVEAL_FRAMES = 150;
+export const QUIZ_SCORE = 100;
+export const QUIZ_BONUS = 10;
+/** The most questions a game holds (their screens are 0x40 + n in the ROM's texts). */
+export const QUIZ_MAX = 60;

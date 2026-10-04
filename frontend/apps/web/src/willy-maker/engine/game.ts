@@ -127,6 +127,10 @@ import {
   HOME_FRAMES,
   AMBUSH_AHEAD,
   WANDER_NEAR,
+  QUIZ_TIME,
+  REVEAL_FRAMES,
+  QUIZ_SCORE,
+  QUIZ_BONUS,
   MAZE_HASTE,
   chaseOf,
   WELL_X,
@@ -153,6 +157,7 @@ import {
   type GameRules,
 } from "./rules";
 import { cpuPad, emptyWell, fallFrames, garbageOf, lockTrio, markMatches, newWell, settleWell, shiftTrio, spawnTrio, turnTrio, wellFree, type Well } from "./puzzle";
+import type { QuizQuestion } from "../model/types";
 
 export const MAX_PLAYERS = 4;
 /** How long the "defeat every enemy" message stays after a player leaves the closed exit. */
@@ -251,6 +256,9 @@ export interface Player {
   well: Well | null;
   /** The puzzle's CPU rival plays this well (player 2 while nobody took it). */
   cpu: boolean;
+  /** The quiz: this question's answer (0-2, -1 none yet) and the frames that were left when it came. */
+  answer: number;
+  answerLeft: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -404,6 +412,8 @@ export type GameEvent =
   | { kind: "cleared" | "over" | "exit_closed" };
 
 export interface GameOptions {
+  /** The quiz's questions (the project's quiz). */
+  questions?: readonly QuizQuestion[];
   /** Players already in at the start (the rest join by pressing a button). */
   players?: number;
   /** The most players the game takes (the board layout's count). */
@@ -439,6 +449,11 @@ export class Game {
   frightT = 0;
   /** The maze's round, from 0 (phase 3). */
   round = 0;
+  /** The quiz: its questions, the one on the screen, its phase (0 asked, 1 the answer shown) and the frames into it. */
+  readonly questions: readonly QuizQuestion[];
+  quizK = 0;
+  quizPhase = 0;
+  quizT = 0;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -482,6 +497,7 @@ export class Game {
     this.startAt = opts.startAt;
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
     this.rules = rulesWith(opts.rules);
+    this.questions = this.rules.quiz ? (opts.questions ?? []) : [];
     if (this.rules.depth) this.walkBand = walkBandOf(level.height, level.walk);
     this.backtrack = level.backtrack ?? BACKTRACK;
     this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
@@ -851,8 +867,8 @@ export class Game {
     const lead = this.players.find((q) => q.active);
     let x: number;
     let fy: number;
-    if (this.rules.crosshair || this.rules.ship) {
-      // the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left
+    if (this.rules.crosshair || this.rules.ship || this.rules.quiz) {
+      // the light gun, the shooter and the quiz: nobody walks; crosshairs start in the middle, ships at the left
       x = this.camX;
       fy = 0;
     } else if (this.rules.maze) {
@@ -883,6 +899,7 @@ export class Game {
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
     if (this.rules.topdown) p.bombs = GRENADES;
+    p.answer = -1;
     if (this.rules.crosshair) {
       p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -1930,7 +1947,47 @@ export class Game {
     this.placeAtTrio(p);
   }
 
+  /** The quiz: a player's first press of B1 B2 B3 while the question is asked is its answer. */
+  private answerQuiz(p: Player): void {
+    p.t++;
+    if (this.quizPhase !== 0 || p.answer >= 0) return;
+    const k = this.pressed(p, Input.B1) ? 0 : this.pressed(p, Input.B2) ? 1 : this.pressed(p, Input.B3) ? 2 : -1;
+    if (k < 0) return;
+    p.answer = k;
+    p.answerLeft = QUIZ_TIME - this.quizT;
+    this.events.push({ kind: "shot", player: p.index });
+  }
+
+  /**
+   * The quiz, a frame: the question until its time is up or every player in
+   * answered, then the right answer shown (and scored) for REVEAL_FRAMES,
+   * then the next question.
+   */
+  private updateQuiz(): void {
+    const q = this.questions[this.quizK];
+    if (!q) return;
+    this.quizT++;
+    if (this.quizPhase === 0) {
+      const ins = this.players.filter((p) => p.active);
+      if (this.quizT < QUIZ_TIME && !(ins.length && ins.every((p) => p.answer >= 0))) return;
+      for (const p of ins)
+        if (p.answer === q.right) {
+          p.score += QUIZ_SCORE + Math.floor(p.answerLeft / 60) * QUIZ_BONUS;
+          this.events.push({ kind: "pickup", item: "right", player: p.index });
+        }
+      this.quizPhase = 1;
+      this.quizT = 0;
+      return;
+    }
+    if (this.quizT < REVEAL_FRAMES) return;
+    this.quizK++;
+    this.quizPhase = 0;
+    this.quizT = 0;
+    for (const p of this.players) p.answer = -1;
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.quiz) return this.answerQuiz(p);
     if (this.rules.puzzle) return this.playWell(p);
     if (this.rules.maze) return this.walkMaze(p);
     if (this.rules.topdown) return this.walkTop(p);
@@ -2226,6 +2283,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.quiz) return this.updateQuiz();
     if (this.rules.puzzle) return;
     if (this.rules.maze) return this.updateMazeChasers();
     if (this.rules.topdown) {
@@ -2426,7 +2484,7 @@ export class Game {
    */
   updateCamera(snap = false): void {
     // the maze and the puzzle: one screen, the camera still at its top left
-    if (this.rules.maze || this.rules.puzzle) {
+    if (this.rules.maze || this.rules.puzzle || this.rules.quiz) {
       this.camX = 0;
       this.camY = 0;
       return;
@@ -2542,7 +2600,14 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.puzzle) {
+    if (this.rules.quiz) {
+      // the quiz: past the last question the level clears
+      if (this.quizK >= this.questions.length && this.players.some((p) => p.active)) {
+        this.outcome = "cleared";
+        this.events.push({ kind: "cleared" });
+        return;
+      }
+    } else if (this.rules.puzzle) {
       // the puzzle: a player with PUZZLE_GOAL gems cleared clears the level
       if (this.players.some((p) => p.active && !p.cpu && p.well && p.well.gems >= PUZZLE_GOAL)) {
         this.outcome = "cleared";
@@ -2689,6 +2754,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     boom: null,
     well: null,
     cpu: false,
+    answer: -1,
+    answerLeft: 0,
   };
 }
 

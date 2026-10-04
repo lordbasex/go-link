@@ -5,8 +5,9 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
 import { shapePuzzleLevel } from "../../editor/puzzleLevel";
+import { useGameText } from "../../game/texts";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
@@ -57,6 +58,7 @@ const MAX_MAP_BYTES = 16 * 1024 * 1024;
 
 export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
   const t = useCore();
+  const gt = useGameText();
   const [step, setStep] = useState(1);
   const [genre, setGenre] = useState<GenreId>(DEFAULT_GENRE);
   const [layout, setLayout] = useState<LayoutId>("slammast");
@@ -146,6 +148,12 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
     // a maze game: grid moves, dots in every empty cell, chasers
     if (genre === "maze") p.settings.rules = { ...(p.settings.rules ?? {}), ...MAZE_RULES };
+    // a quiz game: questions on the screen, a few samples in the editor's language to start from
+    if (genre === "quiz-party") {
+      p.settings.rules = { ...(p.settings.rules ?? {}), ...QUIZ_RULES };
+      p.quiz = gt.quiz.samples.map((q) => ({ ...q, a: [...q.a] as [string, string, string] }));
+      for (const level of p.levels) shapePuzzleLevel(level, true);
+    }
     // a puzzle game: a well of falling gems per player, framed by the level's walls
     if (genre === "puzzle") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...PUZZLE_RULES };

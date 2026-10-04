@@ -30,8 +30,8 @@ describe("Willy Maker app", () => {
     // step 1: the genre, the platform shooter, the platformer (T-22), the beat 'em up and the light gun can be chosen today
     const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
     expect(genres).toHaveLength(13);
-    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Puzzle")]);
-    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(4);
+    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Puzzle"), expect.stringContaining("Quiz")]);
+    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(3);
     expect(genres[0]).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("radio", { name: /Versus/ }));
     expect(genres[0]).toHaveAttribute("aria-checked", "true");

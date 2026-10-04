@@ -22,13 +22,14 @@ export function puzzleWall(c: number, r: number): boolean {
   return false;
 }
 
-export function shapePuzzleLevel(level: Level): void {
+/** A puzzle's level (walls around the wells), or with `bare` an empty one (the quiz: nothing behind the text). */
+export function shapePuzzleLevel(level: Level, bare = false): void {
   const tags = tagGrid(level);
   const playLayer = level.layers.find((l): l is TileLayer => l.id === "play");
   const play = playLayer ? layerGrid(level, playLayer) : null;
   for (let r = 0; r < tags.rows; r++)
     for (let c = 0; c < tags.cols; c++) {
-      tags.set(c, r, puzzleWall(c, r) ? TAG_NUMBER.solid : TAG_NUMBER.air);
+      tags.set(c, r, !bare && puzzleWall(c, r) ? TAG_NUMBER.solid : TAG_NUMBER.air);
       play?.set(c, r, 0);
     }
   if (play) {

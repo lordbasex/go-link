@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 20
+#define WM_VERSION 21
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -67,6 +67,8 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_TXT_BIG 0x10   /* double size: 2 x 2 cells per character */
 #define WM_TXT_COUNT 0x20 /* the engine writes a count after it (rescued) */
 #define WM_TXT_BLINK 0x40 /* blinks; the title's prompt */
+#define WM_TXT_RIGHT 0x80 /* the quiz: the right answer's line */
+#define WM_SCR_QUIZ 0x40  /* the quiz's question n is screen WM_SCR_QUIZ + n (wm_data 21) */
 
 #define WM_F_FREE_PLAY 0x0001
 #define WM_F_PUSH_CLIMB 0x0002 /* a 32 px edge is climbed by walking into it (else by jumping) */
@@ -85,6 +87,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_PUZZLE 0x8000      /* the puzzle: a well of falling gems per player (wm_data 18; the last free bit) */
 /* flags2 (wm_data 19), the bits after flags ran out */
 #define WM_F2_PUZZLE_CPU 0x0001 /* with WM_F_PUZZLE: the CPU plays the second well while player 2 is out */
+#define WM_F2_QUIZ 0x0002       /* the quiz: the questions on screens WM_SCR_QUIZ + n, answered with B1 B2 B3 (wm_data 21) */
 
 struct wm_data {
 	u32 magic;                /* 00 */

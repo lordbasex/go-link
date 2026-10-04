@@ -1,0 +1,113 @@
+{
+ "name": "quiz-answers",
+ "description": "The quiz (WM_ROM_OUT/quiz of rom.test.tsx, rom/quizFixture.ts: an empty screen, four questions: one long enough to wrap, one with accents the font drops). Two coins; player 1 answers question 1 right with B3 (frame 253: 100 plus 10 a second left); player 2 presses Start during question 2 (frame 424) and answers it right with B1 while player 1 answers wrong with B2; nobody answers question 3, which shows its answer when the time runs out; on question 4 player 2 answers wrong first and player 1 right; past the last question the level clears. Play mode gives both players' scores every frame.",
+ "frames": 2014,
+ "checkpoints": [
+  300,
+  258,
+  426,
+  709,
+  1300
+ ],
+ "expect": [
+  {
+   "frame": 253,
+   "path": "players.0.score",
+   "equals": 180
+  },
+  {
+   "frame": 426,
+   "path": "players.1.active",
+   "equals": true
+  },
+  {
+   "frame": 704,
+   "path": "players.1.score",
+   "equals": 150
+  },
+  {
+   "frame": 1958,
+   "path": "players.0.score",
+   "equals": 340
+  },
+  {
+   "frame": 1958,
+   "path": "players.1.score",
+   "equals": 150
+  }
+ ],
+ "steps": [
+  {
+   "from": 100,
+   "to": 105,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 251,
+   "to": 254,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
+   "from": 542,
+   "to": 545,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1803,
+   "to": 1806,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 422,
+   "to": 425,
+   "port": 2,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 702,
+   "to": 705,
+   "port": 2,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1663,
+   "to": 1666,
+   "port": 2,
+   "buttons": [
+    "b2"
+   ]
+  }
+ ]
+}

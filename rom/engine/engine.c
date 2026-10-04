@@ -155,6 +155,9 @@ static void blank(int x, int y, int n)
 /* the maze's dots must be printed again once the text is cleared (maze_draw_dots) */
 static int dots_dirty;
 
+/* the quiz's question on the text layer (-1: none, redrawn after the text is cleared) */
+static int quiz_shown = -1;
+
 static void clear_text(void)
 {
 	int c, r;
@@ -162,6 +165,7 @@ static void clear_text(void)
 		for (r = 0; r < 32; r++)
 			scroll1_cell(c, r)[0] = 0x0020;
 	dots_dirty = 1;
+	quiz_shown = -1;
 }
 
 /* the text lines of the data block */
@@ -753,6 +757,7 @@ struct player {
 	int aim_x, aim_y;                           /* the top-down aim: -1, 0 or 1 each way (never both 0) */
 	int mdx, mdy, wdx, wdy;                     /* the maze: the way it moves, the way the stick last asked for */
 	int cpu;                                    /* the puzzle: the CPU rival plays this well */
+	int answer, answer_left;                    /* the quiz: this question's answer (0-2, -1 none) and the frames left then */
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
@@ -769,6 +774,17 @@ static int topdown;   /* the top-down run and gun (WM_F_TOPDOWN) */
 static int maze;      /* the maze (WM_F_MAZE) */
 static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
 static int puzzle_cpu; /* its CPU rival (WM_F2_PUZZLE_CPU) */
+static int quiz;       /* the quiz (WM_F2_QUIZ) */
+/* the quiz (engine/game.ts updateQuiz): its questions, the one asked, its phase (0 asked, 1 the answer shown), frames into it */
+#define QUIZ_TIME 600
+#define REVEAL_FRAMES 150
+#define QUIZ_SCORE 100
+#define QUIZ_BONUS 10
+#define QUIZ_TIME_ROW 22
+#define QUIZ_PLAYERS_ROW 24
+#define QUIZ_ANSWER_ROW 12
+static const u8 quiz_cols[4] = { 8, 18, 28, 38 };
+static int quiz_n, quiz_k, quiz_phase, quiz_t, quiz_revealed;
 /* the puzzle's wells (engine/puzzle.ts Well), players 1 and 2 */
 #define WELLS 2
 #define WELL_COLS 6
@@ -1656,6 +1672,143 @@ static void draw_wells(void)
 	}
 }
 
+/* ------------------------------------------------------------- the quiz */
+
+/* a player's first press of B1 B2 B3 while the question is asked is its answer */
+static void answer_quiz(struct player *p)
+{
+	int k;
+	p->t++;
+	if (quiz_phase != 0 || p->answer >= 0)
+		return;
+	k = PRESSED(p, BTN_1) ? 0 : PRESSED(p, BTN_2) ? 1 : PRESSED(p, BTN_3) ? 2 : -1;
+	if (k < 0)
+		return;
+	p->answer = k;
+	p->answer_left = QUIZ_TIME - quiz_t;
+	sfx(SFX_SHOT, p->x);
+}
+
+/* the right answer of question k (its line marked WM_TXT_RIGHT), -1 if none */
+static int quiz_right(int k)
+{
+	struct line l;
+	int pos = 0;
+	while (next_line(WM_SCR_QUIZ + k, &pos, &l))
+		if (l.attr & WM_TXT_RIGHT)
+			return (l.row - QUIZ_ANSWER_ROW) / 3;
+	return -1;
+}
+
+/* the quiz, a frame (engine/game.ts updateQuiz) */
+static void update_quiz(void)
+{
+	int k, ins = 0, answered = 0, right;
+	if (quiz_k >= quiz_n)
+		return;
+	quiz_t++;
+	if (quiz_phase == 0) {
+		for (k = 0; k < nplayers; k++)
+			if (pl[k].active) {
+				ins++;
+				answered += pl[k].answer >= 0;
+			}
+		if (quiz_t < QUIZ_TIME && !(ins && answered == ins))
+			return;
+		right = quiz_right(quiz_k);
+		for (k = 0; k < nplayers; k++)
+			if (pl[k].active && pl[k].answer == right) {
+				pl[k].score += (u32)(QUIZ_SCORE + (pl[k].answer_left / 60) * QUIZ_BONUS);
+				sfx(SFX_PICKUP, pl[k].x);
+			}
+		quiz_phase = 1;
+		quiz_t = 0;
+		return;
+	}
+	if (quiz_t < REVEAL_FRAMES)
+		return;
+	quiz_k++;
+	quiz_phase = 0;
+	quiz_t = 0;
+	for (k = 0; k < nplayers; k++)
+		pl[k].answer = -1;
+}
+
+/* the quiz's screen on the text layer (play/renderer.ts drawQuiz): a new question is put
+   up a line a frame (the old one's lines off, the rows under it blanked, then its lines
+   on: all at once ran long), then the seconds left and who answered; then the right
+   answer in cyan and each player's letter, cyan if right, red if not */
+static int quiz_old, quiz_step, quiz_pos;
+
+static void quiz_draw(void)
+{
+	struct line l;
+	int k, right;
+	if (quiz_shown != quiz_k && !quiz_step) {
+		quiz_old = quiz_shown;
+		quiz_shown = quiz_k;
+		quiz_step = quiz_old >= 0 ? 1 : 2;
+		quiz_pos = 0;
+		quiz_revealed = 0;
+	}
+	if (quiz_step == 1) {
+		if (next_line(WM_SCR_QUIZ + quiz_old, &quiz_pos, &l))
+			draw_line(&l, 0);
+		else
+			quiz_step = 2;
+		return;
+	}
+	if (quiz_step == 2) {
+		blank(0, QUIZ_TIME_ROW, 48);
+		blank(0, QUIZ_PLAYERS_ROW, 48);
+		quiz_step = 3;
+		quiz_pos = 0;
+		return;
+	}
+	if (quiz_step == 3) {
+		if (quiz_k < quiz_n && next_line(WM_SCR_QUIZ + quiz_k, &quiz_pos, &l))
+			draw_line(&l, 1);
+		else
+			quiz_step = 0;
+		return;
+	}
+	if (quiz_k >= quiz_n)
+		return;
+	right = -1;
+	if (quiz_phase == 0) {
+		int left = QUIZ_TIME - quiz_t;
+		print(21, QUIZ_TIME_ROW, "TIME", INK_WHITE);
+		print_num(26, QUIZ_TIME_ROW, (u32)(left > 0 ? (left + 59) / 60 : 0), 2, INK_WHITE);
+	} else {
+		right = quiz_right(quiz_k);
+		if (!quiz_revealed) {
+			/* only the right answer's line, again in cyan */
+			int pos = 0;
+			blank(0, QUIZ_TIME_ROW, 48);
+			while (next_line(WM_SCR_QUIZ + quiz_k, &pos, &l))
+				if (l.attr & WM_TXT_RIGHT) {
+					l.attr = (l.attr & ~WM_TXT_INK) | INK_CYAN;
+					draw_line(&l, 1);
+				}
+			quiz_revealed = 1;
+			return;
+		}
+	}
+	for (k = 0; k < nplayers && k < 4; k++) {
+		const struct player *p = &pl[k];
+		int col = quiz_cols[k], ink;
+		if (!p->active) {
+			blank(col, QUIZ_PLAYERS_ROW, 4);
+			continue;
+		}
+		ink = quiz_phase == 0 ? (p->answer >= 0 ? INK_CYAN : INK_WHITE) : (p->answer == right ? INK_CYAN : INK_RED);
+		put_char(col, QUIZ_PLAYERS_ROW, '1' + k, ink);
+		put_char(col + 1, QUIZ_PLAYERS_ROW, 'P', ink);
+		put_char(col + 2, QUIZ_PLAYERS_ROW, ' ', ink);
+		put_char(col + 3, QUIZ_PLAYERS_ROW, quiz_phase == 0 ? ' ' : p->answer >= 0 ? 'A' + p->answer : '-', ink);
+	}
+}
+
 static void player_join(int k)
 {
 	struct player *p = &pl[k];
@@ -1696,8 +1849,8 @@ static void player_join(int k)
 			x = cam_x + (SCREEN_W >> 1) + k * 24;
 			fy = cam_y + (SCREEN_H >> 1);
 		}
-	} else if (crosshair || ship) {
-		/* the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left */
+	} else if (crosshair || ship || quiz) {
+		/* the light gun, the shooter and the quiz: nobody walks; crosshairs start in the middle, ships at the left */
 		x = cam_x;
 		fy = 0;
 	} else if (depth) {
@@ -1726,6 +1879,7 @@ static void player_join(int k)
 	p->hurt = R->hurt_frames;
 	if (topdown)
 		p->bombs = GRENADES;
+	p->answer = -1;
 	if (crosshair) {
 		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -1836,6 +1990,20 @@ static void game_reset(void)
 	maze = (D->flags & WM_F_MAZE) != 0;
 	puzzle = (D->flags & WM_F_PUZZLE) != 0;
 	puzzle_cpu = puzzle && (D->flags2 & WM_F2_PUZZLE_CPU) != 0;
+	quiz = (D->flags2 & WM_F2_QUIZ) != 0;
+	quiz_k = quiz_phase = quiz_t = quiz_revealed = quiz_step = 0;
+	quiz_n = 0;
+	if (quiz) {
+		/* the questions are the text screens from WM_SCR_QUIZ on */
+		struct line l;
+		int scr;
+		for (scr = WM_SCR_QUIZ; scr < WM_SCR_END; scr++) {
+			int pos = 0;
+			if (!next_line(scr, &pos, &l))
+				break;
+			quiz_n++;
+		}
+	}
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -2765,6 +2933,10 @@ static void update_player(struct player *p)
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (quiz) {
+		answer_quiz(p);
+		return;
+	}
 	if (puzzle) {
 		/* the CPU rival's pad in place of the port's (read_inputs kept its last one as last) */
 		if (p->cpu)
@@ -3630,6 +3802,10 @@ static void update_maze_chasers(void)
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (quiz) {
+		update_quiz();
+		return;
+	}
 	if (puzzle)
 		return;
 	if (maze) {
@@ -3893,7 +4069,7 @@ static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
 	/* the maze and the puzzle: one screen, the camera still at its top left */
-	if (maze || puzzle) {
+	if (maze || puzzle || quiz) {
 		cam_x = cam_y = 0;
 		return;
 	}
@@ -4260,8 +4436,9 @@ static void draw_actors_by_depth(void)
 static void draw_world(void)
 {
 	int k;
-	if (puzzle) {
-		draw_wells();
+	if (puzzle || quiz) {
+		if (puzzle)
+			draw_wells();
 		flush_sprites();
 		return;
 	}
@@ -4745,6 +4922,20 @@ static int play(int first)
 			if (dots_left <= 0 && any && maze_round + 1 < D->maze_rounds)
 				maze_next_round();
 			else if (dots_left <= 0 && any) {
+				blank(15, 16, 18);
+				outcome = END_CLEAR;
+				end_t = frame_count;
+				draw_screen(WM_SCR_CLEAR, 1);
+				MUSIC(MUSIC_CLEAR);
+			}
+		}
+		/* the quiz: its screen, and past the last question the level clears */
+		if (quiz && outcome < 0) {
+			int any = 0;
+			quiz_draw();
+			for (k = 0; k < nplayers; k++)
+				any |= pl[k].active;
+			if (quiz_k >= quiz_n && any) {
 				blank(15, 16, 18);
 				outcome = END_CLEAR;
 				end_t = frame_count;

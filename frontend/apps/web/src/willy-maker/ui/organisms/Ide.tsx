@@ -567,6 +567,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
         <div className="wm-play-layer">
           <Suspense fallback={<p className="wm-pad wm-dim">{t.home.loading}</p>}>
             <PlayView
+              questions={p.quiz}
               level={playing.view}
               players={Math.min(2, p.settings.players)}
               maxPlayers={p.settings.players}

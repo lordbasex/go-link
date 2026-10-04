@@ -13,7 +13,8 @@ import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, 
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
-import { BOSS_HP, GUNSHIP_HP, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
+import { BOSS_HP, GUNSHIP_HP, QUIZ_MAX, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
+import { quizLines } from "../engine/quiz";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -69,7 +70,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 20;
+const WM_VERSION = 21;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -85,6 +86,9 @@ const SCR = { title: 0, hud: 1, clear: 2, continue: 3, gameOver: 4, join: 5, amm
 const TXT_BIG = 0x10;
 const TXT_COUNT = 0x20;
 const TXT_BLINK = 0x40;
+const TXT_RIGHT = 0x80;
+/** The quiz's question n is screen SCR_QUIZ + n. */
+const SCR_QUIZ = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
 const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5, knife: 6, power: 7 };
 const F_FREE_PLAY = 1;
@@ -104,6 +108,7 @@ const F_MAZE = 0x4000;
 const F_PUZZLE = 0x8000;
 /** flags2 (wm_data 19): the bits after flags ran out. */
 const F2_PUZZLE_CPU = 0x0001;
+const F2_QUIZ = 0x0002;
 /** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
 const F_DIFFICULTY_SHIFT = 5;
 
@@ -278,6 +283,11 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
   // the continue prompt blinks, and the engine swaps it for the title's prompt while there are credits (J-10)
   for (const l of screenLines(project, "continue")) if (l.field !== "slots") add(SCR.continue, l, l.field === "prompt" ? TXT_BLINK : 0);
   for (const l of screenLines(project, "gameOver")) add(SCR.gameOver, l);
+  // the quiz: a screen per question, its lines as play mode draws them (engine/quiz.ts), the right answer marked
+  if (rulesWith(project.settings.rules).quiz)
+    (project.quiz ?? []).slice(0, QUIZ_MAX).forEach((q, k) => {
+      for (const l of quizLines(q)) add(SCR_QUIZ + k, { field: "quiz", text: l.text, row: l.row, col: l.col, scale: 1, ink: "white" }, l.answer >= 0 && l.answer === q.right ? TXT_RIGHT : 0);
+    });
   const single = (scr: number, screen: MenuScreenId, field: string, row: number) => {
     const text = menuText(project, screen, field).toUpperCase();
     if (!text) return;
@@ -718,7 +728,7 @@ export function packGame(
   w16(walk.y1);
   w32(locks.length ? lockAt : 0);
   w16(Math.min(8, locks.length));
-  w16(rules.puzzle && rules.puzzleCpu ? F2_PUZZLE_CPU : 0);
+  w16((rules.puzzle && rules.puzzleCpu ? F2_PUZZLE_CPU : 0) | (rules.quiz ? F2_QUIZ : 0));
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

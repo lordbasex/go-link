@@ -70,7 +70,7 @@ for (const src of [path.join(SRC, "crt0.s"), path.join(ENGINE, "engine.c"), path
 }
 const elf = path.join(OUT, "engine.elf");
 run("m68k-elf-gcc", [...cflags, "-T", path.join(SRC, "link.ld"), ...objs, "-lgcc", "-o", elf, "-Wl,-Map," + path.join(OUT, "engine.map")]);
-const disasm = execFileSync("m68k-elf-objdump", ["-d", elf], { encoding: "utf8" });
+const disasm = execFileSync("m68k-elf-objdump", ["-d", elf], { encoding: "utf8", maxBuffer: 64 << 20 });
 const risky = disasm.split("\n").filter((l) => {
   const m = /%(a[0-6])@\+,.*%(a[0-6])@\(/.exec(l);
   return m && m[1] === m[2];

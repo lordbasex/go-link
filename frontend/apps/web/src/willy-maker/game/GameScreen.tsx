@@ -17,6 +17,7 @@ import { partSupport } from "../editor/support";
 import { ControllerPanel } from "./ControllerPanel";
 import { actionLabel, actionRows, heroChoices, levelHeroes, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRules, setRunTap, slotResolves } from "./settings";
 import { fill, issueText, useGameText, useMenusText } from "./texts";
+import { QuizCard } from "./QuizCard";
 import "./game.css";
 
 export interface GameScreenProps {
@@ -143,6 +144,7 @@ export function GameScreen({ store, project, issues, onGo }: GameScreenProps) {
       <div className="wm-game-col">
         <DipCard store={store} dip={s.dip} />
         <RulesCard store={store} saved={s.rules} />
+        {rulesWith(s.rules).quiz && <QuizCard store={store} questions={project.quiz ?? []} />}
         <IssuesCard issues={issues} onGo={onGo} />
       </div>
     </div>
@@ -201,7 +203,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
     { value: "yes", label: t.rules.yes },
     { value: "no", label: t.rules.no },
   ] as const;
-  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies" | "doubleJump" | "jetpack" | "weapons" | "stomp" | "depth" | "crosshair" | "ship" | "vertical" | "topdown" | "maze" | "puzzle" | "puzzleCpu") => (
+  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies" | "doubleJump" | "jetpack" | "weapons" | "stomp" | "depth" | "crosshair" | "ship" | "vertical" | "topdown" | "maze" | "puzzle" | "puzzleCpu" | "quiz") => (
     <div className="wm-game-stack" key={key}>
       <span className="wm-field-label">{t.rules[key]}</span>
       <Segmented label={t.rules[key]} value={r[key] ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ [key]: v === "yes" })} />
@@ -253,6 +255,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {r.maze && number("mazeRounds", 1, 9, 1)}
       {flag("puzzle")}
       {r.puzzle && flag("puzzleCpu")}
+      {flag("quiz")}
       <p className="wm-dim wm-small" role="status">
         {fill(t.rules.jump, { ...measureJump(r, Math.min(...levelHeroes(store.project).heights)) })}
       </p>

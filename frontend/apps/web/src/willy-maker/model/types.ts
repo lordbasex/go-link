@@ -297,6 +297,15 @@ export interface Project {
   characters: Character[];
   tilesets: Tileset[];
   levels: Level[];
+  /** The quiz's questions (genres.md, quiz and party): asked in this order. */
+  quiz?: QuizQuestion[];
   /** Fields from a newer format are kept as they are. */
   [unknown: string]: unknown;
+}
+
+/** A quiz question: three answers, one per button (B1 B2 B3), `right` the correct one's index. */
+export interface QuizQuestion {
+  q: string;
+  a: [string, string, string];
+  right: number;
 }

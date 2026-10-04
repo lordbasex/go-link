@@ -8,7 +8,8 @@
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
 import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { CLEAR_FRAMES, FLY_MID, QUIZ_TIME, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { LETTERS, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, quizLines } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -166,7 +167,9 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (!far) for (const b of game.level.scenery ?? []) drawBuilding(ctx, b.x, b.y, b.w, b.h);
   drawCells(ctx, game, play);
   drawExits(ctx, game);
-  if (game.rules.puzzle) drawWells(ctx, game);
+  if (game.rules.quiz) {
+    // the quiz is all text, drawn over the HUD below
+  } else if (game.rules.puzzle) drawWells(ctx, game);
   else drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
@@ -183,6 +186,27 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (o.overlays.camera) drawCamera(ctx, game, colors);
   drawHud(ctx, game, colors, o);
   if (game.rules.crosshair) drawCrosshairs(ctx, game);
+  if (game.rules.quiz) drawQuiz(ctx, game);
+}
+
+/**
+ * The quiz's screen (engine/quiz.ts), as the ROM prints it on its text
+ * layer: the question and its answers, the seconds left and who answered;
+ * when the answer shows, the right one in cyan and each player's letter,
+ * cyan if right, red if not.
+ */
+function drawQuiz(ctx: CanvasRenderingContext2D, game: Game): void {
+  const q = game.questions[game.quizK];
+  if (!q) return;
+  const at = (col: number, row: number, text: string, ink: string) => drawBoardText(ctx, text, col * 8, row * 8, 1, ink);
+  for (const l of quizLines(q)) at(l.col, l.row, l.text, game.quizPhase === 1 && l.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.white);
+  if (game.quizPhase === 0) at(21, TIME_ROW, `TIME ${Math.max(0, Math.ceil((QUIZ_TIME - game.quizT) / 60))}`, TEXT_INKS.white);
+  for (const p of game.players) {
+    if (!p.active || p.index >= PLAYER_COLS.length) continue;
+    const col = PLAYER_COLS[p.index]!;
+    if (game.quizPhase === 0) at(col, PLAYERS_ROW, `${p.index + 1}P`, p.answer >= 0 ? TEXT_INKS.cyan : TEXT_INKS.white);
+    else at(col, PLAYERS_ROW, `${p.index + 1}P ${p.answer >= 0 ? LETTERS[p.answer] : "-"}`, p.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.red);
+  }
 }
 
 /**

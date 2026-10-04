@@ -6,6 +6,7 @@
 // and can be edited while it runs: a placed piece is in the game at once
 // and goes to the editor through `onEdit`, as a command it can undo.
 
+import type { QuizQuestion } from "../model/types";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PictureCanvas } from "../../picture/PictureCanvas";
 import { PICTURE_STYLES, readPictureSettings, readSavedPicture, writePictureSettings, type PictureStyle } from "../../picture/settings";
@@ -39,6 +40,8 @@ export const PIECE_PARTS: Record<Piece, string> = { crate: "crate:object", platf
 
 export interface PlayViewProps {
   level: LevelView;
+  /** The quiz's questions (the project's). */
+  questions?: readonly QuizQuestion[];
   /** Players in from the start, and the most the board takes. */
   players?: number;
   maxPlayers?: number;
@@ -118,7 +121,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, characters, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, characters, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -127,7 +130,7 @@ export function PlayView({ level, players = 1, maxPlayers = 4, lives, rules, dif
   const make = useCallback(
     (startAt?: { x: number; y: number }) => {
       const runTapFrames = runTapMs === undefined ? undefined : Math.max(1, Math.round((runTapMs * 60) / 1000));
-      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules, difficulty, heights });
+      const g = new Game(level, { players, maxPlayers, lives, startAt, runTapFrames, rules, difficulty, heights, questions });
       for (const e of edits.current) applyEdit(g, e);
       return g;
     },

@@ -118,7 +118,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** stick moves and drops, B1 rotate, B2 rotate back, B3 hold or swap. 2 wells side by side for versus; 4 players in pairs.
 - **Size:** M.
 
-## 11. Quiz and party
+## 11. Quiz and party (available, phase 1: the quiz)
+
+**Phase 1 built** (2026-10-04): the rule `quiz` (the Rules card's **Quiz**; on in a new quiz game, which the wizard starts with three sample questions in the editor's language on an empty screen) and the Game tab's **Questions** card: each question has three answers and the right one, and the card shows the text as the board's font prints it (upper case, accents and other characters dropped). The questions come one after another: up to 4 players answer with B1 B2 B3 (A B C), the first press counts; after 10 seconds, or once every player in has answered, the right answer turns cyan for 2.5 seconds with each player's letter (cyan if right, red if not), and a right answer is worth 100 plus 10 for every whole second left. Past the last question the level clears. Players join at any time. Play mode and the ROM alike (`wm_data` version 21: the flag `WM_F2_QUIZ`, each question a text screen `WM_SCR_QUIZ` + n with its right answer's line marked `WM_TXT_RIGHT`); `rom/tools/lab/runs/quiz-answers.json` (right, wrong and late answers, a timeout, player 2 joining mid-question) matches the real core at tolerance 0 and play mode on every frame. Next: minigames (mash buttons, timing, memory), a question per player's turn, categories.
 
 - **The player:** answers questions against the clock and plays short minigames (mash buttons, timing, memory) for points, up to 4 players at once.
 - **Engine:** new: question flow with answers on the buttons, timers, scoring, a minigame framework of small rule sets. Reuses the menus and text in the board's 8 × 8 font.

@@ -6,6 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL, STONE } from "./rules";
 import { markMatches } from "./puzzle";
+import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES } from "./rules";
+import { quizLines, quizText } from "./quiz";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
@@ -1502,5 +1504,39 @@ describe("the maze, phase 3: rounds and chosen chasers", () => {
     run(g, 8, 0);
     // a pixel a frame and one more every other frame: 12 px in 8 frames
     expect(Math.abs(e.x - x0) + Math.abs(e.fy - 48)).toBe(12);
+  });
+});
+
+describe("the quiz (genres.md, phase 1)", () => {
+  const questions = [
+    { q: "How many buttons answer?", a: ["One", "Two", "Three"] as [string, string, string], right: 2 },
+    { q: "¿Qué botón es la A?", a: ["B1", "B2", "B3"] as [string, string, string], right: 0 },
+  ];
+  it("a question waits for every player, scores a right answer with the seconds left, shows it, then the next; the last clears the level", () => {
+    const g = new Game(flat(), { rules: QUIZ_RULES, players: 2, questions });
+    const [a, b] = g.players;
+    run(g, 120, 0);
+    expect(g.quizPhase).toBe(0);
+    // player 1 answers C (right) with 8 s left; player 2 answers A (wrong): every player in has answered
+    g.step([Input.B3, 0, 0, 0]);
+    g.step([0, Input.B1, 0, 0]);
+    expect(g.quizPhase).toBe(1);
+    expect(a!.score).toBe(QUIZ_SCORE + 8 * QUIZ_BONUS);
+    expect(b!.score).toBe(0);
+    run(g, REVEAL_FRAMES, 0);
+    expect([g.quizK, g.quizPhase, a!.answer]).toEqual([1, 0, -1]);
+    // nobody answers: the time runs out, nobody scores
+    run(g, QUIZ_TIME, 0);
+    expect(g.quizPhase).toBe(1);
+    expect(a!.score).toBe(QUIZ_SCORE + 8 * QUIZ_BONUS);
+    run(g, REVEAL_FRAMES, 0);
+    expect(g.outcome).toBe("cleared");
+  });
+
+  it("the font prints upper case without accents, and long questions wrap", () => {
+    expect(quizText("¿Qué botón es la A?")).toBe("QUE BOTON ES LA A?");
+    const lines = quizLines({ q: "word ".repeat(30), a: ["x", "y", "z"], right: 0 });
+    expect(lines.filter((l) => l.answer < 0).every((l) => l.text.length <= 40)).toBe(true);
+    expect(lines.filter((l) => l.answer >= 0).map((l) => l.text)).toEqual(["A  X", "B  Y", "C  Z"]);
   });
 });
