@@ -1330,4 +1330,32 @@ describe("the maze (genres.md, phase 1)", () => {
     expect(g.dotsLeft).toBe(0);
     expect(g.outcome).toBe("cleared");
   });
+
+  it("a row open at both sides is a tunnel to the other side (phase 2)", () => {
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, r === 2 ? Tag.Air : Tag.Solid);
+    });
+    view.objects[0] = { name: "p1", type: "player_start", x: 1 * 16 + 8, y: 3 * 16, player: 1 };
+    const g = new Game(view, { rules: MAZE_RULES });
+    const p = g.players[0]!;
+    run(g, 20, Input.Left);
+    expect(p.x).toBeGreaterThan(60 * 16);
+    expect(p.x).toBeLessThan(64 * 16);
+    run(g, 20, Input.Right);
+    expect(p.x).toBeLessThan(4 * 16);
+  });
+
+  it("the first chaser follows, the second aims ahead of the player and the third keeps off when near (phase 2)", () => {
+    const view = flat((set) => {
+      for (let r = 0; r < 25; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let r = 2; r <= 10; r++) for (let c = 2; c <= 20; c++) set(c, r, Tag.Air);
+    }, [0, 1, 2].map((n) => ({ name: `c${n}`, type: "enemy", x: 11 * 16 + 8, y: 3 * 16, kind: "trooper", facing: "left", patrol: 0 }) as LevelObject));
+    view.objects[0] = { name: "p1", type: "player_start", x: 11 * 16 + 8, y: 7 * 16, player: 1 };
+    const g = new Game(view, { rules: MAZE_RULES });
+    run(g, 10, Input.Left);
+    const [a, b, c] = g.enemies;
+    expect([a!.x, a!.fy > 48]).toEqual([11 * 16 + 8, true]);
+    expect([b!.x < 11 * 16 + 8, b!.fy]).toEqual([true, 48]);
+    expect(c!.x).toBeLessThan(11 * 16 + 8);
+  });
 });

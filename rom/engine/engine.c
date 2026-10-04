@@ -709,6 +709,8 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define MAZE_TOUCH 10
 #define EAT_SCORE 200
 #define HOME_FRAMES 180
+#define AMBUSH_AHEAD 64
+#define WANDER_NEAR 128
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -2156,7 +2158,19 @@ static void walk_top(struct player *p)
 /* the maze: cell (c, r) can be walked into (not solid) */
 static int maze_open(int c, int r)
 {
+	/* a row open at both sides is a tunnel: the left of the first column is the last one */
+	if (c < 0)
+		c += cols;
+	else if (c >= cols)
+		c -= cols;
 	return !is_solid(cell(c, r));
+}
+
+/* an x that left the maze through a tunnel comes in at the other side */
+static s32 maze_wrap(s32 x)
+{
+	s32 w = (s32)cols << 4;
+	return x < 0 ? x + w : x >= w ? x - w : x;
 }
 
 /* the maze's dot of a cell: there, and eaten */
@@ -2207,7 +2221,7 @@ static void walk_maze(struct player *p)
 				p->mdy = 0;
 			}
 		}
-		p->x += p->mdx;
+		p->x = maze_wrap(p->x + p->mdx);
 		p->y = (fy + p->mdy) * 16;
 	}
 	if (p->mdx)
@@ -3020,7 +3034,7 @@ static void update_maze_chasers(void)
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
 		int target = -1;
-		s32 best = 0x7fffffff;
+		s32 best = 0x7fffffff, tx = 0, ty = 0;
 		e->t++;
 		if (e->state == EN_DOWN) {
 			if (e->t >= HOME_FRAMES) {
@@ -3045,6 +3059,20 @@ static void update_maze_chasers(void)
 				target = k;
 			}
 		}
+		/* where it heads: the player, a spot ahead of it, or the corner when near (AMBUSH_AHEAD, WANDER_NEAR) */
+		if (target >= 0) {
+			struct player *q = &pl[target];
+			tx = q->x;
+			ty = q->y >> 4;
+			if (!flee && i % 3 == 1) {
+				int moving = q->mdx || q->mdy;
+				tx += (moving ? q->mdx : q->wdx) * AMBUSH_AHEAD;
+				ty += (moving ? q->mdy : q->wdy) * AMBUSH_AHEAD;
+			} else if (!flee && i % 3 == 2 && best < WANDER_NEAR) {
+				tx = 0;
+				ty = (s32)rows << 4;
+			}
+		}
 		if (target >= 0 && (!flee || (plat_t & 1))) {
 			if ((e->x & 15) == 8 && (e->fy & 15) == 0) {
 				int c = (int)(e->x >> 4), r = (int)((e->fy - 1) >> 4), w, pick = -1;
@@ -3055,7 +3083,7 @@ static void update_maze_chasers(void)
 						continue;
 					if (!maze_open(c + ways[w][0], r + ways[w][1]))
 						continue;
-					d = iabs(pl[target].x - (e->x + ways[w][0] * 16)) + iabs((pl[target].y >> 4) - (e->fy + ways[w][1] * 16));
+					d = iabs(tx - (e->x + ways[w][0] * 16)) + iabs(ty - (e->fy + ways[w][1] * 16));
 					if (flee ? d > score : d < score) {
 						score = d;
 						pick = w;
@@ -3070,7 +3098,7 @@ static void update_maze_chasers(void)
 					e->mdy = pick >= 0 ? ways[pick][1] : 0;
 				}
 			}
-			e->x += e->dir;
+			e->x = maze_wrap(e->x + e->dir);
 			e->fy += e->mdy;
 			if (e->dir)
 				e->flip = e->dir < 0;

@@ -1,18 +1,19 @@
 {
  "name": "maze-dots",
- "description": "The maze (WM_ROM_OUT/maze of rom.test.tsx, rom/mazeFixture.ts: one screen of 24 x 14 cells walled around with pillars in a grid, three chasers in the middle, two power pickups). Player 1, steered by a bot in play mode (its inputs, frame by frame: breadth first to the nearest dot away from the chasers, to the chasers while they flee), eats the dots cell to cell, takes the power pickups and eats chasers that flee, is caught once and starts again at its start, and eats the last dot, which clears the level. Play mode gives the same player, chasers and score every frame.",
- "frames": 2988,
+ "description": "The maze (WM_ROM_OUT/maze of rom.test.tsx, rom/mazeFixture.ts: one screen of 24 x 14 cells walled around but for a tunnel on row 7, pillars in a grid, three chasers in the middle (the first follows, the second ambushes ahead of the player, the third keeps off when near), two power pickups). Player 1, steered by a bot in play mode (its inputs, frame by frame: breadth first to the nearest dot keeping two cells from the chasers, to the chasers while they flee, away from them when cornered), eats the dots cell to cell, takes the power pickups and eats chasers that flee, goes through the tunnel to the other side, is caught once and starts again at its start, and eats the last dot, which clears the level. Play mode gives the same player, chasers and score every frame.",
+ "frames": 3313,
  "checkpoints": [
   500,
-  415,
-  2055,
-  2900
+  365,
+  1399,
+  1084,
+  3200
  ],
  "expect": [
   {
    "frame": 1000,
    "path": "players.0.score",
-   "equals": 1380
+   "equals": 1590
   },
   {
    "frame": 1000,
@@ -20,17 +21,22 @@
    "equals": 296
   },
   {
-   "frame": 415,
+   "frame": 365,
    "path": "players.0.score",
-   "equals": 480
+   "equals": 520
   },
   {
-   "frame": 2055,
+   "frame": 1399,
+   "path": "players.0.x",
+   "equals": 382
+  },
+  {
+   "frame": 1084,
    "path": "players.0.energy",
    "equals": 2
   },
   {
-   "frame": 2900,
+   "frame": 3200,
    "path": "players.0.energy",
    "equals": 2
   }
@@ -70,903 +76,1247 @@
   },
   {
    "from": 337,
-   "to": 593,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 594,
-   "to": 665,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 666,
-   "to": 753,
+   "to": 368,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 754,
-   "to": 761,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 762,
-   "to": 769,
+   "from": 369,
+   "to": 400,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 770,
-   "to": 777,
+   "from": 401,
+   "to": 472,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 778,
-   "to": 849,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 850,
-   "to": 857,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 858,
-   "to": 937,
+   "from": 473,
+   "to": 488,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 938,
-   "to": 945,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 946,
-   "to": 961,
+   "from": 489,
+   "to": 504,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 962,
-   "to": 969,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 970,
-   "to": 977,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 978,
-   "to": 1049,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1050,
-   "to": 1057,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1058,
-   "to": 1137,
+   "from": 505,
+   "to": 512,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1138,
-   "to": 1145,
+   "from": 513,
+   "to": 536,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 537,
+   "to": 544,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 1146,
-   "to": 1161,
+   "from": 545,
+   "to": 552,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1162,
-   "to": 1169,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1170,
-   "to": 1177,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1178,
-   "to": 1249,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1250,
-   "to": 1257,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1258,
-   "to": 1329,
+   "from": 553,
+   "to": 600,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1330,
-   "to": 1361,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1362,
-   "to": 1417,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1418,
-   "to": 1433,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 1434,
-   "to": 1545,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1546,
-   "to": 1577,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1578,
-   "to": 1617,
+   "from": 601,
+   "to": 608,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1618,
-   "to": 1633,
+   "from": 609,
+   "to": 656,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 1634,
-   "to": 1657,
+   "from": 657,
+   "to": 664,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 665,
+   "to": 688,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1658,
-   "to": 1665,
+   "from": 689,
+   "to": 704,
    "port": 1,
    "buttons": [
-    "up"
+    "down"
    ]
   },
   {
-   "from": 1666,
-   "to": 1673,
+   "from": 705,
+   "to": 712,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 713,
+   "to": 720,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1674,
-   "to": 1689,
+   "from": 721,
+   "to": 736,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1690,
-   "to": 1697,
+   "from": 737,
+   "to": 744,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 1698,
-   "to": 1705,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 1706,
-   "to": 1721,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1722,
-   "to": 1745,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1746,
-   "to": 1753,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1754,
-   "to": 1761,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 1762,
-   "to": 1777,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1778,
-   "to": 1785,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1786,
-   "to": 1793,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1794,
-   "to": 1801,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 1802,
-   "to": 1817,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 1818,
-   "to": 1825,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1826,
-   "to": 1841,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 1842,
-   "to": 1849,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1850,
-   "to": 1865,
+   "from": 745,
+   "to": 752,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1866,
-   "to": 1873,
+   "from": 753,
+   "to": 768,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1874,
-   "to": 1881,
+   "from": 769,
+   "to": 784,
    "port": 1,
    "buttons": [
-    "right"
+    "left"
    ]
   },
   {
-   "from": 1882,
-   "to": 1897,
+   "from": 785,
+   "to": 824,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1898,
-   "to": 1905,
+   "from": 825,
+   "to": 832,
    "port": 1,
    "buttons": [
-    "left"
+    "right"
    ]
   },
   {
-   "from": 1906,
-   "to": 1913,
+   "from": 833,
+   "to": 840,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 841,
+   "to": 848,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 849,
+   "to": 872,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 873,
+   "to": 880,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 881,
+   "to": 936,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 937,
+   "to": 952,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 953,
+   "to": 968,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1914,
-   "to": 1921,
+   "from": 969,
+   "to": 976,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 1922,
-   "to": 1929,
+   "from": 977,
+   "to": 984,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1930,
-   "to": 1937,
+   "from": 985,
+   "to": 1000,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1938,
-   "to": 1945,
+   "from": 1001,
+   "to": 1008,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1009,
+   "to": 1016,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1946,
-   "to": 1953,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1954,
-   "to": 1969,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1970,
-   "to": 1977,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 1978,
-   "to": 1985,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1986,
-   "to": 2001,
+   "from": 1017,
+   "to": 1032,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2002,
-   "to": 2009,
+   "from": 1033,
+   "to": 1040,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2010,
-   "to": 2033,
+   "from": 1041,
+   "to": 1048,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1049,
+   "to": 1064,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2034,
-   "to": 2049,
+   "from": 1065,
+   "to": 1088,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2050,
-   "to": 2051,
+   "from": 1089,
+   "to": 1096,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2052,
-   "to": 2059,
+   "from": 1097,
+   "to": 1104,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2060,
-   "to": 2067,
+   "from": 1105,
+   "to": 1160,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2068,
-   "to": 2075,
+   "from": 1161,
+   "to": 1168,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2076,
-   "to": 2083,
+   "from": 1169,
+   "to": 1184,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2084,
-   "to": 2091,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2092,
-   "to": 2099,
+   "from": 1185,
+   "to": 1192,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2100,
-   "to": 2115,
+   "from": 1193,
+   "to": 1208,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2116,
-   "to": 2147,
+   "from": 1209,
+   "to": 1216,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2148,
-   "to": 2163,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2164,
-   "to": 2171,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2172,
-   "to": 2179,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2180,
-   "to": 2187,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2188,
-   "to": 2195,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2196,
-   "to": 2203,
+   "from": 1217,
+   "to": 1224,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2204,
-   "to": 2227,
+   "from": 1225,
+   "to": 1232,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2228,
-   "to": 2235,
+   "from": 1233,
+   "to": 1248,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2236,
-   "to": 2243,
+   "from": 1249,
+   "to": 1256,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2244,
-   "to": 2283,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2284,
-   "to": 2291,
+   "from": 1257,
+   "to": 1264,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2292,
-   "to": 2307,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2308,
-   "to": 2363,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2364,
-   "to": 2371,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2372,
-   "to": 2387,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2388,
-   "to": 2395,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2396,
-   "to": 2419,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2420,
-   "to": 2427,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 2428,
-   "to": 2475,
+   "from": 1265,
+   "to": 1272,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2476,
-   "to": 2483,
+   "from": 1273,
+   "to": 1280,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2484,
-   "to": 2515,
+   "from": 1281,
+   "to": 1288,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 2516,
-   "to": 2539,
+   "from": 1289,
+   "to": 1304,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2540,
-   "to": 2547,
+   "from": 1305,
+   "to": 1312,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1313,
+   "to": 1320,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 2548,
-   "to": 2563,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2564,
-   "to": 2571,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2572,
-   "to": 2579,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2580,
-   "to": 2643,
-   "port": 1,
-   "buttons": [
-    "up"
-   ]
-  },
-  {
-   "from": 2644,
-   "to": 2715,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2716,
-   "to": 2787,
+   "from": 1321,
+   "to": 1336,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2788,
-   "to": 2843,
+   "from": 1337,
+   "to": 1352,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2844,
-   "to": 2859,
+   "from": 1353,
+   "to": 1368,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2860,
-   "to": 2867,
+   "from": 1369,
+   "to": 1384,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1385,
+   "to": 1408,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1409,
+   "to": 1456,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 1457,
+   "to": 1480,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1481,
+   "to": 1552,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1553,
+   "to": 1560,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1561,
+   "to": 1568,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1569,
+   "to": 1584,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1585,
+   "to": 1592,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 1593,
+   "to": 1608,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1609,
+   "to": 1616,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1617,
+   "to": 1648,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 2868,
-   "to": 2875,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2876,
-   "to": 2883,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 2884,
-   "to": 2899,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 2900,
-   "to": 2907,
+   "from": 1649,
+   "to": 1656,
    "port": 1,
    "buttons": [
     "up"
    ]
   },
   {
-   "from": 2908,
-   "to": 2923,
+   "from": 1657,
+   "to": 1664,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1665,
+   "to": 1672,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 2924,
-   "to": 2927,
+   "from": 1673,
+   "to": 1680,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1681,
+   "to": 1760,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 1761,
+   "to": 1768,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1769,
+   "to": 1784,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1785,
+   "to": 1800,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1801,
+   "to": 1808,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1809,
+   "to": 1816,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1817,
+   "to": 1832,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1833,
+   "to": 1848,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1849,
+   "to": 1856,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1857,
+   "to": 1864,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1865,
+   "to": 1888,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 1889,
+   "to": 1904,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 1905,
+   "to": 2000,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2001,
+   "to": 2008,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2009,
+   "to": 2016,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2017,
+   "to": 2024,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2025,
+   "to": 2040,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2041,
+   "to": 2104,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2105,
+   "to": 2152,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2153,
+   "to": 2160,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2161,
+   "to": 2168,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2169,
+   "to": 2176,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2177,
+   "to": 2184,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2185,
+   "to": 2272,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2273,
+   "to": 2280,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2281,
+   "to": 2288,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2289,
+   "to": 2296,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2297,
+   "to": 2320,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2321,
+   "to": 2328,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2329,
+   "to": 2360,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2361,
+   "to": 2368,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2369,
+   "to": 2384,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2385,
+   "to": 2416,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2417,
+   "to": 2456,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2457,
+   "to": 2472,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2473,
+   "to": 2520,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2521,
+   "to": 2544,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2545,
+   "to": 2552,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2553,
+   "to": 2576,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2577,
+   "to": 2592,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2593,
+   "to": 2616,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2617,
+   "to": 2624,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2625,
+   "to": 2640,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2641,
+   "to": 2648,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2649,
+   "to": 2656,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2657,
+   "to": 2664,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2665,
+   "to": 2672,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2673,
+   "to": 2688,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2689,
+   "to": 2696,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2697,
+   "to": 2712,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2713,
+   "to": 2720,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2721,
+   "to": 2728,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2729,
+   "to": 2736,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2737,
+   "to": 2752,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2753,
+   "to": 2760,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2761,
+   "to": 2776,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2777,
+   "to": 2784,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2785,
+   "to": 2800,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2801,
+   "to": 2816,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2817,
+   "to": 2832,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2833,
+   "to": 2856,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2857,
+   "to": 2872,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2873,
+   "to": 2888,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2889,
+   "to": 2904,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 2905,
+   "to": 2912,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 2913,
+   "to": 2944,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2945,
+   "to": 2968,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2969,
+   "to": 2976,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 2977,
+   "to": 3000,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 3001,
+   "to": 3008,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 3009,
+   "to": 3016,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 3017,
+   "to": 3032,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 3033,
+   "to": 3080,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 3081,
+   "to": 3096,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 3097,
+   "to": 3120,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 3121,
+   "to": 3176,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 3177,
+   "to": 3252,
    "port": 1,
    "buttons": [
     "right"

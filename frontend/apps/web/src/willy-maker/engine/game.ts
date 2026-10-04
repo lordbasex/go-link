@@ -125,6 +125,8 @@ import {
   MAZE_TOUCH,
   EAT_SCORE,
   HOME_FRAMES,
+  AMBUSH_AHEAD,
+  WANDER_NEAR,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -1625,7 +1627,16 @@ export class Game {
 
   /** The maze: cell (c, r) can be walked into (not solid). */
   private mazeOpen(c: number, r: number): boolean {
+    // a row open at both sides is a tunnel: the left of the first column is the last one
+    if (c < 0) c += this.cols;
+    else if (c >= this.cols) c -= this.cols;
     return !this.isSolid(this.cell(c, r));
+  }
+
+  /** an x that left the maze through a tunnel comes in at the other side */
+  private mazeWrap(x: number): number {
+    const w = this.cols * CELL;
+    return x < 0 ? x + w : x >= w ? x - w : x;
   }
 
   /**
@@ -1659,7 +1670,7 @@ export class Game {
           p.mdy = 0;
         }
       }
-      p.x += p.mdx;
+      p.x = this.mazeWrap(p.x + p.mdx);
       p.y = (fy + p.mdy) * 16;
     }
     if (p.mdx) p.flip = p.mdx < 0;
@@ -1691,7 +1702,8 @@ export class Game {
   private updateMazeChasers(): void {
     if (this.frightT) this.frightT--;
     const ways = [[0, -1], [-1, 0], [0, 1], [1, 0]] as const;
-    for (const e of this.enemies) {
+    for (let n = 0; n < this.enemies.length; n++) {
+      const e = this.enemies[n]!;
       e.t++;
       if (e.state === "down") {
         if (e.t >= HOME_FRAMES) {
@@ -1716,6 +1728,17 @@ export class Game {
         }
       }
       const flee = this.frightT > 0;
+      // where it heads: the player, a spot ahead of it, or the corner when near (AMBUSH_AHEAD, WANDER_NEAR)
+      let tx = target ? target.x : 0;
+      let ty = target ? target.y >> 4 : 0;
+      if (target && !flee && n % 3 === 1) {
+        const moving = target.mdx !== 0 || target.mdy !== 0;
+        tx += (moving ? target.mdx : target.wdx) * AMBUSH_AHEAD;
+        ty += (moving ? target.mdy : target.wdy) * AMBUSH_AHEAD;
+      } else if (target && !flee && n % 3 === 2 && best < WANDER_NEAR) {
+        tx = 0;
+        ty = this.rows * CELL;
+      }
       if (target && (!flee || this.frame & 1)) {
         if (e.x % CELL === 8 && e.fy % CELL === 0) {
           const c = Math.floor(e.x / CELL);
@@ -1725,7 +1748,7 @@ export class Game {
           for (const w of ways) {
             if (w[0] === -e.dir && w[1] === -e.mdy && (e.dir || e.mdy)) continue;
             if (!this.mazeOpen(c + w[0], r + w[1])) continue;
-            const d = Math.abs(target.x - (e.x + w[0] * CELL)) + Math.abs((target.y >> 4) - (e.fy + w[1] * CELL));
+            const d = Math.abs(tx - (e.x + w[0] * CELL)) + Math.abs(ty - (e.fy + w[1] * CELL));
             if (flee ? d > score : d < score) {
               score = d;
               pick = w;
@@ -1736,7 +1759,7 @@ export class Game {
           e.dir = pick ? pick[0] : 0;
           e.mdy = pick ? pick[1] : 0;
         }
-        e.x += e.dir;
+        e.x = this.mazeWrap(e.x + e.dir);
         e.fy += e.mdy;
         if (e.dir) e.flip = e.dir < 0;
       }

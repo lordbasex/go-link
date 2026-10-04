@@ -524,3 +524,11 @@ export const FRIGHT_FRAMES = 360;
 export const MAZE_TOUCH = 10;
 export const EAT_SCORE = 200;
 export const HOME_FRAMES = 180;
+/**
+ * Phase 2: the chasers take turns by their order in the level: the first of
+ * every three follows the nearest player, the second aims AMBUSH_AHEAD px
+ * ahead of the way that player goes, the third follows only while farther
+ * than WANDER_NEAR px and otherwise heads for the maze's bottom left corner.
+ */
+export const AMBUSH_AHEAD = 64;
+export const WANDER_NEAR = 128;

@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 // The maze's lab game (rom/tools/lab/runs/maze-dots.json): one screen, 24 x
-// 14 cells, walled around (the top and bottom rows sit under the HUD) with
-// pillars in a grid, three chasers in the middle, two power pickups.
+// 14 cells, walled around (the top and bottom rows sit under the HUD) but for
+// a tunnel on row 7, with pillars in a grid, three chasers in the middle (one
+// follows, one ambushes, one wanders), two power pickups.
 
 import { applyAutoArt } from "../editor/autoArt";
 import { MAZE_RULES } from "../engine/rules";
@@ -18,7 +19,8 @@ export function mazeProject(): Project {
   const play = layerGrid(level, level.layers.find((l): l is TileLayer => l.id === "play")!);
   for (let r = 0; r < tags.rows; r++)
     for (let c = 0; c < tags.cols; c++) {
-      const wall = r === 0 || r >= tags.rows - 1 || c === 0 || c === tags.cols - 1 || (r % 2 === 0 && c % 3 === 2 && r < tags.rows - 2);
+      const tunnel = r === 7 && (c === 0 || c === tags.cols - 1);
+      const wall = !tunnel && (r === 0 || r >= tags.rows - 1 || c === 0 || c === tags.cols - 1 || (r % 2 === 0 && c % 3 === 2 && r < tags.rows - 2));
       tags.set(c, r, wall ? TAG_NUMBER.solid : TAG_NUMBER.air);
       play.set(c, r, 0);
     }
