@@ -5,6 +5,7 @@
 // types and properties follow docs/rom/art-spec.md section 4.
 
 import type { ObjectType, Tag } from "../model";
+import { BOSS_HP } from "../engine/rules";
 
 export type PartGroup = "terrain" | "objects" | "enemies" | "civilians" | "helpers" | "tiles";
 
@@ -16,9 +17,9 @@ export type Part =
 
 export const ENEMY_KINDS = ["trooper", "shield_trooper", "spinner", "pinger", "glitch9", "vera", "jitter"] as const;
 export const CIVILIAN_KINDS = ["woman", "child", "baby", "elder"] as const;
-export const BOSS_KINDS = ["armored_truck", "gunship"] as const;
-export const PICKUP_ITEMS = ["bazooka", "flamethrower", "spread", "grenades", "health", "lattenza_page", "coin", "spring", "pipe"] as const;
-export const CRATE_CONTENTS = ["nothing", "bazooka", "flamethrower", "spread", "grenades", "health", "civilian"] as const;
+export const BOSS_KINDS = ["armored_truck", "gunship", "brawler"] as const;
+export const PICKUP_ITEMS = ["bazooka", "flamethrower", "spread", "grenades", "health", "lattenza_page", "coin", "spring", "pipe", "knife"] as const;
+export const CRATE_CONTENTS = ["nothing", "bazooka", "flamethrower", "spread", "grenades", "health", "pipe", "knife", "civilian"] as const;
 
 const obj = (group: PartGroup, type: ObjectType, label: string, props: Record<string, unknown> = {}): Part => ({
   id: `${type}:${label}`,
@@ -41,7 +42,8 @@ export const PARTS: Part[] = [
   ...PICKUP_ITEMS.map((item) => obj("objects", "pickup", item, { item })),
   obj("objects", "platform", "platform", { w: 48, axis: "x", range: 96, speed: 1 }),
   ...ENEMY_KINDS.map((kind) => obj("enemies", "enemy", kind, { kind, facing: "left", patrol: 96 })),
-  ...BOSS_KINDS.map((kind) => obj("enemies", "boss", kind, { kind, w: 384, h: 224 })),
+  // the beat 'em up's brawler is a tough enemy (engine/game.ts); the others hold an arena
+  ...BOSS_KINDS.map((kind) => obj("enemies", "boss", kind, kind === "brawler" ? { kind, facing: "left", hp: BOSS_HP } : { kind, w: 384, h: 224 })),
   ...CIVILIAN_KINDS.map((kind) => obj("civilians", "civilian", kind, { kind, trapped_in: "" })),
   ...[1, 2, 3, 4].map((player) => obj("helpers", "player_start", `p${player}`, { player })),
   obj("helpers", "checkpoint", "checkpoint"),

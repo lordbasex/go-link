@@ -251,6 +251,20 @@ export const GRAB_FRAMES = 90;
 export const THROW_DIST = 40;
 export const PIPE_USES = 12;
 export const PIPE_REACH = 10;
+/**
+ * The beat 'em up's phase 4: a knife pickup is thrown with B1 along the
+ * player's lane at KNIFE_SPEED px a frame; the first enemy it meets within
+ * KNIFE_BOX px and DEPTH_REACH of depth takes KNIFE_HITS and falls. A boss
+ * (kind brawler) starts with BOSS_HP hits, cannot be grabbed, rests
+ * BOSS_REST frames between blows, and the HUD shows its health in
+ * BOSS_HUD_STEP hits a mark.
+ */
+export const KNIFE_SPEED = 4;
+export const KNIFE_BOX = 10;
+export const KNIFE_HITS = 3;
+export const BOSS_HP = 30;
+export const BOSS_REST = 25;
+export const BOSS_HUD_STEP = 3;
 
 /** A game's rules: its saved ones over the defaults, numbers kept in range. */
 export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {

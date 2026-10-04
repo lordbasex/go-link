@@ -634,6 +634,12 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define THROW_DIST 40
 #define PIPE_USES 12
 #define PIPE_REACH 10
+/* phase 4: the thrown knife and the boss (engine/rules.ts) */
+#define KNIFE_SPEED 4
+#define KNIFE_BOX 10
+#define KNIFE_HITS 3
+#define BOSS_REST 25
+#define BOSS_HUD_STEP 3
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -668,6 +674,7 @@ struct player {
 	s32 hop; /* the beat 'em up's hop over the floor, 1/16 px, 0 or less */
 	int punch_t, combo, combo_t, struck; /* the beat 'em up's fight: the punch, its place in the combo, the window to chain, landed */
 	int grabbed, grab_t;                 /* the enemy held (index + 1, 0 none) and frames held */
+	struct { int live, dir; s32 x, fy; } blade; /* the thrown knife (phase 4), along the lane it left from */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -693,6 +700,7 @@ static struct enemy {
 	s32 x, fy, min, max;
 	int state, hp, flip, dir, fire_wait;
 	int lane; /* the beat 'em up: its depth offset beside a player (-1, 0, 1) */
+	int boss; /* the beat 'em up's brawler (phase 4): tougher, never grabbed, quicker to strike again */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -957,7 +965,8 @@ static void crate_break(int i, struct player *by)
 			clear_cell(k->col + q % n, k->row + q / n);
 	if (by)
 		by->score += R->crate_score;
-	spawn_pickup((s32)(k->col * 16 + n * 8), ground_below((s32)(k->col * 16 + n * 8), (s32)((k->row + n - 1) * 16)), k->contents);
+	/* a beat 'em up's falls where the crate stood, inside the walkable band */
+	spawn_pickup((s32)(k->col * 16 + n * 8), depth ? in_walk((s32)((k->row + n) * 16)) : ground_below((s32)(k->col * 16 + n * 8), (s32)((k->row + n - 1) * 16)), k->contents);
 	for (j = 0; j < ncrates; j++) {
 		struct crate *u = &crate[j];
 		int c, held = 0;
@@ -1081,6 +1090,7 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	for (i = 0; i < SHOTS; i++)
 		p->shots[i].live = 0;
 	p->rocket.live = 0;
+	p->blade.live = 0;
 }
 
 /* where place_near looks, in order */
@@ -1245,6 +1255,7 @@ static void game_reset(void)
 		en[i].max = o->b;
 		en[i].hp = o->c > 0 ? o->c : R->enemy_hp;
 		en[i].dir = o->d > 0 ? 1 : -1;
+		en[i].boss = o->d == 2 || o->d == -2;
 		en[i].flip = en[i].dir < 0;
 		en[i].state = EN_WALK;
 		en[i].t = (u32)i * 11;
@@ -1463,12 +1474,49 @@ static int strike(struct player *p, int reach, int n, int knock, int pipe)
 		}
 		hit = 1;
 	}
+	/* a blow that meets no enemy breaks the crate in front (phase 4) */
+	if (!hit) {
+		s32 cx = p->x + dir * (p->look->half_w + 4);
+		int t = cell_at(cx, fy - 1);
+		if ((t == T_CRATE || t == T_BREAKABLE) && hit_cell((int)(cx >> 4), (int)((fy - 1) >> 4), n, p))
+			hit = 1;
+	}
 	/* a pipe wears out with the blows that land */
 	if (pipe && hit && --p->ammo <= 0) {
 		p->special = 0;
 		p->ammo = 0;
 	}
 	return hit;
+}
+
+/* the thrown knife flies on (engine/game.ts flyBlade): the first enemy in its lane
+   takes KNIFE_HITS and falls; a wall or the screen's edge ends it */
+static void fly_blade(struct player *p)
+{
+	int i, t;
+	p->blade.x += p->blade.dir * KNIFE_SPEED;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		if (e->state != EN_WALK && e->state != EN_HIT && e->state != EN_ATTACK)
+			continue;
+		if (iabs(e->x - p->blade.x) > KNIFE_BOX || iabs(e->fy - p->blade.fy) > DEPTH_REACH)
+			continue;
+		en_damage(i, KNIFE_HITS, p);
+		last_hit = i;
+		last_hit_t = 120;
+		if (e->state == EN_HIT) {
+			e->state = EN_FALL;
+			e->t = 0;
+			e->x += p->blade.dir * 8;
+		}
+		p->blade.live = 0;
+		return;
+	}
+	t = cell_at(p->blade.x, p->blade.fy - 1);
+	if (t == T_CRATE || t == T_BREAKABLE)
+		hit_cell((int)(p->blade.x >> 4), (int)((p->blade.fy - 1) >> 4), 1, p);
+	if (is_solid(t) || p->blade.x < cam_x - 16 || p->blade.x > cam_x + SCREEN_W + 16)
+		p->blade.live = 0;
 }
 
 /* holding an enemy (engine/game.ts holdEnemy): B1 knees it, B1 with the stick away throws it behind */
@@ -1509,7 +1557,7 @@ static void hold_enemy(struct player *p, int dir)
 	if (p->grab_t > GRAB_FRAMES) {
 		e->state = EN_WALK;
 		e->t = 0;
-		e->fire_wait = ENEMY_REST;
+		e->fire_wait = e->boss ? BOSS_REST : ENEMY_REST;
 		p->grabbed = 0;
 	}
 }
@@ -1524,6 +1572,8 @@ static void move_in_depth(struct player *p, int dir)
 	s32 fy = p->y >> 4;
 	int n, dz = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
 	p->crouch = 0;
+	if (p->blade.live)
+		fly_blade(p);
 	if (p->grabbed) {
 		hold_enemy(p, dir);
 		return;
@@ -1545,6 +1595,21 @@ static void move_in_depth(struct player *p, int dir)
 	}
 	if (p->combo_t)
 		p->combo_t--;
+	/* a knife is thrown instead of a punch (phase 4) */
+	if (p->on_ground && PRESSED(p, BTN_1) && p->special == WM_ITEM_KNIFE && !p->blade.live) {
+		p->blade.live = 1;
+		p->blade.x = p->x + (p->flip ? -12 : 12);
+		p->blade.fy = fy;
+		p->blade.dir = p->flip ? -1 : 1;
+		p->special = 0;
+		p->ammo = 0;
+		p->combo = 1;
+		p->combo_t = 0;
+		p->punch_t = PUNCH_FRAMES;
+		p->struck = 1;
+		sfx(SFX_KNIFE, p->x);
+		return;
+	}
 	if (p->on_ground && PRESSED(p, BTN_1)) {
 		p->combo = p->combo_t ? p->combo + 1 : 1;
 		p->combo_t = 0;
@@ -1566,7 +1631,7 @@ static void move_in_depth(struct player *p, int dir)
 		for (n = 0; n < nen; n++) {
 			struct enemy *e = &en[n];
 			s32 dx = (e->x - p->x) * dir;
-			if (e->state != EN_WALK && e->state != EN_ATTACK)
+			if ((e->state != EN_WALK && e->state != EN_ATTACK) || e->boss)
 				continue;
 			if (dx < 0 || dx > GRAB_REACH || iabs(e->fy - fy) > GRAB_DEPTH)
 				continue;
@@ -1838,6 +1903,9 @@ static void update_player(struct player *p)
 			} else if (k->item == WM_ITEM_PIPE) {
 				p->special = WM_ITEM_PIPE;
 				p->ammo = PIPE_USES;
+			} else if (k->item == WM_ITEM_KNIFE) {
+				p->special = WM_ITEM_KNIFE;
+				p->ammo = 1;
 			} else if (k->item == WM_ITEM_HEALTH && p->energy < R->energy)
 				p->energy++;
 		}
@@ -1993,19 +2061,19 @@ static void update_enemies_in_depth(void)
 			if (e->t >= ENEMY_ATTACK_FRAMES) {
 				e->state = EN_WALK;
 				e->t = 0;
-				e->fire_wait = ENEMY_REST;
+				e->fire_wait = e->boss ? BOSS_REST : ENEMY_REST;
 			}
 		} else if (e->state == EN_HIT) {
 			if (e->t > 14) {
 				e->state = EN_WALK;
 				e->t = 0;
-				e->fire_wait = ENEMY_REST;
+				e->fire_wait = e->boss ? BOSS_REST : ENEMY_REST;
 			}
 		} else if (e->state == EN_FALL) {
 			if (e->t > FALL_FRAMES) {
 				e->state = EN_WALK;
 				e->t = 0;
-				e->fire_wait = ENEMY_REST;
+				e->fire_wait = e->boss ? BOSS_REST : ENEMY_REST;
 			}
 		} else if (e->state == EN_DOWN && e->t > 90)
 			e->state = EN_OFF;
@@ -2374,6 +2442,9 @@ static void draw_shots(struct player *p)
 			put_sprite(p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (p->shots[i].dir < 0 ? 0x20 : 0)));
 	if (p->rocket.live)
 		put_sprite(p->rocket.x - cam_x, p->rocket.y - cam_y, TILE_ROCKET, (u16)(PAL_ROCKET | (p->rocket.dir < 0 ? 0x20 : 0) | (1 << 8)));
+	/* the thrown knife at hand height, its blade first (mirrored one pixel over, as play mode draws it) */
+	if (p->blade.live)
+		put_sprite(p->blade.x - cam_x - (p->blade.dir < 0 ? 7 : 8), p->blade.fy - 37 - cam_y, TILE_KNIFE, (u16)(PAL_PICKUPS | (p->blade.dir < 0 ? 0x20 : 0)));
 }
 
 static void draw_enemy(int i);
@@ -2414,10 +2485,11 @@ static void draw_enemy(int i)
 		if (f >= anim_robot_defeated.count)
 			f = anim_robot_defeated.count - 1;
 		if (e->state == EN_FALL || e->t < 70 || (e->t & 4))
-			draw_frame(&anim_robot_defeated.frames[f], sx, sy, 0, e->flip);
+			draw_frame(&anim_robot_defeated.frames[f], sx, sy, e->boss ? BOSS_PAL_OFFSET : 0, e->flip);
 		return;
 	}
-	draw_anim(e->state == EN_HIT || e->state == EN_HELD ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, 0, e->flip);
+	/* a boss is the android in red: its palettes' copies with red and blue swapped (art.mjs) */
+	draw_anim(e->state == EN_HIT || e->state == EN_HELD ? &anim_robot_hit : &anim_robot_walk, e->t, sx, sy, e->boss ? BOSS_PAL_OFFSET : 0, e->flip);
 }
 
 static void draw_civilian(int i);
@@ -2463,6 +2535,8 @@ static void draw_pickups(void)
 			put_sprite(sx - 8, sy - 16, TILE_SPRING, PAL_PICKUPS);
 		else if (pickup[i].item == WM_ITEM_PIPE)
 			put_sprite(sx - 8, sy - 16, TILE_PIPE, PAL_PICKUPS);
+		else if (pickup[i].item == WM_ITEM_KNIFE)
+			put_sprite(sx - 8, sy - 16, TILE_KNIFE, PAL_PICKUPS);
 		else if (frame_count & 16)
 			put_sprite(sx - 16, sy - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
 	}
@@ -2691,8 +2765,12 @@ static void hud(void)
 	/* the beat 'em up: the health of the enemy last hit, for two seconds */
 	if (depth) {
 		int hp = last_hit >= 0 && last_hit_t ? en[last_hit].hp : 0;
+		int boss = hp > 0 && en[last_hit].boss;
+		/* a boss's in BOSS_HUD_STEP hits a mark, in the accent ink */
+		if (boss)
+			hp = (hp + BOSS_HUD_STEP - 1) / BOSS_HUD_STEP;
 		for (k = 0; k < 12; k++)
-			put_char(24 + k, 26, k < hp ? '+' : ' ', INK_RED);
+			put_char(24 + k, 26, k < hp ? '+' : ' ', boss ? INK_ACCENT : INK_RED);
 	}
 	/* the coins taken (the platformer) */
 	if (ncoins) {

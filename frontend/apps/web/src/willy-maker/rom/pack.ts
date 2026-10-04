@@ -13,7 +13,7 @@ import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, 
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
-import { difficultyOf, rulesWith } from "../engine/rules";
+import { BOSS_HP, difficultyOf, rulesWith } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -69,7 +69,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 11;
+const WM_VERSION = 12;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -86,7 +86,7 @@ const TXT_BIG = 0x10;
 const TXT_COUNT = 0x20;
 const TXT_BLINK = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
-const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5 };
+const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5, knife: 6 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;
@@ -468,7 +468,11 @@ export function packGame(
         note("checkpoint");
         break;
       case "boss":
-        note("boss");
+        // the beat 'em up's brawler is an enemy row whose facing is doubled (wm_data 12); the other bosses wait
+        if (o.kind === "brawler") {
+          enemyKinds.push("brawler");
+          enemies.push([o.x, o.y, o.x - 3 * CELL, o.x + 3 * CELL, num(o.hp, BOSS_HP), o.facing === "right" ? 2 : -2]);
+        } else note("boss");
         break;
     }
   }
@@ -483,7 +487,7 @@ export function packGame(
   while (slots.length < 4) slots.push(slots.length);
   const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8), pickups: pickupLooks.slice(0, 64) });
   // enemy kinds with no enemy character of their own are the engine's android (T-30)
-  const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper");
+  const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper" && k !== "brawler");
   if (android.length) note("enemyArt", { kinds: android.join(", ") });
 
   const rules = rulesWith(project.settings.rules);

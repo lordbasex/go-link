@@ -56,6 +56,11 @@ import {
   GRAB_REACH,
   PIPE_REACH,
   PIPE_USES,
+  KNIFE_SPEED,
+  KNIFE_BOX,
+  KNIFE_HITS,
+  BOSS_HP,
+  BOSS_REST,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -111,7 +116,7 @@ export interface Player {
   fireWait: number;
   knifeT: number;
   bazookaT: number;
-  special: "" | "bazooka" | "pipe";
+  special: "" | "bazooka" | "pipe" | "knife";
   ammo: number;
   t: number;
   score: number;
@@ -119,6 +124,8 @@ export interface Player {
   invulnerable: number;
   shots: Shot[];
   rocket: Rocket | null;
+  /** The beat 'em up's thrown knife (phase 4): where it flies, along the lane it left from. */
+  blade: { x: number; fy: number; dir: number } | null;
   /** The moves (docs/willy-maker/moves.md). */
   crouching: boolean;
   landT: number;
@@ -163,6 +170,8 @@ export interface Enemy {
   /** The beat 'em up: its hits at the start, and its depth offset beside a player (-1, 0, 1: they spread out). */
   maxHp: number;
   lane: number;
+  /** A boss (phase 4, kind brawler): tougher, never grabbed, quicker to strike again. */
+  boss: boolean;
 }
 
 export interface Civilian {
@@ -404,9 +413,31 @@ export class Game {
             fireWait: this.fireEvery,
             maxHp: num(o.hp, this.rules.enemyHp),
             lane: (this.enemies.length % 3) - 1,
+            boss: false,
           });
           break;
         }
+        case "boss":
+          // the beat 'em up's boss (phase 4); the other bosses have no effect yet (editor/support.ts)
+          if (o.kind === "brawler")
+            this.enemies.push({
+              name: o.name,
+              kind: "brawler",
+              x: o.x,
+              fy: o.y,
+              min: o.x - 3 * CELL,
+              max: o.x + 3 * CELL,
+              state: "walk",
+              hp: num(o.hp, BOSS_HP),
+              dir: o.facing === "right" ? 1 : -1,
+              flip: o.facing !== "right",
+              t: this.enemies.length * 11,
+              fireWait: this.fireEvery,
+              maxHp: num(o.hp, BOSS_HP),
+              lane: (this.enemies.length % 3) - 1,
+              boss: true,
+            });
+          break;
         case "civilian":
           this.civilians.push({ name: o.name, kind: str(o.kind, "woman"), x: o.x, fy: o.y, trappedIn: str(o.trapped_in, ""), rescued: false, t: this.civilians.length * 17 });
           break;
@@ -605,7 +636,7 @@ export class Game {
     this.events.push({ kind: "crate", name: crate.name, x: crate.col * CELL + crate.cells * 8 });
     const x = (crate.col + crate.cells / 2) * CELL;
     // "nothing" leaves no pickup; a civilian inside a crate has no effect yet (editor/support.ts)
-    if (crate.contents && crate.contents !== "nothing" && crate.contents !== "civilian") this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
+    if (crate.contents && crate.contents !== "nothing" && crate.contents !== "civilian") this.pickups.push({ name: `${crate.name}_contents`, item: crate.contents, x, fy: this.walkBand ? this.inWalk((crate.row + crate.cells) * CELL) : this.groundBelow(x, (crate.row + crate.cells) * CELL - CELL), live: true });
     for (const v of this.civilians) if (v.trappedIn === crate.name) v.trappedIn = "";
     // crates resting on it with nothing else under them break too, so none is left
     // hanging in the air over the floor (experiment 1, J-03)
@@ -682,6 +713,7 @@ export class Game {
     const walk = this.walkBand!;
     const fy = p.y >> 4;
     p.crouching = false;
+    if (p.blade) this.flyBlade(p);
     if (p.grabbed) return this.holdEnemy(p, dir);
     // the fight (phase 2): a punch holds the player still until it ends
     if (p.punchT) {
@@ -696,6 +728,18 @@ export class Game {
       return;
     }
     if (p.comboT) p.comboT--;
+    // a knife is thrown instead of a punch (phase 4)
+    if (p.onGround && this.pressed(p, Input.B1) && p.special === "knife" && !p.blade) {
+      p.blade = { x: p.x + (p.flip ? -12 : 12), fy, dir: p.flip ? -1 : 1 };
+      p.special = "";
+      p.ammo = 0;
+      p.combo = 1;
+      p.comboT = 0;
+      p.punchT = PUNCH_FRAMES;
+      p.struck = true;
+      this.events.push({ kind: "knife", player: p.index });
+      return;
+    }
     if (p.onGround && this.pressed(p, Input.B1)) {
       p.combo = p.comboT ? p.combo + 1 : 1;
       p.comboT = 0;
@@ -715,7 +759,7 @@ export class Game {
     if (dir && p.onGround)
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i]!;
-        if (e.state !== "walk" && e.state !== "attack") continue;
+        if ((e.state !== "walk" && e.state !== "attack") || e.boss) continue;
         const dx = (e.x - p.x) * dir;
         if (dx < 0 || dx > GRAB_REACH || Math.abs(e.fy - fy) > GRAB_DEPTH) continue;
         p.grabbed = i + 1;
@@ -787,12 +831,41 @@ export class Game {
       }
       hit = true;
     }
+    // a blow that meets no enemy breaks the crate in front (phase 4)
+    if (!hit) {
+      const cx = p.x + dir * (p.body.halfW + 4);
+      const t = this.cellAt(cx, fy - 1);
+      if ((t === Tag.Crate || t === Tag.Breakable) && this.hitCell(Math.floor(cx / CELL), Math.floor((fy - 1) / CELL), n, p)) hit = true;
+    }
     // a pipe wears out with the blows that land
     if (pipe && hit && --p.ammo <= 0) {
       p.special = "";
       p.ammo = 0;
     }
     return hit;
+  }
+
+  /** The thrown knife flies on: the first enemy in its lane takes KNIFE_HITS and falls; a wall or the screen's edge ends it. */
+  private flyBlade(p: Player): void {
+    const b = p.blade!;
+    b.x += b.dir * KNIFE_SPEED;
+    for (const e of this.enemies) {
+      if (e.state !== "walk" && e.state !== "hit" && e.state !== "attack") continue;
+      if (Math.abs(e.x - b.x) > KNIFE_BOX || Math.abs(e.fy - b.fy) > DEPTH_REACH) continue;
+      this.damage(e, KNIFE_HITS, p);
+      this.lastHit = e;
+      this.lastHitT = 120;
+      if (e.state === "hit") {
+        e.state = "fall";
+        e.t = 0;
+        e.x += b.dir * 8;
+      }
+      p.blade = null;
+      return;
+    }
+    const t = this.cellAt(b.x, b.fy - 1);
+    if (t === Tag.Crate || t === Tag.Breakable) this.hitCell(Math.floor(b.x / CELL), Math.floor((b.fy - 1) / CELL), 1, p);
+    if (this.isSolid(t) || b.x < this.camX - 16 || b.x > this.camX + SCREEN_W + 16) p.blade = null;
   }
 
   /**
@@ -832,7 +905,7 @@ export class Game {
     if (p.grabT > GRAB_FRAMES) {
       e.state = "walk";
       e.t = 0;
-      e.fireWait = ENEMY_REST;
+      e.fireWait = e.boss ? BOSS_REST : ENEMY_REST;
       p.grabbed = 0;
     }
   }
@@ -1052,6 +1125,10 @@ export class Game {
         if (k.item === "pipe") {
           p.special = "pipe";
           p.ammo = PIPE_USES;
+        }
+        if (k.item === "knife") {
+          p.special = "knife";
+          p.ammo = 1;
         }
         this.events.push({ kind: "pickup", item: k.item, player: p.index });
       }
@@ -1283,19 +1360,19 @@ export class Game {
         if (e.t >= ENEMY_ATTACK_FRAMES) {
           e.state = "walk";
           e.t = 0;
-          e.fireWait = ENEMY_REST;
+          e.fireWait = e.boss ? BOSS_REST : ENEMY_REST;
         }
       } else if (e.state === "hit") {
         if (e.t > 14) {
           e.state = "walk";
           e.t = 0;
-          e.fireWait = ENEMY_REST;
+          e.fireWait = e.boss ? BOSS_REST : ENEMY_REST;
         }
       } else if (e.state === "fall") {
         if (e.t > FALL_FRAMES) {
           e.state = "walk";
           e.t = 0;
-          e.fireWait = ENEMY_REST;
+          e.fireWait = e.boss ? BOSS_REST : ENEMY_REST;
         }
       } else if (e.state === "down" && e.t > 90) e.state = "off";
     }
@@ -1518,6 +1595,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     invulnerable: 0,
     shots: [],
     rocket: null,
+    blade: null,
     crouching: false,
     landT: 0,
     turnT: 0,
@@ -1565,6 +1643,7 @@ function spawn(p: Player, x: number, fy: number): void {
   p.t = 0;
   p.shots = [];
   p.rocket = null;
+  p.blade = null;
   p.crouching = false;
   p.landT = p.turnT = p.kickT = p.thumbsT = p.idleT = p.airT = p.airJumps = 0;
   p.kickHit = p.jetting = false;

@@ -140,11 +140,11 @@ Paint is not enough: the game needs to know what is a floor, what is climbable, 
 | `enemy` | `kind` (trooper, shield_trooper, spinner, pinger, glitch9, vera, jitter…), `facing`, `patrol` (px) |
 | `civilian` | `kind` (woman, child, baby, elder), `trapped_in` (the crate or wall that hides them, if any) |
 | `crate` | `size` (32 or 16), `hp`, `contains` (nothing, weapon, health, civilian) |
-| `pickup` | `item` (bazooka, flamethrower, spread, grenades, health, lattenza_page, coin, spring, pipe), `look` (optional: a character id that draws it) |
+| `pickup` | `item` (bazooka, flamethrower, spread, grenades, health, lattenza_page, coin, spring, pipe, knife), `look` (optional: a character id that draws it) |
 | `platform` | a moving platform: `w` (32-128 px), `axis` (`x` across, `y` up and down), `range` (px, there and back), `speed` (1-4 px a frame), `falls` (true: no track, it shakes once stood on, falls and comes back); (x, y) its top left at the start |
 | `camera_lock` | a rectangle where the camera stops until its enemies are defeated |
 | `checkpoint` | where players come back after losing a life |
-| `boss` | `kind`, and the arena rectangle |
+| `boss` | `kind`, and the arena rectangle (armored_truck, gunship); the beat 'em up's `brawler` has `facing` and `hp` instead |
 | `exit` | the end of the level |
 
 If you cannot use Tiled, deliver instead a **`collision.png`** the size of `play.png`, painted on the same 16 px grid with these colors, plus a list of the objects with their pixel positions:

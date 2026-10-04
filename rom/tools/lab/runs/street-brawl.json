@@ -1,0 +1,375 @@
+{
+ "name": "street-brawl",
+ "description": "The beat 'em up, phase 4 (WM_ROM_OUT/brawl of rom.test.tsx, rom/streetFixture.ts brawlProject): player 1 walks to the crate and breaks it with two punches, steps down to the knife it held and picks it up, throws it at the enemy coming (3 hits: down), walks to the camera lock, where the brawler (the boss, 12 hits here, the android in red) waits; three combos knock it down twice and down for good, and the camera moves on. Play mode gives the same places every frame.",
+ "frames": 2020,
+ "checkpoints": [
+  306,
+  335,
+  378,
+  1110,
+  1482,
+  2000
+ ],
+ "expect": [
+  {
+   "frame": 324,
+   "path": "players.0.x",
+   "equals": 154
+  },
+  {
+   "frame": 383,
+   "path": "enemies.0.state",
+   "equals": "down"
+  },
+  {
+   "frame": 1114,
+   "path": "enemies.1.state",
+   "equals": "fall"
+  },
+  {
+   "frame": 1482,
+   "path": "enemies.1.state",
+   "equals": "down"
+  },
+  {
+   "frame": 1600,
+   "path": "cam.x",
+   "equals": 704
+  },
+  {
+   "frame": 2000,
+   "path": "players.0.energy",
+   "equals": 2
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 165,
+   "to": 290,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 300,
+   "to": 300,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 316,
+   "to": 316,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 340,
+   "to": 356,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 360,
+   "to": 368,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 372,
+   "to": 372,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 420,
+   "to": 1000,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1010,
+   "to": 1010,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1026,
+   "to": 1026,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1042,
+   "to": 1042,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1058,
+   "to": 1058,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1074,
+   "to": 1074,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1090,
+   "to": 1090,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1106,
+   "to": 1106,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1122,
+   "to": 1122,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1138,
+   "to": 1138,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1154,
+   "to": 1154,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1170,
+   "to": 1170,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1186,
+   "to": 1186,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1202,
+   "to": 1202,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1218,
+   "to": 1218,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1234,
+   "to": 1234,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1250,
+   "to": 1250,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1266,
+   "to": 1266,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1282,
+   "to": 1282,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1298,
+   "to": 1298,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1314,
+   "to": 1314,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1330,
+   "to": 1330,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1346,
+   "to": 1346,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1362,
+   "to": 1362,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1378,
+   "to": 1378,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1394,
+   "to": 1394,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1410,
+   "to": 1410,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1426,
+   "to": 1426,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1442,
+   "to": 1442,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1458,
+   "to": 1458,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1474,
+   "to": 1474,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1490,
+   "to": 1490,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1510,
+   "to": 2000,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { BEATEMUP_RULES, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -869,5 +869,60 @@ describe("the beat 'em up: grabs, throws, the pipe and waves (genres.md, phase 3
     for (let f = 0; f < 600; f++) run(g, 1, Input.Right);
     expect(g.activeLock()?.name).toBe("lock");
     expect(g.camX).toBeLessThanOrEqual(320);
+  });
+});
+
+describe("the beat 'em up: crates, the knife and the boss (genres.md, phase 4)", () => {
+  const street = (objects: LevelObject[]) => {
+    const view = flat(undefined, objects);
+    view.walk = { y0: 336, y1: 400 };
+    view.objects[0] = { name: "p1", type: "player_start", x: 80, y: 380, player: 1 };
+    return new Game(view, { rules: BEATEMUP_RULES });
+  };
+  const tap = (g: Game, wait: number, pad = 0) => {
+    run(g, 1, pad | Input.B1);
+    run(g, wait, pad);
+  };
+
+  it("a blow breaks the crate in front, and what it holds lies where it stood", () => {
+    const g = street([{ name: "box", type: "crate", x: 112, y: 368, size: 16, hp: 1, contents: "knife" } as LevelObject]);
+    run(g, 30, Input.Right);
+    tap(g, PUNCH_FRAMES + 1);
+    expect(g.crates[0]!.broken).toBe(true);
+    const k = g.pickups.find((q) => q.item === "knife")!;
+    expect(k.fy).toBe(384);
+    run(g, 10, Input.Right);
+    expect(g.players[0]!.special).toBe("knife");
+  });
+
+  it("a knife is thrown along the lane and knocks down the first enemy it meets", () => {
+    const g = street([
+      { name: "knife", type: "pickup", x: 80, y: 380, item: "knife" },
+      { name: "thug", type: "enemy", x: 220, y: 380, kind: "trooper", facing: "left", patrol: 0 } as LevelObject,
+    ]);
+    run(g, 1, 0);
+    const p = g.players[0]!;
+    expect(p.special).toBe("knife");
+    tap(g, 0);
+    expect(p.blade).not.toBeNull();
+    expect(p.special).toBe("");
+    for (let f = 0; f < 60 && p.blade; f++) run(g, 1, 0);
+    expect(p.blade).toBeNull();
+    expect(g.enemies[0]!.hp).toBe(6 - KNIFE_HITS);
+    expect(g.enemies[0]!.state).toBe("fall");
+  });
+
+  it("the brawler is tough, cannot be grabbed and strikes again sooner", () => {
+    const g = street([{ name: "boss", type: "boss", x: 140, y: 380, kind: "brawler", facing: "left" } as LevelObject]);
+    const e = g.enemies[0]!;
+    expect([e.boss, e.hp]).toEqual([true, BOSS_HP]);
+    // walking into it grabs nothing (bodies pass each other, as any enemy's when not grabbed)
+    run(g, 25, Input.Right);
+    expect(g.players[0]!.grabbed).toBe(0);
+    // the blow lands STRIKE_AT frames in, then it reels 15 frames
+    tap(g, 24);
+    expect(e.hp).toBeLessThan(BOSS_HP);
+    expect(e.state).toBe("walk");
+    expect(e.fireWait).toBeLessThanOrEqual(BOSS_REST);
   });
 });

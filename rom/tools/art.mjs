@@ -254,7 +254,8 @@ const CHARACTERS = [
   { name: "child", sheet: "npcs", height: 31, palettes: 2, anims: ["child_worried", "child_happy"] },
   // a Lag android, the enemy of the prototype (the robot sheet)
   // (its walk frames in the published atlas hold two poses each: splitPoses)
-  { name: "robot", sheet: "robot", height: 43, palettes: 3, anims: ["walk", "hit", "defeated"], splitPoses: ["walk"] },
+  // (boss: a copy of its palettes with red and blue swapped follows them, the beat 'em up's brawler)
+  { name: "robot", sheet: "robot", height: 43, palettes: 3, anims: ["walk", "hit", "defeated"], splitPoses: ["walk"], boss: true },
 ];
 
 /**
@@ -565,6 +566,12 @@ export function addArt(gfx, defs, genDir, opts = {}) {
       h.push(`#define RECRUIT_PAL_OFFSET ${conv.palettes.length} /* palettes after Willy's */`);
       if (recruits.length > 1) h.push(`#define RECRUITS ${recruits.length} /* recruit k (1-based) adds k * RECRUIT_PAL_OFFSET */`);
     }
+    if (ch.boss && withMoves) {
+      // CPS-1 words are 0xBRGB: swap the R and B nibbles
+      for (const pal of conv.palettes)
+        objPalettes.push([...pal.map((c) => (c.word & 0xf0f0) | ((c.word >> 8) & 0xf) | ((c.word & 0xf) << 8)), ...new Array(16 - pal.length).fill(0)]);
+      h.push(`#define BOSS_PAL_OFFSET ${conv.palettes.length} /* the boss's red copy of the palettes */`);
+    }
     console.log(`art: ${ch.name} ${JSON.stringify(conv.stats)}`);
     // tiles, deduplicated by their pens
     const seen = new Map();
@@ -689,9 +696,14 @@ export function addArt(gfx, defs, genDir, opts = {}) {
       code + 8,
       Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => (x >= 1 && x <= 14 ? (y === 12 ? 7 : y === 13 || y === 14 ? 5 : 15) : 15))),
     );
-    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define TILE_PIPE ${hex4(code + 8)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
+    // the beat 'em up's knife lying on the floor, its point to the right (play/renderer.ts drawKnife): a brown handle, a steel blade lit on top
+    gfx.tile16(
+      code + 9,
+      Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => (y === 13 || y === 14 ? (x >= 1 && x <= 5 ? 3 : y === 13 && x >= 6 && x <= 13 ? 4 : y === 14 && x >= 6 && x <= 12 ? 7 : 15) : 15))),
+    );
+    h.push(`#define TILE_COIN ${hex4(code)}`, `#define TILE_SPRING ${hex4(code + 1)}`, `#define TILE_PLATFORM ${hex4(code + 2)} /* left end, middle, right end; + 3: the falling one's */`, `#define TILE_PIPE ${hex4(code + 8)}`, `#define TILE_KNIFE ${hex4(code + 9)}`, `#define PAL_PICKUPS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xfb60, 0xffc2, 0xf730, 0xfffd, 0xf555, 0xfe44, 0xfaaa, 0xf346, 0xf8be, 0xf123, 0xfdef, 0xf843, 0xfc85, 0xf311, 0x0000]);
-    code += 9;
+    code += 10;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

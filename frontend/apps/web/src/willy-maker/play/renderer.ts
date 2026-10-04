@@ -6,6 +6,7 @@
 // their sheets, the HUD, and the debug overlays play mode can switch on.
 
 import { BACKTRACK, BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
+import { BOSS_HUD_STEP } from "../engine/rules";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -366,6 +367,11 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       ctx.fillRect(k.x - 1, y - 4, 2, 8);
       continue;
     }
+    if (k.item === "knife") {
+      // the beat 'em up's knife, as the ROM draws it: a brown handle and a steel blade
+      drawKnife(ctx, k.x, k.fy - 3, 1);
+      continue;
+    }
     if (k.item === "pipe") {
       // the beat 'em up's pipe, as the ROM draws it: a steel bar lying on the floor
       ctx.fillStyle = "#555555";
@@ -404,9 +410,9 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     if (civ && civ.anims[anim]) sheetDraw(ctx, civ, anim, `${kind}_idle`, v.t, v.x, v.fy, h, false, v.rescued ? 1 - v.t / 120 : 1);
     else box(ctx, v.x, v.fy, 14, h, ART.windowWarm);
   } });
-  const en = sprites?.enemy;
   for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
     if (e.state === "off") return;
+    const en = e.boss ? (sprites?.boss ?? sprites?.enemy) : sprites?.enemy;
     const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" || e.state === "held" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
     if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
@@ -474,6 +480,7 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
     for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
+    if (p.blade) drawKnife(ctx, p.blade.x, (p.blade.fy) - 24, p.blade.dir);
     if (p.rocket) {
       ctx.fillStyle = ART.rocket;
       ctx.fillRect(p.rocket.x + 4, p.rocket.y + 6, 24, 5);
@@ -600,9 +607,12 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     }
   }
   // the beat 'em up: the health of the enemy last hit, for two seconds (as the ROM prints it, column 24)
+  // a boss's in BOSS_HUD_STEP hits a mark, in the accent ink
   if (game.lastHit && game.lastHitT && game.lastHit.hp > 0) {
-    ctx.fillStyle = "#ff4c4c";
-    for (let k = 0; k < Math.min(12, game.lastHit.hp); k++) ctx.fillRect(192 + k * 8 + 2, SCREEN_H - 9, 4, 4);
+    const boss = game.lastHit.boss;
+    ctx.fillStyle = boss ? "#ffaa33" : "#ff4c4c";
+    const marks = boss ? Math.ceil(game.lastHit.hp / BOSS_HUD_STEP) : game.lastHit.hp;
+    for (let k = 0; k < Math.min(12, marks); k++) ctx.fillRect(192 + k * 8 + 2, SCREEN_H - 9, 4, 4);
   }
   if (o.overlays.fps && o.fps !== undefined) {
     ctx.fillStyle = colors.accent;
@@ -636,4 +646,15 @@ function drawTally(ctx: CanvasRenderingContext2D, game: Game, o: DrawOptions): v
   if (game.civilians.length) lines.push(`${(o.words.rescued ?? "RESCUED").toUpperCase()} ${game.rescued}/${game.civilians.length}`);
   lines.push(game.players.map((p, i) => `${i + 1}P ${String(p.score).padStart(6, "0")}`).join("  "));
   lines.forEach((line, i) => drawBoardText(ctx, line, Math.floor((SCREEN_W - boardTextWidth(line)) / 16) * 8, SCREEN_H / 2 + 24 + i * 16, 1, TEXT_INKS.white));
+}
+
+/** The beat 'em up's knife (rom/tools/art.mjs TILE_KNIFE): lying on the floor, or flying along its lane (dir: which way the blade points). */
+function drawKnife(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number): void {
+  const at = (dx: number, w: number) => (dir > 0 ? x + dx : x - dx - w);
+  ctx.fillStyle = "#773300";
+  ctx.fillRect(at(-7, 5), y, 5, 2);
+  ctx.fillStyle = "#ffffdd";
+  ctx.fillRect(at(-2, 8), y, 8, 1);
+  ctx.fillStyle = "#aaaaaa";
+  ctx.fillRect(at(-2, 7), y + 1, 7, 1);
 }

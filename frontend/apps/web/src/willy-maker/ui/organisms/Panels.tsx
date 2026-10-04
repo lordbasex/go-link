@@ -13,7 +13,7 @@ import { optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
-import { CRATE_HP, rulesWith } from "../../engine/rules";
+import { BOSS_HP, CRATE_HP, rulesWith } from "../../engine/rules";
 import { drawOverview, paletteFrom, type TileImage, type View } from "../render";
 import { Capsule, Eyebrow, IconButton, Meter, Swatch } from "../atoms";
 import { LayerRow, PartButton, PropRow, StatusBadge, supportHelp } from "../molecules";
@@ -443,7 +443,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
           )}
         </>
       )}
-      {(o.type === "camera_lock" || o.type === "boss") && (
+      {(o.type === "camera_lock" || (o.type === "boss" && o.kind !== "brawler")) && (
         <div className="wm-grid2 is-tight">
           <PropRow label={t.inspector.w}>
             <NumberInput label={t.inspector.w} value={Number(o.w ?? 384)} min={CELL} max={level.size.w} step={CELL} onChange={(w) => set({ w })} />
@@ -464,7 +464,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
         </PropRow>
       )}
       {o.type === "enemy" && optionSupport("kind", String(o.kind ?? ""), "enemy").shared && <p className="wm-dim wm-small">{t.support.shared}</p>}
-      {o.type === "enemy" && (
+      {(o.type === "enemy" || (o.type === "boss" && o.kind === "brawler")) && (
         <>
           <PropRow label={t.inspector.facing}>
             <select className="wm-input is-sm" aria-label={t.inspector.facing} value={String(o.facing ?? "left")} onChange={(e) => set({ facing: e.target.value })}>
@@ -472,11 +472,13 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
               <option value="right">{t.inspector.right}</option>
             </select>
           </PropRow>
-          <PropRow label={t.inspector.patrol}>
-            <NumberInput label={t.inspector.patrol} value={Number(o.patrol ?? 96)} min={0} max={1024} step={16} onChange={(patrol) => set({ patrol })} />
-          </PropRow>
+          {o.type === "enemy" && (
+            <PropRow label={t.inspector.patrol}>
+              <NumberInput label={t.inspector.patrol} value={Number(o.patrol ?? 96)} min={0} max={1024} step={16} onChange={(patrol) => set({ patrol })} />
+            </PropRow>
+          )}
           <PropRow label={t.inspector.hp}>
-            <NumberInput label={t.inspector.hp} value={Number(o.hp ?? rulesWith(store.project.settings.rules).enemyHp)} min={1} max={99} onChange={(hp) => set({ hp })} />
+            <NumberInput label={t.inspector.hp} value={Number(o.hp ?? (o.type === "boss" ? BOSS_HP : rulesWith(store.project.settings.rules).enemyHp))} min={1} max={99} onChange={(hp) => set({ hp })} />
           </PropRow>
         </>
       )}

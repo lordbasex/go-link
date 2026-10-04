@@ -35,6 +35,8 @@ export interface PlaySprites {
   heroes: Sheet[];
   enemy: Sheet | null;
   civilians: Sheet | null;
+  /** The beat 'em up's boss: the android in red (its red and blue swapped, as the ROM's palettes). */
+  boss?: Sheet | null;
 }
 
 /** On-screen heights in board pixels (art-spec.md): heroes 44, androids 46, civilians by kind. */
@@ -58,7 +60,32 @@ export async function loadPlaySprites(base: string): Promise<PlaySprites> {
   const [hero, enemy, civilians] = await Promise.all(["player", "robot", "npcs"].map((n) => loadSheet(base, n).catch(() => null)));
   const willy = hero ? withPunch(hero) : null;
   const heroes = willy ? PLAYER_SHIFTS.map((s) => (s ? recolor(willy, s) : willy)) : [];
-  return { heroes, enemy: enemy ?? null, civilians: civilians ?? null };
+  return { heroes, enemy: enemy ?? null, civilians: civilians ?? null, boss: enemy ? swapRedBlue(enemy) : null };
+}
+
+/** A copy of a sheet with red and blue swapped (rom/tools/art.mjs gives the boss the same palettes). */
+export function swapRedBlue(sheet: Sheet): Sheet {
+  const img = sheet.image as HTMLImageElement | HTMLCanvasElement;
+  if (typeof document === "undefined" || !img.width) return sheet;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  let ctx: CanvasRenderingContext2D | null = null;
+  try {
+    ctx = canvas.getContext("2d");
+  } catch {
+    ctx = null;
+  }
+  if (!ctx) return sheet;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < data.data.length; i += 4) {
+    const r = data.data[i]!;
+    data.data[i] = data.data[i + 2]!;
+    data.data[i + 2] = r;
+  }
+  ctx.putImageData(data, 0, 0);
+  return { ...sheet, image: canvas };
 }
 
 /**
