@@ -94,6 +94,7 @@ export const gamePt: GameMessages = {
     crosshair: "Miras (pistola de luz: a alavanca mira, B1 atira, B2 recarrega; a câmera avança sozinha)",
     ship: "Naves (nave horizontal: a alavanca voa, B1 segurado atira para frente, B2 solta uma bomba; a câmera avança sozinha)",
     vertical: "Subindo (com Naves: a nave vertical, a câmera sobe pela fase e as naves atiram para cima)",
+    topdown: "Vista de cima (tiro visto de cima: andar e mirar em 8 direções, B1 segurado atira, B3 segurado mantém a mira)",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

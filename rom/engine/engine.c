@@ -678,6 +678,14 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define GUNSHIP_HIT_X 36
 #define GUNSHIP_HIT_Y 20
 #define BOMB_BOSS_HITS 5
+/* the top-down run and gun (WM_F_TOPDOWN, engine/rules.ts) */
+#define TOP_SPEED 1
+#define TOP_HALF_W 6
+#define TOP_DEPTH 8
+#define TOP_SHOT 5
+#define TOP_MID 20
+#define TOP_TOUCH_X 14
+#define TOP_TOUCH_Y 10
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -716,6 +724,7 @@ struct player {
 	struct { int live, dir; s32 x, fy; } blade; /* the thrown knife (phase 4), along the lane it left from */
 	int cx, cy, shot_t, reload_t, bombs;        /* the light gun's crosshair (screen px), its flash, the reload, the bombs left */
 	int power;                                  /* the shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three */
+	int aim_x, aim_y;                           /* the top-down aim: -1, 0 or 1 each way (never both 0) */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -726,6 +735,7 @@ static int depth;
 static int crosshair; /* the light gun (WM_F_CROSSHAIR) */
 static int ship;      /* the horizontal shooter (WM_F_SHIP) */
 static int vertical;  /* with ship, the vertical shooter (WM_F_VERTICAL) */
+static int topdown;   /* the top-down run and gun (WM_F_TOPDOWN) */
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -1140,6 +1150,8 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->rocket.live = 0;
 	p->blade.live = 0;
 	p->shot_t = p->reload_t = 0;
+	p->aim_x = 1;
+	p->aim_y = 0;
 }
 
 /* where place_near looks, in order */
@@ -1182,7 +1194,19 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
-	if (crosshair || ship) {
+	if (topdown) {
+		/* the top-down run and gun: beside the player already in, at the start, or in the screen's middle */
+		if (lead >= 0) {
+			x = pl[lead].x + 24;
+			fy = pl[lead].y >> 4;
+		} else if (D->start_x[k] >= 0) {
+			x = D->start_x[k];
+			fy = D->start_y[k];
+		} else {
+			x = cam_x + (SCREEN_W >> 1) + k * 24;
+			fy = cam_y + (SCREEN_H >> 1);
+		}
+	} else if (crosshair || ship) {
 		/* the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left */
 		x = cam_x;
 		fy = 0;
@@ -1289,6 +1313,7 @@ static void game_reset(void)
 	crosshair = (D->flags & WM_F_CROSSHAIR) != 0;
 	ship = (D->flags & WM_F_SHIP) != 0;
 	vertical = ship && (D->flags & WM_F_VERTICAL) != 0;
+	topdown = (D->flags & WM_F_TOPDOWN) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -1953,12 +1978,80 @@ static void fly(struct player *p)
 	}
 }
 
+/* a top-down body at (x, feet fy): its feet box touches a solid cell */
+static int top_blocked(s32 x, s32 fy)
+{
+	return is_solid(cell_at(x - TOP_HALF_W, fy - 1)) || is_solid(cell_at(x + TOP_HALF_W, fy - 1)) || is_solid(cell_at(x - TOP_HALF_W, fy - TOP_DEPTH)) || is_solid(cell_at(x + TOP_HALF_W, fy - TOP_DEPTH));
+}
+
+/* the top-down run and gun's player (engine/game.ts walkTop): it walks in 8
+   directions, aims where it walks unless B3 is held, fires along its aim while
+   B1 is held */
+static void walk_top(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	int dy = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	int i;
+	s32 fy, my;
+	p->t++;
+	if (p->hurt)
+		p->hurt--;
+	if ((dx || dy) && !(p->pad & BTN_3)) {
+		p->aim_x = dx;
+		p->aim_y = dy;
+	}
+	fy = p->y >> 4;
+	if (dx && !top_blocked(p->x + dx * TOP_SPEED, fy))
+		p->x += dx * TOP_SPEED;
+	if (dy && !top_blocked(p->x, fy + dy * TOP_SPEED))
+		p->y = (fy + dy * TOP_SPEED) * 16;
+	if (p->aim_x)
+		p->flip = p->aim_x < 0;
+	p->on_ground = 1;
+	p->running = 0;
+	if (p->fire_wait)
+		p->fire_wait--;
+	my = (p->y >> 4) - TOP_MID;
+	if ((p->pad & BTN_1) && !p->fire_wait)
+		for (i = 0; i < SHOTS; i++)
+			if (!p->shots[i].live) {
+				p->shots[i].live = 1;
+				p->shots[i].dir = (s16)p->aim_x;
+				p->shots[i].vy = (s16)p->aim_y;
+				p->shots[i].x = (s16)(p->x + p->aim_x * 12);
+				p->shots[i].y = (s16)(my + p->aim_y * 12);
+				p->fire_wait = FIRE_EVERY;
+				sfx(SFX_SHOT, p->x);
+				break;
+			}
+	for (i = 0; i < SHOTS; i++) {
+		struct bullet *b = &p->shots[i];
+		int ei;
+		if (!b->live)
+			continue;
+		b->x += b->dir * TOP_SHOT;
+		b->y += b->vy * TOP_SHOT;
+		ei = enemy_at(b->x, b->y, 8);
+		if (ei >= 0) {
+			en_damage(ei, 1, p);
+			b->live = 0;
+		} else if (hit_cell(b->x >> 4, b->y >> 4, 1, p))
+			b->live = 0;
+		else if (cell_at(b->x, b->y) == T_SOLID || b->x < cam_x - 32 || b->x > cam_x + SCREEN_W + 32 || b->y < cam_y - 32 || b->y > cam_y + SCREEN_H + 32)
+			b->live = 0;
+	}
+}
+
 static void update_player(struct player *p)
 {
 	int i, dir = 0, jet_was;
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (topdown) {
+		walk_top(p);
+		return;
+	}
 	if (crosshair) {
 		aim(p);
 		return;
@@ -2594,9 +2687,69 @@ static void update_fliers(void)
 	}
 }
 
+/* the top-down run and gun's enemies (engine/game.ts updateChasers): on the
+   screen they step toward the nearest player every other frame, stopped by
+   solid cells, and hurt one they touch */
+static void update_chasers(void)
+{
+	int i, k;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		int target = -1;
+		s32 best = 0x7fffffff, tfy;
+		e->t++;
+		if (e->state == EN_HIT) {
+			if (e->t > 14) {
+				e->state = EN_WALK;
+				e->t = 0;
+			}
+			continue;
+		}
+		if (e->state == EN_DOWN) {
+			if (e->t > 90)
+				e->state = EN_OFF;
+			continue;
+		}
+		if (e->state != EN_WALK)
+			continue;
+		if (e->x < cam_x - 16 || e->x > cam_x + SCREEN_W + 16 || e->fy < cam_y || e->fy > cam_y + SCREEN_H + 40)
+			continue;
+		for (k = 0; k < nplayers; k++) {
+			s32 d;
+			if (!pl[k].active)
+				continue;
+			d = iabs(pl[k].x - e->x) + iabs((pl[k].y >> 4) - e->fy);
+			if (d < best) {
+				best = d;
+				target = k;
+			}
+		}
+		if (target < 0)
+			continue;
+		tfy = pl[target].y >> 4;
+		if (e->t & 1) {
+			int sx = (pl[target].x > e->x) - (pl[target].x < e->x), sy = (tfy > e->fy) - (tfy < e->fy);
+			if (sx && !top_blocked(e->x + sx, e->fy))
+				e->x += sx;
+			if (sy && !top_blocked(e->x, e->fy + sy))
+				e->fy += sy;
+		}
+		e->flip = pl[target].x < e->x;
+		e->dir = e->flip ? -1 : 1;
+		if (R->touch_hurts)
+			for (k = 0; k < nplayers; k++)
+				if (pl[k].active && !pl[k].hurt && iabs(pl[k].x - e->x) <= TOP_TOUCH_X && iabs((pl[k].y >> 4) - e->fy) <= TOP_TOUCH_Y)
+					hurt(&pl[k], 0);
+	}
+}
+
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (topdown) {
+		update_chasers();
+		return;
+	}
 	if (crosshair) {
 		update_targets();
 		return;
@@ -2811,9 +2964,47 @@ static void update_route(int snap)
 		cam_far = cam_x;
 }
 
+/* the top-down camera (engine/game.ts updateTopCamera): on the players' middle both ways */
+static void update_top_camera(int snap)
+{
+	s32 sx = 0, sy = 0, tx, ty;
+	int n = 0, k;
+	for (k = 0; k < nplayers; k++)
+		if (pl[k].active) {
+			sx += pl[k].x;
+			sy += pl[k].y >> 4;
+			n++;
+		}
+	if (!n)
+		return;
+	tx = sx / n - (SCREEN_W >> 1);
+	ty = sy / n - TOP_MID - (SCREEN_H >> 1) + 16;
+	if (tx > level_w - SCREEN_W)
+		tx = level_w - SCREEN_W;
+	if (tx < 0)
+		tx = 0;
+	if (ty > level_h - SCREEN_H)
+		ty = level_h - SCREEN_H;
+	if (ty < 0)
+		ty = 0;
+	if (snap) {
+		cam_x = (int)tx;
+		cam_y = (int)ty;
+	} else {
+		cam_x += (int)(tx - cam_x) / 4 + (tx > cam_x) - (tx < cam_x);
+		cam_y += (int)(ty - cam_y) / 4 + (ty > cam_y) - (ty < cam_y);
+	}
+	if (cam_x > cam_far)
+		cam_far = cam_x;
+}
+
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
+	if (topdown) {
+		update_top_camera(snap);
+		return;
+	}
 	if (crosshair || ship) {
 		update_route(snap);
 		return;

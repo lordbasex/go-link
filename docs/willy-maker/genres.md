@@ -76,7 +76,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** as the horizontal shooter.
 - **Size:** M (S after the horizontal shooter).
 
-## 7. Top-down run and gun
+## 7. Top-down run and gun (available, phase 1)
+
+**Phase 1 built** (2026-10-04): the rule `topdown` (the Rules card's **Seen from above**; on in a new top-down run and gun, with enemies that chase and hurt by touch, two hits each, and the exit after every enemy is down). Players walk in 8 directions with no gravity, a pixel a frame (a 12 x 8 px box at the feet stops at solid cells), aim where they walk (B3 held keeps the aim, to strafe) and fire along the aim with B1 held; enemies on the screen step toward the nearest player every other frame and hurt one they touch; the camera follows the players' middle both ways; prisoners (civilians) are freed by touch and the exit clears the level. Players are drawn with their side-view sprites for now. Play mode and the ROM alike (`wm_data` version 16); `rom/tools/lab/runs/topdown-yard.json` (a bot's inputs from play mode through a walled yard: six enemies, two prisoners, the exit) matches the real core at tolerance 0 and play mode on every frame, the player and the camera included. Next: grenades (B2), enemies that shoot, vehicles, top-down sprites.
 
 - **The player:** seen from above, walks and shoots in 8 directions, throws grenades, enters and drives vehicles, frees prisoners.
 - **Engine:** reuses enemies, pickups, civilians (prisoners), camera locks and the 4-player join. New: a top-down view with no gravity, 8-direction aiming (or a rotary stick feel with the 8-way stick), vehicles players enter and leave, a camera that scrolls in any direction.

@@ -16,7 +16,7 @@ import { DeviceRomTest } from "./PowerOnCard";
 /** The room's name, players and the buttons the game's rules use (the room's touch pad and How to play). */
 export function makerGameInfo(project: Project): MakerGameInfo {
   const rules = rulesWith(project.settings.rules);
-  const labels = rules.crosshair ? ["Shoot", "Reload"] : rules.ship ? ["Shoot", "Bomb"] : rules.depth ? ["Punch", "Hop"] : rules.weapons ? ["Jump", "Fire", "Special"] : ["Jump"];
+  const labels = rules.topdown ? ["Shoot", "Grenade", "Strafe"] : rules.crosshair ? ["Shoot", "Reload"] : rules.ship ? ["Shoot", "Bomb"] : rules.depth ? ["Punch", "Hop"] : rules.weapons ? ["Jump", "Fire", "Special"] : ["Jump"];
   return { title: project.title.trim() || "Willy Maker", players: Math.max(1, Math.min(4, project.settings.players)), labels };
 }
 

@@ -5,7 +5,7 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, PLATFORMER_RULES, SHIP_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
@@ -141,6 +141,8 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (genre === "horizontal-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...SHIP_RULES };
     // a vertical shooter: the same ships, climbing the level from its bottom
     if (genre === "vertical-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...VERTICAL_RULES };
+    // a top-down run and gun: seen from above, walking and shooting in 8 directions
+    if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
     if (genre === "beat-em-up") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...BEATEMUP_RULES };
       for (const level of p.levels) level.walk = defaultWalk(level);

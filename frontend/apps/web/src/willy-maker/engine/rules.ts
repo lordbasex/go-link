@@ -198,6 +198,12 @@ export interface GameRules {
   ship: boolean;
   /** The vertical shooter: with ships, the camera climbs the level from its bottom and the ships fire up (genres.md). */
   vertical: boolean;
+  /**
+   * The top-down run and gun (genres.md): seen from above, players walk in 8
+   * directions with no gravity, aim where they walk (B3 held keeps the aim)
+   * and fire with B1 held; enemies come at them; the camera follows both ways.
+   */
+  topdown: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -226,6 +232,7 @@ export const DEFAULT_RULES: GameRules = {
   crosshair: false,
   ship: false,
   vertical: false,
+  topdown: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -239,6 +246,9 @@ export const SHIP_RULES: Partial<GameRules> = { ship: true, weapons: false, stom
 
 /** A new vertical shooter's rules: the horizontal shooter's, climbing the level. */
 export const VERTICAL_RULES: Partial<GameRules> = { ...SHIP_RULES, vertical: true };
+
+/** A new top-down run and gun's rules: enemies that chase and hurt by touch, two hits each, the exit after every enemy is down. */
+export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 2, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -318,6 +328,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     crosshair: bool(r.crosshair, false),
     ship: bool(r.ship, false),
     vertical: bool(r.vertical, false),
+    topdown: bool(r.topdown, false),
   };
 }
 
@@ -447,3 +458,20 @@ export function flyPathOf(path: unknown): number {
   const i = FLY_PATHS.indexOf(path as (typeof FLY_PATHS)[number]);
   return i < 0 ? 0 : i;
 }
+
+/**
+ * The top-down run and gun (genres.md, phase 1): a player walks TOP_SPEED
+ * px a frame (its feet box TOP_HALF_W either side and TOP_DEPTH px up from
+ * its feet stops at solid cells), fires every FIRE_EVERY frames while B1 is
+ * held, its shots flying TOP_SHOT px a frame along the aim from its middle
+ * (TOP_MID px over its feet); an enemy on the screen steps toward the
+ * nearest player every other frame and hurts one within TOP_TOUCH_X and
+ * TOP_TOUCH_Y of it.
+ */
+export const TOP_SPEED = 1;
+export const TOP_HALF_W = 6;
+export const TOP_DEPTH = 8;
+export const TOP_SHOT = 5;
+export const TOP_MID = 20;
+export const TOP_TOUCH_X = 14;
+export const TOP_TOUCH_Y = 10;

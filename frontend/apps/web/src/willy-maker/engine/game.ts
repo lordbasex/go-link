@@ -100,6 +100,13 @@ import {
   GUNSHIP_HIT_X,
   GUNSHIP_HIT_Y,
   BOMB_BOSS_HITS,
+  TOP_SPEED,
+  TOP_HALF_W,
+  TOP_DEPTH,
+  TOP_SHOT,
+  TOP_MID,
+  TOP_TOUCH_X,
+  TOP_TOUCH_Y,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -199,6 +206,9 @@ export interface Player {
   bombs: number;
   /** The shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three. */
   power: number;
+  /** The top-down aim: -1, 0 or 1 each way (never both 0). */
+  aimX: number;
+  aimY: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -763,6 +773,10 @@ export class Game {
       // the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left
       x = this.camX;
       fy = 0;
+    } else if (this.rules.topdown) {
+      // the top-down run and gun: beside the player already in, at the start, or in the screen's middle
+      x = lead ? lead.x + 24 : start ? start.x + (this.startAt ? i * 24 : 0) : this.camX + (SCREEN_W >> 1) + i * 24;
+      fy = lead ? lead.y >> 4 : start ? start.y : this.camY + (SCREEN_H >> 1);
     } else if (this.walkBand) {
       // the beat 'em up: at the start, beside the player already in, or near the camera, inside the band
       const lx = lead ? lead.x + (lead.x + 24 < this.camX + SCREEN_W - 12 ? 24 : -24) : start && !lead ? start.x + (this.startAt ? i * 24 : 0) : this.camX + 64 + i * 24;
@@ -1376,7 +1390,120 @@ export class Game {
     });
   }
 
+  /** A top-down body at (x, feet fy): its feet box touches a solid cell. */
+  private topBlocked(x: number, fy: number): boolean {
+    return this.isSolid(this.cellAt(x - TOP_HALF_W, fy - 1)) || this.isSolid(this.cellAt(x + TOP_HALF_W, fy - 1)) || this.isSolid(this.cellAt(x - TOP_HALF_W, fy - TOP_DEPTH)) || this.isSolid(this.cellAt(x + TOP_HALF_W, fy - TOP_DEPTH));
+  }
+
+  /**
+   * The top-down run and gun's player (the topdown rule): it walks in 8
+   * directions, aims where it walks unless B3 is held, and fires along its
+   * aim while B1 is held.
+   */
+  private walkTop(p: Player): void {
+    p.t++;
+    if (p.invulnerable) p.invulnerable--;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    const dy = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    if ((dx || dy) && !(p.pad & Input.B3)) {
+      p.aimX = dx;
+      p.aimY = dy;
+    }
+    const fy = p.y >> 4;
+    if (dx && !this.topBlocked(p.x + dx * TOP_SPEED, fy)) p.x += dx * TOP_SPEED;
+    if (dy && !this.topBlocked(p.x, fy + dy * TOP_SPEED)) p.y = (fy + dy * TOP_SPEED) * 16;
+    if (p.aimX) p.flip = p.aimX < 0;
+    p.onGround = true;
+    p.running = false;
+    if (p.fireWait) p.fireWait--;
+    const my = (p.y >> 4) - TOP_MID;
+    if (p.pad & Input.B1 && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
+      p.shots.push({ dir: p.aimX, vy: p.aimY, x: p.x + p.aimX * 12, y: my + p.aimY * 12 });
+      p.fireWait = FIRE_EVERY;
+      this.events.push({ kind: "shot", player: p.index });
+    }
+    p.shots = p.shots.filter((b) => {
+      b.x += b.dir * TOP_SHOT;
+      b.y += (b.vy ?? 0) * TOP_SHOT;
+      const e = this.enemyAt(b.x, b.y, 8);
+      if (e) {
+        this.damage(e, 1, p);
+        return false;
+      }
+      if (this.hitCell(Math.floor(b.x / CELL), Math.floor(b.y / CELL), 1, p)) return false;
+      return this.cellAt(b.x, b.y) !== Tag.Solid && b.x >= this.camX - 32 && b.x <= this.camX + SCREEN_W + 32 && b.y >= this.camY - 32 && b.y <= this.camY + SCREEN_H + 32;
+    });
+  }
+
+  /** The top-down run and gun's enemies: on the screen they step toward the nearest player every other frame, stopped by solid cells, and hurt one they touch. */
+  private updateChasers(): void {
+    for (const e of this.enemies) {
+      e.t++;
+      if (e.state === "hit") {
+        if (e.t > 14) {
+          e.state = "walk";
+          e.t = 0;
+        }
+        continue;
+      }
+      if (e.state === "down") {
+        if (e.t > 90) e.state = "off";
+        continue;
+      }
+      if (e.state !== "walk") continue;
+      if (e.x < this.camX - 16 || e.x > this.camX + SCREEN_W + 16 || e.fy < this.camY || e.fy > this.camY + SCREEN_H + 40) continue;
+      let target: Player | undefined;
+      let best = Infinity;
+      for (const p of this.players) {
+        if (!p.active) continue;
+        const d = Math.abs(p.x - e.x) + Math.abs((p.y >> 4) - e.fy);
+        if (d < best) {
+          best = d;
+          target = p;
+        }
+      }
+      if (!target) continue;
+      const tfy = target.y >> 4;
+      if (e.t & 1) {
+        const sx = Math.sign(target.x - e.x);
+        const sy = Math.sign(tfy - e.fy);
+        if (sx && !this.topBlocked(e.x + sx, e.fy)) e.x += sx;
+        if (sy && !this.topBlocked(e.x, e.fy + sy)) e.fy += sy;
+      }
+      e.flip = target.x < e.x;
+      e.dir = e.flip ? -1 : 1;
+      if (this.rules.touchHurts)
+        for (const p of this.players)
+          if (p.active && !p.invulnerable && Math.abs(p.x - e.x) <= TOP_TOUCH_X && Math.abs((p.y >> 4) - e.fy) <= TOP_TOUCH_Y) this.hurt(p);
+    }
+  }
+
+  /** The top-down camera: on the players' middle both ways, a quarter of the way a frame, the players kept on the screen. */
+  private updateTopCamera(snap: boolean): void {
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const p of this.players)
+      if (p.active) {
+        sx += p.x;
+        sy += p.y >> 4;
+        n++;
+      }
+    if (!n) return;
+    const tx = Math.max(0, Math.min(this.level.width - SCREEN_W, Math.trunc(sx / n) - (SCREEN_W >> 1)));
+    const ty = Math.max(0, Math.min(this.level.height - SCREEN_H, Math.trunc(sy / n) - TOP_MID - (SCREEN_H >> 1) + 16));
+    if (snap) {
+      this.camX = tx;
+      this.camY = ty;
+    } else {
+      this.camX += Math.trunc((tx - this.camX) / 4) + Math.sign(tx - this.camX);
+      this.camY += Math.trunc((ty - this.camY) / 4) + Math.sign(ty - this.camY);
+    }
+    if (this.camX > this.camFar) this.camFar = this.camX;
+  }
+
   private updatePlayer(p: Player): void {
+    if (this.rules.topdown) return this.walkTop(p);
     if (this.rules.crosshair) return this.aim(p);
     if (this.rules.ship) return this.fly(p);
     p.t++;
@@ -1669,6 +1796,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.topdown) return this.updateChasers();
     if (this.rules.crosshair) return this.updateTargets();
     if (this.rules.ship) return this.updateFliers();
     if (this.walkBand) return this.updateEnemiesInDepth();
@@ -1861,6 +1989,7 @@ export class Game {
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
+    if (this.rules.topdown) return this.updateTopCamera(snap);
     if (this.rules.crosshair || this.rules.ship) return this.updateRoute(snap);
     let sx = 0;
     let sy = 0;
@@ -2074,6 +2203,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     reloadT: 0,
     bombs: 0,
     power: 0,
+    aimX: 1,
+    aimY: 0,
   };
 }
 
@@ -2113,6 +2244,8 @@ function spawn(p: Player, x: number, fy: number): void {
   p.struck = false;
   p.grabbed = p.grabT = 0;
   p.shotT = p.reloadT = 0;
+  p.aimX = 1;
+  p.aimY = 0;
 }
 
 function num(v: unknown, fallback: number): number {
