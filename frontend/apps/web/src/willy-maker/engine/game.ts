@@ -75,6 +75,15 @@ import {
   ROUTE_STEP,
   BOMBS,
   secondsToFrames,
+  SHIP_SPEED,
+  SHIP_HALF_W,
+  SHIP_HALF_H,
+  SHIP_FIRE,
+  FLY_SPEED,
+  FLY_WAVE,
+  FLY_MID,
+  SHIP_HIT_X,
+  SHIP_HIT_Y,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -197,6 +206,8 @@ export interface Enemy {
   appear: number;
   stay: number;
   shown: number;
+  /** The horizontal shooter: the feet y its wave flies around. */
+  baseY: number;
 }
 
 export interface Civilian {
@@ -446,6 +457,7 @@ export class Game {
             appear: this.rules.crosshair ? secondsToFrames(o.appear) : 0,
             stay: this.rules.crosshair ? secondsToFrames(o.stay) : 0,
             shown: 0,
+            baseY: o.y,
           });
           if (this.enemies[this.enemies.length - 1]!.appear) this.enemies[this.enemies.length - 1]!.state = "hidden";
           break;
@@ -472,6 +484,7 @@ export class Game {
               appear: 0,
               stay: 0,
               shown: 0,
+              baseY: o.y,
             });
           break;
         case "civilian":
@@ -694,8 +707,8 @@ export class Game {
     const lead = this.players.find((q) => q.active);
     let x: number;
     let fy: number;
-    if (this.rules.crosshair) {
-      // the light gun: nobody walks; the crosshair starts in the middle, the players side by side
+    if (this.rules.crosshair || this.rules.ship) {
+      // the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left
       x = this.camX;
       fy = 0;
     } else if (this.walkBand) {
@@ -719,6 +732,10 @@ export class Game {
       p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
       p.ammo = CLIP;
+      p.bombs = BOMBS;
+    } else if (this.rules.ship) {
+      p.cx = 48;
+      p.cy = 40 + i * 36;
       p.bombs = BOMBS;
     }
     this.events.push({ kind: "join", player: i });
@@ -1105,8 +1122,79 @@ export class Game {
     if (this.camX > this.camFar) this.camFar = this.camX;
   }
 
+  /**
+   * The horizontal shooter's player (the ship rule): the stick flies the
+   * ship on the screen, B1 held fires ahead, B2 drops a bomb; a wall it
+   * touches hurts it.
+   */
+  private fly(p: Player): void {
+    p.t++;
+    if (p.invulnerable) p.invulnerable--;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    const dy = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    p.cx = Math.max(SHIP_HALF_W, Math.min(SCREEN_W - SHIP_HALF_W, p.cx + dx * SHIP_SPEED));
+    p.cy = Math.max(SHIP_HALF_H + 16, Math.min(SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H, p.cy + dy * SHIP_SPEED));
+    const sx = this.camX + p.cx;
+    const sy = this.camY + p.cy;
+    if (this.isSolid(this.cellAt(sx + SHIP_HALF_W, sy)) || this.isSolid(this.cellAt(sx - SHIP_HALF_W, sy)) || this.isSolid(this.cellAt(sx, sy - SHIP_HALF_H)) || this.isSolid(this.cellAt(sx, sy + SHIP_HALF_H))) this.hurt(p);
+    if (this.pressed(p, Input.B2) && p.bombs > 0) {
+      p.bombs--;
+      this.events.push({ kind: "explosion", x: this.camX + (SCREEN_W >> 1) });
+      for (const e of this.enemies) if ((e.state === "walk" || e.state === "hit") && e.x >= this.camX && e.x <= this.camX + SCREEN_W) this.damage(e, e.hp, p);
+    }
+    if (p.fireWait) p.fireWait--;
+    if (p.pad & Input.B1 && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
+      p.shots.push({ dir: 1, x: sx + SHIP_HALF_W, y: sy });
+      p.fireWait = SHIP_FIRE;
+      this.events.push({ kind: "shot", player: p.index });
+    }
+    p.shots = p.shots.filter((b) => {
+      b.x += SHOT_SPEED;
+      const e = this.enemyAt(b.x, b.y, 10);
+      if (e) {
+        this.damage(e, 1, p);
+        return false;
+      }
+      if (this.hitCell(Math.floor(b.x / CELL), Math.floor(b.y / CELL), 1, p)) return false;
+      return this.cellAt(b.x, b.y) !== Tag.Solid && b.x <= this.camX + SCREEN_W + 32;
+    });
+  }
+
+  /** The horizontal shooter's enemies: still until the screen reaches them, then they fly left on a wave, hurting a ship they touch, and are gone past the screen's left. */
+  private updateFliers(): void {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i]!;
+      e.t++;
+      if (e.state === "hit") {
+        if (e.t > 14) {
+          e.state = "walk";
+          e.t = 0;
+        }
+      } else if (e.state === "down") {
+        if (e.t > 90) e.state = "off";
+        continue;
+      }
+      if (e.state !== "walk" && e.state !== "hit") continue;
+      if (e.x > this.camX + SCREEN_W + 16) continue;
+      e.x -= FLY_SPEED;
+      e.shown++;
+      const ph = (e.shown + i * 32) & 127;
+      e.fy = e.baseY + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+      e.flip = true;
+      if (e.x < this.camX - 32) {
+        e.state = "off";
+        continue;
+      }
+      for (const p of this.players) {
+        if (!p.active || p.invulnerable) continue;
+        if (Math.abs(this.camX + p.cx - e.x) <= SHIP_HIT_X && Math.abs(this.camY + p.cy - (e.fy - FLY_MID)) <= SHIP_HIT_Y) this.hurt(p);
+      }
+    }
+  }
+
   private updatePlayer(p: Player): void {
     if (this.rules.crosshair) return this.aim(p);
+    if (this.rules.ship) return this.fly(p);
     p.t++;
     if (p.dropT) p.dropT--;
     if (p.invulnerable) p.invulnerable--;
@@ -1398,6 +1486,7 @@ export class Game {
 
   private updateEnemies(): void {
     if (this.rules.crosshair) return this.updateTargets();
+    if (this.rules.ship) return this.updateFliers();
     if (this.walkBand) return this.updateEnemiesInDepth();
     for (const e of this.enemies) {
       e.t++;
@@ -1546,8 +1635,8 @@ export class Game {
   private updateCivilians(): void {
     for (const v of this.civilians) {
       v.t++;
-      // the light gun's hostages are only not to be shot
-      if (this.rules.crosshair) continue;
+      // the light gun's hostages are only not to be shot; the shooter has none to rescue
+      if (this.rules.crosshair || this.rules.ship) continue;
       if (v.rescued || v.trappedIn) continue;
       for (const p of this.players) {
         const dx = v.x - p.x;
@@ -1585,7 +1674,7 @@ export class Game {
    * walk past the screen's sides (the leader waits for the others).
    */
   updateCamera(snap = false): void {
-    if (this.rules.crosshair) return this.updateRoute(snap);
+    if (this.rules.crosshair || this.rules.ship) return this.updateRoute(snap);
     let sx = 0;
     let sy = 0;
     let n = 0;
@@ -1676,7 +1765,7 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.crosshair) {
+    if (this.rules.crosshair || this.rules.ship) {
       if (this.camX >= this.level.width - SCREEN_W && !this.activeLock() && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });

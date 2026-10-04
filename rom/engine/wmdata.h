@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 13
+#define WM_VERSION 14
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -78,6 +78,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_STOMP 0x0100       /* landing on an enemy from above takes it down */
 #define WM_F_DEPTH 0x0200       /* the beat 'em up: walking a street in depth (walk_y0-walk_y1), B2 hops */
 #define WM_F_CROSSHAIR 0x0400   /* the light gun: crosshairs, a camera that moves by itself (wm_data 13) */
+#define WM_F_SHIP 0x0800        /* the horizontal shooter: ships, a camera that moves by itself (wm_data 14) */
 
 struct wm_data {
 	u32 magic;                /* 00 */

@@ -54,7 +54,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** stick moves the crosshair, B1 shoot, B2 reload, B3 special (a bomb).
 - **Size:** M.
 
-## 5. Horizontal shooter
+## 5. Horizontal shooter (available, phase 1)
+
+**Phase 1 built** (2026-10-04): the rule `ship` (the Rules card's **Ships**, on in a new horizontal shooter with enemies that take one shot and hurt by touch). Each player flies a ship (one color each, 32 x 16, drawn from `engine/shipArt.ts` in play mode and in the ROM) in 8 directions at 2 px a frame on the screen; B1 held fires ahead every 8 frames (6 shots at once), B2 drops one of two bombs (every enemy on the screen down), and a wall the ship touches hurts it. The camera scrolls by itself as the light gun's does (a pixel every 2 frames, holding at camera locks, the level clears where the route ends). Enemies wait until the screen reaches them, then fly left a pixel a frame on a wave of 8 px either way and hurt a ship they touch. Play mode and the ROM alike (`wm_data` version 14); `rom/tools/lab/runs/ship-flight.json` (a bot's inputs from play mode: over the city, a bomb, a hit, the clear) matches the real core at tolerance 0 and play mode on every frame. Next: power-ups that change the weapon, enemy paths and formations, a boss.
 
 - **The player:** flies a ship through a level that scrolls by itself, shoots waves of enemies, collects power-ups that change the weapon, and fights a boss.
 - **Engine:** reuses the scrolling camera (now automatic), the collision grid (walls of caves and bases), enemies, bosses, pickups and the 4-player join. New: free flight with no gravity, enemy formations on paths, many bullets, weapon levels and options, bombs.

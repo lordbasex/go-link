@@ -8,6 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
+import { shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -728,9 +729,16 @@ export function addArt(gfx, defs, genDir, opts = {}) {
         }),
       ),
     );
-    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define PAL_CROSS ${objPalettes.length}`);
+    // the shooter's ships (engine/shipArt.ts), 32 x 16 as two tiles, one pair per player color
+    for (let k = 0; k < 4; k++)
+      for (let half = 0; half < 2; half++)
+        gfx.tile16(
+          code + 5 + 2 * k + half,
+          Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 1 + k, 5, 0, 6][shipPen(half * 16 + x, y)])),
+        );
+    h.push(`#define TILE_CROSS ${hex4(code)} /* + player (0-3); + 4: the shot's flash */`, `#define TILE_SHIP ${hex4(code + 5)} /* + 2 * player: a 2 x 1 block */`, `#define PAL_CROSS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
-    code += 5;
+    code += 13;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

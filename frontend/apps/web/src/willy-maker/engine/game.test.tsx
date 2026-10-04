@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, BOMBS, CLIP, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, BOMBS, CLIP, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1044,5 +1044,58 @@ describe("the light gun (genres.md, phase 1)", () => {
     g.enemies[0]!.state = "off";
     run(g, 2 * (64 * 16 - 384 - 400) + 4, 0);
     expect(g.outcome).toBe("cleared");
+  });
+});
+
+describe("the horizontal shooter (genres.md, phase 1)", () => {
+  const sky = (objects: LevelObject[], build?: Parameters<typeof flat>[0]) => new Game(flat(build, objects), { rules: SHIP_RULES });
+  const flier = (x: number, y = 300): LevelObject => ({ name: `f${x}`, type: "enemy", x, y, kind: "trooper", facing: "left", patrol: 0 } as LevelObject);
+
+  it("flies in 8 directions and fires ahead while B1 is held", () => {
+    const g = sky([]);
+    const p = g.players[0]!;
+    const [x0, y0] = [p.cx, p.cy];
+    run(g, 10, Input.Right | Input.Down);
+    expect([p.cx - x0, p.cy - y0]).toEqual([20, 20]);
+    run(g, SHIP_FIRE * 3, Input.B1);
+    expect(p.shots.length).toBe(3);
+    expect(p.shots.every((b) => b.dir === 1)).toBe(true);
+  });
+
+  it("an enemy flies in on a wave, a shot takes it down, and one that touches a ship hurts it", () => {
+    const g = sky([flier(300, 300)]);
+    const e = g.enemies[0]!;
+    const p = g.players[0]!;
+    run(g, 2, 0);
+    expect(e.x).toBeLessThan(300);
+    const ys = new Set<number>();
+    for (let f = 0; f < 64; f++) {
+      run(g, 1, 0);
+      ys.add(e.fy);
+    }
+    expect(ys.size).toBeGreaterThan(8);
+    // line up with it and fire
+    for (let f = 0; f < 120 && e.state === "walk"; f++) run(g, 1, (p.cy + g.camY < e.fy - 20 ? Input.Down : p.cy + g.camY > e.fy - 20 ? Input.Up : 0) | Input.B1);
+    expect(e.state).toBe("down");
+    // a ship blinks for a while after it joins: this enemy comes later
+    const g2 = sky([flier(600, 300)]);
+    const p2 = g2.players[0]!;
+    const lives = p2.lives;
+    for (let f = 0; f < 800 && p2.lives === lives; f++) run(g2, 1, p2.cy + g2.camY < g2.enemies[0]!.fy - 20 ? Input.Down : Input.Up);
+    expect(p2.lives).toBe(lives - 1);
+  });
+
+  it("a wall hurts the ship, and a bomb takes down every enemy on the screen", () => {
+    const walled = sky([], (set) => {
+      for (let r = 0; r < 25; r++) set(30, r, Tag.Solid);
+    });
+    const w = walled.players[0]!;
+    const lives = w.lives;
+    run(walled, 900, 0);
+    expect(w.lives).toBeLessThan(lives);
+    const g = sky([flier(200), flier(300, 250), flier(900)]);
+    run(g, 1, Input.B2);
+    expect(g.enemies.map((e) => e.state)).toEqual(["down", "down", "walk"]);
+    expect(g.players[0]!.bombs).toBe(BOMBS - 1);
   });
 });

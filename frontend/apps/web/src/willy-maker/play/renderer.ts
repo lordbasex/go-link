@@ -7,6 +7,7 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
+import { SHIP_H, SHIP_W, shipPen } from "../engine/shipArt";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
@@ -451,6 +452,13 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   for (const p of game.players) actors.push({ fy: p.y >> 4, draw: () => {
     // the light gun's players are their crosshairs (drawCrosshairs)
     if (!p.active || game.rules.crosshair) return;
+    // the shooter's players are their ships, with their shots
+    if (game.rules.ship) {
+      ctx.fillStyle = ART.shot;
+      for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
+      if (!(p.invulnerable && (p.invulnerable >> 2) & 1)) drawShip(ctx, game.camX + p.cx - (SHIP_W >> 1), game.camY + p.cy - (SHIP_H >> 1), p.index);
+      return;
+    }
     if (p.invulnerable && (p.invulnerable >> 2) & 1) return;
     const sheet = sprites?.heroes[variants?.[p.index] ?? p.index] ?? sprites?.heroes[0];
     // a beat 'em up's hop: drawn over its shadow on the floor
@@ -622,8 +630,8 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);
-    // the light gun's bombs (B3), as the ROM's Os
-    if (game.rules.crosshair) ctx.fillText("O".repeat(p.bombs), x + 62, 12);
+    // the light gun's bombs (B3) and the shooter's (B2), as the ROM's Os
+    if (game.rules.crosshair || game.rules.ship) ctx.fillText("O".repeat(p.bombs), x + 62, 12);
   }
   // the platformer's coins taken (T-22)
   if (game.coinTotal) {
@@ -692,4 +700,16 @@ function drawKnife(ctx: CanvasRenderingContext2D, x: number, y: number, dir: num
   ctx.fillRect(at(-2, 8), y, 8, 1);
   ctx.fillStyle = "#aaaaaa";
   ctx.fillRect(at(-2, 7), y + 1, 7, 1);
+}
+
+/** The shooter's ship in a player's color (engine/shipArt.ts, the ROM's TILE_SHIP). */
+function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, player: number): void {
+  const colors = ["", CROSS_COLORS[player] ?? "#ffffff", "#ffffff", "#000000", "#ffcc22"];
+  for (let py = 0; py < SHIP_H; py++)
+    for (let px = 0; px < SHIP_W; px++) {
+      const pen = shipPen(px, py);
+      if (!pen) continue;
+      ctx.fillStyle = colors[pen]!;
+      ctx.fillRect(x + px, y + py, 1, 1);
+    }
 }

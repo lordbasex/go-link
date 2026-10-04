@@ -654,6 +654,16 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define TARGET_REST 120
 #define ROUTE_STEP 2
 #define BOMBS 2
+/* the horizontal shooter (WM_F_SHIP, engine/rules.ts) */
+#define SHIP_SPEED 2
+#define SHIP_HALF_W 14
+#define SHIP_HALF_H 6
+#define SHIP_FIRE 8
+#define FLY_SPEED 1
+#define FLY_WAVE 8
+#define FLY_MID 20
+#define SHIP_HIT_X 18
+#define SHIP_HIT_Y 18
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -698,6 +708,7 @@ static struct player pl[MAX_PLAYERS];
 /* the beat 'em up (WM_F_DEPTH, engine/game.ts moveInDepth): its walkable band, feet y px */
 static int depth;
 static int crosshair; /* the light gun (WM_F_CROSSHAIR) */
+static int ship;      /* the horizontal shooter (WM_F_SHIP) */
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -718,6 +729,7 @@ static struct enemy {
 	int lane; /* the beat 'em up: its depth offset beside a player (-1, 0, 1) */
 	int boss; /* the beat 'em up's brawler (phase 4): tougher, never grabbed, quicker to strike again */
 	int appear, stay, shown; /* the light gun: frames on the screen before it shows and before it leaves (0 never), and frames there */
+	s32 base_y;              /* the shooter: the feet y its wave flies around */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -1151,8 +1163,8 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
-	if (crosshair) {
-		/* the light gun: nobody walks; the crosshair starts in the middle, the players side by side */
+	if (crosshair || ship) {
+		/* the light gun and the shooter: nobody walks; crosshairs start in the middle, ships at the left */
 		x = cam_x;
 		fy = 0;
 	} else if (depth) {
@@ -1183,6 +1195,10 @@ static void player_join(int k)
 		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
 		p->ammo = CLIP;
+		p->bombs = BOMBS;
+	} else if (ship) {
+		p->cx = 48;
+		p->cy = 40 + k * 36;
 		p->bombs = BOMBS;
 	}
 }
@@ -1244,6 +1260,7 @@ static void game_reset(void)
 	}
 	depth = (D->flags & WM_F_DEPTH) != 0;
 	crosshair = (D->flags & WM_F_CROSSHAIR) != 0;
+	ship = (D->flags & WM_F_SHIP) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -1294,6 +1311,7 @@ static void game_reset(void)
 		en[i].appear = crosshair && !en[i].boss ? o->a : 0;
 		en[i].stay = crosshair && !en[i].boss ? o->b : 0;
 		en[i].shown = 0;
+		en[i].base_y = o->y;
 		if (en[i].appear > 0)
 			en[i].state = EN_HIDDEN;
 		en[i].look = actor_look(D->enemy_looks, i);
@@ -1795,6 +1813,70 @@ static void aim(struct player *p)
 	}
 }
 
+/* the shooter's player (engine/game.ts fly): the stick flies the ship on the
+   screen, B1 held fires ahead, B2 drops a bomb; a wall it touches hurts it */
+static void fly(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	int dy = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	int i;
+	s32 sx, sy;
+	p->t++;
+	if (p->hurt)
+		p->hurt--;
+	p->cx += dx * SHIP_SPEED;
+	p->cy += dy * SHIP_SPEED;
+	if (p->cx < SHIP_HALF_W)
+		p->cx = SHIP_HALF_W;
+	if (p->cx > SCREEN_W - SHIP_HALF_W)
+		p->cx = SCREEN_W - SHIP_HALF_W;
+	if (p->cy < SHIP_HALF_H + 16)
+		p->cy = SHIP_HALF_H + 16;
+	if (p->cy > SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H)
+		p->cy = SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H;
+	sx = cam_x + p->cx;
+	sy = cam_y + p->cy;
+	if (is_solid(cell_at(sx + SHIP_HALF_W, sy)) || is_solid(cell_at(sx - SHIP_HALF_W, sy)) || is_solid(cell_at(sx, sy - SHIP_HALF_H)) || is_solid(cell_at(sx, sy + SHIP_HALF_H)))
+		hurt(p, 0);
+	if (PRESSED(p, BTN_2) && p->bombs > 0) {
+		p->bombs--;
+		sfx(SFX_EXPLOSION, cam_x + (SCREEN_W >> 1));
+		for (i = 0; i < nen; i++) {
+			struct enemy *e = &en[i];
+			if ((e->state == EN_WALK || e->state == EN_HIT) && e->x >= cam_x && e->x <= cam_x + SCREEN_W)
+				en_damage(i, e->hp, p);
+		}
+	}
+	if (p->fire_wait)
+		p->fire_wait--;
+	if ((p->pad & BTN_1) && !p->fire_wait)
+		for (i = 0; i < SHOTS; i++)
+			if (!p->shots[i].live) {
+				p->shots[i].live = 1;
+				p->shots[i].dir = 1;
+				p->shots[i].x = (s16)(sx + SHIP_HALF_W);
+				p->shots[i].y = (s16)sy;
+				p->fire_wait = SHIP_FIRE;
+				sfx(SFX_SHOT, sx);
+				break;
+			}
+	for (i = 0; i < SHOTS; i++) {
+		struct bullet *b = &p->shots[i];
+		int ei;
+		if (!b->live)
+			continue;
+		b->x += 6;
+		ei = enemy_at(b->x, b->y, 10);
+		if (ei >= 0) {
+			en_damage(ei, 1, p);
+			b->live = 0;
+		} else if (hit_cell(b->x >> 4, b->y >> 4, 1, p))
+			b->live = 0;
+		else if (cell_at(b->x, b->y) == T_SOLID || b->x > cam_x + SCREEN_W + 32)
+			b->live = 0;
+	}
+}
+
 static void update_player(struct player *p)
 {
 	int i, dir = 0, jet_was;
@@ -1803,6 +1885,10 @@ static void update_player(struct player *p)
 		return;
 	if (crosshair) {
 		aim(p);
+		return;
+	}
+	if (ship) {
+		fly(p);
 		return;
 	}
 	p->t++;
@@ -2254,11 +2340,58 @@ static void update_targets(void)
 	}
 }
 
+/* the shooter's enemies (engine/game.ts updateFliers): still until the screen
+   reaches them, then they fly left on a wave, hurting a ship they touch, and
+   are gone past the screen's left */
+static void update_fliers(void)
+{
+	int i, k;
+	for (i = 0; i < nen; i++) {
+		struct enemy *e = &en[i];
+		int ph;
+		e->t++;
+		if (e->state == EN_HIT) {
+			if (e->t > 14) {
+				e->state = EN_WALK;
+				e->t = 0;
+			}
+		} else if (e->state == EN_DOWN) {
+			if (e->t > 90)
+				e->state = EN_OFF;
+			continue;
+		}
+		if (e->state != EN_WALK && e->state != EN_HIT)
+			continue;
+		if (e->x > cam_x + SCREEN_W + 16)
+			continue;
+		e->x -= FLY_SPEED;
+		e->shown++;
+		ph = (e->shown + i * 32) & 127;
+		e->fy = e->base_y + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+		e->flip = 1;
+		if (e->x < cam_x - 32) {
+			e->state = EN_OFF;
+			continue;
+		}
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (!p->active || p->hurt)
+				continue;
+			if (iabs(cam_x + p->cx - e->x) <= SHIP_HIT_X && iabs(cam_y + p->cy - (e->fy - FLY_MID)) <= SHIP_HIT_Y)
+				hurt(p, 0);
+		}
+	}
+}
+
 static void update_enemies(int playing)
 {
 	int i, k;
 	if (crosshair) {
 		update_targets();
+		return;
+	}
+	if (ship) {
+		update_fliers();
 		return;
 	}
 	if (depth) {
@@ -2375,8 +2508,8 @@ static void update_civilians(void)
 	int i, k;
 	for (i = 0; i < nciv; i++) {
 		civ[i].t++;
-		/* the light gun's hostages are only not to be shot */
-		if (civ[i].rescued || crosshair)
+		/* the light gun's hostages are only not to be shot; the shooter has none to rescue */
+		if (civ[i].rescued || crosshair || ship)
 			continue;
 		for (k = 0; k < nplayers; k++) {
 			s32 dx = civ[i].x - pl[k].x, dy = (pl[k].y >> 4) - civ[i].fy;
@@ -2449,7 +2582,7 @@ static void update_route(int snap)
 static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
-	if (crosshair) {
+	if (crosshair || ship) {
 		update_route(snap);
 		return;
 	}
@@ -2807,6 +2940,14 @@ static void draw_world(void)
 			if (p->shot_t)
 				put_sprite(p->cx - 8, p->cy - 8, (u16)(TILE_CROSS + 4), PAL_CROSS);
 		}
+	else if (ship)
+		/* the shooter's players are their ships (a 2 x 1 block in the player's color) */
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (!p->active || (p->hurt && ((p->hurt >> 2) & 1)))
+				continue;
+			put_sprite(p->cx - 16, p->cy - 8, (u16)(TILE_SHIP + 2 * k), (u16)(PAL_CROSS | (1 << 8)));
+		}
 	else
 		for (k = 0; k < nplayers; k++)
 			draw_player(&pl[k]);
@@ -2951,6 +3092,10 @@ static void hud(void)
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			for (e = 0; e < 9 && e < room; e++)
 				put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
+			/* the shooter: its bombs under the energy */
+			if (ship)
+				for (e = 0; e < BOMBS && e < room; e++)
+					put_char(col + 3 + e, 2, e < p->bombs ? 'O' : ' ', INK_WHITE);
 			/* the light gun: the clip under the energy, or a prompt to reload (B2) */
 			if (crosshair) {
 				for (e = 0; e < CLIP && e < room; e++)
@@ -2972,7 +3117,7 @@ static void hud(void)
 		} else {
 			const struct line *l = credits || free_play() ? (has_join ? &join : 0) : (has_coin ? &coin : 0);
 			blank(col + 3, 1, room);
-			if (crosshair)
+			if (crosshair || ship)
 				blank(col + 3, 2, room < CLIP + 1 + BOMBS ? room : CLIP + 1 + BOMBS);
 			if (l && ((frame_count / 20) & 1))
 				print_n(col + 3, 0, l->s, l->len < room ? l->len : room, INK_WHITE);
@@ -3194,7 +3339,7 @@ static int play(int first)
 			update_enemies(1);
 		update_civilians();
 		/* the light gun's camera moves only while playing, as play mode's */
-		if (!crosshair || outcome < 0)
+		if ((!crosshair && !ship) || outcome < 0)
 			update_camera(0);
 		stream();
 		set_scroll();
@@ -3206,7 +3351,7 @@ static int play(int first)
 		if (outcome < 0)
 			soon_update();
 		/* the light gun: the level ends where the camera's route does, with no lock holding it */
-		if (outcome < 0 && crosshair && cam_x >= level_w - SCREEN_W && active_lock() < 0) {
+		if (outcome < 0 && (crosshair || ship) && cam_x >= level_w - SCREEN_W && active_lock() < 0) {
 			int any = 0;
 			for (k = 0; k < nplayers; k++)
 				any |= pl[k].active;

@@ -13,6 +13,7 @@ import { SPEC, specProject } from "./specFixture";
 import { tallProject } from "./tallFixture";
 import { brawlProject, streetProject, waveProject } from "./streetFixture";
 import { gunProject } from "./gunFixture";
+import { shipProject } from "./shipFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -49,7 +50,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(13);
+    expect(u16(d, 4)).toBe(14);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -202,6 +203,13 @@ describe("Create ROM", () => {
       mkdirSync(gdir, { recursive: true });
       writeFileSync(resolve(gdir, "slammast.zip"), await zipSet(gun.files));
       writeFileSync(resolve(gdir, "symbols.json"), romSymbols(engine));
+      // the horizontal shooter: ships over a level the camera scrolls by itself (rom/tools/lab/runs/ship-flight.json)
+      const sh = packGame(shipProject(), engine, (id) => pictures.get(id) ?? null);
+      expect(u16(assembleProgram(SLAMMAST, sh.files).subarray(WM_DATA_ADDR), 0x0a) & 0x800).toBe(0x800);
+      const sdir = resolve(out, "ship");
+      mkdirSync(sdir, { recursive: true });
+      writeFileSync(resolve(sdir, "slammast.zip"), await zipSet(sh.files));
+      writeFileSync(resolve(sdir, "symbols.json"), romSymbols(engine));
       // phase 4: a crate with a knife, a throw and a brawler behind a lock (rom/tools/lab/runs/street-brawl.json)
       const brawl = packGame(brawlProject(), engine, (id) => pictures.get(id) ?? null);
       expect(brawl.notes.map((n) => n.id)).not.toContain("boss");

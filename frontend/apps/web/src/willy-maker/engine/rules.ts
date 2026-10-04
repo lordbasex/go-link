@@ -190,6 +190,12 @@ export interface GameRules {
    * moves along the level by itself and holds at camera locks.
    */
   crosshair: boolean;
+  /**
+   * The horizontal shooter (genres.md): each player flies a ship in 8
+   * directions over a level the camera scrolls by itself; B1 shoots ahead
+   * (held, every SHIP_FIRE frames), B2 drops a bomb; walls and enemies hurt.
+   */
+  ship: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -216,6 +222,7 @@ export const DEFAULT_RULES: GameRules = {
   stomp: false,
   depth: false,
   crosshair: false,
+  ship: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -223,6 +230,9 @@ export const PLATFORMER_RULES: Partial<GameRules> = { weapons: false, stomp: tru
 
 /** A new light gun game's rules (genres.md): crosshairs, targets that take one shot and shoot back, no exit to walk to (the level ends where the camera's route does). */
 export const LIGHTGUN_RULES: Partial<GameRules> = { crosshair: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: true, enemiesChase: false, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: false };
+
+/** A new horizontal shooter's rules (genres.md): ships, enemies that fly in and take one shot, touching one hurts, the level ends where the camera's route does. */
+export const SHIP_RULES: Partial<GameRules> = { ship: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -300,6 +310,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     stomp: bool(r.stomp, false),
     depth: bool(r.depth, false),
     crosshair: bool(r.crosshair, false),
+    ship: bool(r.ship, false),
   };
 }
 
@@ -373,3 +384,21 @@ export const BOMBS = 2;
 export function secondsToFrames(s: unknown): number {
   return typeof s === "number" && Number.isFinite(s) && s > 0 ? Math.min(32767, Math.round(s * 60)) : 0;
 }
+
+/**
+ * The horizontal shooter (genres.md, phase 1): a ship moves SHIP_SPEED px a
+ * frame on the screen (its centre kept SHIP_HALF_W and SHIP_HALF_H inside
+ * it, above the HUD's last CROSS_BOTTOM px) and fires every SHIP_FIRE
+ * frames while B1 is held; an enemy flies in from the right FLY_SPEED px a
+ * frame on a wave of FLY_WAVE px either way, and hurts a ship within
+ * SHIP_HIT_X and SHIP_HIT_Y of its middle (FLY_MID px over its feet).
+ */
+export const SHIP_SPEED = 2;
+export const SHIP_HALF_W = 14;
+export const SHIP_HALF_H = 6;
+export const SHIP_FIRE = 8;
+export const FLY_SPEED = 1;
+export const FLY_WAVE = 8;
+export const FLY_MID = 20;
+export const SHIP_HIT_X = 18;
+export const SHIP_HIT_Y = 18;

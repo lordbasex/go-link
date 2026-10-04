@@ -1,0 +1,218 @@
+{
+ "name": "ship-flight",
+ "description": "The horizontal shooter (WM_ROM_OUT/ship of rom.test.tsx, rom/shipFixture.ts: the spec level with the shooter's rules and a formation in the sky). Player 1's ship, steered by a bot in play mode (its inputs, frame by frame), fires with B1 held while the camera scrolls by itself, climbs over the buildings, drops a bomb on two enemies, is hit once and reaches the end of the route, which clears the level. Play mode gives the same enemies, energy and camera every frame.",
+ "frames": 2525,
+ "checkpoints": [
+  727,
+  974,
+  2119,
+  2400
+ ],
+ "expect": [
+  {
+   "frame": 727,
+   "path": "players.0.score",
+   "equals": 100
+  },
+  {
+   "frame": 974,
+   "path": "players.0.score",
+   "equals": 400
+  },
+  {
+   "frame": 2119,
+   "path": "players.0.energy",
+   "equals": 2
+  },
+  {
+   "frame": 2315,
+   "path": "players.0.score",
+   "equals": 700
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 161,
+   "to": 651,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 652,
+   "to": 715,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 716,
+   "to": 761,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 762,
+   "to": 762,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 763,
+   "to": 891,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 892,
+   "to": 963,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 964,
+   "to": 964,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 965,
+   "to": 965,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 966,
+   "to": 966,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 967,
+   "to": 967,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 968,
+   "to": 968,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 969,
+   "to": 969,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 970,
+   "to": 970,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 971,
+   "to": 971,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 972,
+   "to": 972,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1",
+    "b2"
+   ]
+  },
+  {
+   "from": 973,
+   "to": 973,
+   "port": 1,
+   "buttons": [
+    "up",
+    "b1"
+   ]
+  },
+  {
+   "from": 974,
+   "to": 2112,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 2113,
+   "to": 2185,
+   "port": 1,
+   "buttons": [
+    "down",
+    "b1"
+   ]
+  },
+  {
+   "from": 2186,
+   "to": 2464,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  }
+ ]
+}
