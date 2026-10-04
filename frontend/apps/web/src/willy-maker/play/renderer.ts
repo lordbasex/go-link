@@ -537,6 +537,18 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
     for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
+    // the top-down grenade in flight and its burst (the ROM draws them with its own tiles)
+    if (p.grenade) {
+      ctx.fillStyle = "#335533";
+      ctx.fillRect(p.grenade.x - 2, p.grenade.y - 2, 5, 5);
+    }
+    if (p.boom) {
+      const r = 6 + (12 - p.boom.t) * 2;
+      ctx.fillStyle = (p.boom.t >> 1) & 1 ? "#ffcc22" : "#ff6633";
+      ctx.beginPath();
+      ctx.arc(p.boom.x, p.boom.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (p.blade) drawKnife(ctx, p.blade.x, (p.blade.fy) - 24, p.blade.dir);
     if (p.rocket) {
       ctx.fillStyle = ART.rocket;
@@ -649,7 +661,7 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);
     // the light gun's bombs (B3) and the shooter's (B2), as the ROM's Os
-    if (game.rules.crosshair || game.rules.ship) ctx.fillText("O".repeat(p.bombs), x + 62, 12);
+    if (game.rules.crosshair || game.rules.ship || game.rules.topdown) ctx.fillText("O".repeat(p.bombs), x + 62, 12);
   }
   // the platformer's coins taken (T-22)
   if (game.coinTotal) {

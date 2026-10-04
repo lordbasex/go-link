@@ -247,8 +247,8 @@ export const SHIP_RULES: Partial<GameRules> = { ship: true, weapons: false, stom
 /** A new vertical shooter's rules: the horizontal shooter's, climbing the level. */
 export const VERTICAL_RULES: Partial<GameRules> = { ...SHIP_RULES, vertical: true };
 
-/** A new top-down run and gun's rules: enemies that chase and hurt by touch, two hits each, the exit after every enemy is down. */
-export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 2, respawnOnHurt: false };
+/** A new top-down run and gun's rules: enemies that chase, shoot and hurt by touch, two hits each, the exit after every enemy is down. */
+export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: true, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 2, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -475,3 +475,25 @@ export const TOP_SHOT = 5;
 export const TOP_MID = 20;
 export const TOP_TOUCH_X = 14;
 export const TOP_TOUCH_Y = 10;
+
+/**
+ * The top-down run and gun's phase 2: B2 throws one of GRENADES grenades
+ * along the aim, GRENADE_SPEED px a frame for GRENADE_FUSE frames; it bursts
+ * where it lands (or at a wall), giving GRENADE_HITS to every enemy within
+ * GRENADE_X and GRENADE_Y of it, and the burst shows BOOM_FRAMES frames. An
+ * enemy within TOP_SIGHT px (both ways) of a player fires at it every
+ * fireEvery frames (the difficulty's): a shot in the closest of 8 directions,
+ * TOP_EN_SHOT px a frame each way, hurting a player within TOP_EN_HIT_X and
+ * TOP_EN_HIT_Y of its middle.
+ */
+export const GRENADES = 3;
+export const GRENADE_SPEED = 3;
+export const GRENADE_FUSE = 30;
+export const GRENADE_HITS = 2;
+export const GRENADE_X = 32;
+export const GRENADE_Y = 24;
+export const BOOM_FRAMES = 12;
+export const TOP_SIGHT = 160;
+export const TOP_EN_SHOT = 3;
+export const TOP_EN_HIT_X = 8;
+export const TOP_EN_HIT_Y = 12;

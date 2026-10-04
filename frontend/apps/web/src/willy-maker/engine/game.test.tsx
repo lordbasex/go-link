@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1209,10 +1209,10 @@ describe("the vertical shooter (genres.md, phase 1)", () => {
 
 describe("the top-down run and gun (genres.md, phase 1)", () => {
   // an open yard: walls only at the bottom rows of flat()
-  const yard = (objects: LevelObject[], build?: Parameters<typeof flat>[0]) => {
+  const yard = (objects: LevelObject[], build?: Parameters<typeof flat>[0], rules = TOPDOWN_RULES) => {
     const view = flat(build, objects);
     view.objects[0] = { name: "p1", type: "player_start", x: 200, y: 300, player: 1 };
-    return new Game(view, { rules: TOPDOWN_RULES });
+    return new Game(view, { rules });
   };
 
   it("walks in 8 directions with no gravity, and walls stop it", () => {
@@ -1234,6 +1234,31 @@ describe("the top-down run and gun (genres.md, phase 1)", () => {
     expect([p.shots[0]!.dir, p.shots[0]!.vy]).toEqual([0, 1]);
     run(g, 5, Input.Left | Input.B3);
     expect([p.aimX, p.aimY]).toEqual([0, 1]);
+  });
+
+  it("a grenade flies along the aim, bursts and hits every enemy near it; there are GRENADES of them", () => {
+    const near = (name: string, x: number, y: number) => ({ name, type: "enemy", x, y, kind: "trooper", facing: "left", patrol: 0 }) as LevelObject;
+    const g = yard([near("a", 290, 300), near("b", 300, 310)], undefined, { ...TOPDOWN_RULES, enemiesShoot: false });
+    const p = g.players[0]!;
+    expect(p.bombs).toBe(GRENADES);
+    run(g, 1, Input.B2);
+    expect(p.grenade).not.toBeNull();
+    run(g, GRENADE_FUSE, 0);
+    expect(p.grenade).toBeNull();
+    expect(p.boom).not.toBeNull();
+    expect(g.enemies.map((e) => e.state)).toEqual(["down", "down"]);
+    expect(p.bombs).toBe(GRENADES - 1);
+  });
+
+  it("an enemy in sight fires at the player", () => {
+    const g = yard([{ name: "e", type: "enemy", x: 320, y: 300, kind: "trooper", facing: "left", patrol: 0 } as LevelObject]);
+    let fired = false;
+    for (let f = 0; f < 300 && !fired; f++) {
+      run(g, 1, 0);
+      fired = g.enemyShots.length > 0;
+    }
+    expect(fired).toBe(true);
+    expect(g.enemyShots[0]!.dir).toBe(-1);
   });
 
   it("enemies come at the player both ways, take shots and hurt by touch", () => {

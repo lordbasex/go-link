@@ -107,6 +107,17 @@ import {
   TOP_MID,
   TOP_TOUCH_X,
   TOP_TOUCH_Y,
+  GRENADES,
+  GRENADE_SPEED,
+  GRENADE_FUSE,
+  GRENADE_HITS,
+  GRENADE_X,
+  GRENADE_Y,
+  BOOM_FRAMES,
+  TOP_SIGHT,
+  TOP_EN_SHOT,
+  TOP_EN_HIT_X,
+  TOP_EN_HIT_Y,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -209,6 +220,9 @@ export interface Player {
   /** The top-down aim: -1, 0 or 1 each way (never both 0). */
   aimX: number;
   aimY: number;
+  /** The top-down grenade in flight (x, y at its middle, frames flown), and its burst while it shows. */
+  grenade: { x: number; y: number; dx: number; dy: number; t: number } | null;
+  boom: { x: number; y: number; t: number } | null;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -794,6 +808,7 @@ export class Game {
     }
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
+    if (this.rules.topdown) p.bombs = GRENADES;
     if (this.rules.crosshair) {
       p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -1415,6 +1430,28 @@ export class Game {
     if (p.aimX) p.flip = p.aimX < 0;
     p.onGround = true;
     p.running = false;
+    // a grenade: thrown along the aim, it bursts where it lands or at a wall
+    if (p.boom && --p.boom.t <= 0) p.boom = null;
+    if (this.pressed(p, Input.B2) && p.bombs > 0 && !p.grenade) {
+      p.bombs--;
+      p.grenade = { x: p.x, y: (p.y >> 4) - TOP_MID, dx: p.aimX, dy: p.aimY, t: 0 };
+    }
+    if (p.grenade) {
+      const gr = p.grenade;
+      gr.x += gr.dx * GRENADE_SPEED;
+      gr.y += gr.dy * GRENADE_SPEED;
+      gr.t++;
+      if (gr.t >= GRENADE_FUSE || this.isSolid(this.cellAt(gr.x, gr.y))) {
+        p.grenade = null;
+        p.boom = { x: gr.x, y: gr.y, t: BOOM_FRAMES };
+        this.events.push({ kind: "explosion", x: gr.x });
+        for (const e of this.enemies) if ((e.state === "walk" || e.state === "hit") && Math.abs(e.x - gr.x) <= GRENADE_X && Math.abs(e.fy - TOP_MID - gr.y) <= GRENADE_Y) this.damage(e, GRENADE_HITS, p);
+        for (const [cx, cy] of [[0, 0], [-16, 0], [16, 0], [0, -16], [0, 16]] as const) {
+          const t = this.cellAt(gr.x + cx, gr.y + cy);
+          if (t === Tag.Crate || t === Tag.Breakable) this.hitCell(Math.floor((gr.x + cx) / CELL), Math.floor((gr.y + cy) / CELL), GRENADE_HITS, p);
+        }
+      }
+    }
     if (p.fireWait) p.fireWait--;
     const my = (p.y >> 4) - TOP_MID;
     if (p.pad & Input.B1 && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
@@ -1472,10 +1509,38 @@ export class Game {
       }
       e.flip = target.x < e.x;
       e.dir = e.flip ? -1 : 1;
+      // it fires at a player in sight, in the closest of 8 directions
+      if (this.rules.enemiesShoot && Math.abs(target.x - e.x) <= TOP_SIGHT && Math.abs(tfy - e.fy) <= TOP_SIGHT) {
+        if (e.fireWait) e.fireWait--;
+        else {
+          const ax = Math.abs(target.x - e.x);
+          const ay = Math.abs(tfy - e.fy);
+          const sx = ax * 2 >= ay ? Math.sign(target.x - e.x) : 0;
+          const sy = ay * 2 >= ax ? Math.sign(tfy - e.fy) : 0;
+          if (this.enemyShots.length < 8) this.enemyShots.push({ x: e.x, y: e.fy - TOP_MID, dir: sx, vy: sy });
+          e.fireWait = this.fireEvery;
+          this.events.push({ kind: "enemy_shot", x: e.x });
+        }
+      }
       if (this.rules.touchHurts)
         for (const p of this.players)
           if (p.active && !p.invulnerable && Math.abs(p.x - e.x) <= TOP_TOUCH_X && Math.abs((p.y >> 4) - e.fy) <= TOP_TOUCH_Y) this.hurt(p);
     }
+  }
+
+  /** The top-down enemies' shots: along their direction, hurting a player they meet, ended by walls and the screen's edge. */
+  private updateTopShots(): void {
+    this.enemyShots = this.enemyShots.filter((s) => {
+      s.x += s.dir * TOP_EN_SHOT;
+      s.y += (s.vy ?? 0) * TOP_EN_SHOT;
+      for (const p of this.players)
+        if (p.active && !p.invulnerable && Math.abs(p.x - s.x) <= TOP_EN_HIT_X && Math.abs((p.y >> 4) - TOP_MID - s.y) <= TOP_EN_HIT_Y) {
+          this.hurt(p);
+          return false;
+        }
+      if (this.isSolid(this.cellAt(s.x, s.y))) return false;
+      return s.x >= this.camX - 32 && s.x <= this.camX + SCREEN_W + 32 && s.y >= this.camY - 32 && s.y <= this.camY + SCREEN_H + 32;
+    });
   }
 
   /** The top-down camera: on the players' middle both ways, a quarter of the way a frame, the players kept on the screen. */
@@ -1796,7 +1861,11 @@ export class Game {
   }
 
   private updateEnemies(): void {
-    if (this.rules.topdown) return this.updateChasers();
+    if (this.rules.topdown) {
+      this.updateChasers();
+      this.updateTopShots();
+      return;
+    }
     if (this.rules.crosshair) return this.updateTargets();
     if (this.rules.ship) return this.updateFliers();
     if (this.walkBand) return this.updateEnemiesInDepth();
@@ -2205,6 +2274,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     power: 0,
     aimX: 1,
     aimY: 0,
+    grenade: null,
+    boom: null,
   };
 }
 
@@ -2246,6 +2317,8 @@ function spawn(p: Player, x: number, fy: number): void {
   p.shotT = p.reloadT = 0;
   p.aimX = 1;
   p.aimY = 0;
+  p.grenade = null;
+  p.boom = null;
 }
 
 function num(v: unknown, fallback: number): number {

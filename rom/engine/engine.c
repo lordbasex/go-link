@@ -686,6 +686,17 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define TOP_MID 20
 #define TOP_TOUCH_X 14
 #define TOP_TOUCH_Y 10
+#define GRENADES 3
+#define GRENADE_SPEED 3
+#define GRENADE_FUSE 30
+#define GRENADE_HITS 2
+#define GRENADE_X 32
+#define GRENADE_Y 24
+#define BOOM_FRAMES 12
+#define TOP_SIGHT 160
+#define TOP_EN_SHOT 3
+#define TOP_EN_HIT_X 8
+#define TOP_EN_HIT_Y 12
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -725,6 +736,8 @@ struct player {
 	int cx, cy, shot_t, reload_t, bombs;        /* the light gun's crosshair (screen px), its flash, the reload, the bombs left */
 	int power;                                  /* the shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three */
 	int aim_x, aim_y;                           /* the top-down aim: -1, 0 or 1 each way (never both 0) */
+	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
+	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -1152,6 +1165,8 @@ static void player_spawn(struct player *p, s32 x, s32 fy)
 	p->shot_t = p->reload_t = 0;
 	p->aim_x = 1;
 	p->aim_y = 0;
+	p->grenade.live = 0;
+	p->boom.t = 0;
 }
 
 /* where place_near looks, in order */
@@ -1234,6 +1249,8 @@ static void player_join(int k)
 	player_spawn(p, x, fy);
 	p->energy = R->energy;
 	p->hurt = R->hurt_frames;
+	if (topdown)
+		p->bombs = GRENADES;
 	if (crosshair) {
 		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
@@ -2009,6 +2026,40 @@ static void walk_top(struct player *p)
 		p->flip = p->aim_x < 0;
 	p->on_ground = 1;
 	p->running = 0;
+	/* a grenade: thrown along the aim, it bursts where it lands or at a wall */
+	if (p->boom.t)
+		p->boom.t--;
+	if (PRESSED(p, BTN_2) && p->bombs > 0 && !p->grenade.live) {
+		p->bombs--;
+		p->grenade.live = 1;
+		p->grenade.x = p->x;
+		p->grenade.y = (p->y >> 4) - TOP_MID;
+		p->grenade.dx = p->aim_x;
+		p->grenade.dy = p->aim_y;
+		p->grenade.t = 0;
+	}
+	if (p->grenade.live) {
+		p->grenade.x += p->grenade.dx * GRENADE_SPEED;
+		p->grenade.y += p->grenade.dy * GRENADE_SPEED;
+		p->grenade.t++;
+		if (p->grenade.t >= GRENADE_FUSE || is_solid(cell_at(p->grenade.x, p->grenade.y))) {
+			static const s8 around5[5][2] = { { 0, 0 }, { -16, 0 }, { 16, 0 }, { 0, -16 }, { 0, 16 } };
+			s32 gx = p->grenade.x, gy = p->grenade.y;
+			p->grenade.live = 0;
+			p->boom.t = BOOM_FRAMES;
+			p->boom.x = gx;
+			p->boom.y = gy;
+			sfx(SFX_EXPLOSION, gx);
+			for (i = 0; i < nen; i++)
+				if ((en[i].state == EN_WALK || en[i].state == EN_HIT) && iabs(en[i].x - gx) <= GRENADE_X && iabs(en[i].fy - TOP_MID - gy) <= GRENADE_Y)
+					en_damage(i, GRENADE_HITS, p);
+			for (i = 0; i < 5; i++) {
+				int t = cell_at(gx + around5[i][0], gy + around5[i][1]);
+				if (t == T_CRATE || t == T_BREAKABLE)
+					hit_cell((int)((gx + around5[i][0]) >> 4), (int)((gy + around5[i][1]) >> 4), GRENADE_HITS, p);
+			}
+		}
+	}
 	if (p->fire_wait)
 		p->fire_wait--;
 	my = (p->y >> 4) - TOP_MID;
@@ -2736,10 +2787,58 @@ static void update_chasers(void)
 		}
 		e->flip = pl[target].x < e->x;
 		e->dir = e->flip ? -1 : 1;
+		/* it fires at a player in sight, in the closest of 8 directions */
+		if (R->enemies_shoot && iabs(pl[target].x - e->x) <= TOP_SIGHT && iabs(tfy - e->fy) <= TOP_SIGHT) {
+			if (e->fire_wait)
+				e->fire_wait--;
+			else {
+				s32 ax = iabs(pl[target].x - e->x), ay = iabs(tfy - e->fy);
+				int sx = ax * 2 >= ay ? (pl[target].x > e->x) - (pl[target].x < e->x) : 0;
+				int sy = ay * 2 >= ax ? (tfy > e->fy) - (tfy < e->fy) : 0;
+				int live = 0, s;
+				for (s = 0; s < MAX_EN_SHOTS; s++)
+					live += en_shots[s].live != 0;
+				if (live < MAX_EN_SHOTS) {
+					for (s = 0; en_shots[s].live; s++)
+						;
+					en_shots[s].live = 1;
+					en_shots[s].x = (s16)e->x;
+					en_shots[s].y = (s16)(e->fy - TOP_MID);
+					en_shots[s].dir = (s16)sx;
+					en_shots[s].vy = (s16)sy;
+				}
+				e->fire_wait = ENEMY_FIRE_EVERY;
+				sfx(SFX_SHOT, e->x);
+			}
+		}
 		if (R->touch_hurts)
 			for (k = 0; k < nplayers; k++)
 				if (pl[k].active && !pl[k].hurt && iabs(pl[k].x - e->x) <= TOP_TOUCH_X && iabs((pl[k].y >> 4) - e->fy) <= TOP_TOUCH_Y)
 					hurt(&pl[k], 0);
+	}
+}
+
+/* the top-down enemies' shots (engine/game.ts updateTopShots): along their
+   direction, hurting a player they meet, ended by walls and the screen's edge */
+static void update_top_shots(void)
+{
+	int i, k;
+	for (i = 0; i < MAX_EN_SHOTS; i++) {
+		struct bullet *s = &en_shots[i];
+		if (!s->live)
+			continue;
+		s->x += s->dir * TOP_EN_SHOT;
+		s->y += s->vy * TOP_EN_SHOT;
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			if (p->active && !p->hurt && iabs(p->x - s->x) <= TOP_EN_HIT_X && iabs((p->y >> 4) - TOP_MID - s->y) <= TOP_EN_HIT_Y) {
+				hurt(p, 0);
+				s->live = 0;
+				break;
+			}
+		}
+		if (s->live && (is_solid(cell_at(s->x, s->y)) || s->x < cam_x - 32 || s->x > cam_x + SCREEN_W + 32 || s->y < cam_y - 32 || s->y > cam_y + SCREEN_H + 32))
+			s->live = 0;
 	}
 }
 
@@ -2748,6 +2847,7 @@ static void update_enemies(int playing)
 	int i, k;
 	if (topdown) {
 		update_chasers();
+		update_top_shots();
 		return;
 	}
 	if (crosshair) {
@@ -3202,6 +3302,14 @@ static void draw_shots(struct player *p)
 			put_sprite(p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (p->shots[i].dir < 0 ? 0x20 : 0)));
 	if (p->rocket.live)
 		put_sprite(p->rocket.x - cam_x, p->rocket.y - cam_y, TILE_ROCKET, (u16)(PAL_ROCKET | (p->rocket.dir < 0 ? 0x20 : 0) | (1 << 8)));
+	/* the top-down grenade in flight and its burst: four flashes spreading out */
+	if (p->grenade.live)
+		put_sprite(p->grenade.x - cam_x - 8, p->grenade.y - cam_y - 8, TILE_BULLET, PAL_BULLET);
+	if (p->boom.t) {
+		int r = 4 + (BOOM_FRAMES - p->boom.t) * 2, k;
+		for (k = 0; k < 4; k++)
+			put_sprite(p->boom.x - cam_x - 8 + (k == 0 ? -r : k == 1 ? r : 0), p->boom.y - cam_y - 8 + (k == 2 ? -r : k == 3 ? r : 0), (u16)(TILE_CROSS + 4), PAL_CROSS);
+	}
 	/* the thrown knife at hand height, its blade first (mirrored one pixel over, as play mode draws it) */
 	if (p->blade.live)
 		put_sprite(p->blade.x - cam_x - (p->blade.dir < 0 ? 7 : 8), p->blade.fy - 37 - cam_y, TILE_KNIFE, (u16)(PAL_PICKUPS | (p->blade.dir < 0 ? 0x20 : 0)));
@@ -3536,9 +3644,9 @@ static void hud(void)
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			for (e = 0; e < 9 && e < room; e++)
 				put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
-			/* the shooter: its bombs under the energy */
-			if (ship)
-				for (e = 0; e < BOMBS && e < room; e++)
+			/* the shooter's bombs and the top-down grenades under the energy */
+			if (ship || topdown)
+				for (e = 0; e < (topdown ? GRENADES : BOMBS) && e < room; e++)
 					put_char(col + 3 + e, 2, e < p->bombs ? 'O' : ' ', INK_WHITE);
 			/* the light gun: the clip under the energy, or a prompt to reload (B2) */
 			if (crosshair) {
@@ -3561,7 +3669,7 @@ static void hud(void)
 		} else {
 			const struct line *l = credits || free_play() ? (has_join ? &join : 0) : (has_coin ? &coin : 0);
 			blank(col + 3, 1, room);
-			if (crosshair || ship)
+			if (crosshair || ship || topdown)
 				blank(col + 3, 2, room < CLIP + 1 + BOMBS ? room : CLIP + 1 + BOMBS);
 			if (l && ((frame_count / 20) & 1))
 				print_n(col + 3, 0, l->s, l->len < room ? l->len : room, INK_WHITE);

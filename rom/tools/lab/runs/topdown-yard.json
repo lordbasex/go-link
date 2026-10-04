@@ -1,18 +1,19 @@
 {
  "name": "topdown-yard",
- "description": "The top-down run and gun (WM_ROM_OUT/topdown of rom.test.tsx, rom/topdownFixture.ts: a yard three screens wide and three tall, walled around, with pillars, six enemies that come at the player, two prisoners and the exit in the far corner). Player 1, steered by a bot in play mode (its inputs, frame by frame), walks in 8 directions, lines up with each enemy and fires along its aim, goes around the pillars, frees both prisoners and walks into the exit once every enemy is down, which clears the level. Play mode gives the same player, enemies, score and camera (both ways) every frame.",
+ "description": "The top-down run and gun (WM_ROM_OUT/topdown of rom.test.tsx, rom/topdownFixture.ts: a yard three screens wide and three tall, walled around, with pillars, six enemies that come at the player and fire, two prisoners and the exit in the far corner). Player 1, steered by a bot in play mode (its inputs, frame by frame), throws a grenade at the first enemy that comes close, lines up with each enemy and fires along its aim, takes one enemy shot, goes around the pillars, frees both prisoners and walks into the exit once every enemy is down, which clears the level. Play mode gives the same player, enemies, score and camera (both ways) every frame.",
  "frames": 2239,
  "checkpoints": [
-  500,
-  1000,
+  262,
+  800,
+  1090,
   1500,
   2150
  ],
  "expect": [
   {
-   "frame": 800,
+   "frame": 300,
    "path": "players.0.x",
-   "equals": 505
+   "equals": 209
   },
   {
    "frame": 800,
@@ -20,19 +21,14 @@
    "equals": 195
   },
   {
-   "frame": 1500,
-   "path": "players.0.score",
-   "equals": 3500
+   "frame": 1100,
+   "path": "players.0.energy",
+   "equals": 2
   },
   {
    "frame": 2150,
    "path": "players.0.score",
    "equals": 5000
-  },
-  {
-   "frame": 2150,
-   "path": "players.0.energy",
-   "equals": 3
   }
  ],
  "steps": [
@@ -62,6 +58,24 @@
   },
   {
    "from": 186,
+   "to": 253,
+   "port": 1,
+   "buttons": [
+    "right",
+    "b1"
+   ]
+  },
+  {
+   "from": 254,
+   "to": 254,
+   "port": 1,
+   "buttons": [
+    "right",
+    "b2"
+   ]
+  },
+  {
+   "from": 255,
    "to": 347,
    "port": 1,
    "buttons": [
