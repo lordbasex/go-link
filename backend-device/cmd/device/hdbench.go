@@ -24,7 +24,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	_ "image/jpeg"
@@ -139,12 +138,6 @@ func loadPicture(path string) (image.Image, error) {
 	defer f.Close()
 	img, _, err := image.Decode(f)
 	return img, err
-}
-
-func cpuTime() time.Duration {
-	var ru syscall.Rusage
-	_ = syscall.Getrusage(syscall.RUSAGE_SELF, &ru)
-	return time.Duration(ru.Utime.Nano() + ru.Stime.Nano())
 }
 
 func hdRun(size hdSize, enc string, far, play image.Image, frames, fps, threads, cpuUsed int) (hdResult, error) {
