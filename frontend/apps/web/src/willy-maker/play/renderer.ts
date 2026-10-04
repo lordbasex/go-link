@@ -441,7 +441,7 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     else box(ctx, v.x, v.fy, 14, h, ART.windowWarm);
   } });
   for (const e of game.enemies) actors.push({ fy: e.fy, draw: () => {
-    if (e.state === "off") return;
+    if (e.state === "off" || e.state === "hidden") return;
     const en = e.boss ? (sprites?.boss ?? sprites?.enemy) : sprites?.enemy;
     const anim = e.state === "down" || e.state === "fall" ? "defeated" : e.state === "hit" || e.state === "held" ? "hit" : e.state === "attack" || e.fireWait > 80 ? "shoot" : "walk";
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : 1;
@@ -622,6 +622,8 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);
+    // the light gun's bombs (B3), as the ROM's Os
+    if (game.rules.crosshair) ctx.fillText("O".repeat(p.bombs), x + 62, 12);
   }
   // the platformer's coins taken (T-22)
   if (game.coinTotal) {

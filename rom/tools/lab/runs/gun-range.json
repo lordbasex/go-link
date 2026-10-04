@@ -1,22 +1,33 @@
 {
  "name": "gun-range",
- "description": "The light gun (WM_ROM_OUT/gun of rom.test.tsx, rom/gunFixture.ts: the spec level with the light gun's rules and a scene of two 4-hit targets behind a camera lock at x 700). Player 1's crosshair, steered by a bot in play mode (its inputs, frame by frame), shoots the targets as the camera moves by itself, reloads with B2, holds at the lock until the scene is down and reaches the end of the route, which clears the level. Play mode gives the same targets, energy and camera every frame.",
+ "description": "The light gun (WM_ROM_OUT/gun of rom.test.tsx, rom/gunFixture.ts: the spec level with the light gun's rules, a scene of two 4-hit targets behind a camera lock at x 700, and phase 2's pop-up targets). Player 1's crosshair, steered by a bot in play mode (its inputs, frame by frame), shoots the targets as the camera moves by itself, drops a bomb when two pop-up targets show together, reloads with B2, holds at the lock until the scene is down, lets a target that stays 0.2 s leave unshot and reaches the end of the route, which clears the level. Play mode gives the same targets, energy and camera every frame.",
  "frames": 2591,
  "checkpoints": [
-  767,
+  535,
   1544,
   1600,
   1629,
+  2095,
   2400
  ],
  "expect": [
+  {
+   "frame": 535,
+   "path": "enemies.5.state",
+   "equals": "down"
+  },
+  {
+   "frame": 535,
+   "path": "enemies.6.state",
+   "equals": "down"
+  },
   {
    "frame": 1544,
    "path": "enemies.3.state",
    "equals": "down"
   },
   {
-   "frame": 1600,
+   "frame": 1582,
    "path": "cam.x",
    "equals": 700
   },
@@ -29,6 +40,11 @@
    "frame": 1720,
    "path": "cam.x",
    "equals": 746
+  },
+  {
+   "frame": 2102,
+   "path": "enemies.7.state",
+   "equals": "off"
   }
  ],
  "steps": [
@@ -49,8 +65,33 @@
    ]
   },
   {
+   "from": 523,
+   "to": 523,
+   "port": 1,
+   "buttons": [
+    "right",
+    "up"
+   ]
+  },
+  {
+   "from": 524,
+   "to": 532,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 533,
+   "to": 533,
+   "port": 1,
+   "buttons": [
+    "b3"
+   ]
+  },
+  {
    "from": 689,
-   "to": 713,
+   "to": 714,
    "port": 1,
    "buttons": [
     "right",
@@ -58,33 +99,32 @@
    ]
   },
   {
-   "from": 714,
-   "to": 760,
+   "from": 715,
+   "to": 752,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 761,
-   "to": 761,
-   "port": 1,
-   "buttons": [
-    "right",
-    "b1"
-   ]
-  },
-  {
-   "from": 763,
-   "to": 763,
+   "from": 753,
+   "to": 753,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 765,
-   "to": 765,
+   "from": 755,
+   "to": 755,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 757,
+   "to": 757,
    "port": 1,
    "buttons": [
     "b1"
@@ -101,6 +141,23 @@
   },
   {
    "from": 1019,
+   "to": 1022,
+   "port": 1,
+   "buttons": [
+    "up"
+   ]
+  },
+  {
+   "from": 1023,
+   "to": 1023,
+   "port": 1,
+   "buttons": [
+    "left",
+    "up"
+   ]
+  },
+  {
+   "from": 1024,
    "to": 1028,
    "port": 1,
    "buttons": [
@@ -622,7 +679,50 @@
    ]
   },
   {
+   "from": 2089,
+   "to": 2090,
+   "port": 1,
+   "buttons": [
+    "left",
+    "down"
+   ]
+  },
+  {
+   "from": 2091,
+   "to": 2094,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2095,
+   "to": 2095,
+   "port": 1,
+   "buttons": [
+    "left",
+    "down"
+   ]
+  },
+  {
+   "from": 2096,
+   "to": 2100,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
    "from": 2195,
+   "to": 2197,
+   "port": 1,
+   "buttons": [
+    "right",
+    "down"
+   ]
+  },
+  {
+   "from": 2198,
    "to": 2202,
    "port": 1,
    "buttons": [
@@ -640,49 +740,15 @@
   },
   {
    "from": 2204,
+   "to": 2207,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 2208,
    "to": 2208,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 2209,
-   "to": 2209,
-   "port": 1,
-   "buttons": [
-    "left",
-    "down"
-   ]
-  },
-  {
-   "from": 2210,
-   "to": 2214,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 2215,
-   "to": 2215,
-   "port": 1,
-   "buttons": [
-    "left",
-    "down"
-   ]
-  },
-  {
-   "from": 2216,
-   "to": 2219,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 2220,
-   "to": 2220,
    "port": 1,
    "buttons": [
     "down",
@@ -690,24 +756,24 @@
    ]
   },
   {
-   "from": 2221,
-   "to": 2221,
+   "from": 2209,
+   "to": 2209,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 2222,
-   "to": 2222,
+   "from": 2210,
+   "to": 2210,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 2224,
-   "to": 2224,
+   "from": 2212,
+   "to": 2212,
    "port": 1,
    "buttons": [
     "b1"

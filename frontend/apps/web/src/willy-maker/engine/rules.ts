@@ -362,3 +362,14 @@ export const HOSTAGE_H = 36;
 export const AIM_FRAMES = 60;
 export const TARGET_REST = 120;
 export const ROUTE_STEP = 2;
+/**
+ * The light gun's phase 2: a target may wait hidden until it has been on
+ * the screen for its `appear` seconds, and leave (missed, no points) after
+ * `stay` seconds there; B3 drops one of BOMBS bombs, which takes down
+ * every target on the screen.
+ */
+export const BOMBS = 2;
+/** Seconds of a target's appear and stay, in frames (play mode and rom/pack.ts alike). */
+export function secondsToFrames(s: unknown): number {
+  return typeof s === "number" && Number.isFinite(s) && s > 0 ? Math.min(32767, Math.round(s * 60)) : 0;
+}

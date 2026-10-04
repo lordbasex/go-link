@@ -13,7 +13,7 @@ import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, 
 import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
-import { BOSS_HP, difficultyOf, rulesWith } from "../engine/rules";
+import { BOSS_HP, difficultyOf, rulesWith, secondsToFrames } from "../engine/rules";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
@@ -414,6 +414,7 @@ export function packGame(
   const startY = [-1, -1, -1, -1];
   let exit: [number, number, number, number] = [0, 0, 0, 0];
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const crosshairRule = rulesWith(project.settings.rules).crosshair;
   for (const o of objects) {
     switch (o.type) {
       case "player_start": {
@@ -427,7 +428,9 @@ export function packGame(
       case "enemy": {
         enemyKinds.push(String(o.kind ?? ""));
         const patrol = num(o.patrol, 6 * CELL);
-        enemies.push([o.x, o.y, Math.round(o.x - patrol / 2), Math.round(o.x + patrol / 2), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
+        // the light gun's targets carry when they show and leave (frames) instead of a patrol
+        if (crosshairRule) enemies.push([o.x, o.y, secondsToFrames(o.appear), secondsToFrames(o.stay), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
+        else enemies.push([o.x, o.y, Math.round(o.x - patrol / 2), Math.round(o.x + patrol / 2), num(o.hp, 0), o.facing === "right" ? 1 : -1]);
         break;
       }
       case "civilian":

@@ -73,6 +73,8 @@ import {
   AIM_FRAMES,
   TARGET_REST,
   ROUTE_STEP,
+  BOMBS,
+  secondsToFrames,
   THROW_DIST,
   LAND_AFTER,
   LAND_FRAMES,
@@ -166,9 +168,11 @@ export interface Player {
   cy: number;
   shotT: number;
   reloadT: number;
+  /** The light gun's bombs left (B3). */
+  bombs: number;
 }
 
-export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held";
+export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
 
 export interface Enemy {
   name: string;
@@ -189,6 +193,10 @@ export interface Enemy {
   lane: number;
   /** A boss (phase 4, kind brawler): tougher, never grabbed, quicker to strike again. */
   boss: boolean;
+  /** The light gun: frames on the screen before it shows (hidden until then) and before it leaves (0: never), and frames it has been on it. */
+  appear: number;
+  stay: number;
+  shown: number;
 }
 
 export interface Civilian {
@@ -435,7 +443,11 @@ export class Game {
             maxHp: num(o.hp, this.rules.enemyHp),
             lane: (this.enemies.length % 3) - 1,
             boss: false,
+            appear: this.rules.crosshair ? secondsToFrames(o.appear) : 0,
+            stay: this.rules.crosshair ? secondsToFrames(o.stay) : 0,
+            shown: 0,
           });
+          if (this.enemies[this.enemies.length - 1]!.appear) this.enemies[this.enemies.length - 1]!.state = "hidden";
           break;
         }
         case "boss":
@@ -457,6 +469,9 @@ export class Game {
               maxHp: num(o.hp, BOSS_HP),
               lane: (this.enemies.length % 3) - 1,
               boss: true,
+              appear: 0,
+              stay: 0,
+              shown: 0,
             });
           break;
         case "civilian":
@@ -704,6 +719,7 @@ export class Game {
       p.cx = (SCREEN_W >> 1) + (i * 48 - 72);
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
       p.ammo = CLIP;
+      p.bombs = BOMBS;
     }
     this.events.push({ kind: "join", player: i });
   }
@@ -992,6 +1008,14 @@ export class Game {
       p.reloadT = RELOAD_FRAMES;
       return;
     }
+    // a bomb: every target on the screen goes down
+    if (this.pressed(p, Input.B3) && p.bombs > 0) {
+      p.bombs--;
+      this.events.push({ kind: "explosion", x: this.camX + (SCREEN_W >> 1) });
+      for (const e of this.enemies)
+        if ((e.state === "walk" || e.state === "hit" || e.state === "attack") && e.x >= this.camX && e.x <= this.camX + SCREEN_W) this.damage(e, e.hp, p);
+      return;
+    }
     if (this.pressed(p, Input.B1) && p.ammo > 0) {
       p.ammo--;
       p.shotT = SHOT_FLASH;
@@ -1026,8 +1050,23 @@ export class Game {
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
       e.t++;
+      const onScreen = e.x >= this.camX && e.x <= this.camX + SCREEN_W;
+      if (e.state === "hidden") {
+        // it shows once it has been on the screen for its appear frames
+        if (onScreen && ++e.shown >= e.appear) {
+          e.state = "walk";
+          e.t = 0;
+          e.shown = 0;
+        }
+        continue;
+      }
+      // a target with a stay leaves when its time on the screen is up (missed)
+      if (e.stay && onScreen && (e.state === "walk" || e.state === "attack") && ++e.shown >= e.stay) {
+        e.state = "off";
+        continue;
+      }
       if (e.state === "walk") {
-        if (e.x < this.camX || e.x > this.camX + SCREEN_W) continue;
+        if (!onScreen) continue;
         e.flip = e.x > this.camX + (SCREEN_W >> 1);
         if (e.fireWait) e.fireWait--;
         else if (this.rules.enemiesShoot) {
@@ -1328,7 +1367,7 @@ export class Game {
   // ------------------------------------------------------------ actors
 
   private alive(e: Enemy): boolean {
-    return e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall" || e.state === "held";
+    return e.state === "walk" || e.state === "hit" || e.state === "attack" || e.state === "fall" || e.state === "held" || e.state === "hidden";
   }
 
   /** The enemy last hit and frames left to show its health (the beat 'em up's bar). */
@@ -1756,6 +1795,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     cy: 0,
     shotT: 0,
     reloadT: 0,
+    bombs: 0,
   };
 }
 

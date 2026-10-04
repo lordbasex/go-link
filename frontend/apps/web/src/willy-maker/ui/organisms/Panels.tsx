@@ -472,10 +472,21 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
               <option value="right">{t.inspector.right}</option>
             </select>
           </PropRow>
-          {o.type === "enemy" && (
+          {o.type === "enemy" && !rulesWith(store.project.settings.rules).crosshair && (
             <PropRow label={t.inspector.patrol}>
               <NumberInput label={t.inspector.patrol} value={Number(o.patrol ?? 96)} min={0} max={1024} step={16} onChange={(patrol) => set({ patrol })} />
             </PropRow>
+          )}
+          {o.type === "enemy" && rulesWith(store.project.settings.rules).crosshair && (
+            <>
+              <PropRow label={t.inspector.appear}>
+                <NumberInput label={t.inspector.appear} value={Number(o.appear ?? 0)} min={0} max={60} step={0.5} onChange={(appear) => set({ appear })} />
+              </PropRow>
+              <PropRow label={t.inspector.stay}>
+                <NumberInput label={t.inspector.stay} value={Number(o.stay ?? 0)} min={0} max={60} step={0.5} onChange={(stay) => set({ stay })} />
+              </PropRow>
+              <p className="wm-dim wm-small">{t.inspector.timingHelp}</p>
+            </>
           )}
           <PropRow label={t.inspector.hp}>
             <NumberInput label={t.inspector.hp} value={Number(o.hp ?? (o.type === "boss" ? BOSS_HP : rulesWith(store.project.settings.rules).enemyHp))} min={1} max={99} onChange={(hp) => set({ hp })} />

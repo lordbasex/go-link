@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, CLIP, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, BOMBS, CLIP, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1003,6 +1003,35 @@ describe("the light gun (genres.md, phase 1)", () => {
     const lives = p.lives;
     run(g, 400 + AIM_FRAMES, 0);
     expect(p.lives).toBeLessThan(lives);
+  });
+
+  it("a timed target hides until its time on the screen, then leaves unshot after its stay", () => {
+    const g = range([{ ...target(200), appear: 1, stay: 2 } as LevelObject], false);
+    const e = g.enemies[0]!;
+    expect(e.state).toBe("hidden");
+    run(g, 59, 0);
+    expect(e.state).toBe("hidden");
+    run(g, 1, 0);
+    expect(e.state).toBe("walk");
+    run(g, 119, 0);
+    expect(e.state).toBe("walk");
+    run(g, 1, 0);
+    expect(e.state).toBe("off");
+    expect(g.players[0]!.score).toBe(0);
+  });
+
+  it("a bomb takes down every target on the screen, and there are BOMBS of them", () => {
+    const g = range([{ ...target(150), hp: 3 } as LevelObject, target(300), target(900)], false);
+    const p = g.players[0]!;
+    expect(p.bombs).toBe(BOMBS);
+    run(g, 1, Input.B3);
+    expect(g.enemies.map((e) => e.state)).toEqual(["down", "down", "walk"]);
+    expect(p.bombs).toBe(BOMBS - 1);
+    run(g, 1, 0);
+    run(g, 1, Input.B3);
+    run(g, 1, 0);
+    run(g, 1, Input.B3);
+    expect(p.bombs).toBe(0);
   });
 
   it("the camera moves by itself, holds at a lock until its targets are down, and the route's end clears the level", () => {

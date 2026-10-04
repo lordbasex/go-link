@@ -653,6 +653,7 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define AIM_FRAMES 60
 #define TARGET_REST 120
 #define ROUTE_STEP 2
+#define BOMBS 2
 #define KICK_REACH 24
 #define THUMBS_FRAMES 45
 #define YAWN_AFTER 300
@@ -688,7 +689,7 @@ struct player {
 	int punch_t, combo, combo_t, struck; /* the beat 'em up's fight: the punch, its place in the combo, the window to chain, landed */
 	int grabbed, grab_t;                 /* the enemy held (index + 1, 0 none) and frames held */
 	struct { int live, dir; s32 x, fy; } blade; /* the thrown knife (phase 4), along the lane it left from */
-	int cx, cy, shot_t, reload_t;               /* the light gun's crosshair (screen px), its flash, the reload */
+	int cx, cy, shot_t, reload_t, bombs;        /* the light gun's crosshair (screen px), its flash, the reload, the bombs left */
 	u32 t, score;
 	struct bullet shots[SHOTS];
 	struct rocket rocket;
@@ -710,12 +711,13 @@ static s32 in_walk(s32 fy)
 }
 static u16 start_now, start_last; /* bit k: port k's Start */
 
-enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN, EN_ATTACK, EN_FALL, EN_HELD };
+enum { EN_OFF, EN_WALK, EN_HIT, EN_DOWN, EN_ATTACK, EN_FALL, EN_HELD, EN_HIDDEN };
 static struct enemy {
 	s32 x, fy, min, max;
 	int state, hp, flip, dir, fire_wait;
 	int lane; /* the beat 'em up: its depth offset beside a player (-1, 0, 1) */
 	int boss; /* the beat 'em up's brawler (phase 4): tougher, never grabbed, quicker to strike again */
+	int appear, stay, shown; /* the light gun: frames on the screen before it shows and before it leaves (0 never), and frames there */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -1043,7 +1045,7 @@ static int hit_cell(int c, int r, int damage, struct player *by)
 
 static int en_alive(int i)
 {
-	return en[i].state == EN_WALK || en[i].state == EN_HIT || en[i].state == EN_ATTACK || en[i].state == EN_FALL || en[i].state == EN_HELD;
+	return en[i].state == EN_WALK || en[i].state == EN_HIT || en[i].state == EN_ATTACK || en[i].state == EN_FALL || en[i].state == EN_HELD || en[i].state == EN_HIDDEN;
 }
 
 static int enemies_left(void)
@@ -1181,6 +1183,7 @@ static void player_join(int k)
 		p->cx = (SCREEN_W >> 1) + (k * 48 - 72);
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
 		p->ammo = CLIP;
+		p->bombs = BOMBS;
 	}
 }
 
@@ -1287,6 +1290,12 @@ static void game_reset(void)
 		en[i].t = (u32)i * 11;
 		en[i].fire_wait = ENEMY_FIRE_EVERY;
 		en[i].lane = (i % 3) - 1;
+		/* the light gun's targets carry when they show and leave instead of a patrol */
+		en[i].appear = crosshair && !en[i].boss ? o->a : 0;
+		en[i].stay = crosshair && !en[i].boss ? o->b : 0;
+		en[i].shown = 0;
+		if (en[i].appear > 0)
+			en[i].state = EN_HIDDEN;
 		en[i].look = actor_look(D->enemy_looks, i);
 	}
 	o = D_OBJ + D->n_enemies;
@@ -1766,6 +1775,18 @@ static void aim(struct player *p)
 		p->reload_t = RELOAD_FRAMES;
 		return;
 	}
+	/* a bomb: every target on the screen goes down */
+	if (PRESSED(p, BTN_3) && p->bombs > 0) {
+		int i;
+		p->bombs--;
+		sfx(SFX_EXPLOSION, cam_x + (SCREEN_W >> 1));
+		for (i = 0; i < nen; i++) {
+			struct enemy *e = &en[i];
+			if ((e->state == EN_WALK || e->state == EN_HIT || e->state == EN_ATTACK) && e->x >= cam_x && e->x <= cam_x + SCREEN_W)
+				en_damage(i, e->hp, p);
+		}
+		return;
+	}
 	if (PRESSED(p, BTN_1) && p->ammo > 0) {
 		p->ammo--;
 		p->shot_t = SHOT_FLASH;
@@ -2184,9 +2205,24 @@ static void update_targets(void)
 		last_hit_t--;
 	for (i = 0; i < nen; i++) {
 		struct enemy *e = &en[i];
+		int on_screen = e->x >= cam_x && e->x <= cam_x + SCREEN_W;
 		e->t++;
+		if (e->state == EN_HIDDEN) {
+			/* it shows once it has been on the screen for its appear frames */
+			if (on_screen && ++e->shown >= e->appear) {
+				e->state = EN_WALK;
+				e->t = 0;
+				e->shown = 0;
+			}
+			continue;
+		}
+		/* a target with a stay leaves when its time on the screen is up (missed) */
+		if (e->stay && on_screen && (e->state == EN_WALK || e->state == EN_ATTACK) && ++e->shown >= e->stay) {
+			e->state = EN_OFF;
+			continue;
+		}
 		if (e->state == EN_WALK) {
-			if (e->x < cam_x || e->x > cam_x + SCREEN_W)
+			if (!on_screen)
 				continue;
 			e->flip = e->x > cam_x + (SCREEN_W >> 1);
 			if (e->fire_wait)
@@ -2631,7 +2667,7 @@ static void draw_enemy(int i)
 {
 	struct enemy *e = &en[i];
 	int sx = (int)e->x - cam_x, sy = (int)e->fy - cam_y;
-	if (e->state == EN_OFF || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
+	if (e->state == EN_OFF || e->state == EN_HIDDEN || sx < -60 || sx > SCREEN_W + 60 || sy < -10 || sy > SCREEN_H + 60)
 		return;
 	if (e->look) {
 		/* the game's own enemy (T-30): walk, a shot just fired, hit, its death (wm_look's run, gun, land, victory) */
@@ -2919,6 +2955,9 @@ static void hud(void)
 			if (crosshair) {
 				for (e = 0; e < CLIP && e < room; e++)
 					put_char(col + 3 + e, 2, e < p->ammo ? 'I' : ' ', INK_ACCENT);
+				/* the bombs (B3) after the clip */
+				for (e = 0; e < BOMBS && CLIP + 1 + e < room; e++)
+					put_char(col + 3 + CLIP + 1 + e, 2, e < p->bombs ? 'O' : ' ', INK_WHITE);
 				if (!p->ammo && room >= 6) {
 					if (p->reload_t)
 						print(col + 3, 2, "...   ", INK_WHITE);
@@ -2934,7 +2973,7 @@ static void hud(void)
 			const struct line *l = credits || free_play() ? (has_join ? &join : 0) : (has_coin ? &coin : 0);
 			blank(col + 3, 1, room);
 			if (crosshair)
-				blank(col + 3, 2, room < CLIP ? room : CLIP);
+				blank(col + 3, 2, room < CLIP + 1 + BOMBS ? room : CLIP + 1 + BOMBS);
 			if (l && ((frame_count / 20) & 1))
 				print_n(col + 3, 0, l->s, l->len < room ? l->len : room, INK_WHITE);
 			else
