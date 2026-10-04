@@ -2165,6 +2165,16 @@ static int dot_at(int i)
 	return (dots[i >> 3] >> (i & 7)) & 1;
 }
 
+/* a maze dot on the text layer, never over the screen's own text (the HUD's
+   lines share the bottom rows): a dot goes only on a blank cell, and only a dot
+   is wiped */
+static void dot_char(int x, int y, int on)
+{
+	volatile u16 *c = scroll1_cell(x + SCREEN_X0 / 8, y + SCREEN_Y0 / 8);
+	if (on ? c[0] == 0x0020 : c[0] == FONT_CODE('.'))
+		put_char(x, y, on ? '.' : ' ', INK_ACCENT);
+}
+
 /* the maze's player (engine/game.ts walkMaze): MAZE_SPEED px a frame, turning
    the way the stick last asked for at a cell's middle (or back at once),
    stopping at a wall, eating the dot of the cell it is in */
@@ -2210,7 +2220,7 @@ static void walk_maze(struct player *p)
 		dots[i >> 3] &= (u8)~(1 << (i & 7));
 		dots_left--;
 		p->score += DOT_SCORE;
-		put_char((i % cols) * 2 + 1, (i / cols) * 2, ' ', INK_ACCENT);
+		dot_char((i % cols) * 2 + 1, (i / cols) * 2, 0);
 		sfx(SFX_COIN, p->x);
 	}
 	for (i = 0; i < npickups; i++) {
@@ -2238,7 +2248,7 @@ static void maze_draw_dots(void)
 	i = dots_row * cols;
 	for (c = 0; c < cols; c++, i++)
 		if (dot_at(i))
-			put_char(c * 2 + 1, dots_row * 2, '.', INK_ACCENT);
+			dot_char(c * 2 + 1, dots_row * 2, 1);
 	if (++dots_row >= rows)
 		dots_dirty = 0;
 }
