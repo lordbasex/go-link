@@ -273,15 +273,17 @@ async function wake(p: Page) {
 }
 
 /**
- * Clicks one of the video's controls. They hide again after 3 s without
- * the mouse moving, which a slow runner can spend between waking them and
- * the click, so both are tried again together until the click lands.
+ * Clicks one of the video's controls, once. They hide again after 3 s
+ * without the mouse moving, which a slow runner can spend between waking
+ * them and a pointer click (the video then takes the click, and retrying
+ * could land a second click that closes what the first one opened). So the
+ * controls are woken and seen, then the button gets a single click event.
  */
 async function clickControl(p: Page, name: string) {
-  await expect(async () => {
-    await wake(p);
-    await p.getByRole("button", { name }).click({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  const button = p.getByRole("button", { name });
+  await wake(p);
+  await expect(button).toBeVisible();
+  await button.dispatchEvent("click");
 }
 
 /** A new invitation from the owner's room: the 9 digit code and its PIN. */
