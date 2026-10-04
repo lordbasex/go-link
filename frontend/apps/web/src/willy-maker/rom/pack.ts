@@ -481,7 +481,7 @@ export function packGame(
         if (o.kind === "brawler") {
           enemyKinds.push("brawler");
           enemies.push([o.x, o.y, o.x - 3 * CELL, o.x + 3 * CELL, num(o.hp, BOSS_HP), o.facing === "right" ? 2 : -2]);
-        } else if (o.kind === "gunship" && shipRule && !rulesWith(project.settings.rules).vertical) {
+        } else if (o.kind === "gunship" && shipRule) {
           // the shooter's gunship: a boss row whose path is 3
           enemyKinds.push("gunship");
           enemies.push([o.x, o.y, 3, 0, num(o.hp, GUNSHIP_HP), -2]);

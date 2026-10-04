@@ -1174,6 +1174,25 @@ describe("the vertical shooter (genres.md, phase 1)", () => {
     expect(p.shots[0]!.x).toBeLessThan(p.shots[2]!.x);
   });
 
+  it("a lock holds the climb with the screen's top at its top until its enemies are down, and the gunship sways and fires down", () => {
+    const g = shaft([{ name: "lock", type: "camera_lock", x: 0, y: 100, w: 384, h: 224 } as LevelObject, { name: "boss", type: "boss", x: 192, y: 150, kind: "gunship" } as LevelObject]);
+    const e = g.enemies[0]!;
+    const xs = new Set<number>();
+    let down = 0;
+    for (let f = 0; f < 600; f++) {
+      run(g, 1, 0);
+      xs.add(e.x);
+      down = Math.max(down, ...g.enemyShots.map((b) => b.y - (e.fy - 20)));
+    }
+    expect(g.camY).toBe(100);
+    expect(g.outcome).toBe("playing");
+    expect(xs.size).toBeGreaterThan(20);
+    expect(down).toBeGreaterThan(40);
+    e.state = "off";
+    run(g, 2 * 100 + 4, 0);
+    expect(g.outcome).toBe("cleared");
+  });
+
   it("enemies come down from above: a wave sways across, a straight one does not", () => {
     const g = shaft([{ name: "w", type: "enemy", x: 120, y: 200, kind: "trooper", facing: "left", patrol: 0 } as LevelObject, { name: "s", type: "enemy", x: 260, y: 200, kind: "trooper", facing: "left", patrol: 0, path: "straight" } as LevelObject]);
     const [wave, straight] = g.enemies;

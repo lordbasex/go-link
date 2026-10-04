@@ -2445,9 +2445,45 @@ static void update_fliers(void)
 			continue;
 		if (vertical) {
 			/* the vertical shooter: from above the screen down, the wave and the dive across */
-			if (e->fy - FLY_MID + 16 < cam_y)
+			if (e->fy - FLY_MID + (e->path == 3 ? 32 : 16) < cam_y)
 				continue;
 			e->shown++;
+			if (e->path == 3) {
+				/* the gunship: down until it holds near the screen's top, swaying across, firing down */
+				s32 hold = cam_y + GUNSHIP_HOLD + FLY_MID;
+				if (e->fy < hold)
+					e->fy += FLY_SPEED;
+				else
+					e->fy = hold;
+				ph = e->shown & 255;
+				e->x = e->base_x + (((ph < 128 ? ph : 256 - ph) * 5) >> 3) - GUNSHIP_BOB;
+				if (e->fire_wait)
+					e->fire_wait--;
+				else {
+					int live = 0;
+					for (k = 0; k < MAX_EN_SHOTS; k++)
+						live += en_shots[k].live != 0;
+					if (live < MAX_EN_SHOTS) {
+						for (k = 0; en_shots[k].live; k++)
+							;
+						en_shots[k].live = 1;
+						en_shots[k].x = (s16)e->x;
+						en_shots[k].y = (s16)(e->fy - FLY_MID + 16);
+						en_shots[k].dir = 1;
+						en_shots[k].vy = 0;
+					}
+					e->fire_wait = GUNSHIP_FIRE;
+					sfx(SFX_SHOT, e->x);
+				}
+				for (k = 0; k < nplayers; k++) {
+					struct player *p = &pl[k];
+					if (!p->active || p->hurt)
+						continue;
+					if (iabs(cam_x + p->cx - e->x) <= GUNSHIP_HIT_X && iabs(cam_y + p->cy - (e->fy - FLY_MID)) <= GUNSHIP_HIT_Y)
+						hurt(p, 0);
+				}
+				continue;
+			}
 			e->fy += FLY_SPEED;
 			if (e->path == 1)
 				e->x = e->base_x;
@@ -2539,16 +2575,21 @@ static void update_fliers(void)
 		struct bullet *s = &en_shots[i];
 		if (!s->live)
 			continue;
-		s->x += s->dir * SHIP_SHOT_SPEED;
+		/* down the screen in the vertical shooter (its ships are tall: the box turns too), else left */
+		int bx = vertical ? SHIP_SHOT_Y : SHIP_SHOT_X, by = vertical ? SHIP_SHOT_X : SHIP_SHOT_Y;
+		if (vertical)
+			s->y += SHIP_SHOT_SPEED;
+		else
+			s->x += s->dir * SHIP_SHOT_SPEED;
 		for (k = 0; k < nplayers; k++) {
 			struct player *p = &pl[k];
-			if (p->active && !p->hurt && iabs(cam_x + p->cx - s->x) <= SHIP_SHOT_X && iabs(cam_y + p->cy - s->y) <= SHIP_SHOT_Y) {
+			if (p->active && !p->hurt && iabs(cam_x + p->cx - s->x) <= bx && iabs(cam_y + p->cy - s->y) <= by) {
 				hurt(p, 0);
 				s->live = 0;
 				break;
 			}
 		}
-		if (s->live && (is_solid(cell_at(s->x, s->y)) || s->x < cam_x - 32 || s->x > cam_x + SCREEN_W + 32))
+		if (s->live && (is_solid(cell_at(s->x, s->y)) || (vertical ? s->y > cam_y + SCREEN_H + 32 : s->x < cam_x - 32 || s->x > cam_x + SCREEN_W + 32)))
 			s->live = 0;
 	}
 }
@@ -2714,11 +2755,15 @@ static int active_lock(void)
 		int inside = 0;
 		if (lock_done[i])
 			continue;
-		/* camX + SCREEN_W < x + w / 2 in play mode, in whole numbers */
-		if (2 * (cam_x + SCREEN_W) < 2 * l->x + l->a || cam_x > l->x + l->a)
+		/* camX + SCREEN_W < x + w / 2 in play mode, in whole numbers; the vertical
+		   shooter's across the climb: the screen's top past the lock's middle */
+		if (vertical) {
+			if (2 * cam_y > 2 * l->y + l->b || cam_y + SCREEN_H < l->y)
+				continue;
+		} else if (2 * (cam_x + SCREEN_W) < 2 * l->x + l->a || cam_x > l->x + l->a)
 			continue;
 		for (k = 0; k < nen && !inside; k++)
-			inside = en_alive(k) && en[k].x >= l->x && en[k].x <= l->x + l->a;
+			inside = en_alive(k) && (vertical ? en[k].fy >= l->y && en[k].fy <= l->y + l->b : en[k].x >= l->x && en[k].x <= l->x + l->a);
 		if (!inside) {
 			lock_done[i] = 1;
 			continue;
@@ -2736,10 +2781,17 @@ static void update_route(int snap)
 	int lk;
 	if (vertical) {
 		/* the vertical shooter: from the level's bottom up, a pixel every ROUTE_STEP frames */
+		/* a lock holds the camera with the screen's top at the lock's top */
+		s32 min_y = 0;
 		cam_x = 0;
+		lk = active_lock();
+		if (lk >= 0) {
+			const struct wm_object *l = (const struct wm_object *)D->locks + lk;
+			min_y = l->y > 0 ? l->y : 0;
+		}
 		if (snap)
 			cam_y = level_h - SCREEN_H > 0 ? level_h - SCREEN_H : 0;
-		else if (plat_t % ROUTE_STEP == 0 && cam_y > 0)
+		else if (plat_t % ROUTE_STEP == 0 && cam_y > min_y)
 			cam_y--;
 		return;
 	}
@@ -3552,7 +3604,7 @@ static int play(int first)
 		if (outcome < 0)
 			soon_update();
 		/* the light gun: the level ends where the camera's route does, with no lock holding it */
-		if (outcome < 0 && (crosshair || ship) && (vertical ? cam_y <= 0 : cam_x >= level_w - SCREEN_W && active_lock() < 0)) {
+		if (outcome < 0 && (crosshair || ship) && (vertical ? cam_y <= 0 : cam_x >= level_w - SCREEN_W) && active_lock() < 0) {
 			int any = 0;
 			for (k = 0; k < nplayers; k++)
 				any |= pl[k].active;

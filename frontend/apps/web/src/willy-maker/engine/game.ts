@@ -514,7 +514,7 @@ export class Game {
               baseX: o.x,
             });
           // the horizontal shooter's boss
-          else if (o.kind === "gunship" && this.rules.ship && !this.rules.vertical)
+          else if (o.kind === "gunship" && this.rules.ship)
             this.enemies.push({
               name: o.name,
               kind: "gunship",
@@ -1176,8 +1176,11 @@ export class Game {
     if (this.rules.vertical) {
       // the vertical shooter: from the level's bottom up, a pixel every ROUTE_STEP frames
       this.camX = 0;
+      // a lock holds the camera with the screen's top at the lock's top
+      const vlock = this.activeLock();
+      const minY = vlock ? Math.max(0, vlock.y) : 0;
       if (snap) this.camY = Math.max(0, this.level.height - SCREEN_H);
-      else if (this.frame % ROUTE_STEP === 0 && this.camY > 0) this.camY--;
+      else if (this.frame % ROUTE_STEP === 0 && this.camY > minY) this.camY--;
       return;
     }
     const lock = this.activeLock();
@@ -1278,8 +1281,27 @@ export class Game {
       const lead = this.players.find((q) => q.active);
       if (this.rules.vertical) {
         // the vertical shooter: from above the screen down, the wave and the dive across
-        if (e.fy - FLY_MID + 16 < this.camY) continue;
+        if (e.fy - FLY_MID + (e.path === 3 ? 32 : 16) < this.camY) continue;
         e.shown++;
+        if (e.path === 3) {
+          // the gunship: down until it holds near the screen's top, swaying across, firing down
+          const hold = this.camY + GUNSHIP_HOLD + FLY_MID;
+          if (e.fy < hold) e.fy += FLY_SPEED;
+          else e.fy = hold;
+          const ph = e.shown & 255;
+          e.x = e.baseX + (((ph < 128 ? ph : 256 - ph) * 5) >> 3) - GUNSHIP_BOB;
+          if (e.fireWait) e.fireWait--;
+          else {
+            if (this.enemyShots.length < 8) this.enemyShots.push({ x: e.x, y: e.fy - FLY_MID + 16, dir: 1 });
+            e.fireWait = GUNSHIP_FIRE;
+            this.events.push({ kind: "enemy_shot", x: e.x });
+          }
+          for (const p of this.players) {
+            if (!p.active || p.invulnerable) continue;
+            if (Math.abs(this.camX + p.cx - e.x) <= GUNSHIP_HIT_X && Math.abs(this.camY + p.cy - (e.fy - FLY_MID)) <= GUNSHIP_HIT_Y) this.hurt(p);
+          }
+          continue;
+        }
         e.fy += FLY_SPEED;
         if (e.path === 1) e.x = e.baseX;
         else if (e.path === 2) {
@@ -1339,13 +1361,18 @@ export class Game {
     }
     // the gunship's shots, against the ships
     this.enemyShots = this.enemyShots.filter((s) => {
-      s.x += s.dir * SHIP_SHOT_SPEED;
+      // down the screen in the vertical shooter (its ships are tall: the box turns too), else left
+      if (this.rules.vertical) s.y += SHIP_SHOT_SPEED;
+      else s.x += s.dir * SHIP_SHOT_SPEED;
+      const bx = this.rules.vertical ? SHIP_SHOT_Y : SHIP_SHOT_X;
+      const by = this.rules.vertical ? SHIP_SHOT_X : SHIP_SHOT_Y;
       for (const p of this.players)
-        if (p.active && !p.invulnerable && Math.abs(this.camX + p.cx - s.x) <= SHIP_SHOT_X && Math.abs(this.camY + p.cy - s.y) <= SHIP_SHOT_Y) {
+        if (p.active && !p.invulnerable && Math.abs(this.camX + p.cx - s.x) <= bx && Math.abs(this.camY + p.cy - s.y) <= by) {
           this.hurt(p);
           return false;
         }
-      return !this.isSolid(this.cellAt(s.x, s.y)) && s.x >= this.camX - 32 && s.x <= this.camX + SCREEN_W + 32;
+      if (this.isSolid(this.cellAt(s.x, s.y))) return false;
+      return this.rules.vertical ? s.y <= this.camY + SCREEN_H + 32 : s.x >= this.camX - 32 && s.x <= this.camX + SCREEN_W + 32;
     });
   }
 
@@ -1817,8 +1844,11 @@ export class Game {
   activeLock(): (Rect & { name: string }) | undefined {
     return this.cameraLocks.find((l) => {
       if (l.done) return false;
-      if (this.camX + SCREEN_W < l.x + l.w / 2 || this.camX > l.x + l.w) return false;
-      const inside = this.enemies.some((e) => this.alive(e) && e.x >= l.x && e.x <= l.x + l.w);
+      // the vertical shooter's locks are across the climb: the screen's top past the lock's middle, enemies inside its height
+      if (this.rules.vertical) {
+        if (this.camY > l.y + l.h / 2 || this.camY + SCREEN_H < l.y) return false;
+      } else if (this.camX + SCREEN_W < l.x + l.w / 2 || this.camX > l.x + l.w) return false;
+      const inside = this.enemies.some((e) => this.alive(e) && (this.rules.vertical ? e.fy >= l.y && e.fy <= l.y + l.h : e.x >= l.x && e.x <= l.x + l.w));
       if (!inside) l.done = true;
       return inside;
     });
@@ -1923,7 +1953,7 @@ export class Game {
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
     if (this.rules.crosshair || this.rules.ship) {
-      const end = this.rules.vertical ? this.camY <= 0 : this.camX >= this.level.width - SCREEN_W && !this.activeLock();
+      const end = (this.rules.vertical ? this.camY <= 0 : this.camX >= this.level.width - SCREEN_W) && !this.activeLock();
       if (end && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });

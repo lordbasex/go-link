@@ -2,7 +2,7 @@
 
 // The vertical shooter's lab game (rom/tools/lab/runs/vertical-climb.json):
 // a shaft 1536 px tall the camera climbs, with blocks to fly around, drones
-// coming down on their paths and two power-ups.
+// coming down on their paths, two power-ups and the gunship at the top.
 
 import { applyAutoArt } from "../editor/autoArt";
 import { VERTICAL_RULES } from "../engine/rules";
@@ -31,5 +31,8 @@ export function verticalProject(): Project {
     items.push({ name: `drone_${x}_${y}`, type: "enemy", x, y, kind: "trooper", facing: "left", patrol: 0, path } as LevelObject);
   items.push({ name: "power_1", type: "pickup", x: 192, y: 1100, item: "power" } as LevelObject);
   items.push({ name: "power_2", type: "pickup", x: 240, y: 620, item: "power" } as LevelObject);
+  // phase 2: the gunship behind a camera lock at the top of the shaft
+  items.push({ name: "boss_lock", type: "camera_lock", x: 0, y: 0, w: 384, h: 224 } as LevelObject);
+  items.push({ name: "gunship", type: "boss", x: 192, y: 120, kind: "gunship", hp: 90 } as LevelObject);
   return p;
 }
