@@ -201,7 +201,7 @@ function drawWells(ctx: CanvasRenderingContext2D, game: Game): void {
     for (let r = 0; r < WELL_ROWS; r++)
       for (let c = 0; c < WELL_COLS; c++) {
         const v = w.cells[r * WELL_COLS + c]!;
-        if (v) gem(x0 + c * 16, WELL_Y + r * 16, v, w.marks[r * WELL_COLS + c] === 1 && flash === 1);
+        if (v) gem(x0 + c * 16, WELL_Y + r * 16, v, w.marks[r * WELL_COLS + c] !== 0 && flash === 1);
       }
     if (!w.clearT) for (let k = 0; k < 3; k++) if (w.row - 2 + k >= 0) gem(x0 + w.col * 16, WELL_Y + (w.row - 2 + k) * 16, w.piece[k]!);
     for (let k = 0; k < 3; k++) gem(x0 + WELL_COLS * 16 + 16, WELL_Y + k * 16, w.next[k]!);

@@ -216,6 +216,8 @@ export interface GameRules {
    * clear the level. Nobody walks and there are no enemies.
    */
   puzzle: boolean;
+  /** The puzzle's CPU rival (phase 2): while player 2 is not in, the CPU plays the second well. */
+  puzzleCpu: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -247,6 +249,7 @@ export const DEFAULT_RULES: GameRules = {
   topdown: false,
   maze: false,
   puzzle: false,
+  puzzleCpu: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -267,8 +270,8 @@ export const TOPDOWN_RULES: Partial<GameRules> = { topdown: true, weapons: false
 /** A new maze game's rules: chasers that hurt by touch, the level cleared by its dots (no exit). */
 export const MAZE_RULES: Partial<GameRules> = { maze: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: true };
 
-/** A new puzzle game's rules: wells of falling gems, no walking, no enemies, no exit. */
-export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
+/** A new puzzle game's rules: wells of falling gems, a CPU rival in the second well, no walking, no enemies, no exit. */
+export const PUZZLE_RULES: Partial<GameRules> = { puzzle: true, puzzleCpu: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -351,6 +354,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     topdown: bool(r.topdown, false),
     maze: bool(r.maze, false),
     puzzle: bool(r.puzzle, false),
+    puzzleCpu: bool(r.puzzleCpu, false),
   };
 }
 
@@ -574,3 +578,17 @@ export const GEM_SCORE = 10;
 export const PUZZLE_GOAL = 60;
 /** The gems' random sequence: a 32-bit LCG per well, seeded with PUZZLE_SEED + the player's index × 7919. */
 export const PUZZLE_SEED = 0x2545f491;
+
+/**
+ * The puzzle, phase 2: every clear sends the rival well STONE gems, the
+ * gems past three plus GARBAGE_CHAIN for every step of a chain past the
+ * first; they fall onto its stacks, at most WELL_COLS at a time from the left
+ * column, before its next trio comes in. Stones make no lines; a cleared gem
+ * next to one (up, down, left, right) clears it too. The CPU rival thinks a
+ * candidate a frame (column × turns, CPU_CANDIDATES of them), then presses
+ * a button every CPU_STEP frames: turns, moves, then holds Down.
+ */
+export const STONE = 6;
+export const GARBAGE_CHAIN = 3;
+export const CPU_CANDIDATES = 18;
+export const CPU_STEP = 4;

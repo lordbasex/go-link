@@ -1,36 +1,37 @@
 {
  "name": "puzzle-gems",
- "description": "The puzzle (WM_ROM_OUT/puzzle of rom.test.tsx, rom/puzzleFixture.ts: one screen with the two wells framed by walls). Two coins; player 1, steered by a bot in play mode (its inputs, frame by frame: each trio turned and moved to where it clears the most gems, else where the stack is lowest, then held down), clears lines, rows and diagonals, chain after chain; player 2 joins at frame 363 and drops every trio straight down the middle, so its well tops out three times (a life each, the well emptied) and it is out by frame 542; player 1's 61st gem clears the level. Play mode gives both players' place, lives and score every frame.",
- "frames": 1283,
+ "description": "The puzzle (WM_ROM_OUT/puzzle of rom.test.tsx, rom/puzzleFixture.ts: one screen with the two wells framed by walls; the CPU rival on). Two coins; player 1, steered by a bot in play mode (its inputs, frame by frame: each trio turned and moved to where it clears the most gems, else where the stack is lowest, then held down), clears lines and chains; the CPU plays the second well from the start, weighing a candidate a frame, and both send each other stones (the first reach player 1 at frame 341); player 2 presses Start at frame 763 and takes the CPU's well, empty, then drops every trio straight down the middle, so its well tops out three times and it is out by frame 942; player 1's gems clear the level. Play mode gives both players' place, lives and score every frame.",
+ "frames": 1273,
  "checkpoints": [
-  400,
-  560,
-  1000,
-  1230
+  500,
+  341,
+  763,
+  944,
+  1000
  ],
  "expect": [
   {
-   "frame": 700,
-   "path": "players.0.score",
-   "equals": 220
+   "frame": 500,
+   "path": "players.1.score",
+   "equals": 50
   },
   {
-   "frame": 400,
-   "path": "players.1.active",
-   "equals": true
+   "frame": 763,
+   "path": "players.1.score",
+   "equals": 0
   },
   {
-   "frame": 560,
+   "frame": 944,
    "path": "players.1.energy",
    "equals": 0
   },
   {
-   "frame": 1100,
+   "frame": 1000,
    "path": "players.0.score",
-   "equals": 560
+   "equals": 480
   },
   {
-   "frame": 1230,
+   "frame": 1217,
    "path": "players.0.energy",
    "equals": 3
   }
@@ -289,27 +290,11 @@
    "to": 459,
    "port": 1,
    "buttons": [
-    "b1"
+    "right"
    ]
   },
   {
-   "from": 461,
-   "to": 461,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 463,
-   "to": 463,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 464,
+   "from": 460,
    "to": 480,
    "port": 1,
    "buttons": [
@@ -317,128 +302,80 @@
    ]
   },
   {
-   "from": 505,
-   "to": 505,
+   "from": 481,
+   "to": 481,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 483,
+   "to": 483,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 484,
+   "to": 498,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 523,
+   "to": 523,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 524,
+   "to": 538,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 563,
+   "to": 563,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 564,
+   "to": 594,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 643,
+   "to": 664,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 665,
+   "to": 665,
    "port": 1,
    "buttons": [
     "left"
    ]
   },
   {
-   "from": 507,
-   "to": 507,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 508,
-   "to": 524,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 525,
-   "to": 525,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 527,
-   "to": 527,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 529,
-   "to": 529,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 530,
-   "to": 550,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 575,
-   "to": 575,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 576,
-   "to": 592,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 593,
-   "to": 593,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 594,
-   "to": 604,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 629,
-   "to": 629,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 630,
-   "to": 640,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 641,
-   "to": 641,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 642,
-   "to": 662,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 687,
-   "to": 708,
+   "from": 666,
+   "to": 684,
    "port": 1,
    "buttons": [
     "down"
@@ -454,114 +391,178 @@
   },
   {
    "from": 710,
-   "to": 726,
+   "to": 742,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 751,
-   "to": 751,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 752,
-   "to": 782,
+   "from": 767,
+   "to": 780,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 831,
-   "to": 864,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 913,
-   "to": 926,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 927,
-   "to": 927,
-   "port": 1,
-   "buttons": [
-    "b1"
-   ]
-  },
-  {
-   "from": 929,
-   "to": 929,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 930,
-   "to": 942,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 967,
-   "to": 967,
-   "port": 1,
-   "buttons": [
-    "left"
-   ]
-  },
-  {
-   "from": 968,
-   "to": 982,
-   "port": 1,
-   "buttons": [
-    "down"
-   ]
-  },
-  {
-   "from": 983,
-   "to": 983,
+   "from": 781,
+   "to": 781,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 985,
-   "to": 985,
+   "from": 783,
+   "to": 783,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 986,
-   "to": 1004,
+   "from": 784,
+   "to": 800,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1029,
-   "to": 1029,
+   "from": 825,
+   "to": 825,
    "port": 1,
    "buttons": [
     "right"
+   ]
+  },
+  {
+   "from": 827,
+   "to": 827,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 828,
+   "to": 854,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 879,
+   "to": 888,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 889,
+   "to": 889,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 891,
+   "to": 891,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 892,
+   "to": 908,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 909,
+   "to": 909,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 911,
+   "to": 911,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 912,
+   "to": 922,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 947,
+   "to": 947,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 949,
+   "to": 949,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 950,
+   "to": 962,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 963,
+   "to": 963,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 964,
+   "to": 974,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 999,
+   "to": 999,
+   "port": 1,
+   "buttons": [
+    "left"
+   ]
+  },
+  {
+   "from": 1000,
+   "to": 1006,
+   "port": 1,
+   "buttons": [
+    "down"
    ]
   },
   {
@@ -569,15 +570,47 @@
    "to": 1031,
    "port": 1,
    "buttons": [
-    "right"
+    "left"
    ]
   },
   {
    "from": 1032,
-   "to": 1046,
+   "to": 1038,
    "port": 1,
    "buttons": [
     "down"
+   ]
+  },
+  {
+   "from": 1039,
+   "to": 1039,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1041,
+   "to": 1041,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1043,
+   "to": 1043,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1045,
+   "to": 1045,
+   "port": 1,
+   "buttons": [
+    "right"
    ]
   },
   {
@@ -605,40 +638,56 @@
    ]
   },
   {
-   "from": 1088,
-   "to": 1098,
+   "from": 1089,
+   "to": 1089,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1091,
+   "to": 1091,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 1092,
+   "to": 1102,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1099,
-   "to": 1099,
+   "from": 1127,
+   "to": 1127,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1101,
-   "to": 1101,
+   "from": 1129,
+   "to": 1129,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1103,
-   "to": 1103,
+   "from": 1131,
+   "to": 1131,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1104,
-   "to": 1118,
+   "from": 1132,
+   "to": 1142,
    "port": 1,
    "buttons": [
     "down"
@@ -653,112 +702,72 @@
    ]
   },
   {
-   "from": 1145,
-   "to": 1145,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1147,
-   "to": 1147,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1148,
-   "to": 1162,
+   "from": 1144,
+   "to": 1158,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1187,
-   "to": 1187,
+   "from": 1183,
+   "to": 1183,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1189,
-   "to": 1189,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1191,
-   "to": 1191,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1192,
-   "to": 1206,
+   "from": 1184,
+   "to": 1194,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 1207,
-   "to": 1207,
+   "from": 1195,
+   "to": 1195,
    "port": 1,
    "buttons": [
     "b1"
    ]
   },
   {
-   "from": 1209,
-   "to": 1209,
+   "from": 1197,
+   "to": 1197,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1211,
-   "to": 1211,
+   "from": 1199,
+   "to": 1199,
    "port": 1,
    "buttons": [
     "right"
    ]
   },
   {
-   "from": 1213,
-   "to": 1213,
-   "port": 1,
-   "buttons": [
-    "right"
-   ]
-  },
-  {
-   "from": 1214,
-   "to": 1222,
+   "from": 1200,
+   "to": 1212,
    "port": 1,
    "buttons": [
     "down"
    ]
   },
   {
-   "from": 361,
-   "to": 361,
+   "from": 761,
+   "to": 761,
    "port": 2,
    "buttons": [
     "start"
    ]
   },
   {
-   "from": 362,
-   "to": 540,
+   "from": 762,
+   "to": 940,
    "port": 2,
    "buttons": [
     "down"

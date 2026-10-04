@@ -150,7 +150,7 @@ import {
   type Difficulty,
   type GameRules,
 } from "./rules";
-import { emptyWell, fallFrames, lockTrio, markMatches, newWell, settleWell, shiftTrio, spawnTrio, turnTrio, wellFree, type Well } from "./puzzle";
+import { cpuPad, emptyWell, fallFrames, garbageOf, lockTrio, markMatches, newWell, settleWell, shiftTrio, spawnTrio, turnTrio, wellFree, type Well } from "./puzzle";
 
 export const MAX_PLAYERS = 4;
 /** How long the "defeat every enemy" message stays after a player leaves the closed exit. */
@@ -247,6 +247,8 @@ export interface Player {
   boom: { x: number; y: number; t: number } | null;
   /** The puzzle's well (players 1 and 2 only). */
   well: Well | null;
+  /** The puzzle's CPU rival plays this well (player 2 while nobody took it). */
+  cpu: boolean;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -462,6 +464,8 @@ export class Game {
   readonly fireEvery: number;
   readonly shotSpeed: number;
   private readonly cellHp = new Map<number, number>();
+  /** The puzzle: each port's last pad while the CPU plays its well (a press takes it over). */
+  private readonly humanLast = [0, 0, 0, 0];
 
   constructor(level: LevelView, opts: GameOptions = {}) {
     this.level = level;
@@ -499,6 +503,11 @@ export class Game {
     }
     const n = Math.max(1, Math.min(this.maxPlayers, opts.players ?? 1));
     for (let i = 0; i < n; i++) this.join(i);
+    // the puzzle's CPU rival takes the second well while player 2 is not in
+    if (this.rules.puzzle && this.rules.puzzleCpu && this.players[1] && !this.players[1].active) {
+      this.join(1);
+      this.players[1].cpu = true;
+    }
     this.updateCamera(true);
   }
 
@@ -1849,6 +1858,10 @@ export class Game {
     if (n) {
       p.score += GEM_SCORE * n * w.chain;
       w.gems += n;
+      // the rival well gets stones for the gems past three and every chain step
+      const rival = this.players[1 - p.index];
+      const send = garbageOf(n, w.chain);
+      if (send > 0 && rival && rival.active && rival.well) rival.well.pending += send;
       this.events.push({ kind: "pickup", item: "gems", player: p.index });
       return;
     }
@@ -1859,6 +1872,13 @@ export class Game {
   /** A well topped out: a life, and an empty well to start again. */
   private topOut(p: Player): void {
     const w = p.well!;
+    // the CPU has no lives: its well just starts again
+    if (p.cpu) {
+      emptyWell(w);
+      spawnTrio(w);
+      this.placeAtTrio(p);
+      return;
+    }
     p.lives--;
     this.events.push({ kind: "hurt", player: p.index });
     if (p.lives <= 0) {
@@ -2448,6 +2468,25 @@ export class Game {
     this.movePlatforms();
     for (const p of this.players) {
       const pad = cancelOpposites(inputs[p.index] ?? 0);
+      if (p.cpu) {
+        // a player pressing Start takes the CPU's well, empty, with a credit's lives and no score
+        if (pad & Input.Start && !(this.humanLast[p.index]! & Input.Start)) {
+          p.cpu = false;
+          p.active = false;
+          p.score = 0;
+          this.humanLast[p.index] = pad;
+          this.join(p.index);
+          p.last = pad;
+          p.pad = pad;
+          this.updatePlayer(p);
+          continue;
+        }
+        this.humanLast[p.index] = pad;
+        p.last = p.pad;
+        p.pad = cpuPad(p.well!);
+        this.updatePlayer(p);
+        continue;
+      }
       if (!p.active) {
         if (pad & (Input.Start | Input.B1 | Input.B2 | Input.B3) && !(p.last & (Input.Start | Input.B1 | Input.B2 | Input.B3))) this.join(p.index);
         p.last = pad;
@@ -2465,7 +2504,7 @@ export class Game {
     // the light gun: the level ends where the camera's route does, with no lock holding it
     if (this.rules.puzzle) {
       // the puzzle: a player with PUZZLE_GOAL gems cleared clears the level
-      if (this.players.some((p) => p.active && p.well && p.well.gems >= PUZZLE_GOAL)) {
+      if (this.players.some((p) => p.active && !p.cpu && p.well && p.well.gems >= PUZZLE_GOAL)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });
         return;
@@ -2501,7 +2540,7 @@ export class Game {
         return;
       }
     }
-    if (this.players.every((p) => !p.active)) {
+    if (this.players.every((p) => !p.active || p.cpu)) {
       // nobody left playing (in a go-link room a new credit would start again)
       this.outcome = "over";
       this.events.push({ kind: "over" });
@@ -2608,6 +2647,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     grenade: null,
     boom: null,
     well: null,
+    cpu: false,
   };
 }
 

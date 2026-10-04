@@ -4,7 +4,8 @@
 // same steps as the ROM's (rom/engine/engine.c, well_*), so play mode and
 // the board drop, turn, match and clear gems alike, frame by frame.
 
-import { CLEAR_FRAMES, FALL_MIN, FALL_START, FALL_STEP, GEM_COLORS, LEVEL_GEMS, PUZZLE_SEED, WELL_COLS, WELL_ROWS } from "./rules";
+import { CLEAR_FRAMES, CPU_CANDIDATES, CPU_STEP, FALL_MIN, FALL_START, FALL_STEP, GARBAGE_CHAIN, GEM_COLORS, LEVEL_GEMS, PUZZLE_SEED, STONE, WELL_COLS, WELL_ROWS } from "./rules";
+import { Input } from "./rules";
 
 export interface Well {
   /** WELL_COLS x WELL_ROWS, top row first: 0 empty, 1 to GEM_COLORS a gem. */
@@ -25,6 +26,15 @@ export interface Well {
   seed: number;
   /** Gems this player cleared. */
   gems: number;
+  /** Stones the rival sent, still to fall before the next trio. */
+  pending: number;
+  /** The CPU rival: the candidate it weighs next, the best so far (score, column, turns), its button timer and last pad. */
+  cpuK: number;
+  cpuBest: number;
+  cpuCol: number;
+  cpuTurns: number;
+  cpuT: number;
+  cpuPad: number;
 }
 
 /** The next gem's color, 1 to GEM_COLORS (a 32-bit LCG). */
@@ -47,6 +57,13 @@ export function newWell(index: number): Well {
     chain: 0,
     seed: (PUZZLE_SEED + index * 7919) >>> 0,
     gems: 0,
+    pending: 0,
+    cpuK: 0,
+    cpuBest: 0,
+    cpuCol: 2,
+    cpuTurns: 0,
+    cpuT: 0,
+    cpuPad: 0,
   };
   w.next = [nextGem(w), nextGem(w), nextGem(w)];
   return w;
@@ -65,6 +82,8 @@ export function fallFrames(w: Well): number {
 
 /** The next trio comes in at the top of the third column; false when it cannot (the well topped out). */
 export function spawnTrio(w: Well): boolean {
+  dropStones(w);
+  w.cpuK = 0;
   w.piece = w.next;
   w.next = [nextGem(w), nextGem(w), nextGem(w)];
   w.col = 2;
@@ -94,14 +113,30 @@ export function lockTrio(w: Well): boolean {
   return true;
 }
 
-/** Marks every gem in a line of three or more of its color (rows, columns, both diagonals); returns how many. */
+/** The stones the rival sent: up to a row of them, from the left column, each on its column's stack (lost on a full one). */
+export function dropStones(w: Well): void {
+  const k = Math.min(w.pending, WELL_COLS);
+  for (let c = 0; c < k; c++) {
+    let r = -1;
+    while (r + 1 < WELL_ROWS && w.cells[(r + 1) * WELL_COLS + c] === 0) r++;
+    if (r >= 0) w.cells[r * WELL_COLS + c] = STONE;
+  }
+  w.pending -= k;
+}
+
+/** Stones a clear of n gems at this chain step sends the rival. */
+export function garbageOf(n: number, chain: number): number {
+  return n - 3 + (chain - 1) * GARBAGE_CHAIN;
+}
+
+/** Marks every gem in a line of three or more of its color (rows, columns, both diagonals), and the stones beside them; returns how many. */
 export function markMatches(w: Well): number {
   const dirs = [[1, 0], [0, 1], [1, 1], [-1, 1]] as const;
   const at = (c: number, r: number) => (c >= 0 && c < WELL_COLS && r >= 0 && r < WELL_ROWS ? w.cells[r * WELL_COLS + c]! : 0);
   for (let r = 0; r < WELL_ROWS; r++)
     for (let c = 0; c < WELL_COLS; c++) {
       const v = w.cells[r * WELL_COLS + c]!;
-      if (!v) continue;
+      if (!v || v === STONE) continue;
       for (const [dx, dy] of dirs) {
         // only from a line's first gem
         if (at(c - dx, r - dy) === v) continue;
@@ -110,8 +145,17 @@ export function markMatches(w: Well): number {
         if (n >= 3) for (let k = 0; k < n; k++) w.marks[(r + k * dy) * WELL_COLS + c + k * dx] = 1;
       }
     }
+  // the stones next to a cleared gem go with it (a gem marked by a line, not a stone marked just now)
+  for (let i = 0; i < w.marks.length; i++) {
+    if (w.marks[i] !== 1) continue;
+    const c = i % WELL_COLS;
+    if (c > 0 && w.cells[i - 1] === STONE) w.marks[i - 1] = 2;
+    if (c < WELL_COLS - 1 && w.cells[i + 1] === STONE) w.marks[i + 1] = 2;
+    if (i >= WELL_COLS && w.cells[i - WELL_COLS] === STONE) w.marks[i - WELL_COLS] = 2;
+    if (i + WELL_COLS < w.marks.length && w.cells[i + WELL_COLS] === STONE) w.marks[i + WELL_COLS] = 2;
+  }
   let count = 0;
-  for (let i = 0; i < w.marks.length; i++) count += w.marks[i]!;
+  for (let i = 0; i < w.marks.length; i++) count += w.marks[i] ? 1 : 0;
   if (count) {
     w.chain++;
     w.clearT = CLEAR_FRAMES;
@@ -138,4 +182,70 @@ export function emptyWell(w: Well): void {
   w.cells.fill(0);
   w.marks.fill(0);
   w.clearT = 0;
+  w.pending = 0;
+}
+
+/**
+ * How good the trio (turned `turns` times) is in column c: 64 for every gem
+ * of a line of three or more through it (its column once, then the row and
+ * both diagonals of each of its gems; a gem two lines share counts twice),
+ * 2 a row lower it lands, less a turn. Cheap on purpose: the ROM weighs one
+ * a frame beside everything else.
+ */
+function weigh(w: Well, c: number, turns: number): number {
+  let r = -1;
+  while (r + 1 < WELL_ROWS && w.cells[(r + 1) * WELL_COLS + c] === 0) r++;
+  if (r < 2) return -10000;
+  const top = r - 2;
+  const gem = (k: number) => w.piece[(k - turns + 3) % 3]!;
+  const at = (cc: number, rr: number) => (cc < 0 || cc >= WELL_COLS || rr < 0 || rr >= WELL_ROWS ? 0 : cc === c && rr >= top && rr <= r ? gem(rr - top) : w.cells[rr * WELL_COLS + cc]!);
+  const run = (cc: number, rr: number, dx: number, dy: number) => {
+    const v = at(cc, rr);
+    let n = 1;
+    while (at(cc - n * dx, rr - n * dy) === v) n++;
+    let m = 1;
+    while (at(cc + m * dx, rr + m * dy) === v) m++;
+    return n + m - 1 >= 3 ? n + m - 1 : 0;
+  };
+  let lines = 0;
+  // the column: the runs along it, each counted once (from its lowest gem)
+  for (let rr = r; rr >= top; rr--) {
+    if (rr < r && at(c, rr) === at(c, rr + 1)) continue;
+    lines += run(c, rr, 0, 1);
+  }
+  for (let k = 0; k < 3; k++) lines += run(c, top + k, 1, 0) + run(c, top + k, 1, 1) + run(c, top + k, -1, 1);
+  return lines * 64 + r * 2 - turns;
+}
+
+/**
+ * The CPU rival's pad this frame: while a new trio is weighed (a candidate
+ * a frame), nothing; then a press every CPU_STEP frames: turn, move, and
+ * Down held once the trio is in its column.
+ */
+export function cpuPad(w: Well): number {
+  if (w.clearT) return 0;
+  if (w.cpuK < CPU_CANDIDATES) {
+    const k = w.cpuK;
+    const c = (k / 3) | 0;
+    const t = k - c * 3;
+    const s = weigh(w, c, t);
+    if (k === 0 || s > w.cpuBest) {
+      w.cpuBest = s;
+      w.cpuCol = c;
+      w.cpuTurns = t;
+    }
+    w.cpuK++;
+    return 0;
+  }
+  w.cpuT++;
+  if (w.cpuTurns > 0) {
+    if ((w.cpuT & (CPU_STEP - 1)) !== 0) return 0;
+    w.cpuTurns--;
+    return Input.B1;
+  }
+  if (w.col !== w.cpuCol) {
+    if ((w.cpuT & (CPU_STEP - 1)) !== 0) return 0;
+    return w.col < w.cpuCol ? Input.Right : Input.Left;
+  }
+  return Input.Down;
 }

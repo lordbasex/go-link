@@ -80,6 +80,6 @@ export function gemPen(x: number, y: number): ShipPen {
   return 0;
 }
 
-/** The gems' colors, then their shades (pens 1 and 4), by color 1 to 5. */
-export const GEM_BODY = ["#ee3344", "#33cc55", "#3388ff", "#ffcc22", "#bb55ee"] as const;
-export const GEM_SHADE = ["#991122", "#1a7a33", "#1a4499", "#aa7711", "#6a2a99"] as const;
+/** The gems' colors, then their shades (pens 1 and 4), by color 1 to 5, then the rival's stone (6). */
+export const GEM_BODY = ["#ee3344", "#33cc55", "#3388ff", "#ffcc22", "#bb55ee", "#888899"] as const;
+export const GEM_SHADE = ["#991122", "#1a7a33", "#1a4499", "#aa7711", "#6a2a99", "#444455"] as const;

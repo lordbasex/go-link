@@ -4,7 +4,8 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL } from "./rules";
+import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL, STONE } from "./rules";
+import { markMatches } from "./puzzle";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
@@ -1420,5 +1421,49 @@ describe("the puzzle (genres.md, phase 1)", () => {
   it("players 1 and 2 have a well each; players 3 and 4 cannot join", () => {
     const g = puzzle(4);
     expect(g.players.map((p) => p.active)).toEqual([true, true, false, false]);
+  });
+});
+
+describe("the puzzle, phase 2: stones and the CPU rival", () => {
+  it("a clear past three sends the rival stones, which fall before its next trio and clear beside a cleared gem", () => {
+    const g = new Game(flat(), { rules: { ...PUZZLE_RULES, puzzleCpu: false }, players: 2 });
+    const [a, b] = g.players;
+    const wa = a!.well!;
+    const wb = b!.well!;
+    const bottom = (WELL_ROWS - 1) * WELL_COLS;
+    // four of a color on player 1's floor once its trio lands: one stone for player 2
+    wa.cells[bottom + 0] = 1;
+    wa.cells[bottom + 1] = 1;
+    wa.cells[bottom + 3] = 1;
+    wa.piece = [2, 3, 1];
+    run(g, 24, Input.Down);
+    expect(wb.pending).toBe(1);
+    // player 2's next trio brings the stone down first, on its left column
+    wb.row = WELL_ROWS - 1;
+    wb.cells.fill(0);
+    run(g, 40, 0);
+    expect(wb.cells[bottom + 0]).toBe(STONE);
+    // a gem cleared beside a stone takes it too
+    const w = wb;
+    w.cells.fill(0);
+    w.cells[bottom + 0] = STONE;
+    w.cells[bottom + 1] = 4;
+    w.cells[bottom + 2] = 4;
+    w.cells[bottom + 3] = 4;
+    expect(markMatches(w)).toBe(4);
+    expect(w.marks[bottom + 0]).toBe(2);
+  });
+
+  it("the CPU plays the second well while player 2 is out, and player 2's Start takes it over", () => {
+    const g = new Game(flat(), { rules: PUZZLE_RULES, players: 1 });
+    const cpu = g.players[1]!;
+    expect([cpu.active, cpu.cpu]).toEqual([true, true]);
+    run(g, 1500, 0);
+    expect(cpu.score).toBeGreaterThan(0);
+    expect(g.outcome).toBe("playing");
+    const inputs = [0, Input.Start, 0, 0];
+    g.step(inputs);
+    expect([cpu.active, cpu.cpu, cpu.score]).toEqual([true, false, 0]);
+    expect(cpu.well!.cells.every((v) => v === 0)).toBe(true);
   });
 });

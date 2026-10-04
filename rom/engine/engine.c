@@ -751,6 +751,7 @@ struct player {
 	int power;                                  /* the shooter's weapon: 0 one shot, 1 two side by side, 2 a fan of three */
 	int aim_x, aim_y;                           /* the top-down aim: -1, 0 or 1 each way (never both 0) */
 	int mdx, mdy, wdx, wdy;                     /* the maze: the way it moves, the way the stick last asked for */
+	int cpu;                                    /* the puzzle: the CPU rival plays this well */
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
@@ -766,6 +767,7 @@ static int vertical;  /* with ship, the vertical shooter (WM_F_VERTICAL) */
 static int topdown;   /* the top-down run and gun (WM_F_TOPDOWN) */
 static int maze;      /* the maze (WM_F_MAZE) */
 static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
+static int puzzle_cpu; /* its CPU rival (WM_F2_PUZZLE_CPU) */
 /* the puzzle's wells (engine/puzzle.ts Well), players 1 and 2 */
 #define WELLS 2
 #define WELL_COLS 6
@@ -783,6 +785,10 @@ static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
 #define GEM_SCORE 10
 #define PUZZLE_GOAL 60
 #define PUZZLE_SEED 0x2545f491u
+#define STONE 6
+#define GARBAGE_CHAIN 3
+#define CPU_CANDIDATES 18
+#define CPU_STEP 4
 static const s16 well_x[WELLS] = { 48, 240 };
 struct well {
 	u8 cells[WELL_COLS * WELL_ROWS], marks[WELL_COLS * WELL_ROWS];
@@ -790,8 +796,14 @@ struct well {
 	int col, row, fall_t, move_t, clear_t, chain;
 	u32 seed;
 	int gems;
+	int pending;                                   /* stones the rival sent, to fall before the next trio */
+	int cpu_k, cpu_best, cpu_col, cpu_turns, cpu_t; /* the CPU rival: the candidate next, the best so far, its button timer */
 };
 static struct well wells[WELLS];
+/* the gems that just came to rest (the landed trio, or the ones a clear let fall):
+   at rest a well holds no line, so any new one runs through one of them */
+static u8 cand[WELL_COLS * WELL_ROWS];
+static int ncand;
 /* the maze's dots, a bit per cell, how many are left, the frames the chasers flee, and a redraw after the text is cleared */
 static u8 dots[24576 / 8];
 static int dots_left, fright_t;
@@ -1264,7 +1276,9 @@ static void new_well(int k)
 	int i;
 	for (i = 0; i < WELL_COLS * WELL_ROWS; i++)
 		w->cells[i] = w->marks[i] = 0;
-	w->col = w->row = w->fall_t = w->move_t = w->clear_t = w->chain = w->gems = 0;
+	w->col = w->row = w->fall_t = w->move_t = w->clear_t = w->chain = w->gems = w->pending = 0;
+	w->cpu_k = w->cpu_best = w->cpu_t = w->cpu_turns = 0;
+	w->cpu_col = 2;
 	w->seed = PUZZLE_SEED + (u32)k * 7919u;
 	for (i = 0; i < 3; i++)
 		w->next[i] = (u8)next_gem(w);
@@ -1285,10 +1299,26 @@ static int fall_frames(const struct well *w)
 	return f < FALL_MIN ? FALL_MIN : f;
 }
 
+/* the stones the rival sent: up to a row, from the left column, each on its column's stack (lost on a full one) */
+static void drop_stones(struct well *w)
+{
+	int k = w->pending < WELL_COLS ? w->pending : WELL_COLS, c, r;
+	for (c = 0; c < k; c++) {
+		r = -1;
+		while (r + 1 < WELL_ROWS && w->cells[(r + 1) * WELL_COLS + c] == 0)
+			r++;
+		if (r >= 0)
+			w->cells[r * WELL_COLS + c] = STONE;
+	}
+	w->pending -= k;
+}
+
 /* the next trio at the top of the third column; 0 when it cannot come in */
 static int spawn_trio(struct well *w)
 {
 	int i;
+	drop_stones(w);
+	w->cpu_k = 0;
 	for (i = 0; i < 3; i++)
 		w->piece[i] = w->next[i];
 	for (i = 0; i < 3; i++)
@@ -1322,44 +1352,79 @@ static int lock_trio(struct well *w)
 	int k;
 	if (w->row - 2 < 0)
 		return 0;
-	for (k = 0; k < 3; k++)
-		w->cells[(w->row - 2 + k) * WELL_COLS + w->col] = w->piece[k];
+	ncand = 0;
+	for (k = 0; k < 3; k++) {
+		int i = (w->row - 2 + k) * WELL_COLS + w->col;
+		w->cells[i] = w->piece[k];
+		cand[ncand++] = (u8)i;
+	}
 	return 1;
 }
 
-/* marks every gem in a line of three or more of its color; returns how many
-   (additions only, no multiplying: it runs on the frame a trio lands) */
-static int mark_matches(struct well *w)
+/* marks the lines of three or more of its color through the gem at i (column c, row r) */
+static void mark_through(struct well *w, int i, int c, int r)
 {
 	static const s8 dxs[4] = { 1, 0, 1, -1 };
-	int r, c, d, n, k, i = 0, count = 0;
-	for (r = 0; r < WELL_ROWS; r++)
-		for (c = 0; c < WELL_COLS; c++, i++) {
-			int v = w->cells[i];
-			if (!v)
-				continue;
-			for (d = 0; d < 4; d++) {
-				int dx = dxs[d], dy = d ? 1 : 0, step = dy ? WELL_COLS + dx : dx, pc = c - dx, cc, rr, j;
-				/* only from a line's first gem */
-				if (pc >= 0 && pc < WELL_COLS && r - dy >= 0 && w->cells[i - step] == v)
-					continue;
-				n = 1;
-				cc = c + dx;
-				rr = r + dy;
-				j = i + step;
-				while (cc >= 0 && cc < WELL_COLS && rr < WELL_ROWS && w->cells[j] == v) {
-					n++;
-					cc += dx;
-					rr += dy;
-					j += step;
-				}
-				if (n >= 3)
-					for (k = 0, j = i; k < n; k++, j += step)
-						w->marks[j] = 1;
-			}
+	int d, v = w->cells[i];
+	if (!v || v == STONE)
+		return;
+	for (d = 0; d < 4; d++) {
+		int dx = dxs[d], dy = d ? 1 : 0, step = dy ? WELL_COLS + dx : dx, n = 1, cc, rr, j, first;
+		/* back to the line's first gem, then forward */
+		cc = c - dx;
+		rr = r - dy;
+		first = i;
+		while (cc >= 0 && cc < WELL_COLS && rr >= 0 && w->cells[first - step] == v) {
+			first -= step;
+			n++;
+			cc -= dx;
+			rr -= dy;
 		}
+		cc = c + dx;
+		rr = r + dy;
+		j = i + step;
+		while (cc >= 0 && cc < WELL_COLS && rr < WELL_ROWS && w->cells[j] == v) {
+			n++;
+			cc += dx;
+			rr += dy;
+			j += step;
+		}
+		if (n >= 3)
+			for (j = first; n > 0; n--, j += step)
+				w->marks[j] = 1;
+	}
+}
+
+/* marks every gem in a line of three or more of its color (engine/puzzle.ts markMatches),
+   looking only through the gems that came to rest, and the stones beside them; returns how many */
+static int mark_matches(struct well *w)
+{
+	int i, c, k, count = 0;
+	for (k = 0; k < ncand; k++) {
+		int j = cand[k], r = 0;
+		c = j;
+		while (c >= WELL_COLS) {
+			c -= WELL_COLS;
+			r++;
+		}
+		mark_through(w, j, c, r);
+	}
+	ncand = 0;
+	/* the stones next to a cleared gem go with it (a gem marked by a line, not a stone marked just now) */
+	for (i = 0, c = 0; i < WELL_COLS * WELL_ROWS; i++, c = c == WELL_COLS - 1 ? 0 : c + 1) {
+		if (w->marks[i] != 1)
+			continue;
+		if (c > 0 && w->cells[i - 1] == STONE)
+			w->marks[i - 1] = 2;
+		if (c < WELL_COLS - 1 && w->cells[i + 1] == STONE)
+			w->marks[i + 1] = 2;
+		if (i >= WELL_COLS && w->cells[i - WELL_COLS] == STONE)
+			w->marks[i - WELL_COLS] = 2;
+		if (i + WELL_COLS < WELL_COLS * WELL_ROWS && w->cells[i + WELL_COLS] == STONE)
+			w->marks[i + WELL_COLS] = 2;
+	}
 	for (k = 0; k < WELL_COLS * WELL_ROWS; k++)
-		count += w->marks[k];
+		count += w->marks[k] ? 1 : 0;
 	if (count) {
 		w->chain++;
 		w->clear_t = CLEAR_FRAMES;
@@ -1371,14 +1436,20 @@ static int mark_matches(struct well *w)
 static void settle_well(struct well *w)
 {
 	int c, r, to;
+	ncand = 0;
 	for (c = 0; c < WELL_COLS; c++) {
 		to = WELL_ROWS - 1;
 		for (r = WELL_ROWS - 1; r >= 0; r--) {
 			int i = r * WELL_COLS + c, v = w->marks[i] ? 0 : w->cells[i];
 			w->marks[i] = 0;
 			w->cells[i] = 0;
-			if (v)
-				w->cells[to-- * WELL_COLS + c] = (u8)v;
+			if (v) {
+				int j = to-- * WELL_COLS + c;
+				w->cells[j] = (u8)v;
+				/* a gem that fell may line up with others */
+				if (j != i)
+					cand[ncand++] = (u8)j;
+			}
 		}
 	}
 }
@@ -1397,6 +1468,9 @@ static void top_out(struct player *p)
 	struct well *w = &wells[p - pl];
 	int i;
 	sfx(SFX_HURT, p->x);
+	/* the CPU has no lives: its well just starts again */
+	if (p->cpu)
+		++p->energy;
 	if (--p->energy <= 0) {
 		p->energy = 0;
 		p->active = 0;
@@ -1406,6 +1480,7 @@ static void top_out(struct player *p)
 	for (i = 0; i < WELL_COLS * WELL_ROWS; i++)
 		w->cells[i] = w->marks[i] = 0;
 	w->clear_t = 0;
+	w->pending = 0;
 	spawn_trio(w);
 	place_at_trio(p);
 }
@@ -1416,14 +1491,107 @@ static void resolve_well(struct player *p)
 	struct well *w = &wells[p - pl];
 	int n = mark_matches(w);
 	if (n) {
+		int k = (int)(p - pl), send = n - 3 + (w->chain - 1) * GARBAGE_CHAIN;
 		p->score += (u32)(GEM_SCORE * n * w->chain);
 		w->gems += n;
+		/* the rival well gets stones for the gems past three and every chain step */
+		if (send > 0 && 1 - k < nplayers && pl[1 - k].active)
+			wells[1 - k].pending += send;
 		sfx(SFX_COIN, p->x);
 		return;
 	}
 	if (!spawn_trio(w))
 		top_out(p);
 	place_at_trio(p);
+}
+
+/* the CPU's weighing (engine/puzzle.ts weigh): the trio in column c, its gems from row top */
+static const struct well *wg_w;
+static int wg_c, wg_top, wg_r, wg_turns;
+
+static int wg_at(int cc, int rr)
+{
+	if (cc < 0 || cc >= WELL_COLS || rr < 0 || rr >= WELL_ROWS)
+		return 0;
+	if (cc == wg_c && rr >= wg_top && rr <= wg_r) {
+		int j = rr - wg_top - wg_turns;
+		return wg_w->piece[j < 0 ? j + 3 : j];
+	}
+	return wg_w->cells[rr * WELL_COLS + cc];
+}
+
+/* the run of the trio gem at (cc, rr) along (dx, dy), both ways; positions step by
+   additions (a variable multiply is a library call on the 68000, far too slow here) */
+static int wg_run(int cc, int rr, int dx, int dy)
+{
+	int v = wg_at(cc, rr), n = 1, x = cc - dx, y = rr - dy;
+	while (wg_at(x, y) == v) {
+		n++;
+		x -= dx;
+		y -= dy;
+	}
+	x = cc + dx;
+	y = rr + dy;
+	while (wg_at(x, y) == v) {
+		n++;
+		x += dx;
+		y += dy;
+	}
+	return n >= 3 ? n : 0;
+}
+
+/* 64 a gem of a line through the trio, 2 a row lower it lands, less a turn; cheap: it runs every frame */
+static int weigh(const struct well *w, int c, int turns)
+{
+	int r = -1, rr, k, lines = 0;
+	while (r + 1 < WELL_ROWS && w->cells[(r + 1) * WELL_COLS + c] == 0)
+		r++;
+	if (r < 2)
+		return -10000;
+	wg_w = w;
+	wg_c = c;
+	wg_r = r;
+	wg_top = r - 2;
+	wg_turns = turns;
+	/* the column: the runs along it, each counted once (from its lowest gem) */
+	for (rr = r; rr >= wg_top; rr--) {
+		if (rr < r && wg_at(c, rr) == wg_at(c, rr + 1))
+			continue;
+		lines += wg_run(c, rr, 0, 1);
+	}
+	for (k = 0; k < 3; k++)
+		lines += wg_run(c, wg_top + k, 1, 0) + wg_run(c, wg_top + k, 1, 1) + wg_run(c, wg_top + k, -1, 1);
+	return lines * 64 + r * 2 - turns;
+}
+
+/* the CPU rival's pad (engine/puzzle.ts cpuPad): a candidate weighed a frame, then a press every CPU_STEP frames */
+static u16 cpu_pad(struct well *w)
+{
+	if (w->clear_t)
+		return 0;
+	if (w->cpu_k < CPU_CANDIDATES) {
+		int k = w->cpu_k, c = k / 3, t = k - c * 3, s = weigh(w, c, t);
+		if (k == 0 || s > w->cpu_best) {
+			w->cpu_best = s;
+			w->cpu_col = c;
+			w->cpu_turns = t;
+		}
+		w->cpu_k++;
+		return 0;
+	}
+	w->cpu_t++;
+	if (w->cpu_turns > 0) {
+		if (w->cpu_t & (CPU_STEP - 1))
+			return 0;
+		w->cpu_turns--;
+		return BTN_1;
+	}
+	if (w->col != w->cpu_col) {
+		if (w->cpu_t & (CPU_STEP - 1))
+			return 0;
+		return w->col < w->cpu_col ? BTN_RIGHT : BTN_LEFT;
+	}
+	return BTN_DOWN;
 }
 
 /* the well, a frame (engine/game.ts playWell) */
@@ -1483,7 +1651,7 @@ static void draw_wells(void)
 		for (r = 0, i = 0; r < WELL_ROWS; r++)
 			for (c = 0; c < WELL_COLS; c++, i++)
 				if (w->cells[i])
-					put_sprite(x0 + c * 16, WELL_Y + r * 16, (u16)(TILE_GEM + (w->marks[i] && flash ? 5 : w->cells[i] - 1)), PAL_GEMS);
+					put_sprite(x0 + c * 16, WELL_Y + r * 16, (u16)(TILE_GEM + (w->marks[i] && flash ? 5 : w->cells[i] == STONE ? 6 : w->cells[i] - 1)), PAL_GEMS);
 	}
 }
 
@@ -1650,6 +1818,7 @@ static void game_reset(void)
 	topdown = (D->flags & WM_F_TOPDOWN) != 0;
 	maze = (D->flags & WM_F_MAZE) != 0;
 	puzzle = (D->flags & WM_F_PUZZLE) != 0;
+	puzzle_cpu = puzzle && (D->flags2 & WM_F2_PUZZLE_CPU) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -2554,6 +2723,9 @@ static void update_player(struct player *p)
 	if (!p->active)
 		return;
 	if (puzzle) {
+		/* the CPU rival's pad in place of the port's (read_inputs kept its last one as last) */
+		if (p->cpu)
+			p->pad = cpu_pad(&wells[p - pl]);
 		play_well(p);
 		return;
 	}
@@ -4445,7 +4617,14 @@ static int play(int first)
 	clear_text();
 	game_reset();
 	victory = 0;
+	for (k = 0; k < nplayers; k++)
+		pl[k].cpu = 0;
 	player_join(first);
+	/* the puzzle's CPU rival takes the second well while player 2 is not in */
+	if (puzzle_cpu && nplayers > 1 && !pl[1].active) {
+		player_join(1);
+		pl[1].cpu = 1;
+	}
 	update_camera(1);
 	stream();
 	hud_screen();
@@ -4460,7 +4639,7 @@ static int play(int first)
 		read_inputs();
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
-				if (!pl[k].active && (!puzzle || k < WELLS) && (credits || free_play()) && start_pressed(k)) {
+				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
 					SFX_CENTRE(SFX_START);
@@ -4469,6 +4648,12 @@ static int play(int first)
 						clear_text();
 						hud_screen();
 						MUSIC(MUSIC_PLAY);
+					}
+					/* a player taking the CPU's well: empty, with a credit's lives and no score */
+					if (pl[k].cpu) {
+						pl[k].cpu = 0;
+						pl[k].active = 0;
+						pl[k].score = 0;
 					}
 					player_join(k);
 				}
@@ -4495,7 +4680,7 @@ static int play(int first)
 		if (outcome < 0)
 			hud();
 		for (k = 0; k < nplayers; k++)
-			alive += pl[k].active;
+			alive += pl[k].active && !pl[k].cpu;
 		if (outcome < 0)
 			soon_update();
 		/* the maze: its dots on the text layer, and every dot eaten clears the level */
@@ -4517,7 +4702,7 @@ static int play(int first)
 		if (puzzle && outcome < 0) {
 			int won = 0;
 			for (k = 0; k < WELLS && k < nplayers; k++)
-				won |= pl[k].active && wells[k].gems >= PUZZLE_GOAL;
+				won |= pl[k].active && !pl[k].cpu && wells[k].gems >= PUZZLE_GOAL;
 			if (won) {
 				blank(15, 16, 18);
 				outcome = END_CLEAR;

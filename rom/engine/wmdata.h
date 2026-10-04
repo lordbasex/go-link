@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 18
+#define WM_VERSION 19
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -83,6 +83,8 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F_TOPDOWN 0x2000     /* the top-down run and gun: 8-direction walking and aiming (wm_data 16) */
 #define WM_F_MAZE 0x4000        /* the maze: grid moves, dots, chasers (wm_data 17) */
 #define WM_F_PUZZLE 0x8000      /* the puzzle: a well of falling gems per player (wm_data 18; the last free bit) */
+/* flags2 (wm_data 19), the bits after flags ran out */
+#define WM_F2_PUZZLE_CPU 0x0001 /* with WM_F_PUZZLE: the CPU plays the second well while player 2 is out */
 
 struct wm_data {
 	u32 magic;                /* 00 */
@@ -131,7 +133,7 @@ struct wm_data {
 	u16 walk_y0, walk_y1;     /* b2, b4 the beat 'em up's walkable band: feet y, px (WM_F_DEPTH) */
 	u32 locks;                /* b6 wm_object[n_locks]: the camera locks (a beat 'em up's waves) */
 	u16 n_locks;              /* ba 0-8 */
-	u16 pad2;                 /* bc */
+	u16 flags2;               /* bc WM_F2_* (wm_data 19) */
 };
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 

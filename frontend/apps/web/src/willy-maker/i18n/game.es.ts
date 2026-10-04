@@ -97,6 +97,7 @@ export const gameEs: GameMessages = {
     topdown: "Vista desde arriba (disparos desde arriba: caminar y apuntar en 8 direcciones, B1 sostenido dispara, B3 sostenido mantiene la mira)",
     maze: "Laberinto (moverse de celda en celda, comer todos los puntos para completar el nivel; una mejora vuelve presas a los perseguidores)",
     puzzle: "Puzle (un pozo de gemas que caen por jugador, jugadores 1 y 2: B1 rota los colores, tres o más en línea se borran)",
+    puzzleCpu: "Rival de la CPU (puzle: mientras el jugador 2 no está, la CPU juega el segundo pozo y te manda piedras)",
     jump: "Medido en el motor, el salto llega a {peak} px: repisas de hasta {ledge} px de alto.",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",

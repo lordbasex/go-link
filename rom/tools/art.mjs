@@ -751,16 +751,17 @@ export function addArt(gfx, defs, genDir, opts = {}) {
     objPalettes.push([0xf000, 0xffa3, 0xf7ea, 0xf4cd, 0xfe67, 0xffff, 0xffc2, ...new Array(9).fill(0)]);
     code += 32;
     // the puzzle's gems (engine/shipArt.ts gemPen), one tile per color, then the white one a clear flashes:
-    // pens 1-5 the colors (GEM_BODY), 6-10 their shades (GEM_SHADE), 11 the shine, 12 the flash's shade
-    for (let k = 0; k < 6; k++)
+    // pens 1-5 the colors (GEM_BODY), 6-10 their shades (GEM_SHADE), 11 the shine, 12 the flash's shade, 13-14 the stone's
+    for (let k = 0; k < 7; k++)
       gfx.tile16(code + k, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => {
         const pen = gemPen(x, y);
         if (k === 5) return [15, 11, 11, 0, 12][pen];
+        if (k === 6) return [15, 13, 11, 0, 14][pen];
         return [15, 1 + k, 11, 0, 6 + k][pen];
       })));
-    h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash */`, `#define PAL_GEMS ${objPalettes.length}`);
-    objPalettes.push([0xf000, 0xfe34, 0xf3c5, 0xf38f, 0xffc2, 0xfb5e, 0xf912, 0xf173, 0xf149, 0xfa71, 0xf629, 0xffff, 0xfccd, 0, 0, 0]);
-    code += 6;
+    h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash; + 6: the rival's stone */`, `#define PAL_GEMS ${objPalettes.length}`);
+    objPalettes.push([0xf000, 0xfe34, 0xf3c5, 0xf38f, 0xffc2, 0xfb5e, 0xf912, 0xf173, 0xf149, 0xfa71, 0xf629, 0xffff, 0xfccd, 0xf889, 0xf445, 0]);
+    code += 7;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));
