@@ -86,6 +86,8 @@ test("the host picks the video quality of game rooms, and the device keeps it", 
 });
 
 test("the test pattern room streams video", async () => {
+  // four accessibility checks and the picture styles: a slow runner needs more than the default minute
+  test.setTimeout(120_000);
   await page.getByRole("link", { name: "Test pattern" }).click();
   await expect(page).toHaveURL(/\/r\/[0-9a-f-]{36}$/);
   await expectVideoPlaying(page);
@@ -99,8 +101,7 @@ test("the test pattern room streams video", async () => {
   await expectOutputList(page, "dark");
   await expectPictureStyles(page);
   // The stream figures: the test card is sent at its own size (no 2x).
-  await page.mouse.move(400, 300);
-  await page.getByRole("button", { name: "Connection details" }).click();
+  await clickControl(page, "Connection details");
   const figures = page.getByRole("dialog", { name: "Connection details" });
   await expect(figures).toContainText("640×480");
   await expect(figures).not.toContainText("2×");
@@ -114,8 +115,7 @@ async function expectPictureStyles(p: Page) {
   await expect(stage).toHaveAttribute("data-picture-style", "smooth");
   await expect(stage).toHaveAttribute("data-picture-bands", "ambient");
   await expect(stage).toHaveAttribute("data-picture", /^webgl2?$/);
-  await p.mouse.move(400, 300);
-  await p.getByRole("button", { name: "Picture" }).click();
+  await clickControl(p, "Picture");
   const settings = p.getByRole("dialog", { name: "Picture" });
   await settings.getByRole("combobox", { name: "Style" }).click();
   await p.getByRole("option", { name: /^Sharp/ }).click();
@@ -140,8 +140,7 @@ async function expectPictureStyles(p: Page) {
 
 /** The room's Output list (the site's Select) opens inside the voice settings, passes the checker and closes alone. */
 async function expectOutputList(p: Page, theme: string) {
-  await p.mouse.move(400, 300);
-  await p.getByRole("button", { name: "Volume and voice" }).click();
+  await clickControl(p, "Volume and voice");
   const settings = p.getByRole("dialog", { name: /voice/i });
   const output = settings.getByRole("combobox", { name: "Output" });
   await output.click();
