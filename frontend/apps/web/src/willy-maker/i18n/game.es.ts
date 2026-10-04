@@ -93,6 +93,7 @@ export const gameEs: GameMessages = {
     depth: "Caminar en profundidad (beat 'em up: arriba y abajo recorren la calle)",
     crosshair: "Miras (pistola de luz: la palanca apunta, B1 dispara, B2 recarga; la cámara avanza sola)",
     ship: "Naves (nave horizontal: la palanca vuela, B1 sostenido dispara adelante, B2 suelta una bomba; la cámara avanza sola)",
+    vertical: "Subiendo (con Naves: la nave vertical, la cámara sube por el nivel y las naves disparan hacia arriba)",
     jump: "Medido en el motor, el salto llega a {peak} px: repisas de hasta {ledge} px de alto.",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",

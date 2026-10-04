@@ -196,6 +196,8 @@ export interface GameRules {
    * (held, every SHIP_FIRE frames), B2 drops a bomb; walls and enemies hurt.
    */
   ship: boolean;
+  /** The vertical shooter: with ships, the camera climbs the level from its bottom and the ships fire up (genres.md). */
+  vertical: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -223,6 +225,7 @@ export const DEFAULT_RULES: GameRules = {
   depth: false,
   crosshair: false,
   ship: false,
+  vertical: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -233,6 +236,9 @@ export const LIGHTGUN_RULES: Partial<GameRules> = { crosshair: true, weapons: fa
 
 /** A new horizontal shooter's rules (genres.md): ships, enemies that fly in and take one shot, touching one hurts, the level ends where the camera's route does. */
 export const SHIP_RULES: Partial<GameRules> = { ship: true, weapons: false, stomp: false, touchHurts: true, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, enemyHp: 1, respawnOnHurt: false };
+
+/** A new vertical shooter's rules: the horizontal shooter's, climbing the level. */
+export const VERTICAL_RULES: Partial<GameRules> = { ...SHIP_RULES, vertical: true };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -311,6 +317,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     depth: bool(r.depth, false),
     crosshair: bool(r.crosshair, false),
     ship: bool(r.ship, false),
+    vertical: bool(r.vertical, false),
   };
 }
 

@@ -1,0 +1,149 @@
+{
+ "name": "vertical-climb",
+ "description": "The vertical shooter (WM_ROM_OUT/vertical of rom.test.tsx, rom/verticalFixture.ts: a shaft 1536 px tall with blocks on alternate sides, drones coming down on their paths and two power-ups). Player 1's ship, steered by a bot in play mode (its inputs, frame by frame), fires up with B1 held while the camera climbs by itself, slides around the blocks above it, flies under the power-ups (two shots, then a fan of three across), drops a bomb and reaches the top, which clears the level. Play mode gives the same enemies, energy, score and camera every frame.",
+ "frames": 2845,
+ "checkpoints": [
+  908,
+  1868,
+  1500,
+  2700
+ ],
+ "expect": [
+  {
+   "frame": 1018,
+   "path": "players.0.score",
+   "equals": 500
+  },
+  {
+   "frame": 1000,
+   "path": "cam.y",
+   "equals": 893
+  },
+  {
+   "frame": 2000,
+   "path": "cam.y",
+   "equals": 393
+  },
+  {
+   "frame": 2700,
+   "path": "players.0.score",
+   "equals": 3500
+  },
+  {
+   "frame": 2700,
+   "path": "players.0.energy",
+   "equals": 3
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 161,
+   "to": 584,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 585,
+   "to": 631,
+   "port": 1,
+   "buttons": [
+    "right",
+    "b1"
+   ]
+  },
+  {
+   "from": 632,
+   "to": 998,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 999,
+   "to": 1023,
+   "port": 1,
+   "buttons": [
+    "left",
+    "b1"
+   ]
+  },
+  {
+   "from": 1024,
+   "to": 1398,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1399,
+   "to": 1453,
+   "port": 1,
+   "buttons": [
+    "right",
+    "b1"
+   ]
+  },
+  {
+   "from": 1454,
+   "to": 1544,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1545,
+   "to": 1548,
+   "port": 1,
+   "buttons": [
+    "left",
+    "b1"
+   ]
+  },
+  {
+   "from": 1549,
+   "to": 1838,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1839,
+   "to": 1839,
+   "port": 1,
+   "buttons": [
+    "b1",
+    "b2"
+   ]
+  },
+  {
+   "from": 1840,
+   "to": 2784,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  }
+ ]
+}

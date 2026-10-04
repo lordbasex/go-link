@@ -470,7 +470,11 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     if (game.rules.ship) {
       ctx.fillStyle = ART.shot;
       for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
-      if (!(p.invulnerable && (p.invulnerable >> 2) & 1)) drawShip(ctx, game.camX + p.cx - (SHIP_W >> 1), game.camY + p.cy - (SHIP_H >> 1), p.index);
+      if (!(p.invulnerable && (p.invulnerable >> 2) & 1)) {
+        // the vertical shooter's ship points up (the shape turned a quarter, the ROM's TILE_SHIPUP)
+        if (game.rules.vertical) drawPens(ctx, game.camX + p.cx - (SHIP_H >> 1), game.camY + p.cy - (SHIP_W >> 1), SHIP_H, SHIP_W, (px, py) => shipPen(SHIP_W - 1 - py, px), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffffff", "#000000", "#ffcc22"]);
+        else drawShip(ctx, game.camX + p.cx - (SHIP_W >> 1), game.camY + p.cy - (SHIP_H >> 1), p.index);
+      }
       return;
     }
     if (p.invulnerable && (p.invulnerable >> 2) & 1) return;

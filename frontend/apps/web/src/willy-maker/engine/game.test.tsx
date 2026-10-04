@@ -4,7 +4,7 @@
 // with (rom/src/main.c). Phase 2's 68000 engine must pass the same cases.
 
 import { describe, expect, it } from "vitest";
-import { AIM_FRAMES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
+import { AIM_FRAMES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
 /** A flat test level: a floor at y 400 (row 25) over 64 × 28 cells, plus whatever `build` adds. */
 function flat(build?: (set: (c: number, r: number, t: number) => void) => void, objects: LevelObject[] = []): LevelView {
@@ -1146,5 +1146,44 @@ describe("the horizontal shooter (genres.md, phase 1)", () => {
     run(g, 1, Input.B2);
     expect(g.enemies.map((e) => e.state)).toEqual(["down", "down", "walk"]);
     expect(g.players[0]!.bombs).toBe(BOMBS - 1);
+  });
+});
+
+describe("the vertical shooter (genres.md, phase 1)", () => {
+  // a shaft 448 px tall: the camera climbs 224 px
+  const shaft = (objects: LevelObject[]) => new Game(flat(undefined, objects), { rules: VERTICAL_RULES });
+
+  it("the camera climbs from the level's bottom, and its top clears the level", () => {
+    const g = shaft([]);
+    expect(g.camY).toBe(448 - 224);
+    run(g, 100, 0);
+    expect(g.camY).toBe(448 - 224 - 50);
+    run(g, 2 * 174 + 2, 0);
+    expect(g.outcome).toBe("cleared");
+  });
+
+  it("the ship fires up, and its fan spreads across", () => {
+    const g = shaft([{ name: "p1", type: "pickup", x: 96, y: 400, item: "power" }, { name: "p2", type: "pickup", x: 96, y: 392, item: "power" }]);
+    const p = g.players[0]!;
+    run(g, 6, Input.Up);
+    expect(p.power).toBe(2);
+    run(g, 1, Input.B1);
+    const y0 = p.shots[0]!.y;
+    run(g, 4, 0);
+    expect(p.shots.every((b) => b.y < y0)).toBe(true);
+    expect(p.shots[0]!.x).toBeLessThan(p.shots[2]!.x);
+  });
+
+  it("enemies come down from above: a wave sways across, a straight one does not", () => {
+    const g = shaft([{ name: "w", type: "enemy", x: 120, y: 200, kind: "trooper", facing: "left", patrol: 0 } as LevelObject, { name: "s", type: "enemy", x: 260, y: 200, kind: "trooper", facing: "left", patrol: 0, path: "straight" } as LevelObject]);
+    const [wave, straight] = g.enemies;
+    const xs = new Set<number>();
+    for (let f = 0; f < 200; f++) {
+      run(g, 1, 0);
+      if (wave!.state === "walk") xs.add(wave!.x);
+    }
+    expect(wave!.fy).toBeGreaterThan(200);
+    expect(xs.size).toBeGreaterThan(8);
+    expect(straight!.x).toBe(260);
   });
 });

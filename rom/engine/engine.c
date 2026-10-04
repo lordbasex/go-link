@@ -725,6 +725,7 @@ static struct player pl[MAX_PLAYERS];
 static int depth;
 static int crosshair; /* the light gun (WM_F_CROSSHAIR) */
 static int ship;      /* the horizontal shooter (WM_F_SHIP) */
+static int vertical;  /* with ship, the vertical shooter (WM_F_VERTICAL) */
 static s32 walk_y0, walk_y1;
 /* the camera locks (engine/game.ts activeLock): done once nothing stands in them */
 #define MAX_LOCKS 8
@@ -747,6 +748,7 @@ static struct enemy {
 	int appear, stay, shown; /* the light gun: frames on the screen before it shows and before it leaves (0 never), and frames there */
 	s32 base_y;              /* the shooter: the feet y its wave flies around */
 	int path;                /* the shooter: 0 wave, 1 straight, 2 dive, 3 the gunship boss */
+	s32 base_x;              /* the vertical shooter: the x its wave flies around */
 	u32 t;
 	const struct wm_look *look; /* the game's own enemy, or 0 for the android (T-30) */
 } en[MAX_ENEMIES];
@@ -1213,6 +1215,11 @@ static void player_join(int k)
 		p->cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
 		p->ammo = CLIP;
 		p->bombs = BOMBS;
+	} else if (ship && vertical) {
+		p->cx = 96 + k * 64;
+		p->cy = SCREEN_H - CROSS_BOTTOM - 30;
+		p->bombs = BOMBS;
+		p->power = 0;
 	} else if (ship) {
 		p->cx = 48;
 		p->cy = 40 + k * 36;
@@ -1281,6 +1288,7 @@ static void game_reset(void)
 	depth = (D->flags & WM_F_DEPTH) != 0;
 	crosshair = (D->flags & WM_F_CROSSHAIR) != 0;
 	ship = (D->flags & WM_F_SHIP) != 0;
+	vertical = ship && (D->flags & WM_F_VERTICAL) != 0;
 	for (i = 0; i < MAX_LOCKS; i++)
 		lock_done[i] = 0;
 	last_hit = -1;
@@ -1332,6 +1340,7 @@ static void game_reset(void)
 		en[i].stay = crosshair && !en[i].boss ? o->b : 0;
 		en[i].shown = 0;
 		en[i].base_y = o->y;
+		en[i].base_x = o->x;
 		en[i].path = ship ? o->a : 0;
 		if (en[i].path == 3)
 			en[i].fire_wait = GUNSHIP_FIRE;
@@ -1852,6 +1861,8 @@ static void fly(struct player *p)
 {
 	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
 	int dy = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	/* the vertical shooter's ship points up: its halves swap */
+	int hw = vertical ? SHIP_HALF_H : SHIP_HALF_W, hh = vertical ? SHIP_HALF_W : SHIP_HALF_H;
 	int i;
 	s32 sx, sy;
 	p->t++;
@@ -1859,17 +1870,17 @@ static void fly(struct player *p)
 		p->hurt--;
 	p->cx += dx * SHIP_SPEED;
 	p->cy += dy * SHIP_SPEED;
-	if (p->cx < SHIP_HALF_W)
-		p->cx = SHIP_HALF_W;
-	if (p->cx > SCREEN_W - SHIP_HALF_W)
-		p->cx = SCREEN_W - SHIP_HALF_W;
-	if (p->cy < SHIP_HALF_H + 16)
-		p->cy = SHIP_HALF_H + 16;
-	if (p->cy > SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H)
-		p->cy = SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H;
+	if (p->cx < hw)
+		p->cx = hw;
+	if (p->cx > SCREEN_W - hw)
+		p->cx = SCREEN_W - hw;
+	if (p->cy < hh + 16)
+		p->cy = hh + 16;
+	if (p->cy > SCREEN_H - CROSS_BOTTOM - hh)
+		p->cy = SCREEN_H - CROSS_BOTTOM - hh;
 	sx = cam_x + p->cx;
 	sy = cam_y + p->cy;
-	if (is_solid(cell_at(sx + SHIP_HALF_W, sy)) || is_solid(cell_at(sx - SHIP_HALF_W, sy)) || is_solid(cell_at(sx, sy - SHIP_HALF_H)) || is_solid(cell_at(sx, sy + SHIP_HALF_H)))
+	if (is_solid(cell_at(sx + hw, sy)) || is_solid(cell_at(sx - hw, sy)) || is_solid(cell_at(sx, sy - hh)) || is_solid(cell_at(sx, sy + hh)))
 		hurt(p, 0);
 	if (PRESSED(p, BTN_2) && p->bombs > 0) {
 		p->bombs--;
@@ -1901,10 +1912,12 @@ static void fly(struct player *p)
 			for (s = 0; s < n && live < SHOTS; s++, live++) {
 				for (i = 0; i < SHOTS && p->shots[i].live; i++)
 					;
+				/* from the nose; side by side and the fan's drift are across the way it flies */
+				int side = p->power == 1 ? (s ? POWER_GAP : -POWER_GAP) : 0;
 				p->shots[i].live = 1;
 				p->shots[i].dir = 1;
-				p->shots[i].x = (s16)(sx + SHIP_HALF_W);
-				p->shots[i].y = (s16)(p->power == 1 ? sy + (s ? POWER_GAP : -POWER_GAP) : sy);
+				p->shots[i].x = (s16)(vertical ? sx + side : sx + SHIP_HALF_W);
+				p->shots[i].y = (s16)(vertical ? sy - SHIP_HALF_W : sy + side);
 				p->shots[i].vy = (s16)(p->power == 2 ? s - 1 : 0);
 			}
 			p->fire_wait = SHIP_FIRE;
@@ -1916,8 +1929,13 @@ static void fly(struct player *p)
 		int ei;
 		if (!b->live)
 			continue;
-		b->x += 6;
-		b->y += b->vy;
+		if (vertical) {
+			b->y -= 6;
+			b->x += b->vy;
+		} else {
+			b->x += 6;
+			b->y += b->vy;
+		}
 		ei = enemy_at(b->x, b->y, 10);
 		if (ei < 0)
 			ei = gunship_at(b->x, b->y);
@@ -1930,7 +1948,7 @@ static void fly(struct player *p)
 			b->live = 0;
 		} else if (hit_cell(b->x >> 4, b->y >> 4, 1, p))
 			b->live = 0;
-		else if (cell_at(b->x, b->y) == T_SOLID || b->x > cam_x + SCREEN_W + 32)
+		else if (cell_at(b->x, b->y) == T_SOLID || (vertical ? b->y < cam_y - 32 : b->x > cam_x + SCREEN_W + 32))
 			b->live = 0;
 	}
 }
@@ -2425,6 +2443,37 @@ static void update_fliers(void)
 		}
 		if (e->state != EN_WALK && e->state != EN_HIT)
 			continue;
+		if (vertical) {
+			/* the vertical shooter: from above the screen down, the wave and the dive across */
+			if (e->fy - FLY_MID + 16 < cam_y)
+				continue;
+			e->shown++;
+			e->fy += FLY_SPEED;
+			if (e->path == 1)
+				e->x = e->base_x;
+			else if (e->path == 2) {
+				if (lead >= 0 && iabs(cam_y + pl[lead].cy - (e->fy - FLY_MID)) <= DIVE_RANGE) {
+					s32 tx = cam_x + pl[lead].cx;
+					e->base_x += (tx > e->base_x) - (tx < e->base_x);
+				}
+				e->x = e->base_x;
+			} else {
+				ph = (e->shown + i * 32) & 127;
+				e->x = e->base_x + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+			}
+			if (e->fy - FLY_MID > cam_y + SCREEN_H + 32) {
+				e->state = EN_OFF;
+				continue;
+			}
+			for (k = 0; k < nplayers; k++) {
+				struct player *p = &pl[k];
+				if (!p->active || p->hurt)
+					continue;
+				if (iabs(cam_x + p->cx - e->x) <= SHIP_HIT_X && iabs(cam_y + p->cy - (e->fy - FLY_MID)) <= SHIP_HIT_Y)
+					hurt(p, 0);
+			}
+			continue;
+		}
 		if (e->x > cam_x + SCREEN_W + (e->path == 3 ? 48 : 16))
 			continue;
 		e->shown++;
@@ -2684,7 +2733,17 @@ static int active_lock(void)
 static void update_route(int snap)
 {
 	s32 max_cx = level_w - SCREEN_W;
-	int lk = active_lock();
+	int lk;
+	if (vertical) {
+		/* the vertical shooter: from the level's bottom up, a pixel every ROUTE_STEP frames */
+		cam_x = 0;
+		if (snap)
+			cam_y = level_h - SCREEN_H > 0 ? level_h - SCREEN_H : 0;
+		else if (plat_t % ROUTE_STEP == 0 && cam_y > 0)
+			cam_y--;
+		return;
+	}
+	lk = active_lock();
 	if (lk >= 0) {
 		const struct wm_object *l = (const struct wm_object *)D->locks + lk;
 		s32 end = l->x + l->a - SCREEN_W > l->x ? l->x + l->a - SCREEN_W : l->x;
@@ -3083,7 +3142,12 @@ static void draw_world(void)
 			struct player *p = &pl[k];
 			if (!p->active || (p->hurt && ((p->hurt >> 2) & 1)))
 				continue;
-			put_sprite(p->cx - 16, p->cy - 8, (u16)(TILE_SHIP + 2 * k), (u16)(PAL_CROSS | (1 << 8)));
+			if (vertical) {
+				/* pointing up: two tiles, top and bottom */
+				put_sprite(p->cx - 8, p->cy - 16, (u16)(TILE_SHIPUP + 2 * k), PAL_CROSS);
+				put_sprite(p->cx - 8, p->cy, (u16)(TILE_SHIPUP + 2 * k + 1), PAL_CROSS);
+			} else
+				put_sprite(p->cx - 16, p->cy - 8, (u16)(TILE_SHIP + 2 * k), (u16)(PAL_CROSS | (1 << 8)));
 		}
 	else
 		for (k = 0; k < nplayers; k++)
@@ -3488,7 +3552,7 @@ static int play(int first)
 		if (outcome < 0)
 			soon_update();
 		/* the light gun: the level ends where the camera's route does, with no lock holding it */
-		if (outcome < 0 && (crosshair || ship) && cam_x >= level_w - SCREEN_W && active_lock() < 0) {
+		if (outcome < 0 && (crosshair || ship) && (vertical ? cam_y <= 0 : cam_x >= level_w - SCREEN_W && active_lock() < 0)) {
 			int any = 0;
 			for (k = 0; k < nplayers; k++)
 				any |= pl[k].active;

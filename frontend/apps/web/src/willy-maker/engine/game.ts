@@ -229,6 +229,8 @@ export interface Enemy {
   /** The horizontal shooter: the feet y its wave flies around, and its path (0 wave, 1 straight, 2 dive, 3 the gunship boss). */
   baseY: number;
   path: number;
+  /** The vertical shooter: the x its wave flies around. */
+  baseX: number;
 }
 
 export interface Civilian {
@@ -480,6 +482,7 @@ export class Game {
             shown: 0,
             baseY: o.y,
             path: this.rules.ship ? flyPathOf(o.path) : 0,
+            baseX: o.x,
           });
           if (this.enemies[this.enemies.length - 1]!.appear) this.enemies[this.enemies.length - 1]!.state = "hidden";
           break;
@@ -508,9 +511,10 @@ export class Game {
               shown: 0,
               baseY: o.y,
               path: 0,
+              baseX: o.x,
             });
           // the horizontal shooter's boss
-          else if (o.kind === "gunship" && this.rules.ship)
+          else if (o.kind === "gunship" && this.rules.ship && !this.rules.vertical)
             this.enemies.push({
               name: o.name,
               kind: "gunship",
@@ -532,6 +536,7 @@ export class Game {
               shown: 0,
               baseY: o.y,
               path: 3,
+              baseX: o.x,
             });
           break;
         case "civilian":
@@ -780,6 +785,11 @@ export class Game {
       p.cy = (SCREEN_H - CROSS_BOTTOM) >> 1;
       p.ammo = CLIP;
       p.bombs = BOMBS;
+    } else if (this.rules.ship && this.rules.vertical) {
+      p.cx = 96 + i * 64;
+      p.cy = SCREEN_H - CROSS_BOTTOM - 30;
+      p.bombs = BOMBS;
+      p.power = 0;
     } else if (this.rules.ship) {
       p.cx = 48;
       p.cy = 40 + i * 36;
@@ -1163,6 +1173,13 @@ export class Game {
 
   /** The light gun's camera: along the level a pixel every ROUTE_STEP frames, holding at a camera lock until its targets are down. */
   private updateRoute(snap: boolean): void {
+    if (this.rules.vertical) {
+      // the vertical shooter: from the level's bottom up, a pixel every ROUTE_STEP frames
+      this.camX = 0;
+      if (snap) this.camY = Math.max(0, this.level.height - SCREEN_H);
+      else if (this.frame % ROUTE_STEP === 0 && this.camY > 0) this.camY--;
+      return;
+    }
     const lock = this.activeLock();
     let maxX = this.level.width - SCREEN_W;
     if (lock) maxX = Math.min(maxX, Math.max(lock.x, lock.x + lock.w - SCREEN_W));
@@ -1182,11 +1199,15 @@ export class Game {
     if (p.invulnerable) p.invulnerable--;
     const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
     const dy = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
-    p.cx = Math.max(SHIP_HALF_W, Math.min(SCREEN_W - SHIP_HALF_W, p.cx + dx * SHIP_SPEED));
-    p.cy = Math.max(SHIP_HALF_H + 16, Math.min(SCREEN_H - CROSS_BOTTOM - SHIP_HALF_H, p.cy + dy * SHIP_SPEED));
+    // the vertical shooter's ship points up: its halves swap
+    const up = this.rules.vertical;
+    const hw = up ? SHIP_HALF_H : SHIP_HALF_W;
+    const hh = up ? SHIP_HALF_W : SHIP_HALF_H;
+    p.cx = Math.max(hw, Math.min(SCREEN_W - hw, p.cx + dx * SHIP_SPEED));
+    p.cy = Math.max(hh + 16, Math.min(SCREEN_H - CROSS_BOTTOM - hh, p.cy + dy * SHIP_SPEED));
     const sx = this.camX + p.cx;
     const sy = this.camY + p.cy;
-    if (this.isSolid(this.cellAt(sx + SHIP_HALF_W, sy)) || this.isSolid(this.cellAt(sx - SHIP_HALF_W, sy)) || this.isSolid(this.cellAt(sx, sy - SHIP_HALF_H)) || this.isSolid(this.cellAt(sx, sy + SHIP_HALF_H))) this.hurt(p);
+    if (this.isSolid(this.cellAt(sx + hw, sy)) || this.isSolid(this.cellAt(sx - hw, sy)) || this.isSolid(this.cellAt(sx, sy - hh)) || this.isSolid(this.cellAt(sx, sy + hh))) this.hurt(p);
     if (this.pressed(p, Input.B2) && p.bombs > 0) {
       p.bombs--;
       this.events.push({ kind: "explosion", x: this.camX + (SCREEN_W >> 1) });
@@ -1202,14 +1223,23 @@ export class Game {
     if (p.fireWait) p.fireWait--;
     if (p.pad & Input.B1 && !p.fireWait && p.shots.length < SHOTS_PER_PLAYER) {
       // the weapon's shots, each while there is room for one
-      const burst: Shot[] = p.power === 0 ? [{ dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 0 }] : p.power === 1 ? [{ dir: 1, x: sx + SHIP_HALF_W, y: sy - POWER_GAP, vy: 0 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy + POWER_GAP, vy: 0 }] : [{ dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: -1 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 0 }, { dir: 1, x: sx + SHIP_HALF_W, y: sy, vy: 1 }];
+      // from the nose; side by side and the fan's drift are across the way it flies (vy: a pixel a frame up or down, or left or right)
+      const nx = up ? sx : sx + SHIP_HALF_W;
+      const ny = up ? sy - SHIP_HALF_W : sy;
+      const side = (d: number) => (up ? { x: nx + d, y: ny } : { x: nx, y: ny + d });
+      const burst: Shot[] = p.power === 0 ? [{ dir: 1, ...side(0), vy: 0 }] : p.power === 1 ? [{ dir: 1, ...side(-POWER_GAP), vy: 0 }, { dir: 1, ...side(POWER_GAP), vy: 0 }] : [{ dir: 1, ...side(0), vy: -1 }, { dir: 1, ...side(0), vy: 0 }, { dir: 1, ...side(0), vy: 1 }];
       for (const b of burst) if (p.shots.length < SHOTS_PER_PLAYER) p.shots.push(b);
       p.fireWait = SHIP_FIRE;
       this.events.push({ kind: "shot", player: p.index });
     }
     p.shots = p.shots.filter((b) => {
-      b.x += SHOT_SPEED;
-      b.y += b.vy ?? 0;
+      if (up) {
+        b.y -= SHOT_SPEED;
+        b.x += b.vy ?? 0;
+      } else {
+        b.x += SHOT_SPEED;
+        b.y += b.vy ?? 0;
+      }
       const e = this.enemyAt(b.x, b.y, 10) ?? this.gunshipAt(b.x, b.y);
       if (e) {
         this.damage(e, 1, p);
@@ -1220,7 +1250,7 @@ export class Game {
         return false;
       }
       if (this.hitCell(Math.floor(b.x / CELL), Math.floor(b.y / CELL), 1, p)) return false;
-      return this.cellAt(b.x, b.y) !== Tag.Solid && b.x <= this.camX + SCREEN_W + 32;
+      return this.cellAt(b.x, b.y) !== Tag.Solid && (up ? b.y >= this.camY - 32 : b.x <= this.camX + SCREEN_W + 32);
     });
   }
 
@@ -1245,10 +1275,33 @@ export class Game {
         continue;
       }
       if (e.state !== "walk" && e.state !== "hit") continue;
+      const lead = this.players.find((q) => q.active);
+      if (this.rules.vertical) {
+        // the vertical shooter: from above the screen down, the wave and the dive across
+        if (e.fy - FLY_MID + 16 < this.camY) continue;
+        e.shown++;
+        e.fy += FLY_SPEED;
+        if (e.path === 1) e.x = e.baseX;
+        else if (e.path === 2) {
+          if (lead && Math.abs(this.camY + lead.cy - (e.fy - FLY_MID)) <= DIVE_RANGE) e.baseX += Math.sign(this.camX + lead.cx - e.baseX);
+          e.x = e.baseX;
+        } else {
+          const ph = (e.shown + i * 32) & 127;
+          e.x = e.baseX + ((ph < 64 ? ph : 128 - ph) >> 2) - FLY_WAVE;
+        }
+        if (e.fy - FLY_MID > this.camY + SCREEN_H + 32) {
+          e.state = "off";
+          continue;
+        }
+        for (const p of this.players) {
+          if (!p.active || p.invulnerable) continue;
+          if (Math.abs(this.camX + p.cx - e.x) <= SHIP_HIT_X && Math.abs(this.camY + p.cy - (e.fy - FLY_MID)) <= SHIP_HIT_Y) this.hurt(p);
+        }
+        continue;
+      }
       if (e.x > this.camX + SCREEN_W + (e.path === 3 ? 48 : 16)) continue;
       e.shown++;
       e.flip = true;
-      const lead = this.players.find((q) => q.active);
       if (e.path === 3) {
         // the gunship: in until it holds near the screen's right, bobbing, firing left
         if (e.x > this.camX + SCREEN_W - GUNSHIP_HOLD) e.x -= FLY_SPEED;
@@ -1870,7 +1923,8 @@ export class Game {
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
     if (this.rules.crosshair || this.rules.ship) {
-      if (this.camX >= this.level.width - SCREEN_W && !this.activeLock() && this.players.some((p) => p.active)) {
+      const end = this.rules.vertical ? this.camY <= 0 : this.camX >= this.level.width - SCREEN_W && !this.activeLock();
+      if (end && this.players.some((p) => p.active)) {
         this.outcome = "cleared";
         this.events.push({ kind: "cleared" });
         return;

@@ -93,6 +93,7 @@ export const gamePt: GameMessages = {
     depth: "Andar em profundidade (beat 'em up: cima e baixo percorrem a rua)",
     crosshair: "Miras (pistola de luz: a alavanca mira, B1 atira, B2 recarrega; a câmera avança sozinha)",
     ship: "Naves (nave horizontal: a alavanca voa, B1 segurado atira para frente, B2 solta uma bomba; a câmera avança sozinha)",
+    vertical: "Subindo (com Naves: a nave vertical, a câmera sobe pela fase e as naves atiram para cima)",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

@@ -69,7 +69,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 14;
+const WM_VERSION = 15;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -98,6 +98,7 @@ const F_STOMP = 0x100;
 const F_DEPTH = 0x200;
 const F_CROSSHAIR = 0x400;
 const F_SHIP = 0x800;
+const F_VERTICAL = 0x1000;
 /** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
 const F_DIFFICULTY_SHIFT = 5;
 
@@ -480,7 +481,7 @@ export function packGame(
         if (o.kind === "brawler") {
           enemyKinds.push("brawler");
           enemies.push([o.x, o.y, o.x - 3 * CELL, o.x + 3 * CELL, num(o.hp, BOSS_HP), o.facing === "right" ? 2 : -2]);
-        } else if (o.kind === "gunship" && shipRule) {
+        } else if (o.kind === "gunship" && shipRule && !rulesWith(project.settings.rules).vertical) {
           // the shooter's gunship: a boss row whose path is 3
           enemyKinds.push("gunship");
           enemies.push([o.x, o.y, 3, 0, num(o.hp, GUNSHIP_HP), -2]);
@@ -645,7 +646,7 @@ export function packGame(
   w16(WM_VERSION);
   w16(HEADER);
   w16(Math.max(1, Math.min(4, project.settings.players)));
-  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT) | (rules.weapons ? 0 : F_NO_WEAPONS) | (rules.stomp ? F_STOMP : 0) | (rules.depth ? F_DEPTH : 0) | (rules.crosshair ? F_CROSSHAIR : 0) | (rules.ship ? F_SHIP : 0));
+  w16((dip.freePlay ? F_FREE_PLAY : 0) | (rules.crateClimb === "push" ? F_PUSH_CLIMB : 0) | (rules.extraPorts === "soon" ? F_SOON : 0) | (rules.doubleJump ? F_DOUBLE_JUMP : 0) | (rules.jetpack ? F_JETPACK : 0) | (difficultyOf(dip.difficulty).bits << F_DIFFICULTY_SHIFT) | (rules.weapons ? 0 : F_NO_WEAPONS) | (rules.stomp ? F_STOMP : 0) | (rules.depth ? F_DEPTH : 0) | (rules.crosshair ? F_CROSSHAIR : 0) | (rules.ship ? F_SHIP : 0) | (rules.ship && rules.vertical ? F_VERTICAL : 0));
   w16(level.size.w);
   w16(level.size.h);
   w16(cols);

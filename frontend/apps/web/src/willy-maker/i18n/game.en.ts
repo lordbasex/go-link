@@ -91,6 +91,7 @@ export const gameEn = {
     depth: "Walking in depth (beat 'em up: up and down move along the street)",
     crosshair: "Crosshairs (light gun: the stick aims, B1 shoots, B2 reloads; the camera moves by itself)",
     ship: "Ships (horizontal shooter: the stick flies, B1 held shoots ahead, B2 drops a bomb; the camera moves by itself)",
+    vertical: "Climbing (with Ships: the vertical shooter, the camera climbs the level and the ships fire up)",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",
