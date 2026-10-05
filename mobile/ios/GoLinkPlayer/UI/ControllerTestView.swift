@@ -17,13 +17,43 @@ import SwiftUI
 struct ControllerTestView: View {
     @EnvironmentObject private var app: AppModel
     @StateObject private var model = ControllerTestModel()
+    @StateObject private var skins = SkinStore()
 
     var body: some View {
         GeometryReader { g in
             let landscape = g.size.width > g.size.height
             ZStack {
                 Tokens.video.ignoresSafeArea()
-                if landscape {
+                if let skin = skins.selected {
+                    // The player's own skin, as in a room: the test card is the game.
+                    SkinConsoleLayout(
+                        skin: skin,
+                        picture: skins.background(skin, landscape: landscape),
+                        landscape: landscape,
+                        size: g.size,
+                        insets: g.safeAreaInsets,
+                        pad: model.pad,
+                        controls: GameControls(players: 1, buttons: 6, control: "joy8way"),
+                        starts: 1,
+                        myPorts: [1],
+                        aspect: 4.0 / 3.0,
+                        keepDock: true,
+                        startBit: { _ in PadButton.start },
+                        startLabel: { _ in L("test_start") },
+                        header: { _ in AnyView(titleBar) },
+                        screen: AnyView(skinScreen),
+                        dock: { vertical in
+                            AnyView(Group {
+                                if vertical {
+                                    VStack(spacing: 6) { extraLamps }
+                                } else {
+                                    HStack(spacing: 6) { extraLamps }
+                                }
+                            }
+                            .padding(6))
+                        }
+                    )
+                } else if landscape {
                     HStack(spacing: 0) {
                         cardArea.frame(width: g.size.width * 0.5)
                         diagram(width: g.size.width * 0.5 - 16, height: g.size.height - 16).padding(8)
@@ -41,6 +71,44 @@ struct ControllerTestView: View {
         .accessibilityIdentifier("test-controller-screen")
         .onAppear { model.start() }
         .onDisappear { model.stop() }
+    }
+
+    /** In a skin: the test card with the readouts over its lower part. */
+    private var skinScreen: some View {
+        ZStack(alignment: .bottom) {
+            TestCardDrawing()
+            readouts(compact: true).padding(6)
+        }
+    }
+
+    /** The extra buttons a controller has and the pad does not, in the skin's menu capsule. */
+    @ViewBuilder private var extraLamps: some View {
+        ForEach(extras, id: \.1) { bit, label in ExtraLamp(state: model.pad, bit: bit, label: label) }
+    }
+
+    /** The title and the close button. */
+    private var titleBar: some View {
+        HStack {
+            Text(L("test_title")).font(.headline).foregroundStyle(Tokens.text)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Capsule().fill(Tokens.video.opacity(0.7)))
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            closeButton
+        }
+    }
+
+    private var closeButton: some View {
+        SwiftUI.Button { app.screen = .home } label: {
+            Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Tokens.text)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Tokens.video.opacity(0.7)))
+                .overlay(Circle().stroke(Tokens.borderStrong, lineWidth: 1))
+                .frame(width: Tokens.control, height: Tokens.control)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L("test_close"))
+        .accessibilityIdentifier("test-close")
     }
 
     /**
@@ -71,11 +139,12 @@ struct ControllerTestView: View {
                 .padding(12)
             }
             .clipped()
-            readouts.padding(.horizontal, 8).padding(.vertical, 6)
+            readouts(compact: false).padding(.horizontal, 8).padding(.vertical, 6)
         }
     }
 
-    private var readouts: some View {
+    /** The controller, the latency and the screen's rate; compact over the picture of a skin. */
+    private func readouts(compact: Bool) -> some View {
         let lat = model.latency
         func ms(_ v: Double?) -> String { v.map { String(format: "%.0f", $0) } ?? "–" }
         return VStack(alignment: .leading, spacing: 4) {
@@ -96,10 +165,14 @@ struct ControllerTestView: View {
             Text(L("test_screen", ScreenRate.label(model.screen.hz), ScreenRate.frameMs(model.screen.hz)))
                 .font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(Tokens.voice)
                 .accessibilityIdentifier("test-screen-rate")
-            Text(L("test_latency_note")).font(.caption2).foregroundStyle(Tokens.muted).fixedSize(horizontal: false, vertical: true)
+            if !compact {
+                Text(L("test_latency_note")).font(.caption2).foregroundStyle(Tokens.muted).fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .font(.footnote)
-        .padding(10)
+        .font(compact ? .caption : .footnote)
+        .lineLimit(compact ? 2 : nil)
+        .minimumScaleFactor(compact ? 0.7 : 1)
+        .padding(compact ? 6 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12).fill(Tokens.video.opacity(0.72)))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Tokens.voice.opacity(0.35), lineWidth: 1))

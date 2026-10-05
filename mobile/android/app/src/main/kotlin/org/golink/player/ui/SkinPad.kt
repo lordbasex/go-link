@@ -642,6 +642,10 @@ fun SkinConsole(
     header: @Composable (compact: Boolean) -> Unit,
     screen: @Composable (Modifier) -> Unit,
     dock: @Composable (vertical: Boolean) -> Unit,
+    /** Each start pill's button: the panel's 1P-4P in a room, the player's own Start in the controller test. */
+    startBit: (Int) -> Int = ::startOf,
+    /** Each start pill's label, or null for "1P".."4P". */
+    startLabels: List<String>? = null,
 ) {
     val density = LocalDensity.current
     val dir = LocalLayoutDirection.current
@@ -679,7 +683,7 @@ fun SkinConsole(
             SkinPill(pad, skin, Button.COIN, stringResource(R.string.room_coin), l.coin, mine = false, tag = "pad-coin")
             l.starts.forEachIndexed { i, r ->
                 val port = i + 1
-                SkinPill(pad, skin, startOf(port), stringResource(R.string.room_start_player, port), r, mine = port in myPorts, tag = "pad-start-$port")
+                SkinPill(pad, skin, startBit(port), startLabels?.getOrNull(i) ?: stringResource(R.string.room_start_player, port), r, mine = port in myPorts, tag = "pad-start-$port")
             }
         }
         // Touch zones over the controls only; a finger that started in one keeps sliding across every control.

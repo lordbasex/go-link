@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (apps)
+
+- **Test controller wears your gamepad skin** (iOS and Android): the same shell, D-pad, buttons, Coin and Start as in a room (Smoke until you pick another), with the test card in the screen, the latency and screen readouts over it, and the buttons only a controller has (L2, R2, L3, R3, Home) as lamps in the skin's menu capsule.
+
 ### Changed (website)
 
 - **The website is two sites.** go-link.org keeps the landing, the user guide, the tools and the legal pages; the rooms, invitations and My device move to **play.go-link.org**, which is also what a headless device's local panel serves (lighter: no landing, guide or tools inside the binary). The link to your go-link now lives only on play.go-link.org, and go-link.org never connects to the signaling server. Old addresses keep working: go-link.org/rooms, /device, /r/<id> and /g/<invite> take you to the same page on play, and invitations are still shared as go-link.org/g/<invite>, which the Player apps open. A browser linked before the split is offered, once, to bring its link, room passes and settings to play.go-link.org with one click (`/handoff`); go-link.org then forgets the link. Both are built from `apps/web` (`VITE_ROLE=site|play`, `make web-build` builds both). The device's window now points to play.go-link.org/device by default (`web_url`), and Willy Maker reaches your go-link through play.go-link.org.

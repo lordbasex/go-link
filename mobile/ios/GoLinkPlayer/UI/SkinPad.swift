@@ -593,6 +593,9 @@ struct SkinConsoleLayout: View {
     let aspect: CGFloat
     /** Keeps the menu shown (a sheet or the drawer is open). */
     var keepDock = false
+    /** Each start pill's button and label: the panel's 1P-4P in a room, the player's own Start in the controller test. */
+    var startBit: (Int) -> Int = { startOf($0) }
+    var startLabel: (Int) -> String = { L("room_start_player", $0) }
     let header: (_ compact: Bool) -> AnyView
     let screen: AnyView
     let dock: (_ vertical: Bool) -> AnyView
@@ -627,7 +630,7 @@ struct SkinConsoleLayout: View {
                     .position(x: l.coin.midX, y: l.coin.midY)
                 ForEach(Array(l.starts.enumerated()), id: \.offset) { i, r in
                     let port = i + 1
-                    SkinPillButton(state: pad, skin: skin, bit: startOf(port), label: L("room_start_player", port), mine: myPorts.contains(port), tag: "pad-start-\(port)", size: pill)
+                    SkinPillButton(state: pad, skin: skin, bit: startBit(port), label: startLabel(port), mine: myPorts.contains(port), tag: "pad-start-\(port)", size: pill)
                         .position(x: r.midX, y: r.midY)
                 }
             }

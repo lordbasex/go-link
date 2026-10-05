@@ -3,6 +3,8 @@ package org.golink.player.ui
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +60,7 @@ import org.golink.player.core.Button
 import org.golink.player.core.GameControls
 import org.golink.player.core.LatencyMeter
 import org.golink.player.core.ScreenRate
+import org.golink.player.input.ConnectedController
 import org.golink.player.input.ControllerKind
 import org.golink.player.input.ControllerTester
 import kotlin.math.min
@@ -72,7 +75,7 @@ import kotlin.math.roundToInt
  * refresh rate, kept at the phone's highest while the screen is open.
  */
 @Composable
-fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
+fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit, skins: SkinStore? = null) {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val controllerBits by tester.buttons.collectAsState()
     val connected by tester.connected.collectAsState()
@@ -106,9 +109,100 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
 
     val controls = GameControls(players = 1, buttons = 6, control = "joy8way")
     val using = connected.firstOrNull { it.id == lastDevice } ?: connected.firstOrNull()
-    val info: @Composable (Modifier) -> Unit = { m ->
+    val info: @Composable (Modifier) -> Unit = { m -> Readouts(m, using, connected.size, readout, screenHz) }
+    // The readouts sit next to the card, never over it: the circle stays whole.
+    val card: @Composable (Modifier) -> Unit = { m ->
+        val desc = stringResource(R.string.tester_card)
+        TestCard(m.semantics { contentDescription = desc })
+    }
+
+    // The player's own skin, as in a room: the test card is the game.
+    val skin = skins?.selected
+    if (skin != null) {
+        Box(Modifier.fillMaxSize().testTag("test-controller-screen")) {
+            SkinConsole(
+                skin = skin,
+                picture = skins.background(skin, landscape),
+                landscape = landscape,
+                pad = pad,
+                controls = controls,
+                starts = 1,
+                myPorts = listOf(1),
+                aspect = 4.0 / 3.0,
+                displayOnly = false,
+                keepDock = true,
+                header = { _ ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack, modifier = Modifier.size(48.dp).testTag("tester-back")) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Color.White)
+                        }
+                        Text(stringResource(R.string.tester_title), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                screen = { m ->
+                    Box(m) {
+                        card(Modifier.fillMaxSize())
+                        Readouts(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(6.dp), using, connected.size, readout, screenHz, compact = true)
+                    }
+                },
+                dock = { vertical ->
+                    // The buttons a controller has and the pad does not.
+                    val lamps: @Composable () -> Unit = { EXTRAS.forEach { (bit, label) -> ExtraLamp(pad.lit and bit != 0, label) } }
+                    if (vertical) {
+                        Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { lamps() }
+                    } else {
+                        Row(Modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { lamps() }
+                    }
+                },
+                startBit = { Button.START },
+                startLabels = listOf(stringResource(R.string.tester_start)),
+            )
+        }
+        return
+    }
+
+    Column(Modifier.fillMaxSize().safeDrawingPadding().testTag("test-controller-screen")) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp).testTag("tester-back")) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Tokens.text)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.tester_title), color = Tokens.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                if (!landscape) Text(stringResource(R.string.tester_subtitle), color = Tokens.muted, fontSize = 12.sp)
+            }
+        }
+        PlainLayout(landscape, pad, controls, card, info)
+    }
+}
+
+private val EXTRAS = listOf(Button.L2 to "L2", Button.R2 to "R2", Button.L3 to "L3", Button.R3 to "R3", Button.HOME to "Home")
+
+/** A small lamp for a controller button the on-screen pad does not have. */
+@Composable
+private fun ExtraLamp(on: Boolean, label: String) {
+    Box(
+        Modifier
+            .background(if (on) Tokens.accent else Color(0x33000000), RoundedCornerShape(50))
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .semantics { contentDescription = label },
+    ) {
+        Text(label, color = if (on) Color.Black else Color(0xB3FFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** The controller in use, the latency and the screen's rate; compact over the picture of a skin. */
+@Composable
+private fun Readouts(
+    m: Modifier,
+    using: ConnectedController?,
+    count: Int,
+    readout: Triple<Double?, Double?, Double?>,
+    screenHz: Int?,
+    compact: Boolean = false,
+) {
         Surface(m, color = Color(0x9E05060A), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color(0x594FC3D9))) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(Modifier.padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 4.dp else 8.dp)) {
                 val name = using?.let {
                     // Only a link Android can confirm is named; otherwise just the controller.
                     when (it.kind) {
@@ -117,8 +211,8 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
                         ControllerKind.UNKNOWN -> it.name
                     }
                 } ?: stringResource(R.string.tester_no_controller)
-                Text(name, color = Tokens.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("tester-controller"))
-                if (connected.size > 1) Text(stringResource(R.string.tester_more, connected.size - 1), color = Tokens.muted, fontSize = 12.sp)
+                Text(name, color = Tokens.text, fontSize = if (compact) 11.sp else 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, modifier = Modifier.testTag("tester-controller"))
+                if (count > 1) Text(stringResource(R.string.tester_more, count - 1), color = Tokens.muted, fontSize = 12.sp)
                 fun ms(v: Double?) = v?.let { "${it.roundToInt()} ms" } ?: "–"
                 val (last, lo, avg) = readout
                 val latency = stringResource(R.string.tester_latency, ms(last), ms(lo), ms(avg))
@@ -138,23 +232,17 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
                 )
             }
         }
-    }
-    // The readouts sit next to the card, never over it: the circle stays whole.
-    val card: @Composable (Modifier) -> Unit = { m ->
-        val desc = stringResource(R.string.tester_card)
-        TestCard(m.semantics { contentDescription = desc })
-    }
+}
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().testTag("test-controller-screen")) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp).testTag("tester-back")) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Tokens.text)
-            }
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.tester_title), color = Tokens.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                if (!landscape) Text(stringResource(R.string.tester_subtitle), color = Tokens.muted, fontSize = 12.sp)
-            }
-        }
+/** Without a skin (none could be read): the card, the readouts and a plain pad. */
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.PlainLayout(
+    landscape: Boolean,
+    pad: TouchPadState,
+    controls: GameControls,
+    card: @Composable (Modifier) -> Unit,
+    info: @Composable (Modifier) -> Unit,
+) {
         if (landscape) {
             Row(Modifier.fillMaxSize()) {
                 PadSurface(pad, Modifier.fillMaxHeight().weight(0.26f)) {
@@ -200,7 +288,6 @@ fun TestControllerScreen(tester: ControllerTester, onBack: () -> Unit) {
                 }
             }
         }
-    }
 }
 
 /**
