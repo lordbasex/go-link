@@ -97,16 +97,56 @@ public enum SkinCheck {
         return .ready(Ready(skin: skin, data: data, warnings: warnings, replaces: installed.contains(skin.id)))
     }
 
-    /** The screens a skin is checked on: phones and a tablet, with their safe areas. */
+    /**
+     * The screens a skin is checked on, phones and tablets with their safe
+     * areas (top, left, bottom, right): docs/skins/screens.json, portrait and
+     * landscape (SkinInstallTests checks the two match).
+     */
     static let screens: [(CGSize, (CGFloat, CGFloat, CGFloat, CGFloat))] = [
-        (CGSize(width: 402, height: 874), (62, 0, 34, 0)),
-        (CGSize(width: 874, height: 402), (0, 62, 21, 62)),
-        (CGSize(width: 375, height: 667), (20, 0, 0, 0)),
-        (CGSize(width: 667, height: 375), (0, 0, 0, 0)),
-        (CGSize(width: 360, height: 640), (24, 0, 0, 0)),
-        (CGSize(width: 640, height: 360), (0, 0, 0, 0)),
-        (CGSize(width: 820, height: 1180), (24, 0, 20, 0)),
-        (CGSize(width: 1180, height: 820), (24, 0, 20, 0)),
+        (CGSize(width: 375, height: 667), (20, 0, 0, 0)), // iPhone SE (2nd, 3rd gen.)
+        (CGSize(width: 667, height: 375), (0, 0, 0, 0)), // iPhone SE (2nd, 3rd gen.)
+        (CGSize(width: 375, height: 812), (50, 0, 34, 0)), // iPhone 12 mini · 13 mini
+        (CGSize(width: 812, height: 375), (0, 50, 21, 50)), // iPhone 12 mini · 13 mini
+        (CGSize(width: 375, height: 812), (44, 0, 34, 0)), // iPhone 11 Pro
+        (CGSize(width: 812, height: 375), (0, 44, 21, 44)), // iPhone 11 Pro
+        (CGSize(width: 414, height: 896), (48, 0, 34, 0)), // iPhone 11
+        (CGSize(width: 896, height: 414), (0, 48, 21, 48)), // iPhone 11
+        (CGSize(width: 414, height: 896), (44, 0, 34, 0)), // iPhone 11 Pro Max
+        (CGSize(width: 896, height: 414), (0, 44, 21, 44)), // iPhone 11 Pro Max
+        (CGSize(width: 390, height: 844), (47, 0, 34, 0)), // iPhone 12 · 12 Pro · 13 · 13 Pro · 14 · 16e
+        (CGSize(width: 844, height: 390), (0, 47, 21, 47)), // iPhone 12 · 12 Pro · 13 · 13 Pro · 14 · 16e
+        (CGSize(width: 428, height: 926), (47, 0, 34, 0)), // iPhone 12 Pro Max · 13 Pro Max · 14 Plus
+        (CGSize(width: 926, height: 428), (0, 47, 21, 47)), // iPhone 12 Pro Max · 13 Pro Max · 14 Plus
+        (CGSize(width: 393, height: 852), (59, 0, 34, 0)), // iPhone 14 Pro · 15 · 15 Pro · 16
+        (CGSize(width: 852, height: 393), (0, 59, 21, 59)), // iPhone 14 Pro · 15 · 15 Pro · 16
+        (CGSize(width: 430, height: 932), (59, 0, 34, 0)), // iPhone 14 Pro Max · 15 Plus · 15 Pro Max · 16 Plus
+        (CGSize(width: 932, height: 430), (0, 59, 21, 59)), // iPhone 14 Pro Max · 15 Plus · 15 Pro Max · 16 Plus
+        (CGSize(width: 402, height: 874), (62, 0, 34, 0)), // iPhone 16 Pro · 17 · 17 Pro
+        (CGSize(width: 874, height: 402), (0, 62, 21, 62)), // iPhone 16 Pro · 17 · 17 Pro
+        (CGSize(width: 440, height: 956), (62, 0, 34, 0)), // iPhone 16 Pro Max · 17 Pro Max
+        (CGSize(width: 956, height: 440), (0, 62, 21, 62)), // iPhone 16 Pro Max · 17 Pro Max
+        (CGSize(width: 420, height: 912), (68, 0, 34, 0)), // iPhone Air
+        (CGSize(width: 912, height: 420), (0, 68, 21, 68)), // iPhone Air
+        (CGSize(width: 820, height: 1180), (24, 0, 20, 0)), // iPad
+        (CGSize(width: 1180, height: 820), (24, 0, 20, 0)), // iPad
+        (CGSize(width: 360, height: 640), (24, 0, 0, 0)), // Android 360 × 640 (16:9)
+        (CGSize(width: 640, height: 360), (0, 0, 0, 0)), // Android 360 × 640 (16:9)
+        (CGSize(width: 360, height: 760), (24, 0, 48, 0)), // Android 360 × 760
+        (CGSize(width: 760, height: 360), (24, 0, 0, 48)), // Android 360 × 760
+        (CGSize(width: 393, height: 851), (24, 0, 48, 0)), // Android 393 × 851
+        (CGSize(width: 851, height: 393), (24, 0, 0, 48)), // Android 393 × 851
+        (CGSize(width: 412, height: 915), (24, 0, 48, 0)), // Android 412 × 915
+        (CGSize(width: 915, height: 412), (24, 0, 0, 48)), // Android 412 × 915
+        (CGSize(width: 411, height: 731), (24, 0, 48, 0)), // Android 411 × 731 (16:9)
+        (CGSize(width: 731, height: 411), (24, 0, 0, 48)), // Android 411 × 731 (16:9)
+        (CGSize(width: 448, height: 997), (24, 0, 48, 0)), // Android 448 × 997
+        (CGSize(width: 997, height: 448), (24, 0, 0, 48)), // Android 448 × 997
+        (CGSize(width: 461, height: 998), (24, 0, 48, 0)), // Android 461 × 998
+        (CGSize(width: 998, height: 461), (24, 0, 0, 48)), // Android 461 × 998
+        (CGSize(width: 690, height: 829), (24, 0, 48, 0)), // Android foldable 690 × 829
+        (CGSize(width: 829, height: 690), (24, 0, 0, 48)), // Android foldable 690 × 829
+        (CGSize(width: 800, height: 1280), (24, 0, 48, 0)), // Android tablet 800 × 1280
+        (CGSize(width: 1280, height: 800), (24, 0, 48, 0)), // Android tablet 800 × 1280
     ]
 
     /**

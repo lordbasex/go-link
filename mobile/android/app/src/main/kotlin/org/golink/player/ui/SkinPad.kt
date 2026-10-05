@@ -289,6 +289,11 @@ private fun SkinShell(skin: PadSkin, landscape: Boolean, layout: SkinLayout, pic
         val w = size.width
         val h = size.height
         fun r(rect: SkinRect) = Offset(rect.x.toFloat() * density, rect.y.toFloat() * density) to Size(rect.w.toFloat() * density, rect.h.toFloat() * density)
+        // Black outside the rim's rounded corners: on a screen with square corners the
+        // plastic would show past the rim; this way the console always looks rounded.
+        drawRect(Color.Black)
+        val body = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, w, h, CornerRadius(52 * density))) }
+        clipPath(body) {
         if (picture != null) {
             // Fills the screen like CSS background-size: cover.
             val k = max(w / picture.width, h / picture.height)
@@ -356,6 +361,7 @@ private fun SkinShell(skin: PadSkin, landscape: Boolean, layout: SkinLayout, pic
         )
         drawRoundRect(rgb(skin.rim, 0.9f), Offset(2 * density, 2 * density), Size(w - 4 * density, h - 4 * density), CornerRadius(50 * density), style = Stroke(4 * density))
         drawRoundRect(Color.White.copy(alpha = 0.12f), Offset(9 * density, 9 * density), Size(w - 18 * density, h - 18 * density), CornerRadius(44 * density), style = Stroke(2 * density))
+        }
     }
 }
 

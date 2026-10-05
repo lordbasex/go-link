@@ -77,7 +77,7 @@ func shotUI(t *testing.T, lang string, pairing bool) (*ui, *services.StatusServi
 		Hardware: sysinfo.Hardware{Hostname: "arcade-pc", OS: "darwin", Arch: "arm64", Platform: "macOS 15.6", CPUModel: "Apple M1", Cores: 8, MemTotal: 16 << 30},
 		Usage:    sysinfo.Usage{CPUPercent: 23, ProcessCPUPercent: 61, MemUsed: 9 << 30, ProcessRSS: 180 << 20, NetSentBps: 412_000, NetRecvBps: 38_000},
 	})
-	opts := Options{Ctx: context.Background(), Status: status, Library: lib, Settings: settings, Version: "v0.1.4", Language: lang, Logger: logger, WebURL: "https://go-link.org"}
+	opts := Options{Ctx: context.Background(), Status: status, Library: lib, Settings: settings, Version: "v0.1.4", Language: lang, Logger: logger, WebURL: "https://play.go-link.org"}
 	if pairing {
 		opts.Links = services.NewLinkService(services.LinkConfig{DeviceID: id, Logger: logger}, status)
 	} else {

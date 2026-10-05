@@ -9,7 +9,7 @@ import { Select } from "../components/ui/Select";
 import { LockIcon } from "../components/Icons";
 import { BUILTIN_SKINS, smokeSkin } from "../skins/builtin";
 import {
-  DEVICES,
+  deviceOf,
   DEVICE_IDS,
   R,
   bottom,
@@ -234,7 +234,7 @@ function controlName(n: ControlName): string {
 /** A check's problem in the viewer's language. */
 function issueText(i: Issue | FormatIssue): string {
   const m = t.skinEditor.issues;
-  const where = "where" in i && i.where ? `${t.skinEditor.where(t.skinEditor.orientNames[i.where.orient], DEVICES[i.where.device].name)}: ` : "";
+  const where = "where" in i && i.where ? `${t.skinEditor.where(t.skinEditor.orientNames[i.where.orient], deviceOf(i.where.device).name)}: ` : "";
   switch (i.kind) {
     case "noLayout": return m.noLayout(t.skinEditor.orientNames[i.orient]);
     case "offScreen": return where + m.offScreen(controlName(i.name));
@@ -335,7 +335,7 @@ export function SkinEditorPage() {
 
   // ------------------------------------------------------------ geometry
 
-  const dev = () => DEVICES[st.current.device][st.current.orient];
+  const dev = () => deviceOf(st.current.device)[st.current.orient];
   const landscape = () => st.current.orient === "landscape";
   const layoutOf = (): LayoutJson => st.current.skin.layout[st.current.orient];
   const frame = () => {
@@ -372,7 +372,7 @@ export function SkinEditorPage() {
     const vp = viewport.current;
     const s = st.current;
     if (!vp || !vp.clientWidth) return;
-    const d = DEVICES[s.device][s.orient];
+    const d = deviceOf(s.device)[s.orient];
     const z = Math.min((vp.clientWidth - 80) / d.w, (vp.clientHeight - 80) / d.h);
     s.zoom = Math.max(0.2, Math.min(3, Math.floor(z * 20) / 20));
     s.panX = Math.round((vp.clientWidth - d.w * s.zoom) / 2);
@@ -1658,7 +1658,7 @@ export function SkinEditorPage() {
             value={S.device}
             ariaLabel={e.previewOn}
             className="select-sm"
-            options={DEVICE_IDS.map((id) => ({ value: id, label: DEVICES[id].name }))}
+            options={DEVICE_IDS.map((id) => ({ value: id, label: deviceOf(id).name }))}
             onChange={(v) => {
               st.current.device = v;
               fit();
@@ -1977,7 +1977,7 @@ export function SkinEditorPage() {
         </div>
 
         <footer className="se-status mono">
-          <span>{e.statusCanvas(layoutOf().canvas.w, layoutOf().canvas.h, DEVICES[S.device].name)}</span>
+          <span>{e.statusCanvas(layoutOf().canvas.w, layoutOf().canvas.h, deviceOf(S.device).name)}</span>
           <span>
             {S.snap ? e.snapOn : e.snapOff}
             {S.grid ? e.grid8 : ""}

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
 import { BUILTIN_SKINS, smokeSkin } from "./builtin";
-import { DEVICES, check, compute, placementOf } from "./layout";
+import { deviceOf, check, compute, placementOf } from "./layout";
 import { validate } from "./model";
 
 describe("skin layout", () => {
@@ -19,7 +19,7 @@ describe("skin layout", () => {
   it("places Smoke on an iPhone 17 in portrait like the apps", () => {
     const p = placementOf(smokeSkin()!.layout!.portrait);
     expect(p).not.toBeNull();
-    const l = compute(p!, DEVICES.iphone17.portrait, false, 4 / 3, 6, 2);
+    const l = compute(p!, deviceOf("iphone17").portrait, false, 4 / 3, 6, 2);
     expect(l.dpad.x).toBeCloseTo(22, 2);
     expect(l.dpad.y).toBeCloseTo(532, 2);
     expect(l.dpad.w).toBeCloseTo(166, 2);

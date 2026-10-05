@@ -71,16 +71,56 @@ object SkinInstall {
         return Check.Ready(skin, warnings, replaces = skin.id in installedIds)
     }
 
-    /** Android phones and tablets (dp) with their system bars, as in the core tests. */
-    private val SCREENS = listOf(
-        Triple(412.0, 915.0, SkinInsets(top = 24.0, bottom = 48.0)),
-        Triple(915.0, 412.0, SkinInsets(top = 24.0, right = 48.0)),
-        Triple(360.0, 640.0, SkinInsets(top = 24.0)),
-        Triple(640.0, 360.0, SkinInsets()),
-        Triple(402.0, 874.0, SkinInsets(top = 62.0, bottom = 34.0)),
-        Triple(874.0, 402.0, SkinInsets(left = 62.0, bottom = 21.0, right = 62.0)),
-        Triple(800.0, 1280.0, SkinInsets(top = 24.0, bottom = 48.0)),
-        Triple(1280.0, 800.0, SkinInsets(top = 24.0, bottom = 48.0)),
+    /**
+     * The screens a skin is checked on, phones and tablets (dp) with their
+     * system bars: docs/skins/screens.json, portrait and landscape
+     * (SkinInstallTest checks the two match).
+     */
+    internal val SCREENS = listOf(
+        Triple(375.0, 667.0, SkinInsets(top = 20.0)), // iPhone SE (2nd, 3rd gen.)
+        Triple(667.0, 375.0, SkinInsets()), // iPhone SE (2nd, 3rd gen.)
+        Triple(375.0, 812.0, SkinInsets(top = 50.0, bottom = 34.0)), // iPhone 12 mini · 13 mini
+        Triple(812.0, 375.0, SkinInsets(left = 50.0, bottom = 21.0, right = 50.0)), // iPhone 12 mini · 13 mini
+        Triple(375.0, 812.0, SkinInsets(top = 44.0, bottom = 34.0)), // iPhone 11 Pro
+        Triple(812.0, 375.0, SkinInsets(left = 44.0, bottom = 21.0, right = 44.0)), // iPhone 11 Pro
+        Triple(414.0, 896.0, SkinInsets(top = 48.0, bottom = 34.0)), // iPhone 11
+        Triple(896.0, 414.0, SkinInsets(left = 48.0, bottom = 21.0, right = 48.0)), // iPhone 11
+        Triple(414.0, 896.0, SkinInsets(top = 44.0, bottom = 34.0)), // iPhone 11 Pro Max
+        Triple(896.0, 414.0, SkinInsets(left = 44.0, bottom = 21.0, right = 44.0)), // iPhone 11 Pro Max
+        Triple(390.0, 844.0, SkinInsets(top = 47.0, bottom = 34.0)), // iPhone 12 · 12 Pro · 13 · 13 Pro · 14 · 16e
+        Triple(844.0, 390.0, SkinInsets(left = 47.0, bottom = 21.0, right = 47.0)), // iPhone 12 · 12 Pro · 13 · 13 Pro · 14 · 16e
+        Triple(428.0, 926.0, SkinInsets(top = 47.0, bottom = 34.0)), // iPhone 12 Pro Max · 13 Pro Max · 14 Plus
+        Triple(926.0, 428.0, SkinInsets(left = 47.0, bottom = 21.0, right = 47.0)), // iPhone 12 Pro Max · 13 Pro Max · 14 Plus
+        Triple(393.0, 852.0, SkinInsets(top = 59.0, bottom = 34.0)), // iPhone 14 Pro · 15 · 15 Pro · 16
+        Triple(852.0, 393.0, SkinInsets(left = 59.0, bottom = 21.0, right = 59.0)), // iPhone 14 Pro · 15 · 15 Pro · 16
+        Triple(430.0, 932.0, SkinInsets(top = 59.0, bottom = 34.0)), // iPhone 14 Pro Max · 15 Plus · 15 Pro Max · 16 Plus
+        Triple(932.0, 430.0, SkinInsets(left = 59.0, bottom = 21.0, right = 59.0)), // iPhone 14 Pro Max · 15 Plus · 15 Pro Max · 16 Plus
+        Triple(402.0, 874.0, SkinInsets(top = 62.0, bottom = 34.0)), // iPhone 16 Pro · 17 · 17 Pro
+        Triple(874.0, 402.0, SkinInsets(left = 62.0, bottom = 21.0, right = 62.0)), // iPhone 16 Pro · 17 · 17 Pro
+        Triple(440.0, 956.0, SkinInsets(top = 62.0, bottom = 34.0)), // iPhone 16 Pro Max · 17 Pro Max
+        Triple(956.0, 440.0, SkinInsets(left = 62.0, bottom = 21.0, right = 62.0)), // iPhone 16 Pro Max · 17 Pro Max
+        Triple(420.0, 912.0, SkinInsets(top = 68.0, bottom = 34.0)), // iPhone Air
+        Triple(912.0, 420.0, SkinInsets(left = 68.0, bottom = 21.0, right = 68.0)), // iPhone Air
+        Triple(820.0, 1180.0, SkinInsets(top = 24.0, bottom = 20.0)), // iPad
+        Triple(1180.0, 820.0, SkinInsets(top = 24.0, bottom = 20.0)), // iPad
+        Triple(360.0, 640.0, SkinInsets(top = 24.0)), // Android 360 × 640 (16:9)
+        Triple(640.0, 360.0, SkinInsets()), // Android 360 × 640 (16:9)
+        Triple(360.0, 760.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 360 × 760
+        Triple(760.0, 360.0, SkinInsets(top = 24.0, right = 48.0)), // Android 360 × 760
+        Triple(393.0, 851.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 393 × 851
+        Triple(851.0, 393.0, SkinInsets(top = 24.0, right = 48.0)), // Android 393 × 851
+        Triple(412.0, 915.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 412 × 915
+        Triple(915.0, 412.0, SkinInsets(top = 24.0, right = 48.0)), // Android 412 × 915
+        Triple(411.0, 731.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 411 × 731 (16:9)
+        Triple(731.0, 411.0, SkinInsets(top = 24.0, right = 48.0)), // Android 411 × 731 (16:9)
+        Triple(448.0, 997.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 448 × 997
+        Triple(997.0, 448.0, SkinInsets(top = 24.0, right = 48.0)), // Android 448 × 997
+        Triple(461.0, 998.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android 461 × 998
+        Triple(998.0, 461.0, SkinInsets(top = 24.0, right = 48.0)), // Android 461 × 998
+        Triple(690.0, 829.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android foldable 690 × 829
+        Triple(829.0, 690.0, SkinInsets(top = 24.0, right = 48.0)), // Android foldable 690 × 829
+        Triple(800.0, 1280.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android tablet 800 × 1280
+        Triple(1280.0, 800.0, SkinInsets(top = 24.0, bottom = 48.0)), // Android tablet 800 × 1280
     )
 
     /**

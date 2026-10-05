@@ -16,10 +16,11 @@ import { MAKER_URL, PLAY_URL, PORTS, SITE_URL } from "./ports";
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
 
-// Tests that need only the websites (Willy Maker, the two sites): when they
+// Tests that need no signalhub or device (Willy Maker, the two sites, the
+// Android skins lab, which runs offline): when they
 // are the only files named on the command line, no signalhub or device is
 // built or started.
-const WEB_ONLY = /(willy-maker|two-sites)\.spec\.ts$/;
+const WEB_ONLY = /(willy-maker|two-sites|android-skins)\.spec\.ts$/;
 const named = process.argv.filter((a) => /\.spec\.ts$/.test(a));
 const webOnly = named.length > 0 && named.every((a) => WEB_ONLY.test(a));
 

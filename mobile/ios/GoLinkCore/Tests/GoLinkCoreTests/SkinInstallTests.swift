@@ -93,4 +93,27 @@ final class SkinInstallTests: XCTestCase {
         try SkinInstaller.remove(id: "mine", from: dir)
         XCTAssertEqual(SkinInstaller.installedIds(in: dir), [])
     }
+
+    /** The paste check's screens are docs/skins/screens.json's, portrait and landscape, in order. */
+    func testChecksOnTheSharedScreens() throws {
+        var root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while !FileManager.default.fileExists(atPath: root.appendingPathComponent("docs/skins/screens.json").path) {
+            root = root.deletingLastPathComponent()
+        }
+        let data = try Data(contentsOf: root.appendingPathComponent("docs/skins/screens.json"))
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let screens = try XCTUnwrap(json["screens"] as? [[String: Any]])
+        var want: [String] = []
+        for s in screens {
+            for o in ["portrait", "landscape"] {
+                let x = try XCTUnwrap(s[o] as? [String: Any])
+                let i = try XCTUnwrap(x["ins"] as? [String: Double])
+                want.append("\(x["w"]!) \(x["h"]!) \(i["t"]!) \(i["l"]!) \(i["b"]!) \(i["r"]!)")
+            }
+        }
+        func n(_ v: CGFloat) -> String { String(Int(v)) }
+        let have = SkinCheck.screens.map { "\(n($0.0.width)) \(n($0.0.height)) \(n($0.1.0)) \(n($0.1.1)) \(n($0.1.2)) \(n($0.1.3))" }
+        let wantInts = want.map { $0.split(separator: " ").map { String(Int(Double($0)!)) }.joined(separator: " ") }
+        XCTAssertEqual(have, wantInts)
+    }
 }

@@ -150,6 +150,11 @@ struct SkinShell: View {
         Canvas { ctx, size in
             let W = size.width, H = size.height
             let full = CGRect(origin: .zero, size: size)
+            // Black outside the rim's rounded corners: on a screen with square corners
+            // (iPhone SE) the plastic would show past the rim; this way the console
+            // always looks rounded.
+            ctx.fill(Path(full), with: .color(.black))
+            ctx.clip(to: Path(roundedRect: full, cornerRadius: 52))
             if let picture {
                 // Fills the screen like CSS background-size: cover.
                 let k = max(W / picture.size.width, H / picture.size.height)

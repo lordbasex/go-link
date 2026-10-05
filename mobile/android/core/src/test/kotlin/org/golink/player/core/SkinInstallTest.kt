@@ -83,4 +83,19 @@ class SkinInstallTest {
         val c = SkinInstall.check("{\"a\":\"" + "x".repeat(SkinInstall.MAX_BYTES) + "\"}", builtInIds, emptySet())
         assertEquals(SkinInstall.Problem.TOO_BIG, (c as SkinInstall.Check.Refused).problem)
     }
+
+    /** The paste check's screens are docs/skins/screens.json's, portrait and landscape, in order. */
+    @Test fun checksOnTheSharedScreens() {
+        val docs = builtIn().first().parentFile.parentFile
+        val json = kotlinx.serialization.json.Json.parseToJsonElement(File(docs, "screens.json").readText())
+        val want = (json as kotlinx.serialization.json.JsonObject)["screens"]!!.let { it as kotlinx.serialization.json.JsonArray }.flatMap { s ->
+            listOf("portrait", "landscape").map { o ->
+                val x = (s as kotlinx.serialization.json.JsonObject)[o] as kotlinx.serialization.json.JsonObject
+                val i = x["ins"] as kotlinx.serialization.json.JsonObject
+                fun n(e: kotlinx.serialization.json.JsonElement?) = (e as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+                Triple(n(x["w"]), n(x["h"]), SkinInsets(top = n(i["t"]), left = n(i["l"]), bottom = n(i["b"]), right = n(i["r"])))
+            }
+        }
+        assertEquals(want, SkinInstall.SCREENS)
+    }
 }

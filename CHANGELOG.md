@@ -6,6 +6,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (apps)
 
+- **Skins look rounded on every phone**: outside the rim's rounded corners the shell is black, so on a screen with square corners (iPhone SE, many Android phones) the plastic no longer shows in the corners.
+- **Skins are checked on every phone**: one list of screens, `docs/skins/screens.json`, for the skin editor and both apps' paste check: every iPhone from the SE and the 11 to the 17 Pro Max and the Air (one entry per screen size), an iPad, Android phones from 360 × 640 to 461 × 998 dp, a foldable and a tablet. The editor's phone menu shows them all and its checks run on each; the built-in skins pass on all of them.
 - **Test controller wears your gamepad skin** (iOS and Android): the same shell, D-pad, buttons, Coin and Start as in a room (Smoke until you pick another), with the test card in the screen, the latency and screen readouts over it, and the buttons only a controller has (L2, R2, L3, R3, Home) as lamps in the skin's menu capsule.
 
 ### Changed (website)

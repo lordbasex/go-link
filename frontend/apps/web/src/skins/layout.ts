@@ -4,6 +4,8 @@
 // editor shows a skin exactly as a phone will, plus the checks the apps'
 // tests make. No DOM here. Format: docs/skins/README.md.
 
+import screens from "../../../../../docs/skins/screens.json";
+
 export const PILL_W = 58;
 export const PILL_H = 34;
 
@@ -25,17 +27,22 @@ export interface Screen {
   ins: Insets;
 }
 export type Orient = "portrait" | "landscape";
-export type DeviceId = "iphone17" | "iphonese" | "android" | "small" | "ipad";
+/** A phone (or a group of phones with the same screen) in docs/skins/screens.json. */
+export type DeviceId = string;
 
-/** Phones to design on and to check against, in points / dp with their safe areas. */
-export const DEVICES: Record<DeviceId, { name: string } & Record<Orient, Screen>> = {
-  iphone17: { name: "iPhone 17", portrait: { w: 402, h: 874, ins: { t: 62, l: 0, b: 34, r: 0 } }, landscape: { w: 874, h: 402, ins: { t: 0, l: 62, b: 21, r: 62 } } },
-  iphonese: { name: "iPhone SE", portrait: { w: 375, h: 667, ins: { t: 20, l: 0, b: 0, r: 0 } }, landscape: { w: 667, h: 375, ins: { t: 0, l: 0, b: 0, r: 0 } } },
-  android: { name: "Android 412", portrait: { w: 412, h: 915, ins: { t: 24, l: 0, b: 48, r: 0 } }, landscape: { w: 915, h: 412, ins: { t: 24, l: 0, b: 0, r: 48 } } },
-  small: { name: "Android 360", portrait: { w: 360, h: 640, ins: { t: 24, l: 0, b: 0, r: 0 } }, landscape: { w: 640, h: 360, ins: { t: 0, l: 0, b: 0, r: 0 } } },
-  ipad: { name: "iPad", portrait: { w: 820, h: 1180, ins: { t: 24, l: 0, b: 20, r: 0 } }, landscape: { w: 1180, h: 820, ins: { t: 24, l: 0, b: 20, r: 0 } } },
-};
+/**
+ * Phones to design on and to check against, in points / dp with their safe
+ * areas: docs/skins/screens.json, the list the apps' paste check keeps too.
+ */
+export const DEVICES: Record<DeviceId, { name: string; platform: "ios" | "android" } & Record<Orient, Screen>> = Object.fromEntries(
+  (screens.screens as ({ id: string; name: string; platform: "ios" | "android" } & Record<Orient, Screen>)[]).map(({ id, ...d }) => [id, d]),
+);
 export const DEVICE_IDS = Object.keys(DEVICES) as DeviceId[];
+
+/** A device by id; an unknown id (an old saved choice) is the iPhone 17. */
+export function deviceOf(id: DeviceId): { name: string; platform: "ios" | "android" } & Record<Orient, Screen> {
+  return DEVICES[id] ?? DEVICES.iphone17!;
+}
 
 export const R = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h });
 export const right = (r: Rect) => r.x + r.w;
@@ -322,7 +329,7 @@ export function check(layouts: Layouts | undefined, aspect = 4 / 3): Issue[] {
       continue;
     }
     for (const device of DEVICE_IDS) {
-      const dev = DEVICES[device][orient];
+      const dev = deviceOf(device)[orient];
       const bounds = R(0, 0, dev.w, dev.h);
       const where = { orient, device };
       for (let n = 1; n <= 6; n++) {

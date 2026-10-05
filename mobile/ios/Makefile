@@ -5,8 +5,9 @@ SIM ?= iPhone 17
 DEST ?= platform=iOS Simulator,name=$(SIM)
 # VERSION=0.1.5 sets the app's version (MARKETING_VERSION) and its build
 # number (CURRENT_PROJECT_VERSION) with the Android app's version code rule:
-# major*10000 + minor*100 + patch (0.1.5 -> 105). Without it, Config/Base.xcconfig.
-VERSION ?=
+# major*10000 + minor*100 + patch (0.1.5 -> 105). Without it, the latest
+# release tag (v0.1.9 -> 0.1.9), else Config/Base.xcconfig.
+VERSION ?= $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
 ifneq ($(VERSION),)
 VERSION_CODE := $(shell echo '$(VERSION)' | awk -F. '{print $$1*10000 + $$2*100 + $$3}')
 VERSION_FLAGS := MARKETING_VERSION=$(VERSION) CURRENT_PROJECT_VERSION=$(VERSION_CODE)

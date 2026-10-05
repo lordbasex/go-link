@@ -8,6 +8,7 @@ A skin draws a console shell around the game on a phone: the plastic, the pictur
 | --- | --- |
 | `README.md` | This guide: how skins work and how to design one. |
 | `skin.schema.json` | The format as a JSON Schema (draft 2020-12): any validator checks a skin file with it. |
+| `screens.json` | The screens a skin is designed on and checked against: every iPhone from the SE and the 11 to the 17 Pro Max and the Air (phones with the same screen share one entry, for example "iPhone 14 Pro · 15 · 15 Pro · 16"), an iPad, and Android phones from 360 × 640 to 461 × 998 dp, a foldable and a tablet, in points or dp with their safe areas. The editor's phone menu and its checks read it; the apps' paste check keeps the same list (`SkinCheck.screens`, `SkinInstall.SCREENS`) and a test in each app compares it with this file. |
 | `builtin/skin-<id>.json` | The built-in skins (Violet, Red, Green, Blue, Smoke, Orange). **The apps build from these files**: the iOS project copies them into the app and the Android build takes the folder as assets, so a change here ships in both apps. The file name must be `skin-<id>.json`. |
 
 ## How it looks: three layers
@@ -22,7 +23,7 @@ A skin draws a console shell around the game on a phone: the plastic, the pictur
  └─────────────────────────────┘
 ```
 
-The game is always whole (never cropped, square corners) and as large as its box allows; the bezel is drawn around it, outside the box. Touch zones cover only the controls, so the picture keeps its own taps (the PIN prompt, swap offers).
+The shell always looks rounded: the apps paint black outside the rim's rounded corners (radius 52), so on a phone whose screen has square corners (iPhone SE, many Android phones) the plastic never shows past the rim; the editor shows the same by drawing every phone with rounded corners. The game is always whole (never cropped, square corners) and as large as its box allows; the bezel is drawn around it, outside the box. Touch zones cover only the controls, so the picture keeps its own taps (the PIN prompt, swap offers).
 
 ## The parts of a skin
 
