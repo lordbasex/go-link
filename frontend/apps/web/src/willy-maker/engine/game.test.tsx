@@ -10,6 +10,7 @@ import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
 import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS } from "./rules";
 import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
+import { FB_AT, FB_DMG, FB_CHIP, DASH_FRAMES, DASH_DMG } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
@@ -1716,5 +1717,54 @@ describe("racing (genres.md, phase 1: seen from above)", () => {
     expect(cpu.count).toBe(RACE_LAPS);
     expect(cpu.answerLeft).toBe(1);
     expect(g.outcome).toBe("over");
+  });
+});
+
+describe("versus fighting, phase 2: special moves", () => {
+  const fight = () => new Game(flat(), { rules: VERSUS_RULES, players: 2, maxPlayers: 2 });
+  it("down, down-toward, toward and B1 throws a fireball that flies to the foe and hurts it; holding away blocks it for less", () => {
+    const g = fight();
+    const [a, b] = g.players;
+    run(g, VS_INTRO, 0);
+    for (const pad of [Input.Down, Input.Down | Input.Right, Input.Right | Input.B1]) g.step([pad, 0, 0, 0]);
+    expect(a!.combo).toBe(4);
+    run(g, FB_AT, 0);
+    expect(a!.shots.length).toBe(1);
+    const hp = b!.lives;
+    for (let i = 0; i < 80 && a!.shots.length; i++) g.step([0, 0, 0, 0]);
+    expect(b!.lives).toBe(hp - FB_DMG);
+    run(g, 40, 0);
+    for (const pad of [Input.Down, Input.Down | Input.Right, Input.Right | Input.B1]) g.step([pad, 0, 0, 0]);
+    for (let i = 0; i < 100 && (a!.shots.length || a!.punchT); i++) g.step([0, Input.Right, 0, 0]);
+    expect(b!.lives).toBe(hp - FB_DMG - FB_CHIP);
+  });
+
+  it("away then toward and B1 is a dash punch that closes in and hits even a crouching foe", () => {
+    const g = fight();
+    const [a, b] = g.players;
+    run(g, VS_INTRO, 0);
+    for (let i = 0; i < 45; i++) g.step([Input.Right, 0, 0, 0]);
+    const x0 = a!.x;
+    const hp = b!.lives;
+    g.step([Input.Left, Input.Down, 0, 0]);
+    g.step([Input.Right | Input.B1, Input.Down, 0, 0]);
+    expect(a!.combo).toBe(5);
+    for (let i = 0; i < DASH_FRAMES; i++) g.step([0, Input.Down, 0, 0]);
+    expect(a!.x).toBeGreaterThan(x0);
+    expect(b!.lives).toBe(hp - DASH_DMG);
+  });
+
+  it("a plain B1 without a motion is still a punch, and the CPU throws fireballs from afar", () => {
+    const g = fight();
+    run(g, VS_INTRO, 0);
+    g.step([Input.B1, 0, 0, 0]);
+    expect(g.players[0]!.combo).toBe(1);
+    const h = new Game(flat(), { rules: VERSUS_RULES, players: 1, maxPlayers: 2 });
+    let threw = false;
+    for (let i = 0; i < 600 && !threw; i++) {
+      h.step([Input.Left, 0, 0, 0]);
+      threw = h.players[1]!.shots.length > 0;
+    }
+    expect(threw).toBe(true);
   });
 });

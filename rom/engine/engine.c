@@ -759,6 +759,8 @@ struct player {
 	int cpu;                                    /* the puzzle: the CPU rival plays this well */
 	int answer, answer_left;                    /* the quiz: this question's answer (0-2, -1 none) and the frames left then */
 	int count, done;                            /* the minigames: presses or letters right, and whether its turn is over */
+	u8 motion[16];                              /* versus fighting: the last stick codes (1 down, 2 toward, 4 away, 8 up) */
+	int motion_i;
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
 	u32 t, score;
@@ -846,6 +848,23 @@ static int ball_owner, goals[2], match_t, kick_t, goal_by;
 #define VS_ROUNDS 5
 #define VS_ROUND_SCORE 1000
 #define VS_CPU_EVERY 20
+/* phase 2: special moves from the stick (engine/rules.ts MOTION_LEN...) */
+#define MOTION_LEN 16
+#define MOTION_WINDOW 15
+#define DASH_WINDOW 10
+#define FB_FRAMES 30
+#define FB_AT 10
+#define FB_SPEED 3
+#define FB_DMG 12
+#define FB_CHIP 3
+#define FB_Y 40
+#define DASH_FRAMES 18
+#define DASH_FROM 2
+#define DASH_TO 12
+#define DASH_SPEED 4
+#define DASH_DMG 14
+#define VS_CPU_FAR 120
+#define VS_CPU_THROW 90
 #define VS_BAR 20
 #define VS_BAR_ROW 3
 #define VS_CALL_ROW 10
@@ -1792,34 +1811,70 @@ static s32 vs_clamp(s32 x)
 	return x < VS_EDGE ? VS_EDGE : x > SCREEN_W - VS_EDGE ? SCREEN_W - VS_EDGE : x;
 }
 
-/* an attack's one strike (engine/game.ts vsStrike): a hit, a block, or nothing out of reach */
-static void vs_strike(struct player *p, struct player *foe)
+/* a blow that reached the foe (engine/game.ts vsHit): blocked (holding away on the ground) or taken */
+static void vs_hit(struct player *p, struct player *foe, int dir, int dmg, int chip)
 {
-	int kick = p->combo == 3, dir = p->flip ? -1 : 1, dmg;
-	s32 dx = foe->x - p->x;
-	u16 away = dx > 0 ? BTN_RIGHT : BTN_LEFT;
-	p->struck = 1;
-	if (sgn(dx) != dir || vs_abs(dx) > (kick ? VS_KICK_REACH : VS_PUNCH_REACH))
-		return;
-	/* a punch goes over a crouching foe; nothing reaches one high in the air */
-	if (!kick && foe->crouch && foe->on_ground)
-		return;
-	if ((p->y >> 4) - (foe->y >> 4) > 40)
-		return;
+	u16 away = dir > 0 ? BTN_RIGHT : BTN_LEFT;
 	if (foe->on_ground && !foe->punch_t && !foe->hurt && (foe->pad & away)) {
-		foe->energy -= VS_CHIP;
+		foe->energy -= chip;
 		foe->hurt = VS_BLOCK_STUN;
 		foe->x = vs_clamp(foe->x + dir * VS_BLOCK_PUSH);
 		sfx(SFX_LAND, foe->x);
 		return;
 	}
-	dmg = kick ? VS_KICK_DMG : VS_PUNCH_DMG;
 	foe->energy -= dmg;
 	foe->hurt = VS_HIT_STUN;
 	foe->punch_t = 0;
 	foe->x = vs_clamp(foe->x + dir * VS_HIT_PUSH);
 	p->score += (u32)(dmg * 10);
 	sfx(SFX_HIT, foe->x);
+}
+
+/* an attack's one strike (engine/game.ts vsStrike): a hit, a block, or nothing out of reach */
+static void vs_strike(struct player *p, struct player *foe, int reach, int dmg, int low)
+{
+	int dir = p->flip ? -1 : 1;
+	s32 dx = foe->x - p->x;
+	p->struck = 1;
+	if (sgn(dx) != dir || vs_abs(dx) > reach)
+		return;
+	/* a punch goes over a crouching foe; nothing reaches one high in the air */
+	if (!low && foe->crouch && foe->on_ground)
+		return;
+	if ((p->y >> 4) - (foe->y >> 4) > 40)
+		return;
+	vs_hit(p, foe, dir, dmg, VS_CHIP);
+}
+
+/* whether the stick went through these codes in order within the last `window` frames (engine/game.ts motionHas) */
+static int motion_has(const struct player *p, const u8 *seq, int n, int window)
+{
+	int k = 0, i;
+	for (i = window - 1; i >= 0 && k < n; i--)
+		if ((p->motion[(p->motion_i - 1 - i + 2 * MOTION_LEN) & (MOTION_LEN - 1)] & 7) == seq[k])
+			k++;
+	return k == n;
+}
+
+/* a fighter's fireball, a frame (engine/game.ts moveFireball) */
+static void move_fireball(struct player *p, struct player *foe)
+{
+	struct bullet *b = &p->shots[0], *f = &foe->shots[0];
+	if (!b->live)
+		return;
+	b->x += b->dir * FB_SPEED;
+	if (f->live && vs_abs(f->x - b->x) <= 8) {
+		b->live = f->live = 0;
+		return;
+	}
+	if (b->x < 0 || b->x > SCREEN_W) {
+		b->live = 0;
+		return;
+	}
+	if (vs_abs(b->x - foe->x) > 12 || VS_FLOOR - (foe->y >> 4) > 24)
+		return;
+	b->live = 0;
+	vs_hit(p, foe, b->dir, FB_DMG, FB_CHIP);
 }
 
 /* a fighter, a frame (engine/game.ts fight) */
@@ -1842,8 +1897,16 @@ static void fight(struct player *p)
 	if (vs_phase != 1) {
 		p->punch_t = 0;
 		p->crouch = 0;
+		p->shots[0].live = 0;
 		return;
 	}
+	/* the stick, as seen from this fighter (toward the foe is 2) */
+	{
+		u16 tw = foe->x < p->x ? BTN_LEFT : BTN_RIGHT, aw = tw == BTN_RIGHT ? BTN_LEFT : BTN_RIGHT;
+		p->motion[p->motion_i] = (u8)(((p->pad & BTN_DOWN) ? 1 : 0) | ((p->pad & tw) ? 2 : 0) | ((p->pad & aw) ? 4 : 0) | ((p->pad & BTN_UP) ? 8 : 0));
+		p->motion_i = (p->motion_i + 1) & (MOTION_LEN - 1);
+	}
+	move_fireball(p, foe);
 	if (p->hurt) {
 		p->hurt--;
 		return;
@@ -1851,8 +1914,34 @@ static void fight(struct player *p)
 	if (p->punch_t) {
 		int len = p->combo == 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
 		p->punch_t--;
+		if (p->combo == 4) {
+			/* the fireball leaves the hands FB_AT frames in */
+			if (FB_FRAMES - p->punch_t == FB_AT) {
+				struct bullet *b = &p->shots[0];
+				b->live = 1;
+				b->x = (s16)(p->x + (p->flip ? -16 : 16));
+				b->y = (s16)((p->y >> 4) - FB_Y);
+				b->dir = p->flip ? -1 : 1;
+				b->vy = 0;
+				sfx(SFX_SHOT, p->x);
+			}
+			return;
+		}
+		if (p->combo == 5) {
+			/* the dash punch: forward fast, striking once in reach */
+			int t = DASH_FRAMES - p->punch_t;
+			if (t >= DASH_FROM && t <= DASH_TO) {
+				int dir = p->flip ? -1 : 1;
+				s32 nx = vs_clamp(p->x + dir * DASH_SPEED);
+				if (vs_abs(foe->x - nx) >= VS_GAP)
+					p->x = nx;
+				if (!p->struck && vs_abs(foe->x - p->x) <= VS_PUNCH_REACH)
+					vs_strike(p, foe, VS_PUNCH_REACH, DASH_DMG, 1);
+			}
+			return;
+		}
 		if (!p->struck && len - p->punch_t == (p->combo == 3 ? VS_KICK_AT : VS_PUNCH_AT))
-			vs_strike(p, foe);
+			vs_strike(p, foe, p->combo == 3 ? VS_KICK_REACH : VS_PUNCH_REACH, p->combo == 3 ? VS_KICK_DMG : VS_PUNCH_DMG, p->combo == 3);
 		return;
 	}
 	if (!p->on_ground)
@@ -1865,9 +1954,12 @@ static void fight(struct player *p)
 	} else
 		p->crouch_t = 0;
 	if (PRESSED(p, BTN_1) || PRESSED(p, BTN_2)) {
+		static const u8 qcf[3] = { 1, 3, 2 }, dash[2] = { 4, 2 };
 		int kick = PRESSED(p, BTN_2) && !PRESSED(p, BTN_1);
-		p->punch_t = kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
-		p->combo = kick ? 3 : 1;
+		/* B1 after a stick motion: the fireball or the dash punch */
+		int special = kick ? 0 : motion_has(p, qcf, 3, MOTION_WINDOW) && !p->shots[0].live ? 4 : motion_has(p, dash, 2, DASH_WINDOW) ? 5 : 0;
+		p->punch_t = special == 4 ? FB_FRAMES : special == 5 ? DASH_FRAMES : kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+		p->combo = special ? special : kick ? 3 : 1;
 		p->struck = 0;
 		p->crouch = 0;
 		sfx(kick ? SFX_KICK : SFX_SHOT, p->x);
@@ -1899,8 +1991,17 @@ static u16 fight_cpu_pad(struct player *p)
 	struct player *foe = &pl[1 - (p - pl)];
 	s32 d = vs_abs(foe->x - p->x);
 	u16 toward = foe->x > p->x ? BTN_RIGHT : BTN_LEFT, away = toward == BTN_RIGHT ? BTN_LEFT : BTN_RIGHT;
-	if (foe->punch_t && d < 48)
+	/* a fireball's motion, a step a frame (cy counts it down) */
+	if (p->cy > 0) {
+		p->cy--;
+		return p->cy == 2 ? BTN_DOWN : p->cy == 1 ? (u16)(BTN_DOWN | toward) : (u16)(toward | BTN_1);
+	}
+	if ((foe->punch_t && d < 48) || (foe->shots[0].live && vs_abs(foe->shots[0].x - p->x) < 60))
 		return away;
+	if (d > VS_CPU_FAR && !p->shots[0].live && !p->punch_t && vs_phase == 1 && vs_t % VS_CPU_THROW == VS_CPU_THROW / 3) {
+		p->cy = 3;
+		return fight_cpu_pad(p);
+	}
 	if (d > 40)
 		return toward;
 	if (plat_t % VS_CPU_EVERY == 0)
@@ -5089,9 +5190,11 @@ static void draw_player(struct player *p)
 		if (p->combo == 3)
 			draw_once(l->kick, (u32)(COMBO_KICK_FRAMES - p->punch_t), sx, sy, p->pal, p->flip);
 		else {
-			/* Willy has a punch of his own (art.mjs withPunch); an own hero punches with its knife */
+			/* Willy has a punch of his own (art.mjs withPunch); an own hero punches with its knife;
+			   versus fighting's specials hold the punch's reaching frame */
 			const Anim *a = l == &willy_look ? &anim_willy_punch : l->knife;
-			draw_frame(&a->frames[(PUNCH_FRAMES - p->punch_t) / 4 % a->count], sx, sy, p->pal, p->flip);
+			int f = p->combo >= 4 ? 2 : (PUNCH_FRAMES - p->punch_t) / 4;
+			draw_frame(&a->frames[f % a->count], sx, sy, p->pal, p->flip);
 		}
 	} else if (p->crouch) {
 		if (moving)
@@ -5122,8 +5225,13 @@ static void draw_shots(struct player *p)
 {
 	int i;
 	for (i = 0; i < SHOTS; i++)
-		if (p->shots[i].live)
-			put_sprite(p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (p->shots[i].dir < 0 ? 0x20 : 0)));
+		if (p->shots[i].live) {
+			/* versus fighting's fireball is the shot's flash */
+			if (versus)
+				put_sprite(p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, (u16)(TILE_CROSS + 4), PAL_CROSS);
+			else
+				put_sprite(p->shots[i].x - cam_x - 8, p->shots[i].y - cam_y - 8, TILE_BULLET, (u16)(PAL_BULLET | (p->shots[i].dir < 0 ? 0x20 : 0)));
+		}
 	if (p->rocket.live)
 		put_sprite(p->rocket.x - cam_x, p->rocket.y - cam_y, TILE_ROCKET, (u16)(PAL_ROCKET | (p->rocket.dir < 0 ? 0x20 : 0) | (1 << 8)));
 	/* the top-down grenade in flight and its burst: four flashes spreading out */

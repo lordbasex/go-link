@@ -653,7 +653,8 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     } else if (p.punchT) {
       // the beat 'em up's punches, and the combo's kick
       anim = p.combo === 3 ? "jump_kick" : "punch";
-      t = (p.combo === 3 ? 20 : 16) - p.punchT;
+      // versus fighting's specials hold the punch's reaching frame
+      t = p.combo >= 4 ? 8 : (p.combo === 3 ? 20 : 16) - p.punchT;
     } else if (p.crouching) anim = moving ? "crawl" : "crouch";
     else if (p.knifeT) {
       anim = "knife";
@@ -676,7 +677,15 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     } else if (sheet) sheetDraw(ctx, sheet, heroAnim(sheet, anim), "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
     else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
-    for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
+    // versus fighting's fireball is a glowing ball (the ROM uses the shot's flash tile)
+    if (game.rules.versus)
+      for (const b of p.shots) {
+        ctx.fillStyle = "#ffdd55";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    else for (const b of p.shots) ctx.fillRect(b.x - 3, b.y, 6, 2);
     // the top-down grenade in flight and its burst (the ROM draws them with its own tiles)
     if (p.grenade) {
       ctx.fillStyle = "#335533";

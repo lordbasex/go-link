@@ -805,3 +805,32 @@ export const RACE_COUNT = 180;
 export const GRID: readonly (readonly [number, number])[] = [[208, 172], [208, 196], [240, 172], [240, 196]];
 /** The call's row (3, 2, 1, GO!, FINISH). */
 export const RACE_CALL_ROW = 10;
+
+/**
+ * Versus fighting, phase 2: special moves read from the stick. A fighter
+ * keeps its last MOTION_LEN stick codes (1 down, 2 toward the foe, 4 away,
+ * 8 up, added). Down, down-toward, toward within MOTION_WINDOW frames, then B1,
+ * throws a fireball (FB_FRAMES long, thrown FB_AT frames in, FB_SPEED px a
+ * frame, FB_DMG, FB_CHIP blocked; one at a time; two meeting cancel out; one
+ * jumped high over misses). Away then toward within DASH_WINDOW frames, then
+ * B1, is a dash punch (DASH_FRAMES long, moving DASH_SPEED px a frame from
+ * DASH_FROM to DASH_TO frames in, striking once in reach for DASH_DMG, low
+ * enough to hit a crouching foe).
+ */
+export const MOTION_LEN = 16;
+export const MOTION_WINDOW = 15;
+export const DASH_WINDOW = 10;
+export const FB_FRAMES = 30;
+export const FB_AT = 10;
+export const FB_SPEED = 3;
+export const FB_DMG = 12;
+export const FB_CHIP = 3;
+export const FB_Y = 40;
+export const DASH_FRAMES = 18;
+export const DASH_FROM = 2;
+export const DASH_TO = 12;
+export const DASH_SPEED = 4;
+export const DASH_DMG = 14;
+/** The CPU throws a fireball when farther than VS_CPU_FAR px, every VS_CPU_THROW frames of the fight (a third of the way in). */
+export const VS_CPU_FAR = 120;
+export const VS_CPU_THROW = 90;

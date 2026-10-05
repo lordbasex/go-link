@@ -161,6 +161,22 @@ import {
   KICKOFF_FRAMES,
   MATCH_TIME,
   CPU_SHOOT,
+  MOTION_LEN,
+  MOTION_WINDOW,
+  DASH_WINDOW,
+  FB_FRAMES,
+  FB_AT,
+  FB_SPEED,
+  FB_DMG,
+  FB_CHIP,
+  FB_Y,
+  DASH_FRAMES,
+  DASH_FROM,
+  DASH_TO,
+  DASH_SPEED,
+  DASH_DMG,
+  VS_CPU_FAR,
+  VS_CPU_THROW,
   VS_FLOOR,
   VS_START,
   VS_WALK,
@@ -332,6 +348,9 @@ export interface Player {
   /** The quiz's minigames: presses (mash) or letters right (memory), and whether its turn is over (timing, memory). */
   count: number;
   done: boolean;
+  /** Versus fighting: the last stick codes (1 down, 2 toward, 4 away, 8 up) and where the next goes. */
+  motion: number[];
+  motionI: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -2458,16 +2477,39 @@ export class Game {
     if (this.vsPhase !== 1) {
       p.punchT = 0;
       p.crouching = false;
+      p.shots.length = 0;
       return;
     }
+    // the stick, as seen from this fighter (toward the foe is 2)
+    const toward = foe.x < p.x ? Input.Left : Input.Right;
+    const away = toward === Input.Right ? Input.Left : Input.Right;
+    p.motion[p.motionI] = (p.pad & Input.Down ? 1 : 0) | (p.pad & toward ? 2 : 0) | (p.pad & away ? 4 : 0) | (p.pad & Input.Up ? 8 : 0);
+    p.motionI = (p.motionI + 1) % MOTION_LEN;
+    this.moveFireball(p, foe);
     if (p.invulnerable) {
       p.invulnerable--;
       return;
     }
     if (p.punchT) {
       p.punchT--;
+      if (p.combo === 4) {
+        // the fireball leaves the hands FB_AT frames in
+        if (FB_FRAMES - p.punchT === FB_AT) p.shots.push({ x: p.x + (p.flip ? -16 : 16), y: (p.y >> 4) - FB_Y, dir: p.flip ? -1 : 1 });
+        return;
+      }
+      if (p.combo === 5) {
+        // the dash punch: forward fast, striking once in reach
+        const t = DASH_FRAMES - p.punchT;
+        if (t >= DASH_FROM && t <= DASH_TO) {
+          const dir = p.flip ? -1 : 1;
+          const nx = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, p.x + dir * DASH_SPEED));
+          if (Math.abs(foe.x - nx) >= VS_GAP) p.x = nx;
+          if (!p.struck && Math.abs(foe.x - p.x) <= VS_PUNCH_REACH) this.vsStrike(p, foe, VS_PUNCH_REACH, DASH_DMG, true);
+        }
+        return;
+      }
       const len = p.combo === 3 ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
-      if (!p.struck && len - p.punchT === (p.combo === 3 ? VS_KICK_AT : VS_PUNCH_AT)) this.vsStrike(p, foe);
+      if (!p.struck && len - p.punchT === (p.combo === 3 ? VS_KICK_AT : VS_PUNCH_AT)) this.vsStrike(p, foe, p.combo === 3 ? VS_KICK_REACH : VS_PUNCH_REACH, p.combo === 3 ? VS_KICK_DMG : VS_PUNCH_DMG, p.combo === 3);
       return;
     }
     if (!p.onGround) return;
@@ -2475,8 +2517,10 @@ export class Game {
     p.crouching = (p.pad & Input.Down) !== 0;
     if (this.pressed(p, Input.B1) || this.pressed(p, Input.B2)) {
       const kick = this.pressed(p, Input.B2) && !this.pressed(p, Input.B1);
-      p.punchT = kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
-      p.combo = kick ? 3 : 1;
+      // B1 after a stick motion: the fireball or the dash punch
+      const special = kick ? 0 : this.motionHas([1, 3, 2], MOTION_WINDOW, p) && !p.shots.length ? 4 : this.motionHas([4, 2], DASH_WINDOW, p) ? 5 : 0;
+      p.punchT = special === 4 ? FB_FRAMES : special === 5 ? DASH_FRAMES : kick ? COMBO_KICK_FRAMES : PUNCH_FRAMES;
+      p.combo = special || (kick ? 3 : 1);
       p.struck = false;
       p.crouching = false;
       this.events.push({ kind: kick ? "kick" : "shot", player: p.index });
@@ -2492,33 +2536,66 @@ export class Game {
     if (p.crouching) return;
     const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
     if (!dx) return;
-    const toward = Math.sign(foe.x - p.x) === dx;
-    const nx = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, p.x + dx * (toward ? VS_WALK : VS_WALK_BACK)));
-    if (toward && Math.abs(foe.x - nx) < VS_GAP) return;
+    const closer = Math.sign(foe.x - p.x) === dx;
+    const nx = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, p.x + dx * (closer ? VS_WALK : VS_WALK_BACK)));
+    if (closer && Math.abs(foe.x - nx) < VS_GAP) return;
     p.x = nx;
     p.running = true;
   }
 
+  /** Whether the stick went through these codes in order within the last `window` frames (each code: those bits held, toward and away never both). */
+  private motionHas(seq: readonly number[], window: number, p: Player): boolean {
+    let k = 0;
+    for (let i = window - 1; i >= 0 && k < seq.length; i--) {
+      const c = p.motion[(p.motionI - 1 - i + 2 * MOTION_LEN) % MOTION_LEN]!;
+      if ((c & 7) === seq[k]) k++;
+    }
+    return k === seq.length;
+  }
+
+  /** A fighter's fireball, a frame: it flies, hits or is blocked by the foe (unless the foe jumped high over it), cancels the foe's, or leaves the screen. */
+  private moveFireball(p: Player, foe: Player): void {
+    const b = p.shots[0];
+    if (!b) return;
+    b.x += b.dir * FB_SPEED;
+    const f = foe.shots[0];
+    if (f && Math.abs(f.x - b.x) <= 8) {
+      p.shots.length = 0;
+      foe.shots.length = 0;
+      return;
+    }
+    if (b.x < 0 || b.x > SCREEN_W) {
+      p.shots.length = 0;
+      return;
+    }
+    if (Math.abs(b.x - foe.x) > 12 || VS_FLOOR - (foe.y >> 4) > 24) return;
+    p.shots.length = 0;
+    this.vsHit(p, foe, b.dir, FB_DMG, FB_CHIP);
+  }
+
   /** An attack's one strike: a hit, a block (the foe holding away on the ground), or nothing out of reach. */
-  private vsStrike(p: Player, foe: Player): void {
+  private vsStrike(p: Player, foe: Player, reach: number, dmg: number, low: boolean): void {
     p.struck = true;
-    const kick = p.combo === 3;
     const dir = p.flip ? -1 : 1;
     const dx = foe.x - p.x;
-    if (Math.sign(dx) !== dir || Math.abs(dx) > (kick ? VS_KICK_REACH : VS_PUNCH_REACH)) return;
+    if (Math.sign(dx) !== dir || Math.abs(dx) > reach) return;
     // a punch goes over a crouching foe; nothing reaches one high in the air
-    if (!kick && foe.crouching && foe.onGround) return;
+    if (!low && foe.crouching && foe.onGround) return;
     if ((p.y >> 4) - (foe.y >> 4) > 40) return;
-    const away = dx > 0 ? Input.Right : Input.Left;
+    this.vsHit(p, foe, dir, dmg, VS_CHIP);
+  }
+
+  /** A blow that reached the foe: blocked (holding away on the ground) or taken. */
+  private vsHit(p: Player, foe: Player, dir: number, dmg: number, chip: number): void {
+    const away = dir > 0 ? Input.Right : Input.Left;
     const push = (n: number) => (foe.x = Math.max(VS_EDGE, Math.min(SCREEN_W - VS_EDGE, foe.x + dir * n)));
     if (foe.onGround && !foe.punchT && !foe.invulnerable && foe.pad & away) {
-      foe.lives -= VS_CHIP;
+      foe.lives -= chip;
       foe.invulnerable = VS_BLOCK_STUN;
       push(VS_BLOCK_PUSH);
       this.events.push({ kind: "land", player: foe.index });
       return;
     }
-    const dmg = kick ? VS_KICK_DMG : VS_PUNCH_DMG;
     foe.lives -= dmg;
     foe.invulnerable = VS_HIT_STUN;
     foe.punchT = 0;
@@ -2533,7 +2610,16 @@ export class Game {
     const d = Math.abs(foe.x - p.x);
     const toward = foe.x > p.x ? Input.Right : Input.Left;
     const away = toward === Input.Right ? Input.Left : Input.Right;
-    if (foe.punchT && d < 48) return away;
+    // a fireball's motion, a step a frame (cy counts it down)
+    if (p.cy > 0) {
+      p.cy--;
+      return p.cy === 2 ? Input.Down : p.cy === 1 ? Input.Down | toward : toward | Input.B1;
+    }
+    if ((foe.punchT && d < 48) || (foe.shots[0] && Math.abs(foe.shots[0].x - p.x) < 60)) return away;
+    if (d > VS_CPU_FAR && !p.shots.length && !p.punchT && this.vsPhase === 1 && this.vsT % VS_CPU_THROW === VS_CPU_THROW / 3) {
+      p.cy = 3;
+      return this.fightCpuPad(p);
+    }
     if (d > 40) return toward;
     if (this.frame % VS_CPU_EVERY === 0) return d > VS_PUNCH_REACH ? Input.B2 : Input.B1;
     return 0;
@@ -3418,6 +3504,8 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     answerLeft: 0,
     count: 0,
     done: false,
+    motion: new Array(MOTION_LEN).fill(0),
+    motionI: 0,
   };
 }
 
