@@ -82,6 +82,11 @@ struct RoomView: View {
                             })
                         }
                     )
+                    // The shell covers the whole screen (safe areas included), but the room's
+                    // own size stays the safe area: otherwise this stack grew with it and the
+                    // drawer, the settings and the name step sat below the screen's bottom
+                    // (the chat's text field was off screen on an iPhone 17 Pro Max).
+                    .frame(width: g.size.width, height: g.size.height, alignment: .topLeading)
                 } else {
                     ConsoleLayout(
                         landscape: landscape,

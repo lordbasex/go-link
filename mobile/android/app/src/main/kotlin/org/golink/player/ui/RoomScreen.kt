@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -815,17 +817,29 @@ private fun MicExplainer(prefs: Prefs, session: RoomSession, onDone: () -> Unit)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun RoomSheet(ui: RoomUi, session: RoomSession, tab: SheetTab, onTab: (SheetTab) -> Unit, onSound: () -> Unit, onClose: () -> Unit) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = state, containerColor = Tokens.surface) {
+    // Typing on a phone held sideways: the keyboard takes most of the screen, so the
+    // sheet keeps only the messages and the field, at the full height left (with the
+    // handle, the tabs and 85 % of the screen, the field was squeezed out of sight).
+    val typing = WindowInsets.isImeVisible &&
+        LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = state,
+        containerColor = Tokens.surface,
+        dragHandle = if (typing) null else { { androidx.compose.material3.BottomSheetDefaults.DragHandle() } },
+    ) {
         // The sheet is its own window: its test tags need their own flag.
         @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-        Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f).imePadding().semantics { testTagsAsResourceId = true }) {
-            PrimaryTabRow(selectedTabIndex = tab.ordinal, containerColor = Tokens.surface, contentColor = Tokens.accent) {
-                Tab(selected = tab == SheetTab.CHAT, onClick = { onTab(SheetTab.CHAT) }, text = { Text(stringResource(R.string.room_chat)) })
-                Tab(selected = tab == SheetTab.PLAYERS, onClick = { onTab(SheetTab.PLAYERS) }, text = { Text(stringResource(R.string.room_players)) })
+        Column(Modifier.fillMaxWidth().then(if (typing) Modifier.fillMaxHeight() else Modifier.fillMaxHeight(0.85f)).imePadding().semantics { testTagsAsResourceId = true }) {
+            if (!typing) {
+                PrimaryTabRow(selectedTabIndex = tab.ordinal, containerColor = Tokens.surface, contentColor = Tokens.accent) {
+                    Tab(selected = tab == SheetTab.CHAT, onClick = { onTab(SheetTab.CHAT) }, text = { Text(stringResource(R.string.room_chat)) })
+                    Tab(selected = tab == SheetTab.PLAYERS, onClick = { onTab(SheetTab.PLAYERS) }, text = { Text(stringResource(R.string.room_players)) })
+                }
             }
             when (tab) {
                 SheetTab.CHAT -> ChatPanel(ui, session, Modifier.fillMaxSize().padding(12.dp))
