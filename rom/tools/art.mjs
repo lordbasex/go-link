@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { ballPen, carPen, dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { ballPen, carPen, dronePen, gemPen, powerPen, shipPen, soldierPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -770,6 +770,12 @@ export function addArt(gfx, defs, genDir, opts = {}) {
         gfx.tile16(code + k * 16 + d, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 1 + k, 5, 0][carPen(x, y, d)])));
     h.push(`#define TILE_CAR ${hex4(code)} /* + 16 x player + way (0-15), in PAL_CROSS */`);
     code += 64;
+    // the top-down run and gun's soldier seen from above (engine/shipArt.ts soldierPen), 8 ways per player color
+    for (let k = 0; k < 4; k++)
+      for (let d = 0; d < 8; d++)
+        gfx.tile16(code + k * 8 + d, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 1 + k, 6, 5, 0][soldierPen(x, y, d)])));
+    h.push(`#define TILE_SOLDIER ${hex4(code)} /* + 8 x player + way (0-7), in PAL_CROSS */`);
+    code += 32;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

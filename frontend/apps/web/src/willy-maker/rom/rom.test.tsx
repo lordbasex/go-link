@@ -15,7 +15,7 @@ import { brawlProject, streetProject, waveProject } from "./streetFixture";
 import { gunProject } from "./gunFixture";
 import { shipProject } from "./shipFixture";
 import { verticalProject } from "./verticalFixture";
-import { topdownProject } from "./topdownFixture";
+import { topdownJeepProject, topdownProject } from "./topdownFixture";
 import { mazeProject } from "./mazeFixture";
 import { puzzleProject } from "./puzzleFixture";
 import { quizGamesProject, quizProject } from "./quizFixture";
@@ -58,7 +58,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(26);
+    expect(u16(d, 4)).toBe(27);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -228,6 +228,10 @@ describe("Create ROM", () => {
       mkdirSync(td, { recursive: true });
       writeFileSync(resolve(td, "slammast.zip"), await zipSet(packGame(topdownProject(), engine, (id) => pictures.get(id) ?? null).files));
       writeFileSync(resolve(td, "symbols.json"), romSymbols(engine));
+      // the top-down run and gun's jeep (rom/tools/lab/runs/topdown-jeep.json)
+      const tj = resolve(out, "topdown-jeep");
+      mkdirSync(tj, { recursive: true });
+      writeFileSync(resolve(tj, "slammast.zip"), await zipSet(packGame(topdownJeepProject(), engine, (id) => pictures.get(id) ?? null).files));
       // the quiz: four questions on an empty screen (rom/tools/lab/runs/quiz-answers.json)
       const qz = resolve(out, "quiz");
       mkdirSync(qz, { recursive: true });

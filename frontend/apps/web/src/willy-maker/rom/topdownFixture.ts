@@ -41,3 +41,11 @@ export function topdownProject(): Project {
   items.push({ name: "exit", type: "exit", x: 1040, y: 560, w: 64, h: 64 } as LevelObject);
   return p;
 }
+
+/** The jeep's lab game (rom/tools/lab/runs/topdown-jeep.json, phase 3): the same yard with a jeep near the start. */
+export function topdownJeepProject(): Project {
+  const p = topdownProject();
+  p.title = "Yard jeep";
+  objectLayer(p.levels[0]!).items.push({ name: "jeep", type: "pickup", x: 160, y: 260, item: "jeep" } as LevelObject);
+  return p;
+}

@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 26
+#define WM_VERSION 27
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -58,7 +58,7 @@ struct wm_object {
 /* lock:     (x, y) its top left, a = width, b = height: the camera stops there while enemies stand in its x range */
 /* platform: (x, y) its top left at frame 0, a = width px (32-128, 16s), b = axis (0 across, 1 up and down),
              c = range px (0-512), d = speed px per frame (1-4); it goes there and back */
-enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING, WM_ITEM_PIPE, WM_ITEM_KNIFE, WM_ITEM_POWER };
+enum { WM_ITEM_NONE, WM_ITEM_BAZOOKA, WM_ITEM_HEALTH, WM_ITEM_COIN, WM_ITEM_SPRING, WM_ITEM_PIPE, WM_ITEM_KNIFE, WM_ITEM_POWER, WM_ITEM_JEEP /* wm_data 27 */ };
 
 /* text screens */
 enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER, WM_SCR_JOIN, WM_SCR_AMMO, WM_SCR_COIN, WM_SCR_END = 0xff };

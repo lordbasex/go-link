@@ -1,0 +1,94 @@
+{
+ "name": "topdown-jeep",
+ "description": "The top-down run and gun's jeep, phase 3 (WM_ROM_OUT/topdown-jeep of rom.test.tsx, rom/topdownFixture.ts topdownJeepProject: the yard with a jeep near the start). Player 1, steered by a bot in play mode (its inputs, frame by frame: it drives to the jeep, then at the nearest enemy, going round pillars, holding its fire until frame 700) takes the jeep at frame 250 and goes twice as fast; the enemies' shots hit the jeep five times (frames 321, 441, 561, 681, 801), each a blink and no life lost, until it is gone; then the player is hit down to game over. Play mode gives the player's place, lives and score every frame but the last, where the ROM draws its continue screen (a long frame, as in spec-continue.json).",
+ "frames": 1220,
+ "checkpoints": [
+  200,
+  255,
+  323,
+  563,
+  803
+ ],
+ "expect": [
+  {
+   "frame": 280,
+   "path": "players.0.x",
+   "equals": 218
+  },
+  {
+   "frame": 446,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 806,
+   "path": "players.0.energy",
+   "equals": 3
+  },
+  {
+   "frame": 861,
+   "path": "players.0.y",
+   "equals": 242
+  }
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 161,
+   "to": 222,
+   "port": 1,
+   "buttons": [
+    "right",
+    "down"
+   ]
+  },
+  {
+   "from": 223,
+   "to": 248,
+   "port": 1,
+   "buttons": [
+    "down"
+   ]
+  },
+  {
+   "from": 249,
+   "to": 251,
+   "port": 1,
+   "buttons": [
+    "right",
+    "up"
+   ]
+  },
+  {
+   "from": 252,
+   "to": 302,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 512,
+   "to": 1159,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  }
+ ]
+}

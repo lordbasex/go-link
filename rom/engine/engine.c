@@ -688,6 +688,8 @@ static const u8 shot_speed_of[4] = { 3, 2, 4, 5 };
 #define BOMB_BOSS_HITS 5
 /* the top-down run and gun (WM_F_TOPDOWN, engine/rules.ts) */
 #define TOP_SPEED 1
+#define JEEP_SPEED 2
+#define JEEP_HP 5
 #define TOP_HALF_W 6
 #define TOP_DEPTH 8
 #define TOP_SHOT 5
@@ -760,6 +762,7 @@ struct player {
 	int answer, answer_left;                    /* the quiz: this question's answer (0-2, -1 none) and the frames left then */
 	int count, done;                            /* the minigames: presses or letters right, and whether its turn is over */
 	u8 motion[16];                              /* versus fighting: the last stick codes (1 down, 2 toward, 4 away, 8 up) */
+	int jeep;                                   /* the top-down run and gun's jeep: the hits it still takes, 0 on foot */
 	int motion_i;
 	struct { int live, dx, dy, t; s32 x, y; } grenade; /* the top-down grenade in flight (its middle, frames flown) */
 	struct { int t; s32 x, y; } boom;           /* its burst while it shows */
@@ -2872,6 +2875,7 @@ static void player_join(int k)
 	p->hurt = R->hurt_frames;
 	if (topdown)
 		p->bombs = GRENADES;
+	p->jeep = 0;
 	p->answer = -1;
 	p->count = p->done = 0;
 	if (crosshair) {
@@ -2918,6 +2922,13 @@ static void hurt(struct player *p, int fell)
 		return;
 	if (p->hurt && !fell)
 		return;
+	/* the top-down run and gun's jeep takes the hit (phase 3) */
+	if (p->jeep && !fell) {
+		p->jeep--;
+		p->hurt = R->hurt_frames;
+		sfx(SFX_HIT, p->x);
+		return;
+	}
 	if (p->hurt) {
 		respawn_near_camera(p); /* fell while protected: no energy lost */
 		return;
@@ -3733,11 +3744,25 @@ static void walk_top(struct player *p)
 		p->aim_x = dx;
 		p->aim_y = dy;
 	}
-	fy = p->y >> 4;
-	if (dx && !top_blocked(p->x + dx * TOP_SPEED, fy))
-		p->x += dx * TOP_SPEED;
-	if (dy && !top_blocked(p->x, fy + dy * TOP_SPEED))
-		p->y = (fy + dy * TOP_SPEED) * 16;
+	/* in a jeep, faster (a step at a time, so walls stop it as they stop a walker) */
+	for (i = 0; i < (p->jeep ? JEEP_SPEED : 1); i++) {
+		fy = p->y >> 4;
+		if (dx && !top_blocked(p->x + dx * TOP_SPEED, fy))
+			p->x += dx * TOP_SPEED;
+		if (dy && !top_blocked(p->x, fy + dy * TOP_SPEED))
+			p->y = (fy + dy * TOP_SPEED) * 16;
+	}
+	/* walking into a jeep: it is the player's ride */
+	if (!p->jeep)
+		for (i = 0; i < npickups; i++) {
+			struct pickup *k = &pickup[i];
+			if (k->live && k->item == WM_ITEM_JEEP && iabs(k->x - p->x) <= 12 && iabs(k->fy - (p->y >> 4)) <= 12) {
+				k->live = 0;
+				p->jeep = JEEP_HP;
+				sfx(SFX_PICKUP, p->x);
+				break;
+			}
+		}
 	if (p->aim_x)
 		p->flip = p->aim_x < 0;
 	p->on_ground = 1;
@@ -5475,6 +5500,9 @@ static void draw_pickups(void)
 			put_sprite(sx - 8, sy - 16, TILE_KNIFE, PAL_PICKUPS);
 		else if (pickup[i].item == WM_ITEM_POWER)
 			put_sprite(sx - 8, sy - 16, TILE_POWER, PAL_CROSS);
+		else if (pickup[i].item == WM_ITEM_JEEP)
+			/* the top-down run and gun's jeep, waiting (the last player color's car, facing right) */
+			put_sprite(sx - 8, sy - TOP_MID - 8, (u16)(TILE_CAR + 48), PAL_CROSS);
 		else if (frame_count & 16)
 			put_sprite(sx - 16, sy - 18, TILE_ROCKET, (u16)(PAL_ROCKET | (1 << 8)));
 	}
@@ -5571,7 +5599,17 @@ static void draw_world(void)
 			} else
 				put_sprite(p->cx - 16, p->cy - 8, (u16)(TILE_SHIP + 2 * k), (u16)(PAL_CROSS | (1 << 8)));
 		}
-	else
+	else if (topdown) {
+		/* the top-down run and gun (phase 3): seen from above, a soldier facing its aim, or its jeep */
+		static const u8 ways[9] = { 5, 6, 7, 4, 0, 0, 3, 2, 1 };
+		for (k = 0; k < nplayers; k++) {
+			struct player *p = &pl[k];
+			int way = ways[(p->aim_y + 1) * 3 + p->aim_x + 1];
+			if (!p->active || (p->hurt & 4))
+				continue;
+			put_sprite((int)p->x - cam_x - 8, (int)(p->y >> 4) - TOP_MID - cam_y - 8, (u16)(p->jeep ? TILE_CAR + 16 * k + 2 * way : TILE_SOLDIER + 8 * k + way), PAL_CROSS);
+		}
+	} else
 		for (k = 0; k < nplayers; k++)
 			draw_player(&pl[k]);
 	draw_enemies();

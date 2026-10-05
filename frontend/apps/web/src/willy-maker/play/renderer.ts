@@ -7,8 +7,8 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
-import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, carPen, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, RACE_CALL_ROW, RACE_COUNT, RACE_LAPS, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, carPen, soldierPen, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
+import { CLEAR_FRAMES, FLY_MID, TOP_MID, RACE_CALL_ROW, RACE_COUNT, RACE_LAPS, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -537,6 +537,11 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
       ctx.fillRect(k.x - 1, y - 4, 2, 8);
       continue;
     }
+    if (k.item === "jeep") {
+      // the top-down run and gun's jeep (phase 3), waiting, as the ROM draws it
+      drawPens(ctx, k.x - 8, k.fy - TOP_MID - 8, 16, 16, (x, y) => carPen(x, y, 0), ["", CROSS_COLORS[3]!, "#ffffff", "#000000"]);
+      continue;
+    }
     if (k.item === "power") {
       // the shooter's power-up (engine/shipArt.ts), as the ROM draws it
       drawPens(ctx, k.x - 8, k.fy - 16, 16, 16, powerPen, ["", "#44ccdd", "#ffffff", "#000000"]);
@@ -671,7 +676,12 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     else if (p.thumbsT) anim = "thumbs_up";
     else if (p.idleT >= YAWN_AFTER) anim = "yawn";
     const own = ownHeroes?.[p.index];
-    if (own) {
+    if (game.rules.topdown) {
+      // the top-down run and gun (phase 3): seen from above, a soldier facing its aim, or its jeep
+      const way = topWay(p.aimX, p.aimY);
+      if (p.jeep) drawPens(ctx, p.x - 8, fy - TOP_MID - 8, 16, 16, (x, y) => carPen(x, y, way * 2), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffffff", "#000000"]);
+      else drawPens(ctx, p.x - 8, fy - TOP_MID - 8, 16, 16, (x, y) => soldierPen(x, y, way), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffcc22", "#ffffff", "#000000"]);
+    } else if (own) {
       // an own hero is saved at board scale: its idle frame's feet give its height
       const ref = own.frames[own.anims.idle?.frames[0] ?? ""];
       sheetDraw(ctx, own, heroAnim(own, anim), "idle", t, p.x, fy, ref?.py ?? HEIGHTS.hero, p.flip, 1);
@@ -899,4 +909,9 @@ function drawPens(ctx: CanvasRenderingContext2D, x: number, y: number, w: number
       ctx.fillStyle = colors[c] ?? "#ffffff";
       ctx.fillRect(x + px * scale, y + py * scale, scale, scale);
     }
+}
+
+/** The top-down aim (-1, 0, 1 each way) as one of 8 ways, 0 right and 2 down (engine/shipArt.ts soldierPen). */
+export function topWay(ax: number, ay: number): number {
+  return [5, 6, 7, 4, 0, 0, 3, 2, 1][(ay + 1) * 3 + ax + 1]!;
 }

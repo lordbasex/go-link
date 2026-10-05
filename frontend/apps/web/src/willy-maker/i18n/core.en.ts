@@ -234,6 +234,7 @@ export const coreEn = {
     pipe: "Pipe",
     knife: "Knife",
     power: "Power-up",
+    jeep: "Jeep",
     nothing: "Nothing",
     weapon: "Weapon",
     civilian: "Civilian",

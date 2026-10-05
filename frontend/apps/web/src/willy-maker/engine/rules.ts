@@ -868,3 +868,11 @@ export const PRESS_X = 32;
  * the lines it makes.
  */
 export const CPU_STEPS = [8, 4, 2] as const;
+
+/**
+ * The top-down run and gun, phase 3: a **Jeep** pickup a player walks into
+ * becomes its ride: it goes JEEP_SPEED times as fast and takes JEEP_HP hits
+ * for the player (each a blink of hurtFrames) before it is gone.
+ */
+export const JEEP_SPEED = 2;
+export const JEEP_HP = 5;

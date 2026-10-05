@@ -106,3 +106,27 @@ export function carPen(x: number, y: number, d: number): ShipPen {
   if (Math.abs(v) <= 5 && Math.abs(Math.abs(u) - 3.8) <= 1.4) return 3;
   return 0;
 }
+
+/**
+ * The top-down run and gun's soldier seen from above (phase 3), 16 x 16 px,
+ * facing way d of 8 (0 right, 2 down): 0 none, 1 the player's color (the
+ * shoulders), 2 the head, 3 the gun, 4 the outline. Drawn turned pixel by
+ * pixel, like carPen.
+ */
+export function soldierPen(x: number, y: number, d: number): ShipPen {
+  const a = (d * Math.PI) / 4;
+  const inside = (px: number, py: number): ShipPen => {
+    const dx = px - 7.5;
+    const dy = py - 7.5;
+    const u = dx * Math.cos(a) + dy * Math.sin(a);
+    const v = -dx * Math.sin(a) + dy * Math.cos(a);
+    if (u >= 1.5 && u <= 7.6 && v >= 1.2 && v <= 3.4) return 3;
+    if ((u - 0.4) * (u - 0.4) + v * v <= 9) return 2;
+    if ((u * u) / 16 + (v * v) / 49 <= 1) return 1;
+    return 0;
+  };
+  const pen = inside(x, y);
+  if (pen) return pen;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if (inside(x + dx, y + dy)) return 4;
+  return 0;
+}

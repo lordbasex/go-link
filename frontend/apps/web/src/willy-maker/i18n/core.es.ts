@@ -234,6 +234,7 @@ export const coreEs: CoreMessages = {
     pipe: "Caño",
     knife: "Cuchillo",
     power: "Mejora de arma",
+    jeep: "Jeep",
     nothing: "Nada",
     weapon: "Arma",
     civilian: "Civil",

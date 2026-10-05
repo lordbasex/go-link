@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first.
 
 ### Added (website)
 
+- **Willy Maker: the top-down run and gun, phase 3.** Players are drawn seen from above, a soldier in their color facing their aim, and a new **Jeep** object is a ride: drive it at twice the speed while it takes five hits for you. Play mode and the ROM alike (`wm_data` version 27): a bot taking the jeep matches the real core at tolerance 0 and play mode on every frame.
 - **Willy Maker: the puzzle CPU's level** (puzzle, phase 3). The Rules card's **CPU rival's level** goes from 1 (easy: slow and careless) to 3 (hard: quick). Play mode and the ROM alike (`wm_data` version 26): a bot against each level matches the real core at tolerance 0 and play mode on every frame.
 - **Willy Maker: the quiz's turns and categories** (quiz and party, phase 3). In the Questions card an item can be answered by **one player, in turns** (each such item goes to the next player in), and can have a **category** shown above it. Play mode and the ROM alike: a game with items in turns matches the real core at tolerance 0 and play mode on every frame.
 - **Willy Maker: sports, phase 2.** B2 passes the ball to your nearest teammate, and the CPU's defenders keep goal: they stand on their goal line, follow the ball and clear what they catch. CPU attackers pass when pressed. Play mode and the ROM alike: a match with saves and passes matches the real core at tolerance 0 and play mode on every frame.

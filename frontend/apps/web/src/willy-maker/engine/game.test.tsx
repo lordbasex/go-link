@@ -9,7 +9,7 @@ import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
 import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS, BUMP_X } from "./rules";
-import { KEEPER_X } from "./rules";
+import { KEEPER_X, JEEP_HP, JEEP_SPEED } from "./rules";
 import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
 import { FB_AT, FB_DMG, FB_CHIP, DASH_FRAMES, DASH_DMG } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
@@ -1880,5 +1880,28 @@ describe("the puzzle, phase 3: the CPU's level", () => {
       expect(gaps.length).toBeGreaterThan(0);
       expect(Math.min(...gaps)).toBe(step);
     }
+  });
+});
+
+describe("the top-down run and gun, phase 3: the jeep", () => {
+  it("walking into a jeep makes it the player's ride: twice as fast, and it takes the hits until it is gone", () => {
+    const view = flat(undefined, [{ name: "jeep", type: "pickup", x: 120, y: 200, item: "jeep" } as LevelObject]);
+    view.objects[0] = { name: "p1", type: "player_start", x: 64, y: 200, player: 1 };
+    const g = new Game(view, { rules: TOPDOWN_RULES });
+    const p = g.players[0]!;
+    run(g, 60, Input.Right);
+    expect(p.jeep).toBe(JEEP_HP);
+    const x0 = p.x;
+    run(g, 10, Input.Right);
+    expect(p.x - x0).toBe(10 * JEEP_SPEED);
+    const lives = p.lives;
+    for (let i = 0; i < JEEP_HP; i++) {
+      p.invulnerable = 0;
+      (g as unknown as { hurt: (q: typeof p) => void }).hurt(p);
+    }
+    expect([p.jeep, p.lives]).toEqual([0, lives]);
+    p.invulnerable = 0;
+    (g as unknown as { hurt: (q: typeof p) => void }).hurt(p);
+    expect(p.lives).toBe(lives - 1);
   });
 });

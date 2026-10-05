@@ -70,7 +70,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 26;
+const WM_VERSION = 27;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -90,7 +90,7 @@ const TXT_RIGHT = 0x80;
 /** The quiz's question n is screen SCR_QUIZ + n. */
 const SCR_QUIZ = 0x40;
 const INK: Record<Ink, number> = { accent: 0, white: 1, cyan: 2 };
-const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5, knife: 6, power: 7 };
+const ITEM: Record<string, number> = { bazooka: 1, health: 2, coin: 3, spring: 4, pipe: 5, knife: 6, power: 7, jeep: 8 };
 const F_FREE_PLAY = 1;
 const F_PUSH_CLIMB = 2;
 const F_SOON = 4;

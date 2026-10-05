@@ -183,6 +183,8 @@ import {
   DASH_DMG,
   VS_CPU_FAR,
   VS_CPU_THROW,
+  JEEP_SPEED,
+  JEEP_HP,
   VS_FLOOR,
   VS_START,
   VS_WALK,
@@ -357,6 +359,8 @@ export interface Player {
   /** Versus fighting: the last stick codes (1 down, 2 toward, 4 away, 8 up) and where the next goes. */
   motion: number[];
   motionI: number;
+  /** The top-down run and gun's jeep (phase 3): the hits it still takes, 0 on foot. */
+  jeep: number;
 }
 
 export type EnemyState = "walk" | "hit" | "down" | "off" | "attack" | "fall" | "held" | "hidden";
@@ -1092,6 +1096,7 @@ export class Game {
     spawn(p, x, fy);
     p.invulnerable = this.rules.hurtFrames;
     if (this.rules.topdown) p.bombs = GRENADES;
+    p.jeep = 0;
     p.answer = -1;
     p.count = 0;
     p.done = false;
@@ -1116,6 +1121,13 @@ export class Game {
 
   private hurt(p: Player, fell = false): void {
     if (!p.active || (p.invulnerable && !fell)) return;
+    // the top-down run and gun's jeep takes the hit (phase 3)
+    if (p.jeep && !fell) {
+      p.jeep--;
+      p.invulnerable = this.rules.hurtFrames;
+      this.events.push({ kind: "hit", name: "jeep", x: p.x });
+      return;
+    }
     if (p.invulnerable) {
       // fell out while protected: back on the ground, no life lost
       const at = this.walkBand ? { x: Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), fy: this.inWalk(p.y >> 4) } : this.placeNear(Math.max(this.camX + 64, Math.min(p.x, this.camX + SCREEN_W - 64)), this.camY, this.camY + SCREEN_H, false, p.body);
@@ -1722,9 +1734,21 @@ export class Game {
       p.aimX = dx;
       p.aimY = dy;
     }
-    const fy = p.y >> 4;
-    if (dx && !this.topBlocked(p.x + dx * TOP_SPEED, fy)) p.x += dx * TOP_SPEED;
-    if (dy && !this.topBlocked(p.x, fy + dy * TOP_SPEED)) p.y = (fy + dy * TOP_SPEED) * 16;
+    // in a jeep, faster (a step at a time, so walls stop it as they stop a walker)
+    for (let s = 0; s < (p.jeep ? JEEP_SPEED : 1); s++) {
+      const f = p.y >> 4;
+      if (dx && !this.topBlocked(p.x + dx * TOP_SPEED, f)) p.x += dx * TOP_SPEED;
+      if (dy && !this.topBlocked(p.x, f + dy * TOP_SPEED)) p.y = (f + dy * TOP_SPEED) * 16;
+    }
+    // walking into a jeep: it is the player's ride
+    if (!p.jeep)
+      for (const k of this.pickups)
+        if (k.live && k.item === "jeep" && Math.abs(k.x - p.x) <= 12 && Math.abs(k.fy - (p.y >> 4)) <= 12) {
+          k.live = false;
+          p.jeep = JEEP_HP;
+          this.events.push({ kind: "pickup", item: "jeep", player: p.index });
+          break;
+        }
     if (p.aimX) p.flip = p.aimX < 0;
     p.onGround = true;
     p.running = false;
@@ -3585,6 +3609,7 @@ function newPlayer(index: number, lives: number, body: Body): Player {
     done: false,
     motion: new Array(MOTION_LEN).fill(0),
     motionI: 0,
+    jeep: 0,
   };
 }
 
