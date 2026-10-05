@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first.
 
 ## [Unreleased]
 
+### Added (core patches)
+
+- **Two more save state patches for mame2003-plus** (`cores/mame2003-plus`, optional, not used by releases): `0009` saves the Namco wave sound chip (Pac-Man resumed silent: the game turns the sound on only at boot) and `0010` saves the YM3812 by keeping its registers and writing them back on load (Snow Bros. lost its sound). With them, 3 of the 4 games tried that did not resume now do; Hammerin' Harry's driver does not declare save support.
+
 ### Added (website)
 
 - **Willy Maker: the top-down run and gun, phase 3.** Players are drawn seen from above, a soldier in their color facing their aim, and a new **Jeep** object is a ride: drive it at twice the speed while it takes five hits for you. Play mode and the ROM alike (`wm_data` version 27): a bot taking the jeep matches the real core at tolerance 0 and play mode on every frame.
