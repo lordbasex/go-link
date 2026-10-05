@@ -834,3 +834,14 @@ export const DASH_DMG = 14;
 /** The CPU throws a fireball when farther than VS_CPU_FAR px, every VS_CPU_THROW frames of the fight (a third of the way in). */
 export const VS_CPU_FAR = 120;
 export const VS_CPU_THROW = 90;
+
+/**
+ * Racing, phase 2: a track's waypoints are its level's checkpoints in their
+ * order (at most MAX_WAYPOINTS; none: WAYPOINTS), and the grid its player
+ * starts (none: GRID). A car whose move brings it within BUMP_X, BUMP_Y px
+ * of another, when it was touching none, loses half its speed (cars already
+ * touching drive on, apart or through).
+ */
+export const MAX_WAYPOINTS = 8;
+export const BUMP_X = 12;
+export const BUMP_Y = 10;

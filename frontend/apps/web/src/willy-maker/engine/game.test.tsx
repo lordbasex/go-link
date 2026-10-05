@@ -8,7 +8,7 @@ import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL,
 import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
-import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS } from "./rules";
+import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS, BUMP_X } from "./rules";
 import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
 import { FB_AT, FB_DMG, FB_CHIP, DASH_FRAMES, DASH_DMG } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
@@ -1686,12 +1686,14 @@ describe("sports: football (genres.md, phase 1)", () => {
 });
 
 describe("racing (genres.md, phase 1: seen from above)", () => {
-  // a ring: walls around rows 3-12 and cols 1-22, an island at cols 6-17, rows 6-9
-  const ring = () =>
-    flat((set) => {
+  // a ring: walls around rows 3-12 and cols 1-22, an island at cols 6-17, rows 6-9 (no player starts: the wizard ring's grid)
+  const ring = () => {
+    const v = flat((set) => {
       for (let r = 0; r < 28; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
       for (let r = 3; r <= 12; r++) for (let c = 1; c <= 22; c++) if (!(r >= 6 && r <= 9 && c >= 6 && c <= 17)) set(c, r, Tag.Air);
     });
+    return { ...v, objects: v.objects.filter((o) => o.type !== "player_start") };
+  };
   it("cars wait for the countdown, B1 speeds a car up, Left and Right turn it, and a wall stops it", () => {
     const g = new Game(ring(), { rules: RACING_RULES, players: 2, maxPlayers: 2 });
     const p = g.players[0]!;
@@ -1766,5 +1768,42 @@ describe("versus fighting, phase 2: special moves", () => {
       threw = h.players[1]!.shots.length > 0;
     }
     expect(threw).toBe(true);
+  });
+});
+
+describe("racing, phase 2: the level's checkpoints and starts, bumps", () => {
+  const ring = (objects: LevelObject[]) => {
+    const v = flat((set) => {
+      for (let r = 0; r < 28; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let r = 3; r <= 12; r++) for (let c = 1; c <= 22; c++) if (!(r >= 6 && r <= 9 && c >= 6 && c <= 17)) set(c, r, Tag.Air);
+    });
+    // flat's own player start is not on the track: only these objects
+    return { ...v, objects };
+  };
+  it("checkpoints are the waypoints in their order: reversed, the CPU laps the other way round", () => {
+    const cps = [[328, 184], [328, 72], [56, 72], [56, 184], [192, 184]].map(([x, y], i) => ({ name: `cp${i}`, type: "checkpoint", x, y }) as LevelObject);
+    const g = new Game(ring(cps), { rules: RACING_RULES, players: 1, maxPlayers: 2 });
+    expect(g.waypoints.map((w) => [...w])).toEqual([[328, 184], [328, 72], [56, 72], [56, 184], [192, 184]]);
+    const cpu = g.players[1]!;
+    for (let i = 0; i < RACE_COUNT + 6000 && cpu.count < 1; i++) g.step([0, 0, 0, 0]);
+    expect(cpu.count).toBe(1);
+  });
+
+  it("player starts are the grid, and a car driving into another bumps and loses speed", () => {
+    const g = new Game(ring([{ name: "s1", type: "player_start", x: 150, y: 184, player: 1 } as LevelObject, { name: "s2", type: "player_start", x: 120, y: 184, player: 2 } as LevelObject]), { rules: RACING_RULES, players: 2, maxPlayers: 2 });
+    const [a, b] = g.players;
+    expect([a!.x, a!.y >> 4, b!.x]).toEqual([150, 184, 120]);
+    run(g, RACE_COUNT, 0);
+    // player 1 drives left into player 2, who stands still: on the frame they first touch its speed halves
+    let bumped = false;
+    for (let i = 0; i < 60 && !bumped; i++) {
+      const before = a!.fuel;
+      g.step([Input.B1, 0, 0, 0]);
+      if (Math.abs(a!.x - b!.x) < BUMP_X) {
+        expect(a!.fuel).toBe((before + CAR_ACCEL) >> 1);
+        bumped = true;
+      }
+    }
+    expect(bumped).toBe(true);
   });
 });

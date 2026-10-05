@@ -5,7 +5,7 @@
 // with the starter art, and no objects but the player starts. The wells
 // themselves are the engine's; the level only frames them.
 
-import { FIELD_Y0, FIELD_Y1, GOAL_Y0, GOAL_Y1, VS_FLOOR, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { FIELD_Y0, FIELD_Y1, GOAL_Y0, GOAL_Y1, GRID, VS_FLOOR, WAYPOINTS, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { layerGrid, objectLayer, tagGrid, TAG_NUMBER, type Level, type TileLayer } from "../model";
 import { applyAutoArt } from "./autoArt";
 
@@ -83,7 +83,7 @@ export function shapeFieldLevel(level: Level): void {
   for (let i = items.length - 1; i >= 0; i--) if (items[i]!.type !== "player_start") items.splice(i, 1);
 }
 
-/** A racing game's track: the wizard's ring (walls around rows 3-12 and columns 1-22 of the first screen, an island at columns 6-17, rows 6-9), which WAYPOINTS follow. */
+/** A racing game's track: the wizard's ring (walls around rows 3-12 and columns 1-22 of the first screen, an island at columns 6-17, rows 6-9), with the grid (player starts) and the waypoints (checkpoints) placed on it. */
 export function shapeTrackLevel(level: Level): void {
   const tags = tagGrid(level);
   const playLayer = level.layers.find((l): l is TileLayer => l.id === "play");
@@ -99,6 +99,9 @@ export function shapeTrackLevel(level: Level): void {
     play.commit();
   }
   tags.commit();
+  // the grid's four places and the ring's waypoints, as objects to move (racing, phase 2)
   const items = objectLayer(level).items;
-  for (let i = items.length - 1; i >= 0; i--) if (items[i]!.type !== "player_start") items.splice(i, 1);
+  items.length = 0;
+  GRID.forEach(([x, y], i) => items.push({ name: `start_${i + 1}`, type: "player_start", x, y, player: i + 1 }));
+  WAYPOINTS.forEach(([x, y], i) => items.push({ name: `waypoint_${i + 1}`, type: "checkpoint", x, y }));
 }

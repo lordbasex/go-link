@@ -145,6 +145,9 @@ import {
   RACE_TIME,
   RACE_COUNT,
   GRID,
+  MAX_WAYPOINTS,
+  BUMP_X,
+  BUMP_Y,
   FIELD_X0,
   FIELD_Y0,
   FIELD_Y1,
@@ -566,6 +569,8 @@ export class Game {
   goalBy = -1;
   /** Racing: frames since the countdown began, cars finished, the frame the first did (-1 none), and whether the race is over. */
   raceT = 0;
+  /** Racing: the track's waypoints (its checkpoints, or the wizard ring's). */
+  readonly waypoints: readonly (readonly [number, number])[];
   finished = 0;
   firstAt = -1;
   raceOver = false;
@@ -613,6 +618,8 @@ export class Game {
     this.runTap = Math.max(1, Math.round(opts.runTapFrames ?? RUN_TAP_FRAMES));
     this.rules = rulesWith(opts.rules);
     this.questions = this.rules.quiz ? (opts.questions ?? []) : [];
+    const checkpoints = level.objects.filter((o) => o.type === "checkpoint").slice(0, MAX_WAYPOINTS);
+    this.waypoints = checkpoints.length ? checkpoints.map((o) => [o.x, o.y] as const) : WAYPOINTS;
     if (this.rules.depth) this.walkBand = walkBandOf(level.height, level.walk);
     this.backtrack = level.backtrack ?? BACKTRACK;
     this.fireEvery = difficultyOf(opts.difficulty).fireEvery;
@@ -997,7 +1004,9 @@ export class Game {
     // racing: a car on its place on the grid, facing left (cars: aimX the way it points, fuel its speed, cx its x in 1/16 px, count its laps, answer the next waypoint)
     if (this.rules.racing) {
       if (i >= this.athletes()) return;
-      const [gx, gy] = GRID[i]!;
+      // the grid: the level's player starts, else the wizard ring's
+      const start = this.level.objects.find((o) => o.type === "player_start" && num(o.player, 1) === i + 1);
+      const [gx, gy] = start ? [start.x, start.y] : GRID[i]!;
       spawn(p, gx, gy);
       p.cx = gx * 16;
       p.aimX = 8;
@@ -2235,6 +2244,9 @@ export class Game {
     const [ux, uy] = CAR_DIRS[p.aimX]!;
     const nx = p.cx + ((ux * p.fuel) >> 4);
     const ny = p.y + ((uy * p.fuel) >> 4);
+    // touching another car where it was not touching one: a bump that halves its speed (cars already touching drive on, apart or through)
+    const touch = (x: number, y: number) => this.players.some((q) => q !== p && q.active && Math.abs(x - q.x) < BUMP_X && Math.abs(y - (q.y >> 4)) < BUMP_Y);
+    if (touch(nx >> 4, ny >> 4) && !touch(p.x, p.y >> 4)) p.fuel >>= 1;
     if (this.isSolid(this.cellAt(nx >> 4, ny >> 4))) p.fuel = 0;
     else {
       p.cx = nx;
@@ -2242,10 +2254,10 @@ export class Game {
     }
     p.x = p.cx >> 4;
     p.running = p.fuel > 0;
-    const [wx, wy] = WAYPOINTS[p.answer]!;
+    const [wx, wy] = this.waypoints[p.answer]!;
     if (Math.abs(p.x - wx) > GATE_X || Math.abs((p.y >> 4) - wy) > GATE_Y) return;
     p.answer++;
-    if (p.answer < WAYPOINTS.length) return;
+    if (p.answer < this.waypoints.length) return;
     p.answer = 0;
     p.count++;
     if (p.count < RACE_LAPS) return;
@@ -2271,7 +2283,7 @@ export class Game {
   /** The CPU car's pad: every 4 frames it picks the way nearest its next waypoint; it turns toward it and speeds up unless the turn is sharp. */
   private racingCpuPad(p: Player): number {
     if ((this.frame & 3) === (p.index & 3)) {
-      const [wx, wy] = WAYPOINTS[p.answer]!;
+      const [wx, wy] = this.waypoints[p.answer]!;
       const vx = wx - p.x;
       const vy = wy - (p.y >> 4);
       let best = -Infinity;

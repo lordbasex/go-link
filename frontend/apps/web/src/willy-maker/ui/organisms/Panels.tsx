@@ -9,7 +9,7 @@ import { BAND_SPEED, CELL, cleanBands, cleanWalk, defaultWalk, layerGrid, MAX_BA
 import { CPS1 } from "../../board/cps1";
 import { BOSS_KINDS, CIVILIAN_KINDS, CRATE_CONTENTS, ENEMY_KINDS, PART_GROUPS, PARTS, PICKUP_ITEMS, type Part, type PartGroup } from "../../editor/parts";
 import { deleteObject, nameFree, updateObject } from "../../editor/ops";
-import { optionSupport, partSupport, type Support } from "../../editor/support";
+import { objectSupport, optionSupport, partSupport, type Support } from "../../editor/support";
 import type { Reach } from "../../editor/reach";
 import type { EditorStore } from "../../editor/store";
 import { applyAutoArt } from "../../editor/autoArt";
@@ -375,7 +375,7 @@ export function Inspector({ store, level, selected, cell, onSelect }: { store: E
   return (
     <section className="wm-inspector" aria-label={t.inspector.title(t.objects[o.type])}>
       <Eyebrow>{t.inspector.title(t.objects[o.type])}</Eyebrow>
-      {o.type === "checkpoint" && <StatusBadge support={partSupport("checkpoint:checkpoint")} />}
+      {o.type === "checkpoint" && <StatusBadge support={objectSupport(o, rulesWith(store.project.settings.rules).racing)} />}
       <PropRow label={t.inspector.name}>
         <input
           className={`wm-input is-sm wm-mono${ok ? "" : " is-bad"}`}

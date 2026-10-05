@@ -1,10 +1,11 @@
 {
  "name": "racing-laps",
- "description": "Racing seen from above (WM_ROM_OUT/racing of rom.test.tsx, rom/racingFixture.ts: the wizard's ring track, four places). After the countdown (3, 2, 1, GO!), player 1, steered by a bot in play mode (its inputs, frame by frame: it aims at the next waypoint, speeds up, eases off and brakes in sharp turns) races three CPU cars, which pick their way every 4 frames at a lower top speed; player 1 completes its laps at frames 614, 874 and 1134, finishes first (3000 points) and, every player done, the race ends and clears the level. Play mode gives all four cars' place and score every frame.",
+ "description": "Racing seen from above, phases 1 and 2 (WM_ROM_OUT/racing of rom.test.tsx, rom/racingFixture.ts: the wizard's ring track with its grid as player starts and its waypoints as checkpoints, which the ROM reads from the lock rows; four places). After the countdown (3, 2, 1, GO!), player 1, steered by a bot in play mode (its inputs, frame by frame: it aims at the track's next waypoint, speeds up, eases off and brakes in sharp turns) races three CPU cars, which pick their way every 4 frames at a lower top speed; cars bump (half speed on a first touch) six times, the first at frame 425; player 1 completes its laps at frames 614, 874 and 1134, finishes first and, every player done, the race ends and clears the level. Play mode gives all four cars' place and score every frame.",
  "frames": 1193,
  "checkpoints": [
   250,
   350,
+  425,
   614,
   874,
   1134
@@ -16,9 +17,14 @@
    "equals": 205
   },
   {
-   "frame": 350,
-   "path": "players.2.y",
-   "equals": 172
+   "frame": 430,
+   "path": "players.2.x",
+   "equals": 83
+  },
+  {
+   "frame": 430,
+   "path": "players.3.x",
+   "equals": 90
   },
   {
    "frame": 614,
@@ -29,11 +35,6 @@
    "frame": 1134,
    "path": "players.0.score",
    "equals": 3000
-  },
-  {
-   "frame": 1134,
-   "path": "players.1.x",
-   "equals": 301
   }
  ],
  "steps": [

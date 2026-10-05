@@ -89,7 +89,8 @@ export function optionSupport(field: "item" | "contents" | "kind", value: string
 }
 
 /** What a placed object does in the game: its type, then the kind, item or contents it carries. */
-export function objectSupport(o: LevelObject): Support {
+/** A placed object's support; `racing`: a racing game, where checkpoints are the track's waypoints. */
+export function objectSupport(o: LevelObject, racing = false): Support {
   switch (o.type) {
     case "pickup":
       return optionSupport("item", String(o.item ?? "bazooka"));
@@ -100,7 +101,7 @@ export function objectSupport(o: LevelObject): Support {
     case "civilian":
       return optionSupport("kind", String(o.kind ?? ""), o.type);
     case "checkpoint":
-      return SUPPORT["checkpoint:checkpoint"]!;
+      return racing ? works : SUPPORT["checkpoint:checkpoint"]!;
     default:
       return works;
   }

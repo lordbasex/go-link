@@ -783,10 +783,15 @@ static int sports;     /* sports: football (WM_F2_SPORTS) */
 static int racing;     /* racing seen from above (WM_F2_RACING) */
 /* racing (engine/rules.ts CAR_DIRS..., engine/game.ts drive) */
 static const s8 car_dirs[16][2] = { { 16, 0 }, { 15, 6 }, { 11, 11 }, { 6, 15 }, { 0, 16 }, { -6, 15 }, { -11, 11 }, { -15, 6 }, { -16, 0 }, { -15, -6 }, { -11, -11 }, { -6, -15 }, { 0, -16 }, { 6, -15 }, { 11, -11 }, { 15, -6 } };
-static const s16 waypoints[5][2] = { { 56, 184 }, { 56, 72 }, { 328, 72 }, { 328, 184 }, { 192, 184 } };
+static const s16 ring_waypoints[5][2] = { { 56, 184 }, { 56, 72 }, { 328, 72 }, { 328, 184 }, { 192, 184 } };
+/* the track's waypoints: its checkpoints (packed in the lock rows), else the wizard ring's (phase 2) */
+#define MAX_WAYPOINTS 8
+#define BUMP_X 12
+#define BUMP_Y 10
+static s16 waypoints[MAX_WAYPOINTS][2];
+static int n_waypoints;
 static const s16 grid[4][2] = { { 208, 172 }, { 208, 196 }, { 240, 172 }, { 240, 196 } };
 static const u16 place_score[4] = { 3000, 2000, 1000, 500 };
-#define N_WAYPOINTS 5
 #define STEER 4
 #define CAR_ACCEL 1
 #define CAR_BRAKE 2
@@ -2310,7 +2315,7 @@ static void sports_draw(void)
 /* a car, a frame (engine/game.ts drive) */
 static void drive(struct player *p)
 {
-	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0, max = p->cpu ? CPU_MAX : CAR_MAX;
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0, max = p->cpu ? CPU_MAX : CAR_MAX, bump;
 	s32 nx, ny;
 	p->t++;
 	p->on_ground = 1;
@@ -2334,6 +2339,20 @@ static void drive(struct player *p)
 		p->fuel--;
 	nx = p->cx + ((car_dirs[p->aim_x][0] * p->fuel) >> 4);
 	ny = p->y + ((car_dirs[p->aim_x][1] * p->fuel) >> 4);
+	/* touching another car where it was not touching one: a bump that halves its speed */
+	{
+		int k, next = 0, now = 0;
+		for (k = 0; k < nplayers; k++)
+			if (&pl[k] != p && pl[k].active) {
+				if (vs_abs((nx >> 4) - pl[k].x) < BUMP_X && vs_abs((ny >> 4) - (pl[k].y >> 4)) < BUMP_Y)
+					next = 1;
+				if (vs_abs(p->x - pl[k].x) < BUMP_X && vs_abs((p->y >> 4) - (pl[k].y >> 4)) < BUMP_Y)
+					now = 1;
+			}
+		bump = next && !now;
+	}
+	if (bump)
+		p->fuel >>= 1;
 	if (is_solid(cell((int)(nx >> 8), (int)(ny >> 8))))
 		p->fuel = 0;
 	else {
@@ -2344,7 +2363,7 @@ static void drive(struct player *p)
 	p->running = p->fuel > 0;
 	if (vs_abs(p->x - waypoints[p->answer][0]) > GATE_X || vs_abs((p->y >> 4) - waypoints[p->answer][1]) > GATE_Y)
 		return;
-	if (++p->answer < N_WAYPOINTS)
+	if (++p->answer < n_waypoints)
 		return;
 	p->answer = 0;
 	if (++p->count < RACE_LAPS)
@@ -2674,10 +2693,14 @@ static void player_join(int k)
 		/* racing: a car on its place on the grid, facing left */
 		if (k >= athletes())
 			return;
-		player_spawn(p, grid[k][0], grid[k][1]);
+		/* the grid: the level's player starts, else the wizard ring's */
+		{
+			s32 gx = D->start_x[k] >= 0 ? D->start_x[k] : grid[k][0], gy = D->start_x[k] >= 0 ? D->start_y[k] : grid[k][1];
+			player_spawn(p, gx, gy);
+			p->cx = gx * 16;
+		}
 		p->energy = R->energy;
 		p->hurt = 0;
-		p->cx = grid[k][0] * 16;
 		p->aim_x = 8;
 		p->cy = 8;
 		p->fuel = 0;
@@ -2885,6 +2908,20 @@ static void game_reset(void)
 	sports = (D->flags2 & WM_F2_SPORTS) != 0;
 	racing = (D->flags2 & WM_F2_RACING) != 0;
 	race_t = finished = race_over = 0;
+	if (racing) {
+		const struct wm_object *l = (const struct wm_object *)D->locks;
+		int i;
+		n_waypoints = D->n_locks < MAX_WAYPOINTS ? D->n_locks : MAX_WAYPOINTS;
+		for (i = 0; i < n_waypoints; i++) {
+			waypoints[i][0] = l[i].x;
+			waypoints[i][1] = l[i].y;
+		}
+		if (!n_waypoints)
+			for (n_waypoints = 0; n_waypoints < 5; n_waypoints++) {
+				waypoints[n_waypoints][0] = ring_waypoints[n_waypoints][0];
+				waypoints[n_waypoints][1] = ring_waypoints[n_waypoints][1];
+			}
+	}
 	first_at = -1;
 	goals[0] = goals[1] = 0;
 	match_t = MATCH_TIME;

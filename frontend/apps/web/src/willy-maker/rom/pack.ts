@@ -438,6 +438,7 @@ export function packGame(
   const crosshairRule = rulesWith(project.settings.rules).crosshair;
   const shipRule = rulesWith(project.settings.rules).ship;
   const mazeRule = rulesWith(project.settings.rules).maze;
+  const racingRule = rulesWith(project.settings.rules).racing;
   for (const o of objects) {
     switch (o.type) {
       case "player_start": {
@@ -496,7 +497,9 @@ export function packGame(
         locks.push([o.x, o.y, num(o.w, 384), num(o.h, 224), 0, 0]);
         break;
       case "checkpoint":
-        note("checkpoint");
+        // racing: the track's waypoints, in the camera locks' rows (a racing game has no locks)
+        if (racingRule) locks.push([o.x, o.y, 0, 0, 0, 0]);
+        else note("checkpoint");
         break;
       case "boss":
         // the beat 'em up's brawler is an enemy row whose facing is doubled (wm_data 12); the other bosses wait

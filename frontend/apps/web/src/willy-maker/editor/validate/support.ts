@@ -13,6 +13,7 @@ import { coreEn, type CoreMessages } from "../../i18n/core.en";
 import { coreEs } from "../../i18n/core.es";
 import { corePt } from "../../i18n/core.pt";
 import { objectSupport, partSupport, type SupportReason } from "../support";
+import { rulesWith } from "../../engine/rules";
 import type { Check } from ".";
 
 const LANGS: Record<"en" | "es" | "pt", CoreMessages> = { en: coreEn, es: coreEs, pt: corePt };
@@ -46,7 +47,7 @@ export function supportChecks(p: Project): Check[] {
       });
     };
     for (const o of items) {
-      const s = objectSupport(o);
+      const s = objectSupport(o, rulesWith(p.settings.rules).racing);
       if (s.status === "soon" && s.reason) warn(s.reason, String(o.name), o.x, o.y, o.name);
     }
     // water is a collision tag: one warning for the level, at its first cell
