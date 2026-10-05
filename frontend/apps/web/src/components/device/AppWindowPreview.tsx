@@ -46,7 +46,7 @@ export function AppWindowPreview() {
               <span className="appwin-num">1</span>
               <span className="appwin-step-text">
                 <b>{a.step1}</b>
-                <span className="appwin-url">go-link.org/device</span>
+                <span className="appwin-url">play.go-link.org/device</span>
               </span>
               <span className="appwin-btn">{a.copy}</span>
             </div>

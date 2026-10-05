@@ -5,7 +5,7 @@
 1. The host downloads and opens go-link (double click, no terminal).
 2. The device creates `device.json` with its `device_id` and `device_secret`, and opens its **window**.
 3. It connects to the signaling server and gets a **9-digit pairing code**, shown in the window, in the tray panel and (headless) in the log.
-4. The host opens the website (`https://go-link.org/device` by default) and types the code.
+4. The host opens the website (`https://play.go-link.org/device` by default) and types the code.
 
 The first time, the host also downloads the emulator core from the website (My device) or with `device core download`, and picks the ROM folder. See [emulator.md](emulator.md).
 

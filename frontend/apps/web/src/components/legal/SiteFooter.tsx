@@ -4,6 +4,7 @@ import { t } from "../../i18n";
 import { Brand } from "../Headers";
 import { GithubIcon } from "../Icons";
 import { APP_VERSION, BUILD_DATE, REPO_URL } from "../../config";
+import { ROLE, homeHref } from "../../role";
 
 /** The site's footer: links, licenses, trademarks and the legal pages. */
 export function SiteFooter() {
@@ -20,7 +21,7 @@ export function SiteFooter() {
         </div>
         <nav className="site-footer-col" aria-label={f.product}>
           <h2 className="site-footer-title">{f.product}</h2>
-          <Link to="/">{t.nav.howItWorks}</Link>
+          {ROLE === "play" ? <a href={homeHref()}>{t.nav.howItWorks}</a> : <Link to="/">{t.nav.howItWorks}</Link>}
           <Link to="/rooms">{t.nav.rooms}</Link>
           <Link to="/device">{t.nav.myDevice}</Link>
           <Link to="/docs">{t.nav.docs}</Link>

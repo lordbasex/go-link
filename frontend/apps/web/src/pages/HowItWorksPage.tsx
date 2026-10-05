@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../i18n";
 import { JoinForm } from "../components/JoinForm";
+import { PLAY_URL, ROLE } from "../role";
 import { FightScene } from "../components/landing/FightScene";
 import { ControllersShowcase } from "../components/landing/ControllersShowcase";
 import { GuestPath } from "../components/landing/GuestPath";
@@ -44,6 +45,10 @@ const FEATURE_ICONS: ReactNode[] = [
  */
 export function HowItWorksPage() {
   const [joinOpen, setJoinOpen] = useState(false);
+  // The PIN travels in the page's history state, which stays on this
+  // origin: the landing's own site sends guests to the join page of the
+  // rooms' site instead of asking here.
+  const join = () => (ROLE === "site" ? window.location.assign(`${PLAY_URL}/g`) : setJoinOpen(true));
   return (
     <div className="page lp">
       <section className="lp-hero">
@@ -54,7 +59,7 @@ export function HowItWorksPage() {
           </h1>
           <p className="lp-lead">{t.landing.lead}</p>
           <div className="lp-actions">
-            <button type="button" className="button button-primary lp-cta" onClick={() => setJoinOpen(true)}>
+            <button type="button" className="button button-primary lp-cta" onClick={join}>
               <GamepadIcon size={18} />
               {t.landing.joinCta}
             </button>
@@ -68,7 +73,7 @@ export function HowItWorksPage() {
         <FightScene />
       </section>
 
-      <GuestPath onJoin={() => setJoinOpen(true)} />
+      <GuestPath onJoin={join} />
 
       <section className="lp-section" id="how" aria-labelledby="lp-steps">
         <span className="eyebrow eyebrow-accent">{t.wizard.eyebrow}</span>
@@ -140,7 +145,7 @@ export function HowItWorksPage() {
         <h2 className="lp-h2">{t.landing.finalTitle}</h2>
         <p className="muted">{t.landing.finalText}</p>
         <div className="lp-actions is-centered">
-          <button type="button" className="button button-primary lp-cta" onClick={() => setJoinOpen(true)}>
+          <button type="button" className="button button-primary lp-cta" onClick={join}>
             <GamepadIcon size={18} />
             {t.landing.joinCta}
           </button>

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { defineConfig } from "@playwright/test";
-import { MAKER_URL, PORTS } from "./ports";
+import { MAKER_URL, PLAY_URL, PORTS, SITE_URL } from "./ports";
 
 // A real Chromium against a real signalhub, a real headless device and the
 // website, all started by global-setup.ts on their own ports, so nothing of
@@ -16,9 +16,10 @@ import { MAKER_URL, PORTS } from "./ports";
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
 
-// Tests that need only the websites (Willy Maker): when they are the only
-// files named on the command line, no signalhub or device is built or started.
-const WEB_ONLY = /willy-maker\.spec\.ts$/;
+// Tests that need only the websites (Willy Maker, the two sites): when they
+// are the only files named on the command line, no signalhub or device is
+// built or started.
+const WEB_ONLY = /(willy-maker|two-sites)\.spec\.ts$/;
 const named = process.argv.filter((a) => /\.spec\.ts$/.test(a));
 const webOnly = named.length > 0 && named.every((a) => WEB_ONLY.test(a));
 
@@ -73,6 +74,21 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
       env: { VITE_SITE_URL: `http://localhost:${PORTS.web}` },
+    },
+    {
+      // The website as the landing's own site (go-link.org), and as the rooms' (play.go-link.org).
+      command: `npm --prefix ../frontend run dev -w @go-link/web -- --port ${PORTS.site} --strictPort`,
+      url: SITE_URL,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { VITE_ROLE: "site", VITE_SITE_URL: SITE_URL, VITE_PLAY_URL: PLAY_URL, VITE_SIGNAL_URL: `ws://127.0.0.1:${PORTS.signal}/ws`, VITE_MAKER_URL: MAKER_URL },
+    },
+    {
+      command: `npm --prefix ../frontend run dev -w @go-link/web -- --port ${PORTS.play} --strictPort`,
+      url: PLAY_URL,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { VITE_ROLE: "play", VITE_SITE_URL: SITE_URL, VITE_PLAY_URL: PLAY_URL, VITE_SIGNAL_URL: `ws://127.0.0.1:${PORTS.signal}/ws`, VITE_MAKER_URL: MAKER_URL },
     },
   ],
 });

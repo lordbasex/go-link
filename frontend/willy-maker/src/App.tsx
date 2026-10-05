@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { BridgeClient, useBridgeDevice } from "./bridge";
 import { importGames } from "./importGames";
 import { CORE, messagesFor, type Lang } from "./maker/i18n";
-import { LANGS, setLang, setTheme, SITE_URL, useLang, useTheme } from "./site";
+import { LANGS, PLAY_URL, setLang, setTheme, SITE_URL, useLang, useTheme } from "./site";
 
 // The module is its own chunk: the header shows while it loads.
 const WillyMakerApp = lazy(() => import("./maker").then((m) => ({ default: m.WillyMakerApp })));
@@ -56,9 +56,15 @@ function Header({ lang }: { lang: Lang }) {
   );
 }
 
-/** Offers once to bring the games made while Willy Maker lived on go-link.org (?import=1 from its old address). */
-function ImportBanner({ lang, client, onDone }: { lang: Lang; client: BridgeClient; onDone: () => void }) {
+/**
+ * Offers once to bring the games made while Willy Maker lived on go-link.org
+ * (?import=1 from its old address). They are in the landing's storage, so
+ * they come through the landing's bridge tab, not the rooms' one.
+ */
+function ImportBanner({ lang, onDone }: { lang: Lang; onDone: () => void }) {
   const t = messagesFor(CORE, lang).site;
+  const client = useMemo(() => new BridgeClient(SITE_URL), []);
+  useEffect(() => client.start(), [client]);
   const [state, setState] = useState<"ask" | "busy" | number>("ask");
   const start = () => {
     setState("busy");
@@ -96,14 +102,14 @@ export function App() {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
-  const client = useMemo(() => new BridgeClient(SITE_URL), []);
+  const client = useMemo(() => new BridgeClient(PLAY_URL), []);
   useEffect(() => client.start(), [client]);
   const device = useBridgeDevice(client);
   const t = messagesFor(CORE, lang).site;
   return (
     <>
       <Header lang={lang} />
-      {search.get("import") === "1" && <ImportBanner lang={lang} client={client} onDone={() => setSearch({})} />}
+      {search.get("import") === "1" && <ImportBanner lang={lang} onDone={() => setSearch({})} />}
       <main className="maker-main">
         <Suspense fallback={<p className="maker-loading">{t.loading}</p>}>
           <WillyMakerApp lang={lang} device={device} projectId={gameId ?? null} onProjectId={(id) => navigate(id ? `/${id}` : "/")} />

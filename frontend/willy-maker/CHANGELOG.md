@@ -6,6 +6,7 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ### Changed
 
+- **Connect my go-link opens play.go-link.org**, go-link's new rooms site, where the link to your go-link now lives (`PLAY_URL`, `make maker-build` passes it). **Bring my games** still reads the games made on go-link.org from go-link.org itself (`SITE_URL`).
 - **Willy Maker has its own site: [maker.go-link.org](https://maker.go-link.org)** (`frontend/willy-maker`, its own app, build and deploy: `make maker-build`, `make maker-deploy`). It no longer depends on go-link.org's website: only on the shared packages (`@go-link/shared`, `@go-link/ui` for the picture and the controllers, `@go-link/cps1`). **Test on my go-link** and **Play on my go-link** reach your go-link through a go-link.org tab (**Connect my go-link** opens it), which is where your go-link is linked: it passes on only a ROM test and your game's room, nothing else of your go-link. Games made while Willy Maker was on go-link.org are offered once (**Bring my games**). Its own header with the language and the theme.
 
 ### Added

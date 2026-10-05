@@ -19,6 +19,7 @@ import { migrateLegacyStorage } from "@go-link/shared";
 import { useLang } from "./i18n";
 import { panelSocketUrl } from "./panel";
 import { installIntro } from "./intro";
+import { ROLE } from "./role";
 
 /** The device's socket when this page is its local web panel. */
 const PANEL_URL = panelSocketUrl();
@@ -39,7 +40,7 @@ function LangRoot() {
   useLang();
   return (
     <BrowserRouter>
-      <SignalProvider defaultUrl={DEFAULT_SIGNAL_URL} demo={DEMO_DATA} panelUrl={PANEL_URL}>
+      <SignalProvider defaultUrl={DEFAULT_SIGNAL_URL} demo={DEMO_DATA} panelUrl={PANEL_URL} offline={ROLE === "site"}>
         <App />
       </SignalProvider>
     </BrowserRouter>

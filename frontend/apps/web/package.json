@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p . && vite build",
+    "dev:site": "VITE_ROLE=site vite --port 5182",
+    "dev:play": "VITE_ROLE=play vite --port 5183",
+    "build": "tsc -p . && npm run build:site && npm run build:play",
+    "build:site": "VITE_ROLE=site vite build",
+    "build:play": "VITE_ROLE=play vite build",
     "preview": "vite preview"
   },
   "dependencies": {

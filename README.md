@@ -47,7 +47,7 @@ A **host** runs the go-link app (the **device**) on their own computer, with **t
 | **Raspberry Pi / server** | The `-headless` build: a web panel on port 7373 and a full CLI |
 | **Docker** | `docker run -d --name go-link --network host -v go-link:/data -v ~/roms:/data/go-link/roms ghcr.io/lordbasex/go-link-device:latest` (also `lordbasex/go-link-device` on Docker Hub) |
 
-Then open [go-link.org/device](https://go-link.org/device), type the 9-digit code the app shows, add your ROMs and start a game. The [user guide](https://go-link.org/docs) walks you through every step.
+Then open [play.go-link.org/device](https://play.go-link.org/device), type the 9-digit code the app shows, add your ROMs and start a game. The [user guide](https://go-link.org/docs) walks you through every step.
 
 ## Features
 
@@ -76,7 +76,7 @@ Then open [go-link.org/device](https://go-link.org/device), type the 9-digit cod
                           (pairing, invitations, STUN/TURN)
 ```
 
-1. The host installs go-link, opens it and types the 9-digit code shown in its window at [go-link.org/device](https://go-link.org/device).
+1. The host installs go-link, opens it and types the 9-digit code shown in its window at [play.go-link.org/device](https://play.go-link.org/device).
 2. The host downloads the emulator core (one click) and points go-link at their ROM folder.
 3. The host starts a game and invites friends with a link, a QR or a code, plus a PIN for each person.
 4. Friends open the invitation, type the PIN and play.
@@ -136,7 +136,7 @@ Open `http://localhost:5180/device` and type the code shown in the device window
 | Piece | How |
 |---|---|
 | **Signaling server** | Deploy [signalhub](https://github.com/lordbasex/signalhub) on any Linux server with Docker (its README lists the ports and variables). Allow your website's origin and the `go-link` app. |
-| **Website** | `SIGNAL_URL=wss://your-signal-domain/ws make web-build`, then upload `frontend/apps/web/dist` to any static host, serving `index.html` for every route and adding the [security headers](docs/security.md#http-headers-for-the-website). `make web-deploy` runs your own upload from the gitignored `deploy/local/hosting.mk` ([example](deploy/hosting.example.mk)). |
+| **Website** | `SIGNAL_URL=wss://your-signal-domain/ws make web-build`, then upload `frontend/apps/web/dist-site` (the landing, guide and tools) and `dist-play` (the rooms and My device) to two host names of any static host, serving `index.html` for every route and adding the [security headers](docs/security.md#http-headers-for-the-website). `make web-deploy` runs your own upload from the gitignored `deploy/local/hosting.mk` ([example](deploy/hosting.example.mk)). |
 | **Device** | `VERSION=x.y.z make release` builds the universal macOS `.dmg` (Intel + Apple silicon, macOS 12+), Windows `.zip`, Linux archives and a Docker image, and publishes a GitHub release. |
 
 Details in [docs/deploy.md](docs/deploy.md).

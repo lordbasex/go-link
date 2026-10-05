@@ -9,7 +9,7 @@ frontend/willy-maker/
   index.html, vite.config.ts   the site (its CSP, port 5181 in development)
   src/main.tsx, App.tsx        the shell: header (language, theme), routes / and /:gameId, the old games banner
   src/site.ts                  the main site's address (VITE_SITE_URL), the language and the theme
-  src/bridge.ts                the way to the owner's go-link: the go-link.org bridge tab (below)
+  src/bridge.ts                the way to the owner's go-link: the play.go-link.org bridge tab (below)
   src/importGames.ts           brings the games made while Willy Maker was on go-link.org
 frontend/willy-maker/src/maker/
   index.ts          the one public entry: <WillyMakerApp lang projectId onProjectId device/> and its types
@@ -41,11 +41,12 @@ frontend/willy-maker/scripts/willy-maker-tiles.mjs   builds them from the ROM pr
 
 ### The device bridge
 
-The link to the owner's go-link lives on go-link.org: its token is in that origin's storage, which another origin cannot read. So **Test on my go-link** (validation level 4) and **Play on my go-link** go through a go-link.org tab: **Connect my go-link** opens `go-link.org/maker-bridge` (`MakerBridgePage.tsx`), and the two tabs talk with `postMessage` (`packages/shared/src/maker-bridge.ts`):
+The link to the owner's go-link lives on go-link's rooms site (play.go-link.org, `PLAY_URL`): its token is in that origin's storage, which another origin cannot read. So **Test on my go-link** (validation level 4) and **Play on my go-link** go through a tab of that site: **Connect my go-link** opens `play.go-link.org/maker-bridge` (`MakerBridgePage.tsx`), and the two tabs talk with `postMessage` (`packages/shared/src/maker-bridge.ts`):
 
 - The maker sees the bridge as the device link it always used (`RomTestLink`: `sendControl`, `sendFile`, plus the device's answers), so `testRomOnDevice` and `playMakerGame` are unchanged.
 - The bridge accepts messages only from Willy Maker's origin and from the tab that opened it, and posts only to that origin. It passes on only `rom_test`, `create_room` for the `@maker` game (private), zips of at most 16 MB with purpose `rom_test` or `maker`, and back only `upload_result`, `rom_test_result`, `room_created` and `room_error`. Nothing else of the device (unlink, settings, status, other rooms) is reachable from the maker.
 - A game's room opens in the bridge tab, which becomes the room; the next **Connect** opens a new bridge tab.
+- The games made while Willy Maker lived on go-link.org are in the landing's storage: **Bring my games** (`?import=1`) opens the landing's own `go-link.org/maker-bridge` (`SITE_URL`) for that alone.
 - `import` sends the games kept on go-link.org (`go-link.wm.*` in localStorage and the pictures in IndexedDB) once, for the **Bring my games** banner.
 - **Its texts are its own**: each part keeps `i18n/<part>.<lang>.ts` (`core` for the shell, `sprites`, `play`, `game`, `menus`), English being the reference shape that Spanish and Portuguese must match (a test checks it); these es/pt files are the only non-English text in the module. The shell passes the site's language to the entry (`lang`, chosen in the header and kept as `go-link.lang`), `i18n/index.ts` provides it, and a part reads its texts with `useMessages({ en, es, pt })`; the shell's own texts are `core.site`. go-link.org's `en.ts`/`es.ts`/`pt.ts` only hold its Tools card and the bridge page. Its styles are its own CSS (`ui/willy-maker.css`), using the site's tokens; the root carries `.stage-tokens`, so the IDE stays dark in both themes.
 

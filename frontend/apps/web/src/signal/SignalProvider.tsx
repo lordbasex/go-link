@@ -102,6 +102,11 @@ export interface SignalProviderProps {
    * web panel: the link then goes there, with the panel token.
    */
   panelUrl?: string;
+  /**
+   * No connection at all and no device link: the landing's own site
+   * (go-link.org), whose pages never need the signaling server.
+   */
+  offline?: boolean;
   children: ReactNode;
 }
 
@@ -124,14 +129,14 @@ function panelLink(storage: Storage | undefined, panelUrl: string): SavedLink | 
   return token ? { deviceId: "panel", linkId: "panel", token, signalUrl: panelUrl, savedAt: 0 } : null;
 }
 
-export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage(), createClient, testServer = testSignalServer, panelUrl = "", children }: SignalProviderProps) {
+export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage(), createClient, testServer = testSignalServer, panelUrl = "", offline = false, children }: SignalProviderProps) {
   const make = useCallback(
     (url: string, handshake?: Handshake) => (createClient ? createClient(url, handshake) : new SignalClient({ url, handshake })),
     [createClient],
   );
   const [server, setServer] = useState<SignalUrlChoice>(() => resolveSignalUrl(defaultUrl, storage));
   const [savedLink, setSavedLink] = useState<SavedLink | null>(() =>
-    demo ? null : panelUrl ? panelLink(storage, panelUrl) : loadSavedLink(storage, server.url),
+    demo || offline ? null : panelUrl ? panelLink(storage, panelUrl) : loadSavedLink(storage, server.url),
   );
   const panelToken = panelUrl ? (savedLink?.token ?? "") : "";
   // On the device's local panel, rooms go through the device's own socket
@@ -166,7 +171,7 @@ export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage
 
   useEffect(() => {
     // The panel's socket needs the token: without it the device hangs up.
-    if (panelUrl && !panelToken) return;
+    if ((panelUrl && !panelToken) || offline) return;
     const off = client.onState(setState);
     client.connect();
     setState(client.state);
@@ -174,7 +179,7 @@ export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage
       off();
       client.close();
     };
-  }, [client, panelUrl, panelToken]);
+  }, [client, panelUrl, panelToken, offline]);
   const [deviceOffline, setDeviceOffline] = useState(false);
   const [linkNotice, setLinkNotice] = useState<LinkNotice | null>(null);
   const clearLinkNotice = useCallback(() => setLinkNotice(null), []);
@@ -240,9 +245,9 @@ export function SignalProvider({ defaultUrl, demo = false, storage = safeStorage
   // Changing server invalidates everything tied to the old one; a link
   // saved for the new server (if any) takes over.
   useEffect(() => {
-    if (!demo && !panelUrl) setSavedLink(loadSavedLink(storage, server.url));
+    if (!demo && !panelUrl && !offline) setSavedLink(loadSavedLink(storage, server.url));
     return panelUrl ? undefined : closeLink;
-  }, [server.url, closeLink, storage, demo, panelUrl]);
+  }, [server.url, closeLink, storage, demo, panelUrl, offline]);
 
   const setCustomServer = useCallback(
     (url: string) => {

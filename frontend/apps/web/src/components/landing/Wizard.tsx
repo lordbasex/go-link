@@ -15,6 +15,7 @@ import {
 } from "../../downloads";
 import { DownloadIcon, PauseIcon, PlayIcon } from "../Icons";
 import { Shot, isPhoneShot, type ShotName } from "./Shot";
+import { pageUrl } from "../../role";
 
 const STEP_MS = 7000;
 
@@ -82,7 +83,7 @@ function DownloadChoice({ platform, onPick }: { platform: Platform; onPick: (p: 
 function PhoneShare() {
   const [copied, setCopied] = useState(false);
   const share = async () => {
-    const url = `${location.origin}/device`;
+    const url = pageUrl("/device");
     try {
       if (navigator.share) await navigator.share({ url, title: "go-link" });
       else {

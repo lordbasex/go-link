@@ -98,6 +98,7 @@ import { PictureCanvas } from "@go-link/ui/picture";
 import { SplitDivider } from "../picture/SplitDivider";
 import { needsRenderer, usePictureSettings } from "@go-link/ui/picture";
 import type { RendererKind } from "@go-link/ui/picture";
+import { invitationUrl } from "../role";
 
 const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";
@@ -546,7 +547,7 @@ export function RoomPage() {
   // /r/<room_id>, or /g/<invite> (an invitation link or a typed code).
   const { roomId: routeRoomId = "", invite: routeInvite = "" } = useParams();
   const [params] = useSearchParams();
-  const { demo, hostLink, savedLink, linkedDevice, sendToDevice } =
+  const { demo, hostLink, savedLink, linkedDevice, sendToDevice, panel } =
     useSignal();
   const location = useLocation();
   // Every room admits only its invitation: the owner's browser, linked to
@@ -1107,7 +1108,8 @@ export function RoomPage() {
         .filter(Boolean)
         .join(" · ");
   // The link of this page: /g/<invite> for invitations, /r/<id> otherwise.
-  const inviteUrl = `${window.location.origin}${window.location.pathname}`;
+  const invitePath = /^\/g\/([^/]+)$/.exec(window.location.pathname);
+  const inviteUrl = invitePath?.[1] ? invitationUrl(invitePath[1], panel) : `${window.location.origin}${window.location.pathname}`;
   const joining = !demo && status.kind === "joining";
   const playing = model.me.kind === "player";
   const myPorts = demo ? [] : (live.room?.you.ports ?? []);

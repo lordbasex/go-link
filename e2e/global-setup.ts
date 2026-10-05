@@ -42,8 +42,8 @@ export default async function globalSetup() {
   });
   const panelDist = join(root, "backend-device", "web", "panel", "dist");
   rmSync(panelDist, { recursive: true, force: true });
-  cpSync(join(root, "frontend", "apps", "web", "dist"), panelDist, { recursive: true });
-  rmSync(join(panelDist, "shots"), { recursive: true, force: true }); // no landing on the panel, like `make panel`
+  // the rooms' build, like `make panel`: the panel has no landing
+  cpSync(join(root, "frontend", "apps", "web", "dist-play"), panelDist, { recursive: true });
   // The screenshots show the released version (and no "new version" notice).
   const release = JSON.parse(readFileSync(join(root, "frontend", "apps", "web", "src", "release.json"), "utf8")) as { version: string };
   const ldflags = process.env.E2E_SHOTS === "1" ? ["-ldflags", `-X main.version=${release.version.replace(/^v/, "")}`] : [];
@@ -70,7 +70,7 @@ export default async function globalSetup() {
     env: {
       ...process.env,
       ADDR: `127.0.0.1:${PORTS.signal}`,
-      ALLOWED_ORIGINS: [`http://localhost:${PORTS.web}`, `http://127.0.0.1:${PORTS.web}`, `http://127.0.0.1:${PORTS.panel}`].join(","),
+      ALLOWED_ORIGINS: [`http://localhost:${PORTS.web}`, `http://127.0.0.1:${PORTS.web}`, `http://localhost:${PORTS.play}`, `http://127.0.0.1:${PORTS.panel}`].join(","),
       ALLOWED_APPS: "go-link",
       RATE_LIMIT_PER_MIN: "1000",
       OWNER_RATE_PER_MIN: "1000",

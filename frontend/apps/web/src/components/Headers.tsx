@@ -19,10 +19,12 @@ import { setTheme, useTheme } from "../theme";
 import { DevilIcon, GithubIcon } from "./Icons";
 import { launchDestroy, prefetchDestroy } from "../destroyLauncher";
 import { REPO_URL } from "../config";
+import { ROLE, homeHref } from "../role";
 
 export function Brand() {
-  return (
-    <Link to="/" className="brand" aria-label={t.brand.home}>
+  const { panel } = useSignal();
+  const inner = (
+    <>
       <span className="brand-mark">
         <GamepadIcon />
       </span>
@@ -31,6 +33,16 @@ export function Brand() {
         <span className="accent">{t.brand.dot}</span>
         {t.brand.suffix}
       </span>
+    </>
+  );
+  // On the rooms' own site the logo goes to the landing, on its own site.
+  return ROLE === "play" && !panel ? (
+    <a href={homeHref()} className="brand" aria-label={t.brand.home}>
+      {inner}
+    </a>
+  ) : (
+    <Link to="/" className="brand" aria-label={t.brand.home}>
+      {inner}
     </Link>
   );
 }
@@ -133,12 +145,18 @@ export function MainHeader() {
         <Brand />
         <nav aria-label={t.nav.label} className="main-nav">
           {/* The device's own panel is for managing it: no landing page. */}
-          {!panel && (
-            <NavLink to="/" end className={navClass}>
-              <HelpIcon />
-              <span>{t.nav.howItWorks}</span>
-            </NavLink>
-          )}
+          {!panel &&
+            (ROLE === "play" ? (
+              <a href={homeHref()} className={navClass({ isActive: false })}>
+                <HelpIcon />
+                <span>{t.nav.howItWorks}</span>
+              </a>
+            ) : (
+              <NavLink to="/" end className={navClass}>
+                <HelpIcon />
+                <span>{t.nav.howItWorks}</span>
+              </NavLink>
+            ))}
           <NavLink to="/rooms" className={navClass}>
             <GamepadIcon size={18} />
             <span>{t.nav.rooms}</span>
@@ -158,7 +176,8 @@ export function MainHeader() {
         </nav>
       </div>
       <div className="header-right" ref={toolsRef}>
-        <DeviceBadge />
+        {/* The landing keeps no link to a device and never connects. */}
+        {ROLE !== "site" && <DeviceBadge />}
         {/* Always in sight (not folded into the tools on phones): it wants to be found. */}
         <DevilButton />
         <button
@@ -172,7 +191,7 @@ export function MainHeader() {
         </button>
         <div className={`header-tools${toolsOpen ? " is-open" : ""}`}>
           <LangSwitch />
-          <ServerButton />
+          {ROLE !== "site" && <ServerButton />}
           <ThemeButton />
           <a
             className="icon-button tip-below"

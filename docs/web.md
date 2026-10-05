@@ -1,6 +1,6 @@
 # The website
 
-`frontend/` is React + TypeScript with npm workspaces. The build is a static folder that any static web host can serve.
+`frontend/` is React + TypeScript with npm workspaces. Each build is a static folder that any static web host can serve.
 
 | Package | What it is |
 |---|---|
@@ -12,10 +12,10 @@
 ```bash
 cd frontend
 npm install
-npm run dev          # http://localhost:5180
+npm run dev          # http://localhost:5180, both sites on one origin
 npm test             # every test (vitest)
 npm run typecheck
-npm run build        # apps/web/dist, ready for a static host
+npm run build        # apps/web/dist-site and dist-play, ready for a static host
 ```
 
 A single test:
@@ -40,8 +40,27 @@ Template: [`apps/web/.env.example`](../frontend/apps/web/.env.example).
 |---|---|
 | `VITE_SIGNAL_URL` | Default signaling server. Local: `ws://127.0.0.1:8090/ws`. Production: `wss://signal.go-link.org/ws` |
 | `VITE_DEMO_DATA` | `true` shows sample data (rooms, players, chat) instead of real data |
+| `VITE_ROLE` | `site` or `play` builds one of the [two sites](#two-sites); empty (development) serves both on one origin |
+| `VITE_SITE_URL`, `VITE_PLAY_URL` | The two sites' addresses. Default: `https://go-link.org` and `https://play.go-link.org` in a build, `http://localhost:5182` and `5183` in development |
+| `VITE_MAKER_URL` | Willy Maker's site, trusted by `/maker-bridge`. Default: `https://maker.go-link.org` in a build, `http://localhost:5181` in development |
 
 STUN and TURN are **not** configured: they arrive in signalhub's `hello` and live only in memory.
+
+## Two sites
+
+The website is built twice from `apps/web` (`src/role.ts`), each on its own origin:
+
+| Build | Address | Pages |
+|---|---|---|
+| `site` (`dist-site`) | go-link.org | The landing, the guide (`/docs`), the tools (`/tools`, skin editor, mini-games), the picture demo, `/handoff` |
+| `play` (`dist-play`) | play.go-link.org, and the device's local panel | The rooms (`/rooms`, `/create`, `/r/<id>`), invitations (`/g/<invite>`), My device (`/device`) |
+| both | | `/test-controller` (its settings are the ones rooms and mini-games use), `/maker-bridge`, `/terms`, `/privacy` |
+
+- **Why:** the link to the device lives in the rooms' origin storage. The landing, the guide and the tools never see it, and the landing never connects to the signaling server (`SignalProvider offline`), so nothing on those pages can reach the device.
+- **Links between them:** a page of the other site is reached through the router like any page; the catch-all route (`Elsewhere` in `App.tsx`) sends the browser to the other site's same path, query and fragment. On play, the logo and "How it works" go to the landing. Each build's own pages are chosen by the build constant written out in `App.tsx`, so the other site's pages are not in the build at all.
+- **Invitations** are always shared as `go-link.org/g/<invite>` (`invitationUrl`): the Player apps open that address, and the landing sends browsers on to play. "Join a game" on the landing goes to play's join page, because the PIN travels in the page's history state, which never leaves its origin.
+- **Handoff:** before the split everything ran on go-link.org, so a browser may still keep its device link, room passes and settings there. While it does, the landing's links to play add `?import=1`, and play offers to bring them: a click opens `go-link.org/handoff`, which posts every `go-link.*` setting except the landing's own (Willy Maker games, skins) to play's origin only; play stores the ones it does not have yet, answers `done`, and the landing then forgets the device link and the passes (`src/handoff.ts`, [security](security.md#the-two-sites-and-the-handoff)).
+- **Development:** `npm run dev` serves both on one origin. `npm run dev:site -w @go-link/web` (5182) and `npm run dev:play -w @go-link/web` (5183) run each build on its own origin.
 
 ## Routes
 

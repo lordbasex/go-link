@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { formatCode, parseInvitePass, type InvitePass } from "@go-link/shared";
 import { t } from "../i18n";
 import { useSignal } from "../signal/SignalProvider";
+import { invitationUrl } from "../role";
 import { CopyButton } from "./CopyButton";
 import { QrCode } from "./QrCode";
 
@@ -33,8 +34,8 @@ export function InviteDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const link = room.invite ? `${window.location.origin}/g/${room.invite}` : fallbackUrl;
-  const { sendToDevice, onDeviceMessage } = useSignal();
+  const { sendToDevice, onDeviceMessage, panel } = useSignal();
+  const link = room.invite ? invitationUrl(room.invite, panel) : fallbackUrl;
   const [pass, setPass] = useState<InvitePass | null>(null);
   // One new PIN when the dialog opens and one per "Invite someone else",
   // never on a mere re-render.

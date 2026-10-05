@@ -1,5 +1,7 @@
 # builds
 **/dist/
+frontend/apps/web/dist-site/
+frontend/apps/web/dist-play/
 **/bin/
 backend-device/web/panel/dist/
 node_modules/

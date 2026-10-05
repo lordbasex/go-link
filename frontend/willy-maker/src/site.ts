@@ -6,8 +6,11 @@
 import { useSyncExternalStore } from "react";
 import type { Lang } from "./maker";
 
-/** The main site (VITE_SITE_URL), which keeps the link to the owner's go-link. */
+/** go-link's landing (VITE_SITE_URL): the games made there before Willy Maker had its own site. */
 export const SITE_URL = (import.meta.env.VITE_SITE_URL || (import.meta.env.DEV ? "http://localhost:5180" : "https://go-link.org")).replace(/\/+$/, "");
+
+/** go-link's rooms (VITE_PLAY_URL), which keep the link to the owner's go-link. */
+export const PLAY_URL = (import.meta.env.VITE_PLAY_URL || (import.meta.env.DEV ? SITE_URL : "https://play.go-link.org")).replace(/\/+$/, "");
 
 /** This build (git describe, set by `make maker-build`). */
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "dev";

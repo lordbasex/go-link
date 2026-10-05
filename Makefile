@@ -3,7 +3,7 @@
 # go-link builds and deploys.
 #
 #   make all          web + device for every platform
-#   make web-build    build the website (frontend/apps/web/dist)
+#   make web-build    build both websites (frontend/apps/web/dist-site and dist-play)
 #   make web-deploy   build and upload the website (deploy/local/hosting.mk)
 #   make maker-build  build Willy Maker's site (frontend/willy-maker/dist)
 #   make maker-deploy build and upload Willy Maker's site (deploy/local/hosting.mk)
@@ -35,13 +35,19 @@ DIST           = $(CURDIR)/dist
 -include deploy/local/hosting.mk
 
 SIGNAL_URL    ?= wss://signal.go-link.org/ws
-# Each site is built with the other's address, never a development one left in a .env.local
-# (the website trusts MAKER_URL's origin for its /maker-bridge tab).
+# Each site is built with the others' addresses, never a development one left in a .env.local
+# (the website trusts MAKER_URL's origin for its /maker-bridge tab, the landing
+# and the rooms' site trust each other's for the handoff).
 MAKER_URL     ?= https://maker.go-link.org
+SITE_URL      ?= https://go-link.org
+PLAY_URL      ?= https://play.go-link.org
 
 # Paths
 WEB_DIR      = frontend
-WEB_DIST     = $(WEB_DIR)/apps/web/dist
+# The website is built twice: the landing, guide and tools (go-link.org) and
+# the rooms and My device (play.go-link.org, also the device's local panel).
+SITE_DIST    = $(WEB_DIR)/apps/web/dist-site
+PLAY_DIST    = $(WEB_DIR)/apps/web/dist-play
 MAKER_DIST   = $(WEB_DIR)/willy-maker/dist
 DEVICE_DIR   = backend-device
 DEVICE_OUT   = $(DIST)/device
@@ -61,7 +67,7 @@ NC     = \033[0m
 # Everything
 
 all: web-build maker-build device
-	@echo "$(GREEN)✓ go-link $(VERSION) built in $(DIST) and $(WEB_DIST)$(NC)"
+	@echo "$(GREEN)✓ go-link $(VERSION) built in $(DIST), $(SITE_DIST) and $(PLAY_DIST)$(NC)"
 
 info:
 	@echo "$(GREEN)$(PROJECT_NAME) $(VERSION)$(NC)"
@@ -79,31 +85,32 @@ NODE_ENV_SETUP = if [ -s "$${NVM_DIR:-$$HOME/.nvm}/nvm.sh" ]; then \
 
 web-build:
 	@echo "$(YELLOW)Building the website $(VERSION) for $(SIGNAL_URL)...$(NC)"
-	rm -rf $(WEB_DIST)
+	rm -rf $(SITE_DIST) $(PLAY_DIST)
 	@# The in-browser MP4 helper (Go compiled to WebAssembly) goes in public/mp4.
 	$(MAKE) -C frontend/wasm/mp4 build
 	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
-		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_MAKER_URL=$(MAKER_URL) VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
+		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_MAKER_URL=$(MAKER_URL) VITE_SITE_URL=$(SITE_URL) VITE_PLAY_URL=$(PLAY_URL) \
+		VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
 		VITE_BUILD_DATE=$$(date -u +%Y-%m-%d) npm run build
-	@find $(WEB_DIST) -name "*.map" -delete
-	@echo "$(GREEN)✓ Website built in $(WEB_DIST)$(NC)"
+	@find $(SITE_DIST) $(PLAY_DIST) -name "*.map" -delete
+	@echo "$(GREEN)✓ Websites built in $(SITE_DIST) and $(PLAY_DIST)$(NC)"
 
 # Willy Maker's own site (maker.go-link.org): a static site of its own, which
-# reaches the device through the website's /maker-bridge tab (SITE_URL).
-SITE_URL      ?= https://go-link.org
+# reaches the device through the rooms' site /maker-bridge tab (PLAY_URL), and
+# the games made before it moved through the landing's (SITE_URL).
 maker-build:
 	@echo "$(YELLOW)Building Willy Maker's site $(VERSION) for $(SITE_URL)...$(NC)"
 	rm -rf $(MAKER_DIST)
 	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
-		VITE_SITE_URL=$(SITE_URL) VITE_APP_VERSION=$(VERSION) npm run build -w @go-link/willy-maker
+		VITE_SITE_URL=$(SITE_URL) VITE_PLAY_URL=$(PLAY_URL) VITE_APP_VERSION=$(VERSION) npm run build -w @go-link/willy-maker
 	@find $(MAKER_DIST) -name "*.map" -delete
 	@echo "$(GREEN)✓ Willy Maker's site built in $(MAKER_DIST)$(NC)"
 
 ifndef HOSTING_TARGETS
 # Without deploy/local/hosting.mk there is nowhere to upload to: each site is
-# a static folder ($(WEB_DIST), $(MAKER_DIST)), for any static host.
+# a static folder ($(SITE_DIST), $(PLAY_DIST), $(MAKER_DIST)), for any static host.
 web-deploy: web-build
-	@echo "$(YELLOW)The website is built in $(WEB_DIST). Upload it to your static host, or add a"
+	@echo "$(YELLOW)The websites are built in $(SITE_DIST) and $(PLAY_DIST). Upload them to your static host, or add a"
 	@echo "web-deploy target to deploy/local/hosting.mk (see docs/deploy.md).$(NC)"
 
 maker-deploy: maker-build
@@ -138,15 +145,13 @@ device-dmg: device-darwin-universal
 	CODESIGN_IDENTITY="$(CODESIGN_IDENTITY)" $(DEVICE_DIR)/build/macos/make-dmg.sh $(DEVICE_OUT)/darwin-universal/go-link.app \
 		$(DEVICE_OUT)/go-link-$(VERSION)-macos-universal.dmg
 
-# The local web panel of headless devices: the website, built and copied
-# into the device, which embeds it (backend-device/web). `make panel`
-# refreshes it; the device builds make it when it is missing.
+# The local web panel of headless devices: the rooms' website (play), built
+# and copied into the device, which embeds it (backend-device/web). `make
+# panel` refreshes it; the device builds make it when it is missing.
 PANEL_DIST = $(DEVICE_DIR)/web/panel/dist
 
 panel: web-build
-	rm -rf $(PANEL_DIST) && mkdir -p $(PANEL_DIST) && cp -R $(WEB_DIST)/. $(PANEL_DIST)/
-	# The panel has no landing page: its screenshots stay out of the binary.
-	rm -rf $(PANEL_DIST)/shots
+	rm -rf $(PANEL_DIST) && mkdir -p $(PANEL_DIST) && cp -R $(PLAY_DIST)/. $(PANEL_DIST)/
 	@echo "$(GREEN)✓ Web panel copied into $(PANEL_DIST)$(NC)"
 
 $(PANEL_DIST)/index.html:
@@ -254,7 +259,7 @@ device-docker-oci: $(PANEL_DIST)/index.html legal
 # ---------------------------------------------------------------------------
 
 clean:
-	rm -rf $(DIST) $(WEB_DIST) $(MAKER_DIST)
+	rm -rf $(DIST) $(SITE_DIST) $(PLAY_DIST) $(MAKER_DIST)
 	@echo "$(GREEN)✓ Clean$(NC)"
 
 # The Android player app (mobile/android). Signing comes from
@@ -293,7 +298,7 @@ help:
 	@echo "  make all                     web + device (every platform)"
 	@echo ""
 	@echo "$(YELLOW)Website:$(NC)"
-	@echo "  make web-build               build frontend/apps/web/dist"
+	@echo "  make web-build               build frontend/apps/web/dist-site and dist-play"
 	@echo "  make web-deploy              build and upload (deploy/local/hosting.mk)"
 	@echo "  make maker-build             build Willy Maker's site, frontend/willy-maker/dist"
 	@echo "  make maker-deploy            build and upload it (deploy/local/hosting.mk)"
