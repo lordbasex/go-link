@@ -7,7 +7,7 @@ type P = Record<string, string | number>;
 
 export const coreEn = {
   name: { first: "Willy", second: "Maker" },
-  eyebrow: "Tools",
+  eyebrow: "Arcade game maker",
   intro: "Make arcade games for MAME as if you were playing: build the level, bring in your characters, try it at once and export everything to make the ROM.",
   home: {
     newGame: "New game",

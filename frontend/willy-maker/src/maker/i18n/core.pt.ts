@@ -7,7 +7,7 @@ type P = Record<string, string | number>;
 
 export const corePt: CoreMessages = {
   name: { first: "Willy", second: "Maker" },
-  eyebrow: "Ferramentas",
+  eyebrow: "Criador de jogos de arcade",
   intro: "Crie jogos de arcade para MAME como se estivesse jogando: monte a fase, traga seus personagens, teste na hora e exporte tudo para gerar a ROM.",
   home: {
     newGame: "Novo jogo",
