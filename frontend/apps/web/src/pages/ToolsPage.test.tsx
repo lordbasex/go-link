@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { MAKER_URL } from "../config";
 import { ToolsPage } from "./ToolsPage";
 
 describe("ToolsPage", () => {
@@ -12,7 +13,7 @@ describe("ToolsPage", () => {
       </MemoryRouter>,
     );
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(links).toEqual(["/test-controller", "/tools/skin-editor", "/tools/games", "/tools/willy-maker"]);
+    expect(links).toEqual(["/test-controller", "/tools/skin-editor", "/tools/games", MAKER_URL]);
     expect(screen.getByText("Willy Maker")).toBeInTheDocument();
   });
 });

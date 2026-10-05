@@ -2,9 +2,9 @@
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
-import { backingSize, fitRect, frameInset } from "./layout";
-import { compileAll, createContext, parseColor, workingSize } from "./renderer";
-import { refreshRateOf } from "./refreshRate";
+import { backingSize, fitRect, frameInset } from "@go-link/ui/picture";
+import { compileAll, createContext, parseColor, workingSize } from "@go-link/ui/picture";
+import { refreshRateOf } from "@go-link/ui/picture";
 import {
   BANDS_KEY,
   SITE_DEFAULT,
@@ -16,10 +16,10 @@ import {
   usePictureSettings,
   writePictureSettings,
   type PictureSettings,
-} from "./settings";
+} from "@go-link/ui/picture";
 import { PictureControl } from "../components/PictureControl";
 import { RoomPictureDialog } from "../components/RoomPictureDialog";
-import { PictureCanvas } from "./PictureCanvas";
+import { PictureCanvas } from "@go-link/ui/picture";
 import { labSource } from "../pages/PictureLabPage";
 import { SplitDivider } from "./SplitDivider";
 

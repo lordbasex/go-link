@@ -10,7 +10,7 @@ import {
   SITE_DEFAULT,
   samePicture,
   type PictureSettings,
-} from "../picture/settings";
+} from "@go-link/ui/picture";
 
 /** "CRT arcade · Ambient": a picture's style and sides, in the page's language. */
 export function pictureLook(p: PictureSettings): string {

@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useState } from "react";
-import { renderStill } from "../picture/renderer";
-import { PICTURE_BANDS, PICTURE_STYLES, type PictureBands } from "../picture/settings";
-import { CARD_ASPECT, CARD_H, CARD_W, drawTestCard } from "../picture/testCard";
+import { renderStill } from "@go-link/ui/picture";
+import { PICTURE_BANDS, PICTURE_STYLES, type PictureBands } from "@go-link/ui/picture";
+import { CARD_ASPECT, CARD_H, CARD_W, drawTestCard } from "@go-link/ui/picture";
 
 // /picture-lab (development builds only, never linked): renders a still
 // picture in every style at 1920 x 1080 and 3840 x 2160 so a script can

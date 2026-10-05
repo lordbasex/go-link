@@ -1,12 +1,18 @@
 # Willy Maker: architecture
 
-Willy Maker is a **self-contained module** of the website, built like the Destroy game (`src/destroy/`), so it can be moved out later (into its own package, app or repository) without untangling it from the site. Overview and features: [README.md](README.md).
+Willy Maker is **its own site, [maker.go-link.org](https://maker.go-link.org)**: its own app in the frontend workspace (`frontend/willy-maker`, `@go-link/willy-maker`), built and deployed apart from go-link.org (`make maker-build`, `make maker-deploy`). It was a module of the website until 2026-10-05, built self-contained so it could move out. Overview and features: [README.md](README.md).
 
 ## Where it lives
 
 ```
-frontend/apps/web/src/willy-maker/
-  index.ts          the one public entry: <WillyMakerApp lang projectId onProjectId/> and its types
+frontend/willy-maker/
+  index.html, vite.config.ts   the site (its CSP, port 5181 in development)
+  src/main.tsx, App.tsx        the shell: header (language, theme), routes / and /:gameId, the old games banner
+  src/site.ts                  the main site's address (VITE_SITE_URL), the language and the theme
+  src/bridge.ts                the way to the owner's go-link: the go-link.org bridge tab (below)
+  src/importGames.ts           brings the games made while Willy Maker was on go-link.org
+frontend/willy-maker/src/maker/
+  index.ts          the one public entry: <WillyMakerApp lang projectId onProjectId device/> and its types
   model/            the project types (file-format.md), cell run-length encoding, factories, migration
   board/            board profiles: limits, meters, converters (cps1.ts first)
   templates/        "Buenos Aires" (Mission 1's five sections) and "Empty"; the starter tile numbers
@@ -24,15 +30,24 @@ frontend/apps/web/src/willy-maker/
                     DIP switches, the menu screens with their previews and fit checks
   i18n/             the module's own texts: <part>.<lang>.ts (core, sprites, play, game, menus)
   ui/               atomic design: atoms.tsx, molecules.tsx, organisms/, WillyMakerApp.tsx, render.ts
-frontend/apps/web/public/willy-maker/
+frontend/willy-maker/public/willy-maker/
   tiles/            city16.png and sky32.png (+ .json): the starter tilesets
   engine/           engine.bin and engine.json: the prebuilt ROM engine (rom/tools/engine.mjs)
-frontend/apps/web/scripts/willy-maker-tiles.mjs   builds them from the ROM prototype's art
+frontend/willy-maker/scripts/willy-maker-tiles.mjs   builds them from the ROM prototype's art
 ```
 
-- The site only adds the route `/tools/willy-maker`, a card on `/tools`, and a lazy `import()` of the entry, the same way `destroyLauncher.ts` loads Destroy. The module is loaded only when the page opens.
-- The module imports **only** `@go-link/shared`, `@go-link/cps1` (the board conversion code, shared with `rom/tools`), `@go-link/cps1-sim` (the board model of the power-on test) and `src/controllers` (the controller drawings and model recognition). It never imports from `pages/`, `components/` or landing code, and nothing outside imports its internals.
-- **Its texts are its own**, so it can move out: each part keeps `i18n/<part>.<lang>.ts` (`core` for the shell, `sprites`, `play`, `game`, `menus`), English being the reference shape that Spanish and Portuguese must match (a test checks it); these es/pt files are the only non-English text in the module. The site passes its current language to the entry (`lang`), `i18n/index.ts` provides it, and a part reads its texts with `useMessages({ en, es, pt })`. The site's own `en.ts`/`es.ts`/`pt.ts` only hold the Tools card. Its styles are its own CSS (`ui/willy-maker.css`), using the site's tokens; the root carries `.stage-tokens`, so the IDE stays dark in both themes.
+- The shell mounts the entry lazily, so the header shows while the editor loads. go-link.org keeps a card on `/tools` that links here, and its old `/tools/willy-maker[/:gameId]` addresses redirect here (with `?import=1` when that browser still has games made there).
+- The module imports **only** `@go-link/shared`, `@go-link/ui` (the picture and the controller drawings and model recognition, shared with go-link.org), `@go-link/cps1` (the board conversion code, shared with `rom/tools`) and `@go-link/cps1-sim` (the board model of the power-on test). Nothing of go-link.org's website.
+
+### The device bridge
+
+The link to the owner's go-link lives on go-link.org: its token is in that origin's storage, which another origin cannot read. So **Test on my go-link** (validation level 4) and **Play on my go-link** go through a go-link.org tab: **Connect my go-link** opens `go-link.org/maker-bridge` (`MakerBridgePage.tsx`), and the two tabs talk with `postMessage` (`packages/shared/src/maker-bridge.ts`):
+
+- The maker sees the bridge as the device link it always used (`RomTestLink`: `sendControl`, `sendFile`, plus the device's answers), so `testRomOnDevice` and `playMakerGame` are unchanged.
+- The bridge accepts messages only from Willy Maker's origin and from the tab that opened it, and posts only to that origin. It passes on only `rom_test`, `create_room` for the `@maker` game (private), zips of at most 16 MB with purpose `rom_test` or `maker`, and back only `upload_result`, `rom_test_result`, `room_created` and `room_error`. Nothing else of the device (unlink, settings, status, other rooms) is reachable from the maker.
+- A game's room opens in the bridge tab, which becomes the room; the next **Connect** opens a new bridge tab.
+- `import` sends the games kept on go-link.org (`go-link.wm.*` in localStorage and the pictures in IndexedDB) once, for the **Bring my games** banner.
+- **Its texts are its own**: each part keeps `i18n/<part>.<lang>.ts` (`core` for the shell, `sprites`, `play`, `game`, `menus`), English being the reference shape that Spanish and Portuguese must match (a test checks it); these es/pt files are the only non-English text in the module. The shell passes the site's language to the entry (`lang`, chosen in the header and kept as `go-link.lang`), `i18n/index.ts` provides it, and a part reads its texts with `useMessages({ en, es, pt })`; the shell's own texts are `core.site`. go-link.org's `en.ts`/`es.ts`/`pt.ts` only hold its Tools card and the bridge page. Its styles are its own CSS (`ui/willy-maker.css`), using the site's tokens; the root carries `.stage-tokens`, so the IDE stays dark in both themes.
 
 ## Layers
 

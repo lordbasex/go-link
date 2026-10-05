@@ -712,13 +712,13 @@ export const docsEs: Docs = {
       lead: "Crea tu propio juego arcade para la placa CPS-1: arma los niveles, trae tus personajes, juégalo al instante y exporta todo para hacer la ROM.",
       blocks: [
         { t: "h2", id: "what", text: "Qué es Willy Maker" },
-        { t: "p", text: "[Willy Maker](/tools/willy-maker) crea juegos arcade para la placa **CPS-1** de Capcom (384 × 224 a 60 Hz), de los que corren en MAME, en el núcleo mame2003-plus y en las salas de go-link con hasta 4 jugadores. Construyes como si estuvieras jugando: dibujas un nivel, colocas enemigos y civiles, sumas tus personajes y lo pruebas en el momento, con las mismas reglas que usa la ROM." },
+        { t: "p", text: "[Willy Maker](https://maker.go-link.org) crea juegos arcade para la placa **CPS-1** de Capcom (384 × 224 a 60 Hz), de los que corren en MAME, en el núcleo mame2003-plus y en las salas de go-link con hasta 4 jugadores. Construyes como si estuvieras jugando: dibujas un nivel, colocas enemigos y civiles, sumas tus personajes y lo pruebas en el momento, con las mismas reglas que usa la ROM." },
         { t: "p", text: "Funciona en tu navegador y no envía nada a ningún lado. El arte, los nombres y el juego son tuyos: Willy Maker trae solo piezas propias de go-link y su héroe, Willy. Funciona mejor en una computadora con mouse." },
         { t: "h2", id: "quick-start", text: "Inicio rápido" },
         {
           t: "steps",
           items: [
-            "Abre [Herramientas › Willy Maker](/tools/willy-maker) y pulsa **Nuevo juego**.",
+            "Abre [Willy Maker](https://maker.go-link.org), su propio sitio, y pulsa **Nuevo juego**.",
             "Elige el género (hoy **Plataformas con disparos** o **Plataformas**), la placa (CPS-1), cómo lo va a ver el emulador (**4 jugadores · 3 botones** o **4 jugadores · 2 botones**) y desde dónde empezar; luego ponle un título y un primer nivel.",
             "En **Construir**, pinta el suelo con el lápiz, coloca un **Inicio** y una **Salida**, y pulsa **Jugar** (P) para probarlo.",
             "Trae tu héroe en **Personajes**, define los jugadores y botones en **Juego**, y las pantallas en **Menús**.",

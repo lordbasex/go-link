@@ -3,7 +3,7 @@ import { useEffect, useId, useState } from "react";
 import { roomPictureAction } from "@go-link/shared";
 import { t } from "../i18n";
 import { PictureFields, pictureLook } from "./PictureControl";
-import { SITE_DEFAULT, samePicture, type PictureSettings } from "../picture/settings";
+import { SITE_DEFAULT, samePicture, type PictureSettings } from "@go-link/ui/picture";
 
 /**
  * The host's default picture for one room (a game room, or "test" for the

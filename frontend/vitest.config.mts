@@ -9,7 +9,7 @@ export default defineConfig({
   server: { fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../docs/rom", "../docs/willy-maker"] } },
   test: {
     environment: "jsdom",
-    include: ["packages/*/test/**/*.test.ts", "apps/*/src/**/*.test.tsx"],
+    include: ["packages/*/test/**/*.test.ts", "apps/*/src/**/*.test.tsx", "willy-maker/src/**/*.test.tsx"],
     setupFiles: ["./vitest.setup.ts"],
   },
 });

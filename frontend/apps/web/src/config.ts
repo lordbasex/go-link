@@ -18,3 +18,6 @@ export const REPO_URL = "https://github.com/lordbasex/go-link";
 /** This build of the website (git describe, set by `make web-build`), and its date. */
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "dev";
 export const BUILD_DATE = import.meta.env.VITE_BUILD_DATE || "";
+
+/** Willy Maker's own site (VITE_MAKER_URL), which uses this site's link to the device through /maker-bridge. */
+export const MAKER_URL = (import.meta.env.VITE_MAKER_URL || (import.meta.env.DEV ? "http://localhost:5181" : "https://maker.go-link.org")).replace(/\/+$/, "");

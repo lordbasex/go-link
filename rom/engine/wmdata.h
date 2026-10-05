@@ -6,7 +6,7 @@
  * a game is this block plus its graphics.
  *
  * Big-endian, like the 68000. Pointers are absolute 68000 addresses. The
- * same layout is written by frontend/apps/web/src/willy-maker/rom/pack.ts;
+ * same layout is written by frontend/willy-maker/src/maker/rom/pack.ts;
  * every offset is checked here at compile time and there by a test.
  */
 #ifndef GOLINK_WMDATA_H

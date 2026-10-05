@@ -10,7 +10,7 @@
 // at that step (`session.mp4#t=SECONDS`).
 //
 //   import { recordSession } from "./session.mjs";
-//   const s = await recordSession({ out: "DIR", url: "http://localhost:5180/tools/willy-maker" });
+//   const s = await recordSession({ out: "DIR", url: "http://localhost:5181/" });
 //   await s.step(1, "New game", "Every game starts from the wizard", "button:has-text('New game')", (l) => l.click());
 //   ...
 //   await s.finish(); // DIR/session.mp4, chapters.vtt, captions.vtt, timeline.json, session.md

@@ -31,6 +31,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/services"
 	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
+	"github.com/lordbasex/go-link/backend-device/pkg/jsonkeys"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
 	"github.com/lordbasex/go-link/backend-device/pkg/thumbnails"
@@ -353,6 +354,13 @@ func run() error {
 
 	// Requests from the owner (a browser linked with the pairing code).
 	stream.OnLinkMessage(func(peerID string, data []byte) {
+		// Go matches JSON keys in any case and keeps the last one, so a message
+		// with "type" and "TYPE" would get past a filter that checked "type"
+		// (the website's Willy Maker bridge): such a message is never read.
+		if !jsonkeys.Distinct(data) {
+			slog.Warn("control message with keys equal but for case dropped", "peer", peerID)
+			return
+		}
 		// auth and unlink first; anything else only from trusted browsers.
 		if links.HandleMessage(peerID, data) || !links.Trusted(peerID) {
 			return

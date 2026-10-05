@@ -20,3 +20,4 @@ export * from "./picture";
 export * from "./video";
 export * from "./rom-test";
 export * from "./maker-play";
+export * from "./maker-bridge";

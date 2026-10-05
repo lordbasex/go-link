@@ -1,0 +1,15 @@
+{
+  "name": "@go-link/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./picture": "./src/picture/index.ts",
+    "./controllers": "./src/controllers/index.ts",
+    "./controllers.css": "./src/controllers/controllers.css"
+  },
+  "dependencies": {
+    "@go-link/shared": "0.1.0",
+    "react": "^19.3.0"
+  }
+}

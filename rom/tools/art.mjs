@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { ballPen, carPen, dronePen, gemPen, powerPen, shipPen, soldierPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { ballPen, carPen, dronePen, gemPen, powerPen, shipPen, soldierPen } from "../../frontend/willy-maker/src/maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

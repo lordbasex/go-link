@@ -3,13 +3,16 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "willy-maker"
   ],
   "scripts": {
     "dev": "npm run dev -w @go-link/web",
     "build": "npm run build -w @go-link/web",
     "test": "vitest run",
-    "typecheck": "tsc -p packages/shared && tsc -p packages/cps1 && tsc -p packages/cps1-sim && tsc -p apps/web"
+    "typecheck": "tsc -p packages/shared && tsc -p packages/ui && tsc -p packages/cps1 && tsc -p packages/cps1-sim && tsc -p apps/web && tsc -p willy-maker",
+    "dev:maker": "npm run dev -w @go-link/willy-maker",
+    "build:maker": "npm run build -w @go-link/willy-maker"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",

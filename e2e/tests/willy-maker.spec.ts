@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { MAKER_URL } from "../ports";
 
-// Willy Maker end to end, with only the website (no signalhub, no device):
+// Willy Maker end to end, on its own site (no signalhub, no device):
 // create a Buenos Aires game, paint, place an object, play a few frames,
 // undo, reload (the autosave brings it back) and export both zips.
 
@@ -31,7 +32,7 @@ test("Willy Maker: create, paint, place, play, undo, reload and export", async (
   const problems: string[] = [];
   page.on("pageerror", (e) => problems.push(String(e)));
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto("/tools/willy-maker");
+  await page.goto(`${MAKER_URL}/`);
 
   // the wizard: the genre (only the platform shooter today), then the Buenos Aires template
   await page.getByRole("button", { name: /Next: the board/ }).click();
@@ -41,7 +42,7 @@ test("Willy Maker: create, paint, place, play, undo, reload and export", async (
   await page.getByRole("button", { name: /Next: the first level/ }).click();
   await page.getByRole("button", { name: "Create the game" }).click();
   await expect(page.getByRole("button", { name: "Build" })).toBeVisible();
-  await expect(page).toHaveURL(/\/tools\/willy-maker\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(new RegExp(`^${MAKER_URL}/[0-9a-f-]{36}$`));
   const id = page.url().split("/").pop()!;
   await expect(page.getByText("saved in this browser")).toBeVisible();
   const canvas = page.getByRole("application", { name: /Level canvas/ });

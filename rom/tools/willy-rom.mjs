@@ -17,7 +17,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const WEB = path.join(ROOT, "frontend/apps/web");
+const WEB = path.join(ROOT, "frontend/willy-maker");
 const ENGINE = path.join(WEB, "public/willy-maker/engine");
 const WASM = path.join(ROOT, "frontend/packages/cps1-sim/wasm/cps1sim.wasm");
 
@@ -51,7 +51,7 @@ async function main() {
   const { createServer } = await import(pathToFileURL(require.resolve("vite")).href);
   const server = await createServer({ root: WEB, configFile: false, logLevel: "error", appType: "custom", server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] } });
   try {
-    const { romFromProjectFile } = await server.ssrLoadModule("/src/willy-maker/rom/headless.ts");
+    const { romFromProjectFile } = await server.ssrLoadModule("/src/maker/rom/headless.ts");
     const rom = await romFromProjectFile(bytes, engine, { force: o.force });
     fs.mkdirSync(out, { recursive: true });
     const set = engine.manifest.set;
@@ -66,7 +66,7 @@ async function main() {
     for (const n of rom.notes) console.log(`not in the ROM yet: ${n}`);
     for (const m of rom.missing) console.log(`missing picture: ${m}`);
     if (o.powerOn) {
-      const { powerOnTest } = await server.ssrLoadModule("/src/willy-maker/power/powerOn.ts");
+      const { powerOnTest } = await server.ssrLoadModule("/src/maker/power/powerOn.ts");
       const result = await powerOnTest(rom.zip, { wasm: fs.readFileSync(WASM) });
       const failed = result.steps.filter((s) => !s.ok && !s.skipped);
       console.log(result.ok ? `power on: ok (${result.steps.length} steps)` : `power on: failed at ${failed.map((s) => `${s.name} (${s.code})`).join(", ")}`);

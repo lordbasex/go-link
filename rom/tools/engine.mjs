@@ -6,7 +6,7 @@
 // one file plus a manifest with the symbol map. "Create ROM" packs a game's
 // data next to it; nothing is compiled in the browser.
 //
-//   node rom/tools/engine.mjs            -> frontend/apps/web/public/willy-maker/engine/
+//   node rom/tools/engine.mjs            -> frontend/willy-maker/public/willy-maker/engine/
 //   node rom/tools/engine.mjs --check    rebuilds in rom/build/engine and fails when the
 //                                        committed files differ
 //
@@ -22,7 +22,7 @@ import { addArt } from "./art.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "build", "engine");
-const PUBLIC = path.resolve(ROOT, "../frontend/apps/web/public/willy-maker/engine");
+const PUBLIC = path.resolve(ROOT, "../frontend/willy-maker/public/willy-maker/engine");
 const CHECK = process.argv.includes("--check");
 
 /** The recruits' shirts (players' looks 1-3), after Willy's own (look 0). */

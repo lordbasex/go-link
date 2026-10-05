@@ -1,6 +1,6 @@
 # Willy Maker
 
-**Willy Maker** is a tool on go-link's website (**Tools › Willy Maker**, at `/tools/willy-maker`) for making arcade games for go-link visually: draw a level, drop in characters, test-play it in the browser at once, and turn it into a ROM that runs in MAME and in a go-link room.
+**Willy Maker** is go-link's arcade game maker, on its own site, [maker.go-link.org](https://maker.go-link.org) (before 2026-10-05 it was **Tools › Willy Maker** on go-link.org; those addresses redirect there) for making arcade games for go-link visually: draw a level, drop in characters, test-play it in the browser at once, and turn it into a ROM that runs in MAME and in a go-link room.
 
 It takes the idea of a game maker, where you build and play at the same time with instant tries, and applies it to real arcade hardware. The design, names, art, icons and sounds are all go-link's own. Nothing is taken from any other game maker.
 
@@ -185,7 +185,7 @@ The names are references: the AI pack, the warnings and the play mode's debug ov
 
 ### Game settings: the game's "IDE"
 
-Two tabs of the IDE (`src/willy-maker/game/`, texts in `i18n/game.*.ts` and `i18n/menus.*.ts`). Every change is an undoable command on the editor store (`store.editSettings`; the letters typed in one field are one undo step) and is autosaved.
+Two tabs of the IDE (`src/maker/game/`, texts in `i18n/game.*.ts` and `i18n/menus.*.ts`). Every change is an undoable command on the editor store (`store.editSettings`; the letters typed in one field are one undo step) and is autosaved.
 
 **Game tab**
 

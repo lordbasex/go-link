@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { defineConfig } from "@playwright/test";
-import { PORTS } from "./ports";
+import { MAKER_URL, PORTS } from "./ports";
 
 // A real Chromium against a real signalhub, a real headless device and the
 // website, all started by global-setup.ts on their own ports, so nothing of
@@ -16,7 +16,7 @@ import { PORTS } from "./ports";
 // process, only for a local session whose macOS launchd context is broken.
 const singleProcess = process.env.E2E_CHROMIUM_SINGLE_PROCESS === "1" ? ["--single-process", "--no-zygote"] : [];
 
-// Tests that need only the website (Willy Maker): when they are the only
+// Tests that need only the websites (Willy Maker): when they are the only
 // files named on the command line, no signalhub or device is built or started.
 const WEB_ONLY = /willy-maker\.spec\.ts$/;
 const named = process.argv.filter((a) => /\.spec\.ts$/.test(a));
@@ -57,12 +57,22 @@ export default defineConfig({
     // The landing page's screenshots (npm run shots), never part of npm test.
     { name: "shots", testMatch: /shots\.spec\.ts$/, timeout: 1_800_000 },
   ],
-  webServer: {
-    // The website in dev mode (no CSP, so ws:// to the local signalhub works).
-    command: `npm --prefix ../frontend run dev -w @go-link/web -- --port ${PORTS.web} --strictPort`,
-    url: `http://localhost:${PORTS.web}`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-    env: { VITE_SIGNAL_URL: `ws://127.0.0.1:${PORTS.signal}/ws`, VITE_DEMO_DATA: "false" },
-  },
+  webServer: [
+    {
+      // The website in dev mode (no CSP, so ws:// to the local signalhub works).
+      command: `npm --prefix ../frontend run dev -w @go-link/web -- --port ${PORTS.web} --strictPort`,
+      url: `http://localhost:${PORTS.web}`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { VITE_SIGNAL_URL: `ws://127.0.0.1:${PORTS.signal}/ws`, VITE_DEMO_DATA: "false", VITE_MAKER_URL: MAKER_URL },
+    },
+    {
+      // Willy Maker's own site, which reaches the device through the website's /maker-bridge tab.
+      command: `npm --prefix ../frontend run dev -w @go-link/willy-maker -- --port ${PORTS.maker} --strictPort`,
+      url: MAKER_URL,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { VITE_SITE_URL: `http://localhost:${PORTS.web}` },
+    },
+  ],
 });

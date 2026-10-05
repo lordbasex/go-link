@@ -6,7 +6,7 @@
 
 import { Button, type InputConfig } from "@go-link/shared";
 import { NO_CONTROLS, type Controls } from "../engine/controls";
-import { identify } from "../../controllers/controllerModels";
+import { identify } from "@go-link/ui/controllers";
 import { loadPadConfig, pauseHeld, readPad } from "./pad";
 
 /** The touch pad writes here (the UI owns it; the game reads it). */

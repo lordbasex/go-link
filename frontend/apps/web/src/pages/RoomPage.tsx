@@ -94,10 +94,10 @@ import { SidePanel, useUnreadChat, type SideActions } from "./RoomSide";
 import { ConsoleDrawer, DRAWER_TABS, type DrawerTab } from "./ConsoleDrawer";
 import { inSheet, useSheetLayout } from "../components/sheet";
 import { PictureControl } from "../components/PictureControl";
-import { PictureCanvas } from "../picture/PictureCanvas";
+import { PictureCanvas } from "@go-link/ui/picture";
 import { SplitDivider } from "../picture/SplitDivider";
-import { needsRenderer, usePictureSettings } from "../picture/settings";
-import type { RendererKind } from "../picture/renderer";
+import { needsRenderer, usePictureSettings } from "@go-link/ui/picture";
+import type { RendererKind } from "@go-link/ui/picture";
 
 const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";

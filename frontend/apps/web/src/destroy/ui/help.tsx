@@ -11,8 +11,8 @@
 import { useEffect, useState } from "react";
 import { Button, type Pad } from "@go-link/shared";
 import { loadPadConfig, readPad } from "../host/pad";
-import { ControllerModel } from "../../controllers/ControllerModel";
-import { buttonNames, identify, type ButtonNames, type ControllerIdentity } from "../../controllers/controllerModels";
+import { ControllerModel } from "@go-link/ui/controllers";
+import { buttonNames, identify, type ButtonNames, type ControllerIdentity } from "@go-link/ui/controllers";
 import type { DestroyMessages } from "../messages";
 
 type Tab = "pad" | "keys" | "touch";

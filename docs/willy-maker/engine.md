@@ -8,8 +8,8 @@ It was built in [experiment 1, case C](../experiments/README.md) (records in [`d
 |---|---|---|
 | The engine | [`rom/engine/engine.c`](../../rom/engine/engine.c) | The prototype's rules reading the game from a data block |
 | The data format | [`rom/engine/wmdata.h`](../../rom/engine/wmdata.h) | `struct wm_data` at 0x100000, checked at compile time |
-| The engine build | [`rom/tools/engine.mjs`](../../rom/tools/engine.mjs) | Builds it once into `frontend/apps/web/public/willy-maker/engine/` (`engine.bin`, `engine.json`); `--check` rebuilds and compares |
-| The packer | `frontend/apps/web/src/willy-maker/rom/pack.ts` | The project to the set's files (pure, tested) |
+| The engine build | [`rom/tools/engine.mjs`](../../rom/tools/engine.mjs) | Builds it once into `frontend/willy-maker/public/willy-maker/engine/` (`engine.bin`, `engine.json`); `--check` rebuilds and compares |
+| The packer | `frontend/willy-maker/src/maker/rom/pack.ts` | The project to the set's files (pure, tested) |
 | The players' looks | `rom/looks.ts` | The game's own heroes cut into the engine's sprite records |
 | Create ROM | `rom/createRom.ts`, `ui/organisms/CreateRomCard.tsx` | Loads the engine, the tile pictures and the heroes' pictures, packs, zips, runs the power-on test |
 | The rules | `engine/rules.ts` (`GameRules`), the Game tab's **Rules** card | The numbers play mode and the ROM share |
@@ -217,8 +217,8 @@ Task T-14 of [experiment 1's verdict](../experiments/verdict.md) (lesson L-12): 
 brew install m68k-elf-binutils m68k-elf-gcc z80asm   # rom/README.md
 node rom/tools/engine.mjs           # after changing rom/engine or the art: rewrites public/willy-maker/engine/
 node rom/tools/engine.mjs --check   # fails when the committed engine is not this source's build
-cd frontend && npx vitest run apps/web/src/willy-maker/rom   # packs Game Spec v1, powers it on
-WM_ROM_OUT=/tmp/wm npx vitest run apps/web/src/willy-maker/rom/rom.test.tsx   # also writes the zip and symbols.json (and hero/, palettes/)
+cd frontend && npx vitest run willy-maker/src/maker/rom   # packs Game Spec v1, powers it on
+WM_ROM_OUT=/tmp/wm npx vitest run willy-maker/src/maker/rom/rom.test.tsx   # also writes the zip and symbols.json (and hero/, palettes/)
 ```
 
 `rom/tools/art.mjs` gained two options for it (`level: false`, `recruits`); the prototype's 28 files stay byte for byte the same.

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { identify, usbIds } from "../controllers/controllerModels";
+import { identify, usbIds } from "@go-link/ui/controllers";
 import { BounceProbe, DeadzoneProbe, PollingRate, StickRange, TriggerProbe, circularityVerdict, driftVerdict, restStats, triggerVerdict } from "./diagnostics";
 
 describe("identify", () => {

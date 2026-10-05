@@ -712,13 +712,13 @@ export const docsEn: Docs = {
       lead: "Make your own arcade game for the CPS-1 board: build the levels, bring in your characters, play it at once and export everything to make the ROM.",
       blocks: [
         { t: "h2", id: "what", text: "What Willy Maker is" },
-        { t: "p", text: "[Willy Maker](/tools/willy-maker) makes arcade games for Capcom's **CPS-1** board (384 × 224 at 60 Hz), the kind that runs in MAME, in the mame2003-plus core and in go-link rooms with up to 4 players. You build as if you were playing: draw a level, place enemies and civilians, drop in your characters and try it right away, with the same rules the ROM uses." },
+        { t: "p", text: "[Willy Maker](https://maker.go-link.org) makes arcade games for Capcom's **CPS-1** board (384 × 224 at 60 Hz), the kind that runs in MAME, in the mame2003-plus core and in go-link rooms with up to 4 players. You build as if you were playing: draw a level, place enemies and civilians, drop in your characters and try it right away, with the same rules the ROM uses." },
         { t: "p", text: "It runs in your browser and sends nothing anywhere. The art, the names and the game are yours: Willy Maker brings only go-link's own pieces and its hero, Willy. It works best on a computer with a mouse." },
         { t: "h2", id: "quick-start", text: "Quick start" },
         {
           t: "steps",
           items: [
-            "Open [Tools › Willy Maker](/tools/willy-maker) and press **New game**.",
+            "Open [Willy Maker](https://maker.go-link.org), its own site, and press **New game**.",
             "Pick the genre (today the **Platform shooter** or the **Platformer**), the board (CPS-1), how the emulator will see it (**4 players · 3 buttons** or **4 players · 2 buttons**) and where to start from, then give it a title and a first level.",
             "In **Build**, paint the floor with the pencil, place a **Start** and an **Exit**, and press **Play** (P) to try it.",
             "Bring in your hero in **Characters**, set the players and buttons in **Game**, and the screens in **Menus**.",

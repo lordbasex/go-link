@@ -5,12 +5,12 @@ import { ExitFullscreenIcon, FullscreenIcon, PictureIcon } from "../components/I
 import { HeroTile, PageHero } from "../components/ui/PageHero";
 import { PictureFields } from "../components/PictureControl";
 import { useFullscreen } from "../components/useFullscreen";
-import { PictureCanvas } from "../picture/PictureCanvas";
+import { PictureCanvas } from "@go-link/ui/picture";
 import { SplitDivider } from "../picture/SplitDivider";
-import { useRefreshRate } from "../picture/refreshRate";
-import type { RendererKind } from "../picture/renderer";
-import { usePictureSettings } from "../picture/settings";
-import { CARD_ASPECT, CARD_H, CARD_W, drawTestCard } from "../picture/testCard";
+import { useRefreshRate } from "@go-link/ui/picture";
+import type { RendererKind } from "@go-link/ui/picture";
+import { usePictureSettings } from "@go-link/ui/picture";
+import { CARD_ASPECT, CARD_H, CARD_W, drawTestCard } from "@go-link/ui/picture";
 
 /**
  * /picture-demo: the picture styles side by side on a synthetic arcade

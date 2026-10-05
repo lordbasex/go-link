@@ -3,12 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { padBits, padMapFor, readGamepad, type Pad } from "@go-link/shared";
 import { getLang, t } from "../i18n";
 import { CopyIcon, DownloadIcon } from "../components/Icons";
-import { useRefreshRate } from "../picture/refreshRate";
+import { useRefreshRate } from "@go-link/ui/picture";
 import { PadConsole } from "./PadConsole";
 import { PadLog, STANDARD_NAMES, buildReport, type ReportPad } from "./padLog";
 import { useInputConfig } from "../signal/useInputConfig";
-import { ControllerModel } from "../controllers/ControllerModel";
-import { identify, type ControllerIdentity } from "../controllers/controllerModels";
+import { ControllerModel } from "@go-link/ui/controllers";
+import { identify, type ControllerIdentity } from "@go-link/ui/controllers";
 import {
   BounceProbe,
   DeadzoneProbe,

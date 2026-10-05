@@ -8,7 +8,7 @@ import { GAMES, GAME_IDS, type GameId } from "../games";
 import { addKeys, addPad, addTouch, emptyInput, emptyTouch, nextFrame, type FrameInput } from "../games/input";
 import { readPalette } from "../games/palette";
 import { BOARD_H, BOARD_W, type Hud } from "../games/types";
-import { identify } from "../controllers/controllerModels";
+import { identify } from "@go-link/ui/controllers";
 import { ChipSound } from "../games/sound";
 import { setSfxSink, type SfxAt, type SfxEvent } from "../games/sfx";
 import { BoardFx } from "../games/fx";

@@ -6,6 +6,7 @@ go-link has three pieces to put in front of people:
 |---|---|---|
 | Signaling server (signalhub + coturn) | Any Linux server with Docker | From [its own repository](https://github.com/lordbasex/signalhub) |
 | Website | Any static web host or CDN | `make web-build`, then upload `frontend/apps/web/dist` |
+| Willy Maker's site | Any static web host or CDN, on its own host name | `make maker-build`, then upload `frontend/willy-maker/dist` |
 | Device | The hosts' computers | GitHub releases (`make release`) |
 
 ## Signaling server
@@ -48,6 +49,20 @@ make web-deploy WEB_SERVER=user@host WEB_ROOT=/var/www/go-link
 ```
 
 The file can define `web-deploy`, a `hosting-help` target (shown by `make help`) and `HOSTING_TARGETS = 1`, and it may include private settings from a gitignored `.env.deploy`. Without it, `make web-deploy` only builds the site and says where it is.
+
+### Willy Maker's site
+
+Willy Maker is its own static site (`frontend/willy-maker`), served on its own host name (go-link's is `maker.go-link.org`):
+
+```bash
+make maker-build                                    # frontend/willy-maker/dist
+SITE_URL=https://go-link.example.org make maker-build   # with your own website
+make maker-deploy                                   # build and upload (deploy/local/hosting.mk)
+```
+
+- It reaches the owner's go-link through the website's `/maker-bridge` tab, so each must know the other: Willy Maker is built with the website's address (`SITE_URL`, default `https://go-link.org`) and the website with Willy Maker's (`VITE_MAKER_URL`, default `https://maker.go-link.org`).
+- Serve it like the website: `index.html` for unknown paths (a game's address is `/<id>`), `index.html` with `no-cache` and `assets/` cached for a year, HTTPS only, and the same security headers (`frame-ancestors 'none'` and the rest, [security.md](security.md)).
+- `hosting.mk` can define `maker-deploy` the same way as `web-deploy`; without it, `make maker-deploy` only builds the site.
 
 ## Device
 

@@ -1,11 +1,38 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../i18n";
 import { ToolsIcon } from "../components/Icons";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
-import { ControllerModel } from "../controllers/ControllerModel";
+import { ControllerModel } from "@go-link/ui/controllers";
 import { EMPTY_PAD } from "@go-link/shared";
 import { SkinThumb } from "../tools/SkinThumb";
+import { MAKER_URL } from "../config";
+
+interface ToolCard {
+  title: string;
+  text: string;
+  cta: string;
+  tag: string;
+  art: ReactNode;
+  cls: string;
+}
+
+function ToolCardInside({ tool }: { tool: ToolCard }) {
+  return (
+    <>
+      <span className={`tool-card-art ${tool.cls}`} aria-hidden="true">
+        {tool.art}
+        <span className="tool-card-tag">{tool.tag}</span>
+      </span>
+      <span className="tool-card-body">
+        <strong className="tool-card-title">{tool.title}</strong>
+        <span className="tool-card-text">{tool.text}</span>
+        <span className="button button-primary tool-card-cta">{tool.cta} →</span>
+      </span>
+    </>
+  );
+}
 
 /**
  * /tools: the site's tools as cards (more will join them). They run in the
@@ -41,7 +68,9 @@ export function ToolsPage() {
       cls: "is-games",
     },
     {
-      to: "/tools/willy-maker",
+      // its own site (maker.go-link.org)
+      to: MAKER_URL,
+      external: true,
       title: t.tools.makerTitle,
       text: t.tools.makerText,
       cta: t.tools.makerCta,
@@ -66,17 +95,15 @@ export function ToolsPage() {
         <ul className="tools-grid">
           {tools.map((tool) => (
             <li key={tool.to}>
-              <Link to={tool.to} className="card tool-card">
-                <span className={`tool-card-art ${tool.cls}`} aria-hidden="true">
-                  {tool.art}
-                  <span className="tool-card-tag">{tool.tag}</span>
-                </span>
-                <span className="tool-card-body">
-                  <strong className="tool-card-title">{tool.title}</strong>
-                  <span className="tool-card-text">{tool.text}</span>
-                  <span className="button button-primary tool-card-cta">{tool.cta} →</span>
-                </span>
-              </Link>
+              {"external" in tool ? (
+                <a href={tool.to} className="card tool-card">
+                  <ToolCardInside tool={tool} />
+                </a>
+              ) : (
+                <Link to={tool.to} className="card tool-card">
+                  <ToolCardInside tool={tool} />
+                </Link>
+              )}
             </li>
           ))}
           <li className="tool-card-soon" aria-hidden="true">

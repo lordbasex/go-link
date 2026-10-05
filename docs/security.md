@@ -32,6 +32,16 @@ Details in [signalhub's README](https://github.com/lordbasex/signalhub). In shor
 - Text from other users is always rendered as text.
 - SHA-256 and HMAC are implemented in TypeScript (`packages/shared/src/hmac.ts`), because `crypto.subtle` is missing on plain `http` pages such as the local panel.
 
+## Willy Maker's site and the device bridge
+
+Willy Maker is its own site (maker.go-link.org). The link to the owner's go-link stays on go-link.org, whose storage another origin cannot read, so Willy Maker reaches the device through a go-link.org tab it opens, `/maker-bridge`, with `postMessage` (`packages/shared/src/maker-bridge.ts`, [the architecture](willy-maker/architecture.md#the-device-bridge)):
+
+- **Who may talk:** the bridge accepts a message only from Willy Maker's origin (`MAKER_URL`, pinned by `make web-build`, never a development address from a `.env.local`) and only from the tab that opened it; every answer is posted only to that origin, so a third party that opens `/maker-bridge` gets nothing (not even the device's name). Willy Maker's side accepts only go-link.org's origin and the tab it opened, whose window name is random.
+- **What passes:** a ROM test (`rom_test`) and a private room for the Willy Maker game (`create_room` for `@maker`), their zips (purpose `rom_test` or `maker`, at most 16 MB), and back only `upload_result`, `rom_test_result`, `room_created` and `room_error`. Nothing else of the device: unlink, settings, factory reset, status, other rooms.
+- **Messages are rebuilt, never passed on:** the bridge builds a new control message from the allowed fields, each type-checked (`bridgeControl`). Go's `encoding/json` matches keys in any case and keeps the last one, so a message with `"type":"rom_test"` and `"TYPE":"factory_reset"` would have reached the device as a factory reset (found in the review of the bridge, 2026-10-05). The device also drops, before reading it, any control message with two keys equal but for case, at any depth (`pkg/jsonkeys`), whoever sends it.
+- On the device, a `@maker` room is always private, gets a new id from the device and only replaces the Willy Maker room before it; a test or game zip never enters the ROM folder.
+- Both sites send `frame-ancestors 'none'` and `X-Frame-Options: DENY`, so neither the maker nor the bridge can be framed.
+
 ## HTTP headers for the website
 
 A `<meta>` CSP cannot set everything. Whatever static host or CDN serves the website should add these headers to every response:
@@ -45,7 +55,7 @@ A `<meta>` CSP cannot set everything. Whatever static host or CDN serves the web
 | `Referrer-Policy` | `no-referrer` | Invitation links do not leak to other sites |
 | `Permissions-Policy` | `microphone=(self), camera=(), geolocation=(), payment=()` | The microphone is for voice between players and for dictation in Willy Maker (Chrome's on-device recognition only) |
 
-If the CSP in `frontend/apps/web/index.html` changes, change it on the host too.
+If the CSP in `frontend/apps/web/index.html` changes, change it on the host too. Willy Maker's site gets the same headers (its own CSP is in `frontend/willy-maker/vite.config.ts`, with `connect-src 'self'`: it connects to nothing else).
 
 ## Repository hygiene
 

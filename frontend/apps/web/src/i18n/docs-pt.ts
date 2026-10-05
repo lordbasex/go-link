@@ -712,13 +712,13 @@ export const docsPt: Docs = {
       lead: "Crie o seu próprio jogo de arcade para a placa CPS-1: monte as fases, traga os seus personagens, jogue na hora e exporte tudo para fazer a ROM.",
       blocks: [
         { t: "h2", id: "what", text: "O que é o Willy Maker" },
-        { t: "p", text: "O [Willy Maker](/tools/willy-maker) cria jogos de arcade para a placa **CPS-1** da Capcom (384 × 224 a 60 Hz), dos que rodam no MAME, no núcleo mame2003-plus e nas salas do go-link com até 4 jogadores. Você constrói como se estivesse jogando: desenha uma fase, coloca inimigos e civis, adiciona os seus personagens e testa na hora, com as mesmas regras que a ROM usa." },
+        { t: "p", text: "O [Willy Maker](https://maker.go-link.org) cria jogos de arcade para a placa **CPS-1** da Capcom (384 × 224 a 60 Hz), dos que rodam no MAME, no núcleo mame2003-plus e nas salas do go-link com até 4 jogadores. Você constrói como se estivesse jogando: desenha uma fase, coloca inimigos e civis, adiciona os seus personagens e testa na hora, com as mesmas regras que a ROM usa." },
         { t: "p", text: "Funciona no seu navegador e não envia nada a lugar nenhum. A arte, os nomes e o jogo são seus: o Willy Maker traz só peças próprias do go-link e o seu herói, Willy. Funciona melhor num computador com mouse." },
         { t: "h2", id: "quick-start", text: "Início rápido" },
         {
           t: "steps",
           items: [
-            "Abra [Ferramentas › Willy Maker](/tools/willy-maker) e clique em **Novo jogo**.",
+            "Abra o [Willy Maker](https://maker.go-link.org), o seu próprio site, e clique em **Novo jogo**.",
             "Escolha o gênero (hoje **Plataforma com tiros** ou **Plataforma**), a placa (CPS-1), como o emulador vai ver (**4 jogadores · 3 botões** ou **4 jogadores · 2 botões**) e de onde começar; depois dê um título e uma primeira fase.",
             "Em **Construir**, pinte o chão com o lápis, coloque um **Início** e uma **Saída**, e clique em **Jogar** (P) para testar.",
             "Traga o seu herói em **Personagens**, defina os jogadores e botões em **Jogo**, e as telas em **Menus**.",

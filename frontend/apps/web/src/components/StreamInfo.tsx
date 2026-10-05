@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { StreamVideo } from "@go-link/shared";
 import { t } from "../i18n";
-import { useRefreshRate } from "../picture/refreshRate";
+import { useRefreshRate } from "@go-link/ui/picture";
 
 /**
  * The stream's figures behind a small (i) button that never changes size:

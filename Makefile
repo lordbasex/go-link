@@ -5,9 +5,11 @@
 #   make all          web + device for every platform
 #   make web-build    build the website (frontend/apps/web/dist)
 #   make web-deploy   build and upload the website (deploy/local/hosting.mk)
+#   make maker-build  build Willy Maker's site (frontend/willy-maker/dist)
+#   make maker-deploy build and upload Willy Maker's site (deploy/local/hosting.mk)
 #   make help         everything else
 
-.PHONY: all e2e release legal panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy hosting-help \
+.PHONY: all e2e release legal panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy maker-build maker-deploy hosting-help \
 	device device-windows device-windows-amd64 device-windows-arm64 clean android-debug android-apk
 
 # The darwin and linux device targets are pattern rules (device-darwin-%,
@@ -33,10 +35,14 @@ DIST           = $(CURDIR)/dist
 -include deploy/local/hosting.mk
 
 SIGNAL_URL    ?= wss://signal.go-link.org/ws
+# Each site is built with the other's address, never a development one left in a .env.local
+# (the website trusts MAKER_URL's origin for its /maker-bridge tab).
+MAKER_URL     ?= https://maker.go-link.org
 
 # Paths
 WEB_DIR      = frontend
 WEB_DIST     = $(WEB_DIR)/apps/web/dist
+MAKER_DIST   = $(WEB_DIR)/willy-maker/dist
 DEVICE_DIR   = backend-device
 DEVICE_OUT   = $(DIST)/device
 DOCKER_OUT   = $(DIST)/docker
@@ -54,7 +60,7 @@ NC     = \033[0m
 # ---------------------------------------------------------------------------
 # Everything
 
-all: web-build device
+all: web-build maker-build device
 	@echo "$(GREEN)✓ go-link $(VERSION) built in $(DIST) and $(WEB_DIST)$(NC)"
 
 info:
@@ -77,17 +83,32 @@ web-build:
 	@# The in-browser MP4 helper (Go compiled to WebAssembly) goes in public/mp4.
 	$(MAKE) -C frontend/wasm/mp4 build
 	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
-		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
+		VITE_SIGNAL_URL=$(SIGNAL_URL) VITE_MAKER_URL=$(MAKER_URL) VITE_DEMO_DATA=false VITE_APP_VERSION=$(VERSION) \
 		VITE_BUILD_DATE=$$(date -u +%Y-%m-%d) npm run build
 	@find $(WEB_DIST) -name "*.map" -delete
 	@echo "$(GREEN)✓ Website built in $(WEB_DIST)$(NC)"
 
+# Willy Maker's own site (maker.go-link.org): a static site of its own, which
+# reaches the device through the website's /maker-bridge tab (SITE_URL).
+SITE_URL      ?= https://go-link.org
+maker-build:
+	@echo "$(YELLOW)Building Willy Maker's site $(VERSION) for $(SITE_URL)...$(NC)"
+	rm -rf $(MAKER_DIST)
+	@cd $(WEB_DIR) && $(NODE_ENV_SETUP) && npm ci --no-audit --no-fund && \
+		VITE_SITE_URL=$(SITE_URL) VITE_APP_VERSION=$(VERSION) npm run build -w @go-link/willy-maker
+	@find $(MAKER_DIST) -name "*.map" -delete
+	@echo "$(GREEN)✓ Willy Maker's site built in $(MAKER_DIST)$(NC)"
+
 ifndef HOSTING_TARGETS
-# Without deploy/local/hosting.mk there is nowhere to upload to: the site is
-# the static folder $(WEB_DIST), for any static host.
+# Without deploy/local/hosting.mk there is nowhere to upload to: each site is
+# a static folder ($(WEB_DIST), $(MAKER_DIST)), for any static host.
 web-deploy: web-build
 	@echo "$(YELLOW)The website is built in $(WEB_DIST). Upload it to your static host, or add a"
 	@echo "web-deploy target to deploy/local/hosting.mk (see docs/deploy.md).$(NC)"
+
+maker-deploy: maker-build
+	@echo "$(YELLOW)Willy Maker's site is built in $(MAKER_DIST). Upload it to your static host, or add a"
+	@echo "maker-deploy target to deploy/local/hosting.mk (see docs/deploy.md).$(NC)"
 
 hosting-help:
 	@echo "$(YELLOW)Hosting:$(NC) add deploy/local/hosting.mk (see docs/deploy.md)"
@@ -233,7 +254,7 @@ device-docker-oci: $(PANEL_DIST)/index.html legal
 # ---------------------------------------------------------------------------
 
 clean:
-	rm -rf $(DIST) $(WEB_DIST)
+	rm -rf $(DIST) $(WEB_DIST) $(MAKER_DIST)
 	@echo "$(GREEN)✓ Clean$(NC)"
 
 # The Android player app (mobile/android). Signing comes from
@@ -274,6 +295,8 @@ help:
 	@echo "$(YELLOW)Website:$(NC)"
 	@echo "  make web-build               build frontend/apps/web/dist"
 	@echo "  make web-deploy              build and upload (deploy/local/hosting.mk)"
+	@echo "  make maker-build             build Willy Maker's site, frontend/willy-maker/dist"
+	@echo "  make maker-deploy            build and upload it (deploy/local/hosting.mk)"
 	@echo ""
 	@echo "$(YELLOW)Device:$(NC)"
 	@echo "  make device                  every platform into dist/device/"

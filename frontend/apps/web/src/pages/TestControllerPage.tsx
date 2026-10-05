@@ -17,7 +17,7 @@ import { TestPad } from "../components/TestPad";
 import { TouchPad } from "../components/TouchPad";
 import { HeroTile, PageHero } from "../components/ui/PageHero";
 import { useInputConfig } from "../signal/useInputConfig";
-import { useRefreshRate } from "../picture/refreshRate";
+import { useRefreshRate } from "@go-link/ui/picture";
 import { PadTester } from "../tools/PadTester";
 
 /** Samples kept for the average input-to-screen time. */
