@@ -1,14 +1,14 @@
 {
-  "version": "v0.1.9",
+  "version": "v0.2.0",
   "assets": {
-    "android.apk": 49216964,
-    "docker.oci.tar.gz": 86727422,
-    "linux-amd64-headless.tar.gz": 12361176,
-    "linux-amd64.tar.gz": 21424311,
-    "linux-arm64-headless.tar.gz": 11595561,
-    "linux-arm64.tar.gz": 20197323,
-    "macos-universal.dmg": 43199899,
-    "windows-amd64.zip": 21287637,
-    "windows-arm64.zip": 20074156
+    "android.apk": 49233348,
+    "docker.oci.tar.gz": 79426965,
+    "linux-amd64-headless.tar.gz": 8717019,
+    "linux-amd64.tar.gz": 17781344,
+    "linux-arm64-headless.tar.gz": 7946496,
+    "linux-arm64.tar.gz": 16543296,
+    "macos-universal.dmg": 35860763,
+    "windows-amd64.zip": 17634204,
+    "windows-arm64.zip": 16415709
   }
 }
