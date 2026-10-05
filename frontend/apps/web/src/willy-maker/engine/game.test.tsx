@@ -9,6 +9,7 @@ import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
 import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS, BUMP_X } from "./rules";
+import { KEEPER_X } from "./rules";
 import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
 import { FB_AT, FB_DMG, FB_CHIP, DASH_FRAMES, DASH_DMG } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
@@ -1805,5 +1806,32 @@ describe("racing, phase 2: the level's checkpoints and starts, bumps", () => {
       }
     }
     expect(bumped).toBe(true);
+  });
+});
+
+describe("sports, phase 2: passes and keepers", () => {
+  it("B2 passes the ball to the nearest teammate", () => {
+    const g = new Game(flat(), { rules: SPORTS_RULES, players: 1, maxPlayers: 4 });
+    const p = g.players[0]!;
+    const mate = g.players[2]!;
+    run(g, KICKOFF_FRAMES, 0);
+    g.ballOwner = 0;
+    g.step([0, 0, 0, 0]);
+    g.step([Input.B2, 0, 0, 0]);
+    expect(g.ballOwner === 0).toBe(false);
+    // the ball heads back toward the teammate (left of player 1)
+    expect(Math.sign(g.ballVx || -1)).toBe(Math.sign(mate.x - p.x));
+  });
+
+  it("a CPU keeper stays on its goal line, level with the ball inside the mouth", () => {
+    const g = new Game(flat(), { rules: SPORTS_RULES, players: 1, maxPlayers: 4 });
+    const keeper = g.players[3]!;
+    run(g, KICKOFF_FRAMES, 0);
+    // it walks from its place to the line (before any goal sends everyone back)
+    const line = g.level.width - FIELD_X0 - KEEPER_X;
+    for (let i = 0; i < 100 && Math.abs(keeper.x - line) > 2; i++) g.step([0, 0, 0, 0]);
+    expect(Math.abs(keeper.x - line)).toBeLessThanOrEqual(2);
+    expect(keeper.y >> 4).toBeGreaterThanOrEqual(GOAL_Y0 - 2);
+    expect(keeper.y >> 4).toBeLessThanOrEqual(GOAL_Y1 + 2);
   });
 });

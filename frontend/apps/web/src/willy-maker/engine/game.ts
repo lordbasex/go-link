@@ -164,6 +164,9 @@ import {
   KICKOFF_FRAMES,
   MATCH_TIME,
   CPU_SHOOT,
+  PASS_SPEED,
+  KEEPER_X,
+  PRESS_X,
   MOTION_LEN,
   MOTION_WINDOW,
   DASH_WINDOW,
@@ -2361,7 +2364,41 @@ export class Game {
       this.ballOwner = -1;
       p.fireWait = REGRAB;
       this.events.push({ kind: "kick", player: p.index });
+    } else if (this.pressed(p, Input.B2) && this.ballOwner === p.index) {
+      // a pass: to the nearest teammate, along the way nearest it
+      const mate = this.mateOf(p);
+      if (!mate) return;
+      let best = -Infinity;
+      let way = 0;
+      for (let i = 0; i < 16; i++) {
+        const dot = CAR_DIRS[i]![0] * (mate.x - p.x) + CAR_DIRS[i]![1] * ((mate.y >> 4) - (p.y >> 4));
+        if (dot > best) {
+          best = dot;
+          way = i;
+        }
+      }
+      this.ballVx = CAR_DIRS[way]![0] * PASS_SPEED;
+      this.ballVy = CAR_DIRS[way]![1] * PASS_SPEED;
+      this.ballOwner = -1;
+      p.fireWait = REGRAB;
+      this.events.push({ kind: "kick", player: p.index });
     }
+  }
+
+  /** The nearest active teammate, if any. */
+  private mateOf(p: Player): Player | undefined {
+    let mate: Player | undefined;
+    let best = Infinity;
+    for (let i = p.index % 2; i < this.athletes(); i += 2) {
+      const q = this.players[i]!;
+      if (q === p || !q.active) continue;
+      const d = Math.abs(q.x - p.x) + Math.abs((q.y >> 4) - (p.y >> 4));
+      if (d < best) {
+        best = d;
+        mate = q;
+      }
+    }
+    return mate;
   }
 
   /** The ball, a frame: with its owner, or rolling, slowing, bouncing; into a goal; taken by a touch. */
@@ -2431,8 +2468,20 @@ export class Game {
     const fy = p.y >> 4;
     let tx: number;
     let ty: number;
-    if (this.ballOwner === p.index) {
+    const toward = team ? Input.Left : Input.Right;
+    if (p.index >= 2 && this.ballOwner === p.index) {
+      // the keeper clears it: forward, then kicks
+      return this.frame & 1 ? Input.B1 : toward;
+    }
+    if (p.index >= 2) {
+      // the keeper: on its goal line, level with the ball inside the mouth
+      tx = team ? this.level.width - FIELD_X0 - KEEPER_X : FIELD_X0 + KEEPER_X;
+      ty = Math.max(GOAL_Y0, Math.min(GOAL_Y1, by));
+    } else if (this.ballOwner === p.index) {
       if (Math.abs(goalX - p.x) < CPU_SHOOT && (this.frame & 7) === 0) return Input.B1;
+      // pressed by an opponent just ahead, with a teammate: a pass
+      const ahead = (q: Player) => q.active && q.index % 2 !== team && Math.abs((q.y >> 4) - fy) < 16 && (team ? p.x - q.x : q.x - p.x) > 0 && Math.abs(q.x - p.x) < PRESS_X;
+      if ((this.frame & 7) === 4 && this.mateOf(p) && this.players.slice(0, this.athletes()).some(ahead)) return Input.B2;
       tx = goalX;
       ty = (GOAL_Y0 + GOAL_Y1) >> 1;
     } else {
@@ -2440,7 +2489,8 @@ export class Game {
       let best = Infinity;
       for (let i = team; i < this.athletes(); i += 2) {
         const q = this.players[i]!;
-        if (!q.active) continue;
+        // a CPU keeper stays in goal: the others go for the ball
+        if (!q.active || (i >= 2 && q.cpu)) continue;
         const d = Math.abs(q.x - bx) + Math.abs((q.y >> 4) - by);
         if (d < best) {
           best = d;

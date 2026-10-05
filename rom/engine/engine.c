@@ -822,6 +822,9 @@ static int race_t, finished, first_at, race_over;
 #define KICKOFF_FRAMES 60
 #define MATCH_TIME 3600
 #define CPU_SHOOT 120
+#define PASS_SPEED 4
+#define KEEPER_X 24
+#define PRESS_X 32
 #define SPORTS_ROW 3
 #define SPORTS_CALL_ROW 10
 static s32 ball_x, ball_y, ball_vx, ball_vy;
@@ -2156,6 +2159,26 @@ static void sports_kickoff(void)
 	kick_t = KICKOFF_FRAMES;
 }
 
+/* the nearest active teammate, or 0 (engine/game.ts mateOf) */
+static struct player *mate_of(struct player *p)
+{
+	struct player *mate = 0;
+	s32 best = 0x7fffffff;
+	int i;
+	for (i = (int)(p - pl) & 1; i < athletes(); i += 2) {
+		struct player *q = &pl[i];
+		s32 d;
+		if (q == p || !q->active)
+			continue;
+		d = vs_abs(q->x - p->x) + vs_abs((q->y >> 4) - (p->y >> 4));
+		if (d < best) {
+			best = d;
+			mate = q;
+		}
+	}
+	return mate;
+}
+
 /* an athlete, a frame (engine/game.ts run) */
 static void sports_run(struct player *p)
 {
@@ -2185,6 +2208,25 @@ static void sports_run(struct player *p)
 	if (PRESSED(p, BTN_1) && ball_owner == (int)(p - pl)) {
 		ball_vx = p->aim_x * BALL_KICK;
 		ball_vy = p->aim_y * BALL_KICK;
+		ball_owner = -1;
+		p->fire_wait = REGRAB;
+		sfx(SFX_KICK, p->x);
+	} else if (PRESSED(p, BTN_2) && ball_owner == (int)(p - pl)) {
+		/* a pass: to the nearest teammate, along the way nearest it */
+		struct player *mate = mate_of(p);
+		s32 best = -0x7fffffff;
+		int i, way = 0;
+		if (!mate)
+			return;
+		for (i = 0; i < 16; i++) {
+			s32 dot = car_dirs[i][0] * (mate->x - p->x) + car_dirs[i][1] * ((mate->y >> 4) - (p->y >> 4));
+			if (dot > best) {
+				best = dot;
+				way = i;
+			}
+		}
+		ball_vx = car_dirs[way][0] * PASS_SPEED;
+		ball_vy = car_dirs[way][1] * PASS_SPEED;
 		ball_owner = -1;
 		p->fire_wait = REGRAB;
 		sfx(SFX_KICK, p->x);
@@ -2267,16 +2309,31 @@ static u16 sports_cpu_pad(struct player *p)
 {
 	int k = (int)(p - pl), team = k & 1, i, near = -1, dx, dy;
 	s32 bx = ball_x >> 4, by = ball_y >> 4, goal_x = team ? FIELD_X0 : level_w - FIELD_X0, fy = p->y >> 4, tx, ty, best = 0x7fffffff;
-	if (ball_owner == k) {
+	if (k >= 2 && ball_owner == k)
+		/* the keeper clears it: forward, then kicks */
+		return (plat_t & 1) ? BTN_1 : (team ? BTN_LEFT : BTN_RIGHT);
+	if (k >= 2) {
+		/* the keeper: on its goal line, level with the ball inside the mouth */
+		tx = team ? level_w - FIELD_X0 - KEEPER_X : FIELD_X0 + KEEPER_X;
+		ty = by < GOAL_Y0 ? GOAL_Y0 : by > GOAL_Y1 ? GOAL_Y1 : by;
+	} else if (ball_owner == k) {
 		if (vs_abs(goal_x - p->x) < CPU_SHOOT && (plat_t & 7) == 0)
 			return BTN_1;
+		/* pressed by an opponent just ahead, with a teammate: a pass */
+		if ((plat_t & 7) == 4 && mate_of(p))
+			for (i = 0; i < athletes(); i++) {
+				struct player *q = &pl[i];
+				if (q->active && (i & 1) != team && vs_abs((q->y >> 4) - fy) < 16 && (team ? p->x - q->x : q->x - p->x) > 0 && vs_abs(q->x - p->x) < PRESS_X)
+					return BTN_2;
+			}
 		tx = goal_x;
 		ty = (GOAL_Y0 + GOAL_Y1) >> 1;
 	} else {
 		for (i = team; i < athletes(); i += 2) {
 			struct player *q = &pl[i];
 			s32 d;
-			if (!q->active)
+			/* a CPU keeper stays in goal: the others go for the ball */
+			if (!q->active || (i >= 2 && q->cpu))
 				continue;
 			d = vs_abs(q->x - bx) + vs_abs((q->y >> 4) - by);
 			if (d < best) {

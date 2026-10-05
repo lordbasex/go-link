@@ -845,3 +845,15 @@ export const VS_CPU_THROW = 90;
 export const MAX_WAYPOINTS = 8;
 export const BUMP_X = 12;
 export const BUMP_Y = 10;
+
+/**
+ * Sports, phase 2: B2 passes the ball to the nearest teammate, along the one
+ * of the 16 ways (CAR_DIRS) nearest it, PASS_SPEED times the way (1/16 px a
+ * frame). A CPU defender (players 3 and 4) keeps goal: it stays KEEPER_X px
+ * off its goal line, level with the ball inside the goal's mouth, and clears
+ * a ball it holds forward. A CPU with the ball passes when an opponent is
+ * within PRESS_X px ahead of it.
+ */
+export const PASS_SPEED = 4;
+export const KEEPER_X = 24;
+export const PRESS_X = 32;
