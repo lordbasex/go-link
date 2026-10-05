@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-05
+
 ### Changed (apps)
 
 - **Skins look rounded on every phone**: outside the rim's rounded corners the shell is black, so on a screen with square corners (iPhone SE, many Android phones) the plastic no longer shows in the corners.

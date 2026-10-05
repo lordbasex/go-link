@@ -4,6 +4,8 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-05
+
 ### Changed
 
 - **Connect my go-link opens play.go-link.org**, go-link's new rooms site, where the link to your go-link now lives (`PLAY_URL`, `make maker-build` passes it). **Bring my games** still reads the games made on go-link.org from go-link.org itself (`SITE_URL`).
