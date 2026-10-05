@@ -778,6 +778,26 @@ static int puzzle_cpu; /* its CPU rival (WM_F2_PUZZLE_CPU) */
 static int quiz;       /* the quiz (WM_F2_QUIZ) */
 static int versus;     /* versus fighting (WM_F2_VERSUS) */
 static int sports;     /* sports: football (WM_F2_SPORTS) */
+static int racing;     /* racing seen from above (WM_F2_RACING) */
+/* racing (engine/rules.ts CAR_DIRS..., engine/game.ts drive) */
+static const s8 car_dirs[16][2] = { { 16, 0 }, { 15, 6 }, { 11, 11 }, { 6, 15 }, { 0, 16 }, { -6, 15 }, { -11, 11 }, { -15, 6 }, { -16, 0 }, { -15, -6 }, { -11, -11 }, { -6, -15 }, { 0, -16 }, { 6, -15 }, { 11, -11 }, { 15, -6 } };
+static const s16 waypoints[5][2] = { { 56, 184 }, { 56, 72 }, { 328, 72 }, { 328, 184 }, { 192, 184 } };
+static const s16 grid[4][2] = { { 208, 172 }, { 208, 196 }, { 240, 172 }, { 240, 196 } };
+static const u16 place_score[4] = { 3000, 2000, 1000, 500 };
+#define N_WAYPOINTS 5
+#define STEER 4
+#define CAR_ACCEL 1
+#define CAR_BRAKE 2
+#define CAR_MAX 40
+#define CPU_MAX 36
+#define GATE_X 48
+#define GATE_Y 40
+#define RACE_LAPS 3
+#define RACE_AFTER 600
+#define RACE_TIME 7200
+#define RACE_COUNT 180
+#define RACE_CALL_ROW 10
+static int race_t, finished, first_at, race_over;
 /* sports (engine/rules.ts, engine/game.ts run and updateBall) */
 #define FIELD_X0 16
 #define FIELD_Y0 64
@@ -2184,6 +2204,102 @@ static void sports_draw(void)
 		print(goal_by < 0 ? 20 : 21, SPORTS_CALL_ROW, goal_by < 0 ? "KICK OFF" : "GOAL!", INK_ACCENT);
 }
 
+/* ------------------------------------------------------------- racing */
+
+/* a car, a frame (engine/game.ts drive) */
+static void drive(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0, max = p->cpu ? CPU_MAX : CAR_MAX;
+	s32 nx, ny;
+	p->t++;
+	p->on_ground = 1;
+	if (race_t < RACE_COUNT || p->done) {
+		p->fuel = 0;
+		return;
+	}
+	if (dx) {
+		/* a press turns at once, a hold every STEER frames */
+		if (!(p->last & (dx < 0 ? BTN_LEFT : BTN_RIGHT)) || ++p->turn_t >= STEER) {
+			p->aim_x = (p->aim_x + dx + 16) & 15;
+			p->turn_t = 0;
+		}
+	} else
+		p->turn_t = 0;
+	if (p->pad & BTN_1)
+		p->fuel = p->fuel + CAR_ACCEL > max ? max : p->fuel + CAR_ACCEL;
+	else if (p->pad & BTN_2)
+		p->fuel = p->fuel - CAR_BRAKE < 0 ? 0 : p->fuel - CAR_BRAKE;
+	else if ((p->t & 1) && p->fuel > 0)
+		p->fuel--;
+	nx = p->cx + ((car_dirs[p->aim_x][0] * p->fuel) >> 4);
+	ny = p->y + ((car_dirs[p->aim_x][1] * p->fuel) >> 4);
+	if (is_solid(cell((int)(nx >> 8), (int)(ny >> 8))))
+		p->fuel = 0;
+	else {
+		p->cx = nx;
+		p->y = ny;
+	}
+	p->x = p->cx >> 4;
+	p->running = p->fuel > 0;
+	if (vs_abs(p->x - waypoints[p->answer][0]) > GATE_X || vs_abs((p->y >> 4) - waypoints[p->answer][1]) > GATE_Y)
+		return;
+	if (++p->answer < N_WAYPOINTS)
+		return;
+	p->answer = 0;
+	if (++p->count < RACE_LAPS)
+		return;
+	p->done = 1;
+	p->answer_left = ++finished;
+	p->score += place_score[p->answer_left - 1 < 4 ? p->answer_left - 1 : 3];
+	if (first_at < 0)
+		first_at = race_t;
+	sfx(SFX_RESCUE, p->x);
+}
+
+/* the race's clock (engine/game.ts updateRace) */
+static void update_race(void)
+{
+	int k, humans = 0, done = 0;
+	race_t++;
+	for (k = 0; k < nplayers; k++)
+		if (pl[k].active && !pl[k].cpu) {
+			humans++;
+			done += pl[k].done;
+		}
+	if ((humans && done == humans) || (first_at >= 0 && race_t - first_at >= RACE_AFTER) || race_t >= RACE_COUNT + RACE_TIME)
+		race_over = 1;
+}
+
+/* the CPU car's pad (engine/game.ts racingCpuPad) */
+static u16 racing_cpu_pad(struct player *p)
+{
+	int diff, i;
+	if ((plat_t & 3) == ((int)(p - pl) & 3)) {
+		s32 vx = waypoints[p->answer][0] - p->x, vy = waypoints[p->answer][1] - (p->y >> 4), best = -0x7fffffff;
+		for (i = 0; i < 16; i++) {
+			s32 dot = car_dirs[i][0] * vx + car_dirs[i][1] * vy;
+			if (dot > best) {
+				best = dot;
+				p->cy = i;
+			}
+		}
+	}
+	diff = (p->cy - p->aim_x + 16) & 15;
+	return (u16)((diff == 0 ? 0 : diff < 8 ? BTN_RIGHT : BTN_LEFT) | (diff >= 3 && diff <= 13 ? 0 : BTN_1));
+}
+
+/* racing's call (play/renderer.ts racingCall): 3, 2, 1, GO!, then FINISH */
+static void race_draw(void)
+{
+	blank(18, RACE_CALL_ROW, 12);
+	if (race_t < RACE_COUNT)
+		put_char(23, RACE_CALL_ROW, (char)('3' - race_t / 60), INK_ACCENT);
+	else if (race_t < RACE_COUNT + 60)
+		print(22, RACE_CALL_ROW, "GO!", INK_ACCENT);
+	else if (finished)
+		print(21, RACE_CALL_ROW, "FINISH", INK_ACCENT);
+}
+
 /* ------------------------------------------------------------- the quiz */
 
 /* the timing marker's cell at frame t: across the bar and back (engine/quiz.ts timingCell) */
@@ -2453,6 +2569,20 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
+	if (racing) {
+		/* racing: a car on its place on the grid, facing left */
+		if (k >= athletes())
+			return;
+		player_spawn(p, grid[k][0], grid[k][1]);
+		p->energy = R->energy;
+		p->hurt = 0;
+		p->cx = grid[k][0] * 16;
+		p->aim_x = 8;
+		p->cy = 8;
+		p->fuel = 0;
+		p->count = p->answer = p->answer_left = p->done = 0;
+		return;
+	}
 	if (sports) {
 		/* sports: an athlete at its place, facing the other team's goal */
 		s32 hx, hy;
@@ -2652,6 +2782,9 @@ static void game_reset(void)
 	quiz = (D->flags2 & WM_F2_QUIZ) != 0;
 	versus = (D->flags2 & WM_F2_VERSUS) != 0;
 	sports = (D->flags2 & WM_F2_SPORTS) != 0;
+	racing = (D->flags2 & WM_F2_RACING) != 0;
+	race_t = finished = race_over = 0;
+	first_at = -1;
 	goals[0] = goals[1] = 0;
 	match_t = MATCH_TIME;
 	goal_by = -1;
@@ -3604,6 +3737,15 @@ static void update_player(struct player *p)
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (racing) {
+		/* the CPU car's pad in place of the port's */
+		if (p->cpu) {
+			p->last = p->pad;
+			p->pad = racing_cpu_pad(p);
+		}
+		drive(p);
+		return;
+	}
 	if (sports) {
 		/* the CPU athlete's pad in place of the port's */
 		if (p->cpu) {
@@ -4493,6 +4635,10 @@ static void update_maze_chasers(void)
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (racing) {
+		update_race();
+		return;
+	}
 	if (sports) {
 		update_ball();
 		return;
@@ -4768,7 +4914,7 @@ static void update_camera(int snap)
 {
 	s32 sx = 0, sy = 0, tx, ty, fy;
 	/* the maze and the puzzle: one screen, the camera still at its top left */
-	if (maze || puzzle || quiz || versus) {
+	if (maze || puzzle || quiz || versus || racing) {
 		cam_x = cam_y = 0;
 		return;
 	}
@@ -5142,6 +5288,14 @@ static void draw_actors_by_depth(void)
 static void draw_world(void)
 {
 	int k;
+	/* racing: the cars, each in its player's color, turned the way it points */
+	if (racing) {
+		for (k = 0; k < nplayers; k++)
+			if (pl[k].active)
+				put_sprite((int)pl[k].x - cam_x - 8, (int)(pl[k].y >> 4) - cam_y - 8, (u16)(TILE_CAR + 16 * k + pl[k].aim_x), PAL_CROSS);
+		flush_sprites();
+		return;
+	}
 	/* sports: the ball first, so it shows over the athletes (the earlier sprite is drawn in front) */
 	if (sports)
 		put_sprite((int)(ball_x >> 4) - cam_x - 8, (int)(ball_y >> 4) - cam_y - 12, TILE_BALL, PAL_GEMS);
@@ -5342,7 +5496,11 @@ static void hud(void)
 			print_num(col + 3, 0, p->score, 6, INK_WHITE);
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			/* versus fighting shows health as bars (vs_draw), not as energy */
-			if (!versus && !sports)
+			if (racing) {
+				/* racing: the lap instead of the energy */
+				put_char(col + 3, 1, 'L', INK_WHITE);
+				put_char(col + 4, 1, (char)('1' + (p->count < RACE_LAPS ? p->count : RACE_LAPS - 1)), INK_WHITE);
+			} else if (!versus && !sports)
 				for (e = 0; e < 9 && e < room; e++)
 					put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
 			/* the shooter's bombs and the top-down grenades under the energy */
@@ -5564,6 +5722,13 @@ static int play(int first)
 		player_join(1);
 		pl[1].cpu = 1;
 	}
+	/* racing: the CPU drives every empty place on the grid */
+	if (racing)
+		for (k = 0; k < athletes() && k < nplayers; k++)
+			if (!pl[k].active) {
+				player_join(k);
+				pl[k].cpu = 1;
+			}
 	/* sports: the CPU plays every empty place, and the ball waits in the middle */
 	if (sports) {
 		for (k = 0; k < athletes() && k < nplayers; k++)
@@ -5594,7 +5759,7 @@ static int play(int first)
 		read_inputs();
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
-				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (!sports || k < athletes()) && (credits || free_play()) && start_pressed(k)) {
+				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (!(sports || racing) || k < athletes()) && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
 					SFX_CENTRE(SFX_START);
@@ -5605,8 +5770,8 @@ static int play(int first)
 						MUSIC(MUSIC_PLAY);
 					}
 					/* a player taking the CPU's well: empty, with a credit's lives and no score */
-					if (pl[k].cpu && sports) {
-						/* sports: the player takes the athlete where it stands */
+					if (pl[k].cpu && (sports || racing)) {
+						/* sports and racing: the player takes the athlete or the car where it is */
 						pl[k].cpu = 0;
 						pl[k].score = 0;
 						pl[k].last = pl[k].pad = hw_pad[k];
@@ -5664,6 +5829,27 @@ static int play(int first)
 				end_t = frame_count;
 				draw_screen(WM_SCR_CLEAR, 1);
 				MUSIC(MUSIC_CLEAR);
+			}
+		}
+		/* racing: its call; once the race is over, a player first clears the level */
+		if (racing && outcome < 0) {
+			race_draw();
+			if (race_over) {
+				int won = 0;
+				for (k = 0; k < nplayers; k++)
+					won |= pl[k].active && !pl[k].cpu && pl[k].answer_left == 1;
+				end_t = frame_count;
+				if (won) {
+					blank(15, 16, 18);
+					outcome = END_CLEAR;
+					draw_screen(WM_SCR_CLEAR, 1);
+					MUSIC(MUSIC_CLEAR);
+				} else {
+					outcome = END_OVER;
+					clear_text();
+					draw_screen(WM_SCR_GAMEOVER, 1);
+					MUSIC(MUSIC_GAMEOVER);
+				}
 			}
 		}
 		/* sports: its HUD; past the match's time a win or a draw for a team with a player in clears the level */

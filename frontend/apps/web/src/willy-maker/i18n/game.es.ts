@@ -127,6 +127,7 @@ export const gameEs: GameMessages = {
     quiz: "Preguntas (las preguntas del juego en la pantalla, se contestan con B1 B2 B3; nadie camina)",
     versus: "Lucha uno contra uno (los jugadores 1 y 2 se enfrentan: B1 golpea, B2 patea, sostener atrás bloquea; al mejor de tres rondas, la CPU pelea si falta un jugador)",
     sports: "Deportes (fútbol visto desde arriba: los jugadores 1 y 3 contra 2 y 4, B1 patea, la CPU juega en cada lugar vacío; el partido dura un minuto)",
+    racing: "Carreras (autos vistos desde arriba dan vueltas a la pista: B1 acelera, B2 frena, izquierda y derecha giran; tres vueltas, la CPU maneja en cada lugar vacío)",
     jump: "Medido en el motor, el salto llega a {peak} px: repisas de hasta {ledge} px de alto.",
     crateClimb: "Subir a una caja de 32 px",
     climbJump: "Saltando",

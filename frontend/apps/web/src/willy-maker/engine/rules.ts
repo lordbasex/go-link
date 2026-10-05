@@ -236,6 +236,11 @@ export interface GameRules {
    * players against the odd ones, the CPU playing every empty place.
    */
   sports: boolean;
+  /**
+   * Racing (genres.md): cars seen from above lap a track, the CPU driving
+   * every empty place.
+   */
+  racing: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -272,6 +277,7 @@ export const DEFAULT_RULES: GameRules = {
   quiz: false,
   versus: false,
   sports: false,
+  racing: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -303,6 +309,9 @@ export const VERSUS_RULES: Partial<GameRules> = { versus: true, weapons: false, 
 
 /** A new sports game's rules: football on a field two screens wide, no weapons, no enemies, no exit. */
 export const SPORTS_RULES: Partial<GameRules> = { sports: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
+
+/** A new racing game's rules: cars on a ring track, no weapons, no enemies, no exit. */
+export const RACING_RULES: Partial<GameRules> = { racing: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -390,6 +399,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     quiz: bool(r.quiz, false),
     versus: bool(r.versus, false),
     sports: bool(r.sports, false),
+    racing: bool(r.racing, false),
   };
 }
 
@@ -762,3 +772,36 @@ export const CPU_SHOOT = 120;
 /** The score's row on the text layer, and the call's (KICK OFF, GOAL!). */
 export const SPORTS_ROW = 3;
 export const SPORTS_CALL_ROW = 10;
+
+/**
+ * Racing (genres.md, phase 1: seen from above), the ROM's numbers too. A
+ * car points one of 16 ways (CAR_DIRS, 0 right, 4 down; 1/16 px a frame at
+ * speed 16), turns a step every STEER frames Left or Right are held, speeds
+ * up by CAR_ACCEL a frame with B1 up to CAR_MAX (CPU_MAX for the CPU),
+ * brakes by CAR_BRAKE with B2 and coasts down a 1 every other frame; a solid
+ * cell under its middle stops it where it was. The track's line is the
+ * WAYPOINTS (the wizard's ring, clockwise from the start); a car reaches one
+ * within GATE_X, GATE_Y px and heads for the next; the last ends a lap.
+ * RACE_LAPS laps finish; the places score PLACE_SCORE; the race ends once
+ * every player finished, RACE_AFTER frames after the first car did, or after
+ * RACE_TIME frames; a player first clears the level. It starts after
+ * RACE_COUNT frames (3, 2, 1, GO!). The CPU picks its way every 4 frames.
+ */
+export const CAR_DIRS: readonly (readonly [number, number])[] = [[16, 0], [15, 6], [11, 11], [6, 15], [0, 16], [-6, 15], [-11, 11], [-15, 6], [-16, 0], [-15, -6], [-11, -11], [-6, -15], [0, -16], [6, -15], [11, -11], [15, -6]];
+export const STEER = 4;
+export const CAR_ACCEL = 1;
+export const CAR_BRAKE = 2;
+export const CAR_MAX = 40;
+export const CPU_MAX = 36;
+export const WAYPOINTS: readonly (readonly [number, number])[] = [[56, 184], [56, 72], [328, 72], [328, 184], [192, 184]];
+export const GATE_X = 48;
+export const GATE_Y = 40;
+export const RACE_LAPS = 3;
+export const PLACE_SCORE = [3000, 2000, 1000, 500] as const;
+export const RACE_AFTER = 600;
+export const RACE_TIME = 7200;
+export const RACE_COUNT = 180;
+/** The starting grid (car middles), all facing left (way 8). */
+export const GRID: readonly (readonly [number, number])[] = [[208, 172], [208, 196], [240, 172], [240, 196]];
+/** The call's row (3, 2, 1, GO!, FINISH). */
+export const RACE_CALL_ROW = 10;

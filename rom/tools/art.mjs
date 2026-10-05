@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { ballPen, dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { ballPen, carPen, dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -764,6 +764,12 @@ export function addArt(gfx, defs, genDir, opts = {}) {
     h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash; + 6: the rival's stone */`, `#define TILE_BALL ${hex4(code + 7)} /* sports: the ball, in PAL_GEMS */`, `#define PAL_GEMS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xfe34, 0xf3c5, 0xf38f, 0xffc2, 0xfb5e, 0xf912, 0xf173, 0xf149, 0xfa71, 0xf629, 0xffff, 0xfccd, 0xf889, 0xf445, 0]);
     code += 8;
+    // racing: the cars (engine/shipArt.ts carPen), 16 ways for each player color, in the crosshairs' palette
+    for (let k = 0; k < 4; k++)
+      for (let d = 0; d < 16; d++)
+        gfx.tile16(code + k * 16 + d, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 1 + k, 5, 0][carPen(x, y, d)])));
+    h.push(`#define TILE_CAR ${hex4(code)} /* + 16 x player + way (0-15), in PAL_CROSS */`);
+    code += 64;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

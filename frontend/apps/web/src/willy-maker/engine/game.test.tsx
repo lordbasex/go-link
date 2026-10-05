@@ -8,6 +8,7 @@ import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL,
 import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
+import { RACING_RULES, GRID, RACE_COUNT, CAR_ACCEL, RACE_LAPS } from "./rules";
 import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
@@ -1680,5 +1681,40 @@ describe("sports: football (genres.md, phase 1)", () => {
     expect(g.players.map((p) => [p.active, p.cpu])).toEqual([[true, false], [true, true], [true, true], [true, true]]);
     for (let i = 0; i < MATCH_TIME + 20 * KICKOFF_FRAMES && g.outcome === "playing"; i++) g.step([0, 0, 0, 0]);
     expect(g.outcome).not.toBe("playing");
+  });
+});
+
+describe("racing (genres.md, phase 1: seen from above)", () => {
+  // a ring: walls around rows 3-12 and cols 1-22, an island at cols 6-17, rows 6-9
+  const ring = () =>
+    flat((set) => {
+      for (let r = 0; r < 28; r++) for (let c = 0; c < 64; c++) set(c, r, Tag.Solid);
+      for (let r = 3; r <= 12; r++) for (let c = 1; c <= 22; c++) if (!(r >= 6 && r <= 9 && c >= 6 && c <= 17)) set(c, r, Tag.Air);
+    });
+  it("cars wait for the countdown, B1 speeds a car up, Left and Right turn it, and a wall stops it", () => {
+    const g = new Game(ring(), { rules: RACING_RULES, players: 2, maxPlayers: 2 });
+    const p = g.players[0]!;
+    expect([p.x, p.y >> 4, p.aimX]).toEqual([GRID[0]![0], GRID[0]![1], 8]);
+    // the clock moves after the cars: the countdown's last frame still holds them
+    run(g, RACE_COUNT, Input.B1);
+    expect(p.fuel).toBe(0);
+    run(g, 20, Input.B1);
+    expect(p.fuel).toBe(20 * CAR_ACCEL);
+    expect(p.x).toBeLessThan(GRID[0]![0]);
+    g.step([Input.B1 | Input.Right, 0, 0, 0]);
+    expect(p.aimX).toBe(9);
+    // straight up into the island's wall: it stops there
+    for (let i = 0; i < 3; i++) g.step([Input.Right, 0, 0, 0]);
+    run(g, 200, Input.B1);
+    expect(p.fuel).toBeLessThan(CAR_ACCEL * 3);
+  });
+
+  it("the CPU laps the track; the race ends after its laps, and the CPU first ends the game", () => {
+    const g = new Game(ring(), { rules: RACING_RULES, players: 1, maxPlayers: 2 });
+    const cpu = g.players[1]!;
+    for (let i = 0; i < RACE_COUNT + 4000 && g.outcome === "playing"; i++) g.step([0, 0, 0, 0]);
+    expect(cpu.count).toBe(RACE_LAPS);
+    expect(cpu.answerLeft).toBe(1);
+    expect(g.outcome).toBe("over");
   });
 });

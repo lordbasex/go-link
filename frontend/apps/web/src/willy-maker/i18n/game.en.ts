@@ -125,6 +125,7 @@ export const gameEn = {
     quiz: "Quiz (the game's questions on the screen, answered with B1 B2 B3; nobody walks)",
     versus: "Versus fighting (players 1 and 2 face each other: B1 punches, B2 kicks, holding away blocks; best of three rounds, the CPU fights an empty corner)",
     sports: "Sports (football seen from above: players 1 and 3 against 2 and 4, B1 kicks, the CPU plays every empty place; the match lasts a minute)",
+    racing: "Racing (cars seen from above lap the track: B1 speeds up, B2 brakes, Left and Right turn; three laps, the CPU drives every empty place)",
     jump: "Measured on the engine, the jump reaches {peak} px: ledges up to {ledge} px high.",
     crateClimb: "Climbing a 32 px crate",
     climbJump: "By jumping",

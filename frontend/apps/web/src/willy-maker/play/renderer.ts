@@ -7,8 +7,8 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
-import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, carPen, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
+import { CLEAR_FRAMES, FLY_MID, RACE_CALL_ROW, RACE_COUNT, RACE_LAPS, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -169,7 +169,8 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   drawExits(ctx, game);
   if (game.rules.quiz) {
     // the quiz is all text, drawn over the HUD below
-  } else if (game.rules.puzzle) drawWells(ctx, game);
+  } else if (game.rules.racing) drawCars(ctx, game);
+  else if (game.rules.puzzle) drawWells(ctx, game);
   else drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
   // sports: the ball over the athletes (rom/tools/art.mjs TILE_BALL)
   if (game.rules.sports) drawPens(ctx, (game.ballX >> 4) - 8, (game.ballY >> 4) - 12, 16, 16, ballPen, ["", "#ffffff", "#555566", "#000000"]);
@@ -191,6 +192,25 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (game.rules.quiz) drawQuiz(ctx, game);
   if (game.rules.versus) drawVersus(ctx, game);
   if (game.rules.sports) drawSports(ctx, game);
+  if (game.rules.racing) {
+    const call = racingCall(game);
+    if (call) drawBoardText(ctx, call, Math.floor((48 - call.length) / 2) * 8, RACE_CALL_ROW * 8, 1, TEXT_INKS.accent);
+  }
+}
+
+/** Racing's cars, each in its player's color, turned the way it points (rom/tools/art.mjs TILE_CAR). */
+function drawCars(ctx: CanvasRenderingContext2D, game: Game): void {
+  for (const p of game.players) {
+    if (!p.active) continue;
+    drawPens(ctx, p.x - 8, (p.y >> 4) - 8, 16, 16, (x, y) => carPen(x, y, p.aimX), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffffff", "#000000"]);
+  }
+}
+
+/** Racing's call: the countdown (3, 2, 1, GO!), then FINISH once a car finished. */
+export function racingCall(game: Game): string {
+  if (game.raceT < RACE_COUNT) return String(3 - Math.floor(game.raceT / 60));
+  if (game.raceT < RACE_COUNT + 60) return "GO!";
+  return game.finished ? "FINISH" : "";
 }
 
 /** Sports' HUD, as the ROM prints it: each team's goals with the seconds left between them, and the call (KICK OFF, GOAL!). */
@@ -777,7 +797,9 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     }
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
     // versus fighting shows health as bars (drawVersus), not as lives
-    if (!game.rules.versus && !game.rules.sports) for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
+    // racing shows the lap instead of the lives
+    if (game.rules.racing) ctx.fillText(`L${Math.min(p.count + 1, RACE_LAPS)}`, x + 14, 12);
+    else if (!game.rules.versus && !game.rules.sports) for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);

@@ -130,6 +130,21 @@ import {
   QUIZ_TIME,
   REVEAL_FRAMES,
   QUIZ_SCORE,
+  CAR_DIRS,
+  STEER,
+  CAR_ACCEL,
+  CAR_BRAKE,
+  CAR_MAX,
+  CPU_MAX,
+  WAYPOINTS,
+  GATE_X,
+  GATE_Y,
+  RACE_LAPS,
+  PLACE_SCORE,
+  RACE_AFTER,
+  RACE_TIME,
+  RACE_COUNT,
+  GRID,
   FIELD_X0,
   FIELD_Y0,
   FIELD_Y1,
@@ -530,6 +545,11 @@ export class Game {
   matchT = MATCH_TIME;
   kickT = KICKOFF_FRAMES;
   goalBy = -1;
+  /** Racing: frames since the countdown began, cars finished, the frame the first did (-1 none), and whether the race is over. */
+  raceT = 0;
+  finished = 0;
+  firstAt = -1;
+  raceOver = false;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -599,6 +619,14 @@ export class Game {
       this.join(1);
       this.players[1].cpu = true;
     }
+    // racing: the CPU drives every empty place on the grid
+    if (this.rules.racing)
+      for (let i = 0; i < this.athletes(); i++) {
+        const p = this.players[i];
+        if (!p || p.active) continue;
+        this.join(i);
+        p.cpu = true;
+      }
     // sports: the CPU plays every empty place, and the ball waits in the middle
     if (this.rules.sports) {
       for (let i = 0; i < this.athletes(); i++) {
@@ -947,6 +975,22 @@ export class Game {
   join(i: number): void {
     const p = this.players[i];
     if (!p || p.active || p.lives <= 0) return;
+    // racing: a car on its place on the grid, facing left (cars: aimX the way it points, fuel its speed, cx its x in 1/16 px, count its laps, answer the next waypoint)
+    if (this.rules.racing) {
+      if (i >= this.athletes()) return;
+      const [gx, gy] = GRID[i]!;
+      spawn(p, gx, gy);
+      p.cx = gx * 16;
+      p.aimX = 8;
+      p.cy = 8;
+      p.fuel = 0;
+      p.count = 0;
+      p.answer = 0;
+      p.answerLeft = 0;
+      p.done = false;
+      this.events.push({ kind: "join", player: i });
+      return;
+    }
     // sports: an athlete at its place, facing the other team's goal
     if (this.rules.sports) {
       if (i >= this.athletes()) return;
@@ -2147,6 +2191,85 @@ export class Game {
     }
   }
 
+  // ------------------------------------------------------------- racing
+
+  /** A car, a frame: it turns, speeds up, brakes or coasts, moves unless a solid cell stops it, and passes its waypoints, lap after lap. */
+  private drive(p: Player): void {
+    p.t++;
+    p.onGround = true;
+    if (this.raceT < RACE_COUNT || p.done) {
+      p.fuel = 0;
+      return;
+    }
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    if (dx) {
+      // a press turns at once, a hold every STEER frames
+      if (!(p.last & (dx < 0 ? Input.Left : Input.Right)) || ++p.turnT >= STEER) {
+        p.aimX = (p.aimX + dx + 16) & 15;
+        p.turnT = 0;
+      }
+    } else p.turnT = 0;
+    const max = p.cpu ? CPU_MAX : CAR_MAX;
+    if (p.pad & Input.B1) p.fuel = Math.min(max, p.fuel + CAR_ACCEL);
+    else if (p.pad & Input.B2) p.fuel = Math.max(0, p.fuel - CAR_BRAKE);
+    else if (p.t & 1) p.fuel = Math.max(0, p.fuel - 1);
+    const [ux, uy] = CAR_DIRS[p.aimX]!;
+    const nx = p.cx + ((ux * p.fuel) >> 4);
+    const ny = p.y + ((uy * p.fuel) >> 4);
+    if (this.isSolid(this.cellAt(nx >> 4, ny >> 4))) p.fuel = 0;
+    else {
+      p.cx = nx;
+      p.y = ny;
+    }
+    p.x = p.cx >> 4;
+    p.running = p.fuel > 0;
+    const [wx, wy] = WAYPOINTS[p.answer]!;
+    if (Math.abs(p.x - wx) > GATE_X || Math.abs((p.y >> 4) - wy) > GATE_Y) return;
+    p.answer++;
+    if (p.answer < WAYPOINTS.length) return;
+    p.answer = 0;
+    p.count++;
+    if (p.count < RACE_LAPS) return;
+    p.done = true;
+    p.answerLeft = ++this.finished;
+    p.score += PLACE_SCORE[p.answerLeft - 1] ?? 0;
+    if (this.firstAt < 0) this.firstAt = this.raceT;
+    this.events.push({ kind: "rescue", name: "finish", player: p.index });
+  }
+
+  /** The race's clock: it ends once every player finished, RACE_AFTER frames after the first car did, or after RACE_TIME. */
+  private updateRace(): void {
+    this.raceT++;
+    const players = this.players.filter((p) => p.active && !p.cpu);
+    if (
+      (players.length && players.every((p) => p.done)) ||
+      (this.firstAt >= 0 && this.raceT - this.firstAt >= RACE_AFTER) ||
+      this.raceT >= RACE_COUNT + RACE_TIME
+    )
+      this.raceOver = true;
+  }
+
+  /** The CPU car's pad: every 4 frames it picks the way nearest its next waypoint; it turns toward it and speeds up unless the turn is sharp. */
+  private racingCpuPad(p: Player): number {
+    if ((this.frame & 3) === (p.index & 3)) {
+      const [wx, wy] = WAYPOINTS[p.answer]!;
+      const vx = wx - p.x;
+      const vy = wy - (p.y >> 4);
+      let best = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const dot = CAR_DIRS[i]![0] * vx + CAR_DIRS[i]![1] * vy;
+        if (dot > best) {
+          best = dot;
+          p.cy = i;
+        }
+      }
+    }
+    const diff = (p.cy - p.aimX + 16) & 15;
+    const turn = diff === 0 ? 0 : diff < 8 ? Input.Right : Input.Left;
+    const sharp = diff >= 3 && diff <= 13;
+    return turn | (sharp ? 0 : Input.B1);
+  }
+
   // ------------------------------------------------------------- sports
 
   /** Two athletes a team with four places, else one against one. */
@@ -2475,6 +2598,7 @@ export class Game {
   }
 
   private updatePlayer(p: Player): void {
+    if (this.rules.racing) return this.drive(p);
     if (this.rules.sports) return this.run(p);
     if (this.rules.versus) return this.fight(p);
     if (this.rules.quiz) return this.answerQuiz(p);
@@ -2773,6 +2897,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.racing) return this.updateRace();
     if (this.rules.sports) return this.updateBall();
     if (this.rules.versus) return this.updateVersus();
     if (this.rules.quiz) return this.updateQuiz();
@@ -2976,7 +3101,7 @@ export class Game {
    */
   updateCamera(snap = false): void {
     // the maze and the puzzle: one screen, the camera still at its top left
-    if (this.rules.maze || this.rules.puzzle || this.rules.quiz || this.rules.versus) {
+    if (this.rules.maze || this.rules.puzzle || this.rules.quiz || this.rules.versus || this.rules.racing) {
       this.camX = 0;
       this.camY = 0;
       return;
@@ -3067,8 +3192,8 @@ export class Game {
       if (p.cpu) {
         // a player pressing Start takes the CPU's well, empty, with a credit's lives and no score
         if (pad & Input.Start && !(this.humanLast[p.index]! & Input.Start)) {
-          // sports: the player takes the athlete where it stands
-          if (this.rules.sports) {
+          // sports and racing: the player takes the athlete or the car where it is
+          if (this.rules.sports || this.rules.racing) {
             p.cpu = false;
             p.score = 0;
             this.humanLast[p.index] = pad;
@@ -3091,7 +3216,7 @@ export class Game {
         }
         this.humanLast[p.index] = pad;
         p.last = p.pad;
-        p.pad = this.rules.sports ? this.sportsCpuPad(p) : this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
+        p.pad = this.rules.racing ? this.racingCpuPad(p) : this.rules.sports ? this.sportsCpuPad(p) : this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
         this.updatePlayer(p);
         continue;
       }
@@ -3110,7 +3235,15 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.sports) {
+    if (this.rules.racing) {
+      // racing: once the race is over, a player first clears the level
+      if (this.raceOver) {
+        const won = this.players.some((p) => p.active && !p.cpu && p.answerLeft === 1);
+        this.outcome = won ? "cleared" : "over";
+        this.events.push({ kind: won ? "cleared" : "over" });
+        return;
+      }
+    } else if (this.rules.sports) {
       // sports: past the match's time, a win or a draw for a team with a player in clears the level
       if (this.matchT <= 0) {
         const [a, b] = this.goals as [number, number];

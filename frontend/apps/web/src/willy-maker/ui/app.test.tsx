@@ -27,13 +27,11 @@ describe("Willy Maker app", () => {
     let opened: string | null = null;
     render(<WillyMakerApp lang="en" onProjectId={(id) => (opened = id)} />);
     expect(screen.getByText("No games yet. Start one with “New game”.")).toBeInTheDocument();
-    // step 1: the genre, the platform shooter, the platformer (T-22), the beat 'em up and the light gun can be chosen today
+    // step 1: the genre; every genre can be chosen today (racing was the last, 2026-10-04)
     const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
     expect(genres).toHaveLength(13);
-    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Versus"), expect.stringContaining("Puzzle"), expect.stringContaining("Quiz"), expect.stringContaining("Sports")]);
-    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(1);
-    expect(genres[0]).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(screen.getByRole("radio", { name: /Racing/ }));
+    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Versus"), expect.stringContaining("Puzzle"), expect.stringContaining("Quiz"), expect.stringContaining("Sports"), expect.stringContaining("Racing")]);
+    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(0);
     expect(genres[0]).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: /Next: the board/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Empty/ }));
@@ -55,8 +53,15 @@ describe("Willy Maker app", () => {
     expect(players.value).toBe("2");
     expect([...players.options].map((o) => o.textContent)).toEqual(["1 player", "2 players", "3 players", "4 players"]);
     fireEvent.change(players, { target: { value: "1" } });
-    // the autosave is deferred: a busy CI runner has taken over 5 s to write it
-    await waitFor(() => expect(loadProject(saved.id)?.settings.players).toBe(1), { timeout: 15000 });
+    // the autosave is deferred (700 ms) and a busy CI runner has missed it twice: leaving the page
+    // (pagehide) saves at once, so each try flushes it instead of waiting for the timer
+    await waitFor(
+      () => {
+        window.dispatchEvent(new Event("pagehide"));
+        expect(loadProject(saved.id)?.settings.players).toBe(1);
+      },
+      { timeout: 15000 },
+    );
   }, 20000); // about 1 s; the CI runner once took over 5 s while the heavy fuzz tests ran beside it
 
   it("lists saved games and opens one in Spanish", async () => {

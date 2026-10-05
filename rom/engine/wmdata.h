@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 24
+#define WM_VERSION 25
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -91,6 +91,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_F2_QUIZ 0x0002       /* the quiz: the questions on screens WM_SCR_QUIZ + n, answered with B1 B2 B3 (wm_data 21) */
 #define WM_F2_VERSUS 0x0004     /* versus fighting: players 1 and 2 fight rounds on one screen, the CPU in an empty corner (wm_data 23) */
 #define WM_F2_SPORTS 0x0008     /* sports: football seen from above, the even players against the odd, the CPU in every empty place (wm_data 24) */
+#define WM_F2_RACING 0x0010     /* racing: cars seen from above lap the wizard's ring, the CPU in every empty place (wm_data 25) */
 
 struct wm_data {
 	u32 magic;                /* 00 */

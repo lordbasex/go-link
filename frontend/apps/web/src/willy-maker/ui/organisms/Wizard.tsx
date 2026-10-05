@@ -5,8 +5,8 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, SPORTS_RULES, VERSUS_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
-import { shapeArenaLevel, shapeFieldLevel, shapePuzzleLevel } from "../../editor/puzzleLevel";
+import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, RACING_RULES, SPORTS_RULES, VERSUS_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
+import { shapeArenaLevel, shapeFieldLevel, shapePuzzleLevel, shapeTrackLevel } from "../../editor/puzzleLevel";
 import { useGameText } from "../../game/texts";
 import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
@@ -148,6 +148,11 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
     if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
     // a maze game: grid moves, dots in every empty cell, chasers
     if (genre === "maze") p.settings.rules = { ...(p.settings.rules ?? {}), ...MAZE_RULES };
+    // a racing game: cars on a ring track seen from above
+    if (genre === "racing") {
+      p.settings.rules = { ...(p.settings.rules ?? {}), ...RACING_RULES };
+      for (const level of p.levels) shapeTrackLevel(level);
+    }
     // a sports game: football on a field with a goal at each end
     if (genre === "sports") {
       p.settings.rules = { ...(p.settings.rules ?? {}), ...SPORTS_RULES };

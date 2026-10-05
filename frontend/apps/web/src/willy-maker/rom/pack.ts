@@ -70,7 +70,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 24;
+const WM_VERSION = 25;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -111,6 +111,7 @@ const F2_PUZZLE_CPU = 0x0001;
 const F2_QUIZ = 0x0002;
 const F2_VERSUS = 0x0004;
 const F2_SPORTS = 0x0008;
+const F2_RACING = 0x0010;
 /** The difficulty in bits 5-6 (0 normal, 1 easy, 2 hard, 3 lag), T-15. */
 const F_DIFFICULTY_SHIFT = 5;
 
@@ -731,7 +732,7 @@ export function packGame(
   w16(walk.y1);
   w32(locks.length ? lockAt : 0);
   w16(Math.min(8, locks.length));
-  w16((rules.puzzle && rules.puzzleCpu ? F2_PUZZLE_CPU : 0) | (rules.quiz ? F2_QUIZ : 0) | (rules.versus ? F2_VERSUS : 0) | (rules.sports ? F2_SPORTS : 0));
+  w16((rules.puzzle && rules.puzzleCpu ? F2_PUZZLE_CPU : 0) | (rules.quiz ? F2_QUIZ : 0) | (rules.versus ? F2_VERSUS : 0) | (rules.sports ? F2_SPORTS : 0) | (rules.racing ? F2_RACING : 0));
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

@@ -82,3 +82,23 @@ export function shapeFieldLevel(level: Level): void {
   const items = objectLayer(level).items;
   for (let i = items.length - 1; i >= 0; i--) if (items[i]!.type !== "player_start") items.splice(i, 1);
 }
+
+/** A racing game's track: the wizard's ring (walls around rows 3-12 and columns 1-22 of the first screen, an island at columns 6-17, rows 6-9), which WAYPOINTS follow. */
+export function shapeTrackLevel(level: Level): void {
+  const tags = tagGrid(level);
+  const playLayer = level.layers.find((l): l is TileLayer => l.id === "play");
+  const play = playLayer ? layerGrid(level, playLayer) : null;
+  for (let r = 0; r < tags.rows; r++)
+    for (let c = 0; c < tags.cols; c++) {
+      const road = r >= 3 && r <= 12 && c >= 1 && c <= 22 && !(r >= 6 && r <= 9 && c >= 6 && c <= 17);
+      tags.set(c, r, road ? TAG_NUMBER.air : TAG_NUMBER.solid);
+      play?.set(c, r, 0);
+    }
+  if (play) {
+    applyAutoArt(tags, play, 0, 0, tags.cols - 1, tags.rows - 1);
+    play.commit();
+  }
+  tags.commit();
+  const items = objectLayer(level).items;
+  for (let i = items.length - 1; i >= 0; i--) if (items[i]!.type !== "player_start") items.splice(i, 1);
+}

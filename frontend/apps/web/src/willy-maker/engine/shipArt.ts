@@ -90,3 +90,19 @@ export function ballPen(x: number, y: number): ShipPen {
   if (d <= 16) return (x === 7 && y === 10) || (x === 9 && y === 12) || (x === 10 && y === 9) ? 2 : 1;
   return d <= 25 ? 3 : 0;
 }
+
+/**
+ * Racing: a car seen from above, 16 x 16 px, pointing way d of the 16
+ * (engine/rules.ts CAR_DIRS: 0 right, 4 down): 0 none, 1 its color, 2 the
+ * windscreen, 3 the wheels. The shape is drawn turned, pixel by pixel.
+ */
+export function carPen(x: number, y: number, d: number): ShipPen {
+  const a = (d * Math.PI) / 8;
+  const dx = x - 7.5;
+  const dy = y - 7.5;
+  const u = dx * Math.cos(a) + dy * Math.sin(a);
+  const v = -dx * Math.sin(a) + dy * Math.cos(a);
+  if (Math.abs(v) <= 3.6 && Math.abs(u) <= 6.2) return u >= 0.8 && u <= 3.4 && Math.abs(v) <= 2.4 ? 2 : 1;
+  if (Math.abs(v) <= 5 && Math.abs(Math.abs(u) - 3.8) <= 1.4) return 3;
+  return 0;
+}
