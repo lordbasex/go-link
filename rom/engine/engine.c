@@ -907,6 +907,7 @@ enum { QK_QUESTION, QK_MASH, QK_TIMING, QK_MEMORY };
 #define MEM_ROW 13
 #define MEM_COL 23
 static int quiz_kind, quiz_marker;
+static int quiz_turn = -1, quiz_last = -1, quiz_turns; /* phase 3: the player in turn (-1 everyone), the last who had one, whether this item is in turns */
 static u8 quiz_seq[MEM_LEN];
 /* the puzzle's wells (engine/puzzle.ts Well), players 1 and 2 */
 #define WELLS 2
@@ -2492,7 +2493,12 @@ static void quiz_item(int k)
 	struct line l;
 	int pos = 0, i;
 	u32 s = (u32)(k + 1) * 7919u;
-	quiz_kind = k < quiz_n && next_line(WM_SCR_QUIZ + k, &pos, &l) ? (l.attr & WM_TXT_KIND) >> 2 : QK_QUESTION;
+	quiz_kind = QK_QUESTION;
+	quiz_turns = 0;
+	if (k < quiz_n && next_line(WM_SCR_QUIZ + k, &pos, &l)) {
+		quiz_kind = (l.attr & WM_TXT_KIND) >> 2;
+		quiz_turns = (l.attr & WM_TXT_RIGHT) != 0;
+	}
 	if (quiz_kind == QK_MEMORY)
 		for (i = 0; i < MEM_LEN; i++) {
 			s = s * 1103515245u + 12345u;
@@ -2508,6 +2514,9 @@ static void answer_quiz(struct player *p)
 	int k;
 	p->t++;
 	if (quiz_phase != 0)
+		return;
+	/* an item in turns: only the player whose turn it is plays it */
+	if (quiz_turn >= 0 && (int)(p - pl) != quiz_turn)
 		return;
 	k = PRESSED(p, BTN_1) ? 0 : PRESSED(p, BTN_2) ? 1 : PRESSED(p, BTN_3) ? 2 : -1;
 	if (k < 0)
@@ -2549,7 +2558,7 @@ static int quiz_right(int k)
 	struct line l;
 	int pos = 0;
 	while (next_line(WM_SCR_QUIZ + k, &pos, &l))
-		if (l.attr & WM_TXT_RIGHT)
+		if ((l.attr & WM_TXT_RIGHT) && l.row >= QUIZ_ANSWER_ROW)
 			return (l.row - QUIZ_ANSWER_ROW) / 3;
 	return -1;
 }
@@ -2560,11 +2569,23 @@ static void update_quiz(void)
 	int k, ins = 0, answered = 0, right;
 	if (quiz_k >= quiz_n)
 		return;
+	/* an item in turns: on its first frame, the next player in after the last turn's */
+	if (quiz_phase == 0 && quiz_t == 0) {
+		quiz_turn = -1;
+		if (quiz_turns)
+			for (k = 1; k <= MAX_PLAYERS; k++) {
+				int i = (quiz_last + k + MAX_PLAYERS) % MAX_PLAYERS;
+				if (pl[i].active) {
+					quiz_turn = quiz_last = i;
+					break;
+				}
+			}
+	}
 	quiz_t++;
 	if (quiz_phase == 0) {
 		int all, over, show = MEM_LEN * MEM_LETTER;
 		for (k = 0; k < nplayers; k++)
-			if (pl[k].active) {
+			if (pl[k].active && (quiz_turn < 0 || k == quiz_turn)) {
 				ins++;
 				answered += quiz_kind == QK_QUESTION ? pl[k].answer >= 0 : pl[k].done;
 			}
@@ -2698,7 +2719,7 @@ static void quiz_draw(void)
 			if (quiz_kind == QK_QUESTION) {
 				/* only the right answer's line, again in cyan */
 				while (next_line(WM_SCR_QUIZ + quiz_k, &pos, &l))
-					if (l.attr & WM_TXT_RIGHT) {
+					if ((l.attr & WM_TXT_RIGHT) && l.row >= QUIZ_ANSWER_ROW) {
 						l.attr = (l.attr & ~WM_TXT_INK) | INK_CYAN;
 						draw_line(&l, 1);
 					}
@@ -2713,7 +2734,8 @@ static void quiz_draw(void)
 	for (k = 0; k < nplayers && k < 4; k++) {
 		const struct player *p = &pl[k];
 		int col = quiz_cols[k], ink;
-		if (!p->active) {
+		/* an item in turns shows only the player whose turn it is */
+		if (!p->active || (quiz_turn >= 0 && k != quiz_turn)) {
 			blank(col, QUIZ_PLAYERS_ROW, 6);
 			continue;
 		}
@@ -2990,6 +3012,7 @@ static void game_reset(void)
 	vs_wins[0] = vs_wins[1] = 0;
 	vs_winner = vs_match = -1;
 	quiz_k = quiz_phase = quiz_t = quiz_revealed = quiz_step = 0;
+	quiz_turn = quiz_last = -1;
 	quiz_n = 0;
 	if (quiz) {
 		/* the questions are the text screens from WM_SCR_QUIZ on */

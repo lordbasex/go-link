@@ -1835,3 +1835,33 @@ describe("sports, phase 2: passes and keepers", () => {
     expect(keeper.y >> 4).toBeLessThanOrEqual(GOAL_Y1 + 2);
   });
 });
+
+describe("the quiz, phase 3: turns and categories", () => {
+  const q = (turn: boolean, right = 0) => ({ q: "Which?", a: ["A", "B", "C"] as [string, string, string], right, turn, category: "Sports" });
+  it("an item in turns is answered by one player, the next one in each time; the others' presses do nothing", () => {
+    const g = new Game(flat(), { rules: QUIZ_RULES, players: 2, questions: [q(true), q(false), q(true)] });
+    const [a, b] = g.players;
+    g.step([0, 0, 0, 0]);
+    expect(g.quizTurn).toBe(0);
+    // player 2 presses first: ignored; player 1 answers right: the item ends at once
+    g.step([0, Input.B1, 0, 0]);
+    expect(g.quizPhase).toBe(0);
+    g.step([Input.B1, 0, 0, 0]);
+    expect(g.quizPhase).toBe(1);
+    expect([a!.score > 0, b!.score]).toEqual([true, 0]);
+    run(g, REVEAL_FRAMES + 1, 0);
+    // a plain item: everyone answers
+    expect(g.quizTurn).toBe(-1);
+    g.step([Input.B2, Input.B2, 0, 0]);
+    expect(g.quizPhase).toBe(1);
+    run(g, REVEAL_FRAMES + 1, 0);
+    // the next item in turns goes to player 2
+    expect(g.quizTurn).toBe(1);
+  });
+
+  it("a category is a line of its own above the item, in the font's letters", () => {
+    const lines = quizLines(q(false));
+    expect(lines[0]!.answer).toBe(-1);
+    expect(lines.find((l) => l.answer === -2)).toMatchObject({ text: "SPORTS", row: 2 });
+  });
+});

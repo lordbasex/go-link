@@ -66,6 +66,10 @@ export const gameEs: GameMessages = {
     actions: { up: "Arriba", down: "Abajo", left: "Izquierda", right: "Derecha", b1: "B1", b2: "B2", b3: "B3", start: "Start", coin: "Moneda" },
   },
   quiz: {
+    category: "Categoría (se muestra arriba; opcional)",
+    turn: "Quién contesta",
+    everyone: "Todos",
+    inTurns: "Un jugador, por turnos",
     kind: "Tipo",
     kinds: { question: "Pregunta", mash: "Apretar B1", timing: "Frenar en el medio", memory: "Memoria" },
     defaults: { mash: "¡Aprieta B1 lo más rápido que puedas!", timing: "Frena la marca en el medio con B1", memory: "Recuerda las letras y después apriétalas" },

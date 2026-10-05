@@ -8,7 +8,7 @@
 import type { QuizQuestion } from "../model/types";
 
 /** The question's lines start here, a row apart (QUESTION_STEP); the answers go at ANSWER_ROW + 3 × n. */
-export const QUESTION_ROW = 3;
+export const QUESTION_ROW = 4;
 export const QUESTION_STEP = 2;
 export const QUESTION_COL = 4;
 export const QUESTION_W = 40;
@@ -21,6 +21,9 @@ export const TIME_ROW = 22;
 export const PLAYERS_ROW = 24;
 export const PLAYER_COLS = [8, 18, 28, 38] as const;
 export const LETTERS = ["A", "B", "C"] as const;
+/** Phase 3: an item's category, above it, in cyan. */
+export const CATEGORY_ROW = 2;
+export const CATEGORY_COL = 4;
 
 /** Text the font can print: upper case, accents dropped, anything else outside ' ' to '_' dropped. */
 export function quizText(s: string): string {
@@ -54,18 +57,24 @@ export interface QuizLine {
   row: number;
   col: number;
   text: string;
-  /** The answer line's index (0-2), or -1 for the question. */
+  /** The answer line's index (0-2), -1 for the question, -2 for the category. */
   answer: number;
+}
+
+/** An item's category line (after its other lines: the first line carries the item's kind and turn), if it has one. */
+export function categoryLines(q: QuizQuestion): QuizLine[] {
+  const text = quizText(q.category ?? "").slice(0, QUESTION_W);
+  return text ? [{ row: CATEGORY_ROW, col: CATEGORY_COL, text, answer: -2 }] : [];
 }
 
 /** The lines of a question's screen: the question wrapped (at most QUESTION_LINES), then "A  ANSWER" lines; a minigame's, its instructions. */
 export function quizLines(q: QuizQuestion): QuizLine[] {
-  if (kindOf(q) !== "question") return miniLines(q);
+  if (kindOf(q) !== "question") return [...miniLines(q), ...categoryLines(q)];
   const lines: QuizLine[] = wrap(quizText(q.q), QUESTION_W)
     .slice(0, QUESTION_LINES)
     .map((text, i) => ({ row: QUESTION_ROW + QUESTION_STEP * i, col: QUESTION_COL, text, answer: -1 }));
   for (let k = 0; k < 3; k++) lines.push({ row: ANSWER_ROW + 3 * k, col: ANSWER_COL, text: `${LETTERS[k]}  ${quizText(q.a[k] ?? "").slice(0, ANSWER_W)}`, answer: k });
-  return lines;
+  return [...lines, ...categoryLines(q)];
 }
 
 /** The minigames' kinds as the ROM numbers them (bits 2-3 of the first line's attributes). */

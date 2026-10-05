@@ -66,6 +66,10 @@ export const gamePt: GameMessages = {
     actions: { up: "Cima", down: "Baixo", left: "Esquerda", right: "Direita", b1: "B1", b2: "B2", b3: "B3", start: "Start", coin: "Ficha" },
   },
   quiz: {
+    category: "Categoria (aparece acima; opcional)",
+    turn: "Quem responde",
+    everyone: "Todos",
+    inTurns: "Um jogador, por turnos",
     kind: "Tipo",
     kinds: { question: "Pergunta", mash: "Apertar B1", timing: "Parar no meio", memory: "Memória" },
     defaults: { mash: "Aperte B1 o mais rápido que puder!", timing: "Pare a marca no meio com B1", memory: "Lembre as letras e depois aperte-as" },

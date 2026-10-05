@@ -552,6 +552,9 @@ export class Game {
   quizK = 0;
   quizPhase = 0;
   quizT = 0;
+  /** The quiz's turns (phase 3): the player whose turn it is (-1 none: everyone answers), and the last one who had a turn. */
+  quizTurn = -1;
+  quizLast = -1;
   /** Versus fighting: the round (from 1), its phase (0 the call, 1 the fight, 2 its end), frames into the phase, the fight's frames left, rounds won, the round's winner (-1 a draw) and the match's (-1 still on). */
   vsRound = 1;
   vsPhase = 0;
@@ -2143,6 +2146,8 @@ export class Game {
   private answerQuiz(p: Player): void {
     p.t++;
     if (this.quizPhase !== 0) return;
+    // an item in turns: only the player whose turn it is plays it
+    if (this.quizTurn >= 0 && p.index !== this.quizTurn) return;
     const kind = kindOf(this.questions[this.quizK]);
     const k = this.pressed(p, Input.B1) ? 0 : this.pressed(p, Input.B2) ? 1 : this.pressed(p, Input.B3) ? 2 : -1;
     if (k < 0) return;
@@ -2189,9 +2194,21 @@ export class Game {
   private updateQuiz(): void {
     const q = this.questions[this.quizK];
     if (!q) return;
+    // an item in turns: on its first frame, the next player in after the last turn's
+    if (this.quizPhase === 0 && this.quizT === 0) {
+      if (q.turn) {
+        for (let k = 1; k <= this.players.length; k++) {
+          const i = (this.quizLast + k + this.players.length) % this.players.length;
+          if (this.players[i]!.active) {
+            this.quizTurn = this.quizLast = i;
+            break;
+          }
+        }
+      } else this.quizTurn = -1;
+    }
     this.quizT++;
     if (this.quizPhase === 0) {
-      const ins = this.players.filter((p) => p.active);
+      const ins = this.players.filter((p) => p.active && (this.quizTurn < 0 || p.index === this.quizTurn));
       const kind = kindOf(q);
       const all = ins.length > 0 && ins.every((p) => (kind === "question" ? p.answer >= 0 : p.done));
       // each item's time, or sooner once every player in is through (a mash always runs its time)

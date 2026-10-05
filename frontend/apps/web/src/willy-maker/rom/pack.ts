@@ -289,8 +289,15 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
   // the quiz: a screen per question, its lines as play mode draws them (engine/quiz.ts), the right answer marked
   if (rulesWith(project.settings.rules).quiz)
     (project.quiz ?? []).slice(0, QUIZ_MAX).forEach((q, k) => {
-      // the item's kind on its first line (bits 2-3): a question or a minigame
-      quizLines(q).forEach((l, i) => add(SCR_QUIZ + k, { field: "quiz", text: l.text, row: l.row, col: l.col, scale: 1, ink: "white" }, (l.answer >= 0 && l.answer === q.right ? TXT_RIGHT : 0) | (i === 0 ? QUIZ_KINDS.indexOf(kindOf(q)) << 2 : 0)));
+      // the item's kind on its first line (bits 2-3), and TXT_RIGHT there when it is played in turns (phase 3);
+      // the category's line in cyan
+      quizLines(q).forEach((l, i) =>
+        add(
+          SCR_QUIZ + k,
+          { field: "quiz", text: l.text, row: l.row, col: l.col, scale: 1, ink: l.answer === -2 ? "cyan" : "white" },
+          (l.answer >= 0 && l.answer === q.right ? TXT_RIGHT : 0) | (i === 0 ? (QUIZ_KINDS.indexOf(kindOf(q)) << 2) | (q.turn ? TXT_RIGHT : 0) : 0),
+        ),
+      );
     });
   const single = (scr: number, screen: MenuScreenId, field: string, row: number) => {
     const text = menuText(project, screen, field).toUpperCase();

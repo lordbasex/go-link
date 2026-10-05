@@ -1,25 +1,21 @@
 {
  "name": "quiz-games",
- "description": "The quiz's minigames (WM_ROM_OUT/quizgames of rom.test.tsx, rom/quizFixture.ts quizGamesProject: mash, timing (no instructions: the board's own title), memory, then a question). Two coins; mash: player 1 presses B1 every 4 frames, player 2 joins in it and presses every 6 (frame 462: 10 a press); timing: player 2 stops the marker early on cell 5, player 1 on cell 20 on its second pass (frame 790: 200 less 10 a cell from the middle); memory: player 1 presses the four letters back, player 2 two then a wrong one (frame 1131: 50 a letter); then a question both answer; past it the level clears. Play mode gives both players' scores every frame.",
- "frames": 1521,
+ "description": "The quiz's minigames and turns (WM_ROM_OUT/quizgames of rom.test.tsx, rom/quizFixture.ts quizGamesProject: mash, timing, memory, a question with a category, then two questions in turns with categories). Two coins; mash: player 1 presses B1 every 4 frames, player 2 joins in it and presses every 6; timing: player 2 stops the marker early, player 1 in the middle; memory: player 1 presses the four letters back, player 2 two then a wrong one; a question both answer; then in turns (phase 3): item 5 (frame 1462) is player 1's, whose right answer scores while player 2's press does nothing, and item 6 (frame 1663) player 2's, who answers wrong while player 1's press does nothing; past it the level clears. Play mode gives both players' scores every frame.",
+ "frames": 1943,
  "checkpoints": [
   300,
   467,
-  600,
   795,
-  931,
-  1136
+  1136,
+  1522,
+  1723,
+  1813
  ],
  "expect": [
   {
    "frame": 462,
    "path": "players.0.score",
    "equals": 750
-  },
-  {
-   "frame": 462,
-   "path": "players.1.score",
-   "equals": 380
   },
   {
    "frame": 790,
@@ -32,9 +28,14 @@
    "equals": 540
   },
   {
-   "frame": 1465,
+   "frame": 1763,
    "path": "players.0.score",
-   "equals": 1340
+   "equals": 1530
+  },
+  {
+   "frame": 1887,
+   "path": "players.1.score",
+   "equals": 540
   }
  ],
  "steps": [
@@ -711,6 +712,22 @@
    ]
   },
   {
+   "from": 1511,
+   "to": 1512,
+   "port": 1,
+   "buttons": [
+    "b1"
+   ]
+  },
+  {
+   "from": 1682,
+   "to": 1683,
+   "port": 1,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
    "from": 221,
    "to": 222,
    "port": 2,
@@ -1068,6 +1085,22 @@
    "port": 2,
    "buttons": [
     "b1"
+   ]
+  },
+  {
+   "from": 1481,
+   "to": 1482,
+   "port": 2,
+   "buttons": [
+    "b2"
+   ]
+  },
+  {
+   "from": 1732,
+   "to": 1733,
+   "port": 2,
+   "buttons": [
+    "b3"
    ]
   }
  ]

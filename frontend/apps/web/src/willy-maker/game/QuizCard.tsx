@@ -44,6 +44,11 @@ export function QuizCard({ store, questions }: { store: EditorStore; questions: 
               }
             />
             <label className="wm-game-stack">
+              <span className="wm-field-label">{t.quiz.category}</span>
+              <input className="wm-input is-sm" maxLength={40} value={q.category ?? ""} onChange={(e) => edit((l) => (l[i]!.category = e.target.value))} />
+            </label>
+            <Segmented label={t.quiz.turn} value={q.turn ? "turn" : "all"} options={[{ value: "all", label: t.quiz.everyone }, { value: "turn", label: t.quiz.inTurns }]} onChange={(v) => edit((l) => (l[i]!.turn = v === "turn"))} />
+            <label className="wm-game-stack">
               <span className="wm-field-label">{kindOf(q) === "question" ? t.quiz.question(i + 1) : t.quiz.instructions}</span>
               <textarea className="wm-input" rows={2} maxLength={160} value={q.q} onChange={(e) => edit((l) => (l[i]!.q = e.target.value))} />
             </label>

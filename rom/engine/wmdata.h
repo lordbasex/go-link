@@ -67,7 +67,7 @@ enum { WM_SCR_TITLE, WM_SCR_HUD, WM_SCR_CLEAR, WM_SCR_CONTINUE, WM_SCR_GAMEOVER,
 #define WM_TXT_BIG 0x10   /* double size: 2 x 2 cells per character */
 #define WM_TXT_COUNT 0x20 /* the engine writes a count after it (rescued) */
 #define WM_TXT_BLINK 0x40 /* blinks; the title's prompt */
-#define WM_TXT_RIGHT 0x80 /* the quiz: the right answer's line */
+#define WM_TXT_RIGHT 0x80 /* the quiz: the right answer's line; on an item's first line, played in turns (phase 3) */
 #define WM_TXT_KIND 0x0c  /* the quiz: on an item's first line, 0 a question, 1 mash, 2 timing, 3 memory (wm_data 22) */
 #define WM_SCR_QUIZ 0x40  /* the quiz's question n is screen WM_SCR_QUIZ + n (wm_data 21) */
 

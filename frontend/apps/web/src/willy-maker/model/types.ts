@@ -310,6 +310,9 @@ export interface Project {
 export interface QuizQuestion {
   /** A question (the default), or a minigame: mash B1, stop the marker in the middle, repeat a sequence. */
   kind?: "question" | "mash" | "timing" | "memory";
+  /** Phase 3: one player answers, in turn (the next player in each time); its category, shown above it. */
+  turn?: boolean;
+  category?: string;
   q: string;
   a: [string, string, string];
   right: number;

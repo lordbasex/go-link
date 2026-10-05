@@ -64,6 +64,10 @@ export const gameEn = {
     actions: { up: "Up", down: "Down", left: "Left", right: "Right", b1: "B1", b2: "B2", b3: "B3", start: "Start", coin: "Coin" },
   },
   quiz: {
+    category: "Category (shown above it; optional)",
+    turn: "Who answers",
+    everyone: "Everyone",
+    inTurns: "One player, in turns",
     kind: "Kind",
     kinds: { question: "Question", mash: "Mash B1", timing: "Stop in the middle", memory: "Memory" },
     defaults: { mash: "Mash B1 as fast as you can!", timing: "Stop the marker in the middle with B1", memory: "Remember the letters, then press them" },

@@ -267,7 +267,7 @@ function drawQuiz(ctx: CanvasRenderingContext2D, game: Game): void {
   const at = (col: number, row: number, text: string, ink: string) => drawBoardText(ctx, text, col * 8, row * 8, 1, ink);
   const kind = kindOf(q);
   const show = MEM_LEN * MEM_LETTER;
-  for (const l of quizLines(q)) at(l.col, l.row, l.text, kind === "question" && game.quizPhase === 1 && l.answer === q.right ? TEXT_INKS.cyan : TEXT_INKS.white);
+  for (const l of quizLines(q)) at(l.col, l.row, l.text, l.answer === -2 || (kind === "question" && game.quizPhase === 1 && l.answer === q.right) ? TEXT_INKS.cyan : TEXT_INKS.white);
   const time = kind === "mash" ? MASH_TIME : kind === "timing" ? TIMING_TIME : kind === "memory" ? show + MEM_INPUT : QUIZ_TIME;
   if (game.quizPhase === 0) at(21, TIME_ROW, `TIME ${String(Math.max(0, Math.ceil((time - game.quizT) / 60))).padStart(2, "0")}`, TEXT_INKS.white);
   if (kind === "timing") {
@@ -282,7 +282,8 @@ function drawQuiz(ctx: CanvasRenderingContext2D, game: Game): void {
     } else at(MEM_COL - 2, MEM_ROW, "GO!", TEXT_INKS.accent);
   }
   for (const p of game.players) {
-    if (!p.active || p.index >= PLAYER_COLS.length) continue;
+    // an item in turns shows only the player whose turn it is
+    if (!p.active || p.index >= PLAYER_COLS.length || (game.quizTurn >= 0 && p.index !== game.quizTurn)) continue;
     const col = PLAYER_COLS[p.index]!;
     const tag = `${p.index + 1}P`;
     if (kind === "question") {

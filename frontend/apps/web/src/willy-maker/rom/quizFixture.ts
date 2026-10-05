@@ -9,7 +9,7 @@ import { QUIZ_RULES } from "../engine/rules";
 import type { Project } from "../model";
 import { projectFromTemplate } from "../templates";
 
-/** The minigames' lab game (rom/tools/lab/runs/quiz-games.json): one of each, then a question. */
+/** The minigames' lab game (rom/tools/lab/runs/quiz-games.json): one of each, a question, then two in turns (phase 3), with categories. */
 export function quizGamesProject(): Project {
   const p = quizProject();
   p.title = "Quiz games";
@@ -17,7 +17,9 @@ export function quizGamesProject(): Project {
     { kind: "mash", q: "Mash B1 as fast as you can!", a: ["", "", ""], right: 0 },
     { kind: "timing", q: "", a: ["", "", ""], right: 0 },
     { kind: "memory", q: "Remember the letters, then press them", a: ["", "", ""], right: 0 },
-    { q: "Was that fun?", a: ["Yes", "Very", "Both"], right: 2 },
+    { q: "Was that fun?", a: ["Yes", "Very", "Both"], right: 2, category: "Feelings" },
+    { q: "Your turn: which is a color?", a: ["Blue", "Seven", "Fast"], right: 0, turn: true, category: "Colors" },
+    { q: "Your turn: which is a number?", a: ["Red", "Nine", "Slow"], right: 1, turn: true, category: "Numbers" },
   ];
   return p;
 }
