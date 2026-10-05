@@ -1865,3 +1865,20 @@ describe("the quiz, phase 3: turns and categories", () => {
     expect(lines.find((l) => l.answer === -2)).toMatchObject({ text: "SPORTS", row: 2 });
   });
 });
+
+describe("the puzzle, phase 3: the CPU's level", () => {
+  it("a hard CPU presses every 2 frames and an easy one every 8", () => {
+    for (const [level, step] of [[1, 8], [3, 2]] as const) {
+      const g = new Game(flat(), { rules: { ...PUZZLE_RULES, puzzleCpuLevel: level }, players: 1 });
+      const cpu = g.players[1]!;
+      const presses: number[] = [];
+      for (let f = 0; f < 120; f++) {
+        g.step([0, 0, 0, 0]);
+        if (cpu.pad & (Input.Left | Input.Right | Input.B1)) presses.push(f);
+      }
+      const gaps = presses.slice(1).map((f, i) => f - presses[i]!).filter((d) => d < 20);
+      expect(gaps.length).toBeGreaterThan(0);
+      expect(Math.min(...gaps)).toBe(step);
+    }
+  });
+});

@@ -4,7 +4,7 @@
 // same steps as the ROM's (rom/engine/engine.c, well_*), so play mode and
 // the board drop, turn, match and clear gems alike, frame by frame.
 
-import { CLEAR_FRAMES, CPU_CANDIDATES, CPU_STEP, FALL_MIN, FALL_START, FALL_STEP, GARBAGE_CHAIN, GEM_COLORS, LEVEL_GEMS, PUZZLE_SEED, STONE, WELL_COLS, WELL_ROWS } from "./rules";
+import { CLEAR_FRAMES, CPU_CANDIDATES, CPU_STEP, CPU_STEPS, FALL_MIN, FALL_START, FALL_STEP, GARBAGE_CHAIN, GEM_COLORS, LEVEL_GEMS, PUZZLE_SEED, STONE, WELL_COLS, WELL_ROWS } from "./rules";
 import { Input } from "./rules";
 
 export interface Well {
@@ -192,7 +192,7 @@ export function emptyWell(w: Well): void {
  * 2 a row lower it lands, less a turn. Cheap on purpose: the ROM weighs one
  * a frame beside everything else.
  */
-function weigh(w: Well, c: number, turns: number): number {
+function weigh(w: Well, c: number, turns: number, lineWeight = true): number {
   let r = -1;
   while (r + 1 < WELL_ROWS && w.cells[(r + 1) * WELL_COLS + c] === 0) r++;
   if (r < 2) return -10000;
@@ -207,14 +207,14 @@ function weigh(w: Well, c: number, turns: number): number {
     while (at(cc + m * dx, rr + m * dy) === v) m++;
     return n + m - 1 >= 3 ? n + m - 1 : 0;
   };
-  let lines = 0;
+  let found = 0;
   // the column: the runs along it, each counted once (from its lowest gem)
   for (let rr = r; rr >= top; rr--) {
     if (rr < r && at(c, rr) === at(c, rr + 1)) continue;
-    lines += run(c, rr, 0, 1);
+    found += run(c, rr, 0, 1);
   }
-  for (let k = 0; k < 3; k++) lines += run(c, top + k, 1, 0) + run(c, top + k, 1, 1) + run(c, top + k, -1, 1);
-  return lines * 64 + r * 2 - turns;
+  for (let k = 0; k < 3; k++) found += run(c, top + k, 1, 0) + run(c, top + k, 1, 1) + run(c, top + k, -1, 1);
+  return (lineWeight ? found * 64 : 0) + r * 2 - turns;
 }
 
 /**
@@ -222,13 +222,14 @@ function weigh(w: Well, c: number, turns: number): number {
  * a frame), nothing; then a press every CPU_STEP frames: turn, move, and
  * Down held once the trio is in its column.
  */
-export function cpuPad(w: Well): number {
+export function cpuPad(w: Well, level = 2): number {
+  const step = CPU_STEPS[level - 1] ?? CPU_STEP;
   if (w.clearT) return 0;
   if (w.cpuK < CPU_CANDIDATES) {
     const k = w.cpuK;
     const c = (k / 3) | 0;
     const t = k - c * 3;
-    const s = weigh(w, c, t);
+    const s = weigh(w, c, t, level > 1);
     if (k === 0 || s > w.cpuBest) {
       w.cpuBest = s;
       w.cpuCol = c;
@@ -239,12 +240,12 @@ export function cpuPad(w: Well): number {
   }
   w.cpuT++;
   if (w.cpuTurns > 0) {
-    if ((w.cpuT & (CPU_STEP - 1)) !== 0) return 0;
+    if ((w.cpuT & (step - 1)) !== 0) return 0;
     w.cpuTurns--;
     return Input.B1;
   }
   if (w.col !== w.cpuCol) {
-    if ((w.cpuT & (CPU_STEP - 1)) !== 0) return 0;
+    if ((w.cpuT & (step - 1)) !== 0) return 0;
     return w.col < w.cpuCol ? Input.Right : Input.Left;
   }
   return Input.Down;

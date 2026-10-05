@@ -930,6 +930,8 @@ static u8 quiz_seq[MEM_LEN];
 #define GARBAGE_CHAIN 3
 #define CPU_CANDIDATES 18
 #define CPU_STEP 4
+static const u8 cpu_steps[3] = { 8, 4, 2 }; /* frames between presses by the CPU's level (engine/rules.ts CPU_STEPS) */
+static int puzzle_level;                    /* 1 easy (weighs no lines), 2 normal, 3 hard */
 static const s16 well_x[WELLS] = { 48, 240 };
 struct well {
 	u8 cells[WELL_COLS * WELL_ROWS], marks[WELL_COLS * WELL_ROWS];
@@ -1709,7 +1711,7 @@ static int weigh(const struct well *w, int c, int turns)
 	}
 	for (k = 0; k < 3; k++)
 		lines += wg_run(c, wg_top + k, 1, 0) + wg_run(c, wg_top + k, 1, 1) + wg_run(c, wg_top + k, -1, 1);
-	return lines * 64 + r * 2 - turns;
+	return (puzzle_level > 1 ? lines * 64 : 0) + r * 2 - turns;
 }
 
 /* the CPU rival's pad (engine/puzzle.ts cpuPad): a candidate weighed a frame, then a press every CPU_STEP frames */
@@ -1729,13 +1731,13 @@ static u16 cpu_pad(struct well *w)
 	}
 	w->cpu_t++;
 	if (w->cpu_turns > 0) {
-		if (w->cpu_t & (CPU_STEP - 1))
+		if (w->cpu_t & (cpu_steps[puzzle_level - 1] - 1))
 			return 0;
 		w->cpu_turns--;
 		return BTN_1;
 	}
 	if (w->col != w->cpu_col) {
-		if (w->cpu_t & (CPU_STEP - 1))
+		if (w->cpu_t & (cpu_steps[puzzle_level - 1] - 1))
 			return 0;
 		return w->col < w->cpu_col ? BTN_RIGHT : BTN_LEFT;
 	}
@@ -2982,6 +2984,9 @@ static void game_reset(void)
 	maze = (D->flags & WM_F_MAZE) != 0;
 	puzzle = (D->flags & WM_F_PUZZLE) != 0;
 	puzzle_cpu = puzzle && (D->flags2 & WM_F2_PUZZLE_CPU) != 0;
+	puzzle_level = ((D->flags2 & WM_F2_CPU_LEVEL) >> 5) + 1;
+	if (puzzle_level > 3)
+		puzzle_level = 3;
 	quiz = (D->flags2 & WM_F2_QUIZ) != 0;
 	versus = (D->flags2 & WM_F2_VERSUS) != 0;
 	sports = (D->flags2 & WM_F2_SPORTS) != 0;
@@ -5932,6 +5937,9 @@ static void continue_prompt(int on)
 }
 
 
+/* the puzzle's clear screen, drawn the frame after the clear (that frame is a heavy one) */
+static int clear_screen_due;
+
 static int play(int first)
 {
 	u32 end_t = 0, entry = frame_count;
@@ -5978,10 +5986,17 @@ static int play(int first)
 	   core and the board model could disagree by one: play always starts SETUP_FRAMES after Start */
 	while (frame_count - entry < SETUP_FRAMES)
 		;
+	clear_screen_due = 0;
 	for (;;) {
 		int alive = 0;
 		wait_vblank();
 		read_inputs();
+		if (clear_screen_due) {
+			clear_screen_due = 0;
+			blank(15, 16, 18);
+			draw_screen(WM_SCR_CLEAR, 1);
+			MUSIC(MUSIC_CLEAR);
+		}
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
 				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (!(sports || racing) || k < athletes()) && (credits || free_play()) && start_pressed(k)) {
@@ -6136,11 +6151,10 @@ static int play(int first)
 			for (k = 0; k < WELLS && k < nplayers; k++)
 				won |= pl[k].active && !pl[k].cpu && wells[k].gems >= PUZZLE_GOAL;
 			if (won) {
-				blank(15, 16, 18);
+				/* the clear screen next frame: this one already ran the last clear */
 				outcome = END_CLEAR;
 				end_t = frame_count;
-				draw_screen(WM_SCR_CLEAR, 1);
-				MUSIC(MUSIC_CLEAR);
+				clear_screen_due = 1;
 			}
 		}
 		/* the light gun: the level ends where the camera's route does, with no lock holding it */

@@ -58,7 +58,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(25);
+    expect(u16(d, 4)).toBe(26);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -248,6 +248,12 @@ describe("Create ROM", () => {
       const qg = resolve(out, "quizgames");
       mkdirSync(qg, { recursive: true });
       writeFileSync(resolve(qg, "slammast.zip"), await zipSet(packGame(quizGamesProject(), engine, (id) => pictures.get(id) ?? null).files));
+      // the puzzle's CPU at levels 1 and 3 (rom/tools/lab/runs/puzzle-cpu-easy.json, puzzle-cpu-hard.json)
+      for (const [name, level] of [["puzzle-easy", 1], ["puzzle-hard", 3]] as const) {
+        const dir = resolve(out, name);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(resolve(dir, "slammast.zip"), await zipSet(packGame(puzzleProject(level), engine, (id) => pictures.get(id) ?? null).files));
+      }
       // the puzzle: two wells of falling gems (rom/tools/lab/runs/puzzle-gems.json)
       const pz = resolve(out, "puzzle");
       mkdirSync(pz, { recursive: true });

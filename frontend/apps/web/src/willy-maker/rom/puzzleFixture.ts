@@ -8,10 +8,10 @@ import { PUZZLE_RULES } from "../engine/rules";
 import type { Project } from "../model";
 import { projectFromTemplate } from "../templates";
 
-export function puzzleProject(): Project {
+export function puzzleProject(cpuLevel = 2): Project {
   const p = projectFromTemplate("empty", { title: "Puzzle", layout: "slammast", players: 2, levelName: "Puzzle", screens: 1, height: 224 });
   p.genre = "puzzle";
-  p.settings.rules = { ...p.settings.rules, ...PUZZLE_RULES };
+  p.settings.rules = { ...p.settings.rules, ...PUZZLE_RULES, puzzleCpuLevel: cpuLevel };
   shapePuzzleLevel(p.levels[0]!);
   return p;
 }

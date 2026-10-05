@@ -220,6 +220,8 @@ export interface GameRules {
   puzzle: boolean;
   /** The puzzle's CPU rival (phase 2): while player 2 is not in, the CPU plays the second well. */
   puzzleCpu: boolean;
+  /** The puzzle's CPU rival's level (phase 3): 1 easy, 2 normal, 3 hard. */
+  puzzleCpuLevel: number;
   /**
    * The quiz (genres.md, quiz and party): the game's questions one after
    * another on the screen, answered with B1 B2 B3; nobody walks.
@@ -274,6 +276,7 @@ export const DEFAULT_RULES: GameRules = {
   mazeRounds: 1,
   puzzle: false,
   puzzleCpu: false,
+  puzzleCpuLevel: 2,
   quiz: false,
   versus: false,
   sports: false,
@@ -396,6 +399,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     mazeRounds: int(r.mazeRounds, 1, 9, 1),
     puzzle: bool(r.puzzle, false),
     puzzleCpu: bool(r.puzzleCpu, false),
+    puzzleCpuLevel: int(r.puzzleCpuLevel, 1, 3, 2),
     quiz: bool(r.quiz, false),
     versus: bool(r.versus, false),
     sports: bool(r.sports, false),
@@ -857,3 +861,10 @@ export const BUMP_Y = 10;
 export const PASS_SPEED = 4;
 export const KEEPER_X = 24;
 export const PRESS_X = 32;
+
+/**
+ * The puzzle, phase 3: the CPU rival's level. CPU_STEPS[level - 1] frames
+ * between its presses; at level 1 it weighs only how low a trio lands, not
+ * the lines it makes.
+ */
+export const CPU_STEPS = [8, 4, 2] as const;

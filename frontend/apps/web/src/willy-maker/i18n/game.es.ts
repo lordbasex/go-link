@@ -128,6 +128,7 @@ export const gameEs: GameMessages = {
     mazeRounds: "Rondas (laberinto: al comer todos los puntos empieza la siguiente, más rápida; la última completa el nivel)",
     puzzle: "Puzle (un pozo de gemas que caen por jugador, jugadores 1 y 2: B1 rota los colores, tres o más en línea se borran)",
     puzzleCpu: "Rival de la CPU (puzle: mientras el jugador 2 no está, la CPU juega el segundo pozo y te manda piedras)",
+    puzzleCpuLevel: "Nivel del rival de la CPU (1 fácil: lento y descuidado, 2 normal, 3 difícil: rápido)",
     quiz: "Preguntas (las preguntas del juego en la pantalla, se contestan con B1 B2 B3; nadie camina)",
     versus: "Lucha uno contra uno (los jugadores 1 y 2 se enfrentan: B1 golpea, B2 patea, sostener atrás bloquea; al mejor de tres rondas, la CPU pelea si falta un jugador)",
     sports: "Deportes (fútbol visto desde arriba: los jugadores 1 y 3 contra 2 y 4, B1 patea, la CPU juega en cada lugar vacío; el partido dura un minuto)",

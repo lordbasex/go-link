@@ -128,6 +128,7 @@ export const gamePt: GameMessages = {
     mazeRounds: "Rodadas (labirinto: comer todos os pontos começa a próxima, mais rápida; a última completa a fase)",
     puzzle: "Quebra-cabeça (um poço de gemas que caem por jogador, jogadores 1 e 2: B1 gira as cores, três ou mais em linha somem)",
     puzzleCpu: "Rival da CPU (quebra-cabeça: enquanto o jogador 2 não está, a CPU joga o segundo poço e manda pedras para você)",
+    puzzleCpuLevel: "Nível do rival da CPU (1 fácil: lento e descuidado, 2 normal, 3 difícil: rápido)",
     quiz: "Perguntas (as perguntas do jogo na tela, respondidas com B1 B2 B3; ninguém anda)",
     versus: "Luta um contra um (os jogadores 1 e 2 se enfrentam: B1 soca, B2 chuta, segurar para trás bloqueia; melhor de três rodadas, a CPU luta se faltar um jogador)",
     sports: "Esportes (futebol visto de cima: os jogadores 1 e 3 contra 2 e 4, B1 chuta, a CPU joga em cada lugar vazio; a partida dura um minuto)",

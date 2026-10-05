@@ -209,7 +209,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       <Segmented label={t.rules[key]} value={r[key] ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ [key]: v === "yes" })} />
     </div>
   );
-  const number = (key: "enemyHp" | "enemyScore" | "rescueScore" | "crateScore" | "mazeRounds", min: number, max: number, step: number) => (
+  const number = (key: "enemyHp" | "enemyScore" | "rescueScore" | "crateScore" | "mazeRounds" | "puzzleCpuLevel", min: number, max: number, step: number) => (
     <label className="wm-game-stack wm-rules-num" key={key}>
       <span className="wm-field-label">{t.rules[key]}</span>
       <input
@@ -255,6 +255,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {r.maze && number("mazeRounds", 1, 9, 1)}
       {flag("puzzle")}
       {r.puzzle && flag("puzzleCpu")}
+      {r.puzzle && r.puzzleCpu && number("puzzleCpuLevel", 1, 3, 1)}
       {flag("quiz")}
       {flag("versus")}
       {flag("sports")}

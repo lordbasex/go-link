@@ -3381,7 +3381,7 @@ export class Game {
         }
         this.humanLast[p.index] = pad;
         p.last = p.pad;
-        p.pad = this.rules.racing ? this.racingCpuPad(p) : this.rules.sports ? this.sportsCpuPad(p) : this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
+        p.pad = this.rules.racing ? this.racingCpuPad(p) : this.rules.sports ? this.sportsCpuPad(p) : this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!, this.rules.puzzleCpuLevel);
         this.updatePlayer(p);
         continue;
       }

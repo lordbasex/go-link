@@ -126,6 +126,7 @@ export const gameEn = {
     mazeRounds: "Rounds (maze: every dot eaten starts the next, faster round; the last clears the level)",
     puzzle: "Puzzle (a well of falling gems per player, players 1 and 2: B1 turns the colors, three or more in a line clear)",
     puzzleCpu: "CPU rival (puzzle: while player 2 is out, the CPU plays the second well and sends you stones)",
+    puzzleCpuLevel: "CPU rival's level (1 easy: slow and careless, 2 normal, 3 hard: quick)",
     quiz: "Quiz (the game's questions on the screen, answered with B1 B2 B3; nobody walks)",
     versus: "Versus fighting (players 1 and 2 face each other: B1 punches, B2 kicks, holding away blocks; best of three rounds, the CPU fights an empty corner)",
     sports: "Sports (football seen from above: players 1 and 3 against 2 and 4, B1 kicks, the CPU plays every empty place; the match lasts a minute)",
