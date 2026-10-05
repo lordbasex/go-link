@@ -78,7 +78,7 @@ A game that fails is marked `no_saves`: it never loads a save (it always starts 
 
 ## Core patches
 
-`cores/mame2003-plus/` holds optional patches that add the missing save state code to the core (Konami CPU, QSound, the QSound Z80 bank, CPU suspend, YM2151 timers, sound latches, the Simpsons and Aliens drivers, the Namco wave chip, the YM3812). They are applied at build time on a clean upstream checkout and are **not used** by releases yet: the device downloads the official core. See [its README](../cores/mame2003-plus/README.md).
+`cores/mame2003-plus/` holds optional patches that add the missing save state code to the core (Konami CPU, QSound, the QSound Z80 bank, CPU suspend, YM2151 timers, sound latches, the Simpsons and Aliens drivers, the Namco wave chip, the YM3812, the interrupt queue, each CPU's local time, the sound mixer, the YM2151 connections on load, the K054539 channels, and Galaga's stars, custom I/O and 54XX). They are applied at build time on a clean upstream checkout and are **not used** by releases yet: the device downloads the official core. See [its README](../cores/mame2003-plus/README.md).
 
 ## Licenses
 

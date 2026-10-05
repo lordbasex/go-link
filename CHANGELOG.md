@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first.
 
 ### Added (core patches)
 
+- **Saves that resume exactly** (`cores/mame2003-plus`, optional, not used by releases): eight more patches (`0011`-`0018`). The main one: a save made at the end of a frame left the VBLANK interrupt in MAME's interrupt queue, which was not saved, so the loaded game missed it and games that work every other frame ran one frame late. Also the sound mixer's state, a bug in the YM2151's load code (each channel got the wrong algorithm), the K054539's channels, each CPU's local time, and Galaga's stars, custom I/O and explosion generator. Aliens, X-Men, Street Fighter II, The Simpsons, TMNT and Galaga now resume with identical pictures and the same sound.
 - **Two more save state patches for mame2003-plus** (`cores/mame2003-plus`, optional, not used by releases): `0009` saves the Namco wave sound chip (Pac-Man resumed silent: the game turns the sound on only at boot) and `0010` saves the YM3812 by keeping its registers and writing them back on load (Snow Bros. lost its sound). With them, 3 of the 4 games tried that did not resume now do; Hammerin' Harry's driver does not declare save support.
 
 ### Added (website)
