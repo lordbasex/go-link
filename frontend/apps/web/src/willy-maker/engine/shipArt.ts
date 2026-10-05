@@ -83,3 +83,10 @@ export function gemPen(x: number, y: number): ShipPen {
 /** The gems' colors, then their shades (pens 1 and 4), by color 1 to 5, then the rival's stone (6). */
 export const GEM_BODY = ["#ee3344", "#33cc55", "#3388ff", "#ffcc22", "#bb55ee", "#888899"] as const;
 export const GEM_SHADE = ["#991122", "#1a7a33", "#1a4499", "#aa7711", "#6a2a99", "#444455"] as const;
+
+/** Sports: the ball, 16 x 16 px with the ball (radius 4) at (8, 11): 0 none, 1 white, 2 its patches, 3 the outline. */
+export function ballPen(x: number, y: number): ShipPen {
+  const d = (x - 8) * (x - 8) + (y - 11) * (y - 11);
+  if (d <= 16) return (x === 7 && y === 10) || (x === 9 && y === 12) || (x === 10 && y === 9) ? 2 : 1;
+  return d <= 25 ? 3 : 0;
+}

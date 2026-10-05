@@ -777,6 +777,28 @@ static int puzzle;    /* the puzzle (WM_F_PUZZLE) */
 static int puzzle_cpu; /* its CPU rival (WM_F2_PUZZLE_CPU) */
 static int quiz;       /* the quiz (WM_F2_QUIZ) */
 static int versus;     /* versus fighting (WM_F2_VERSUS) */
+static int sports;     /* sports: football (WM_F2_SPORTS) */
+/* sports (engine/rules.ts, engine/game.ts run and updateBall) */
+#define FIELD_X0 16
+#define FIELD_Y0 64
+#define FIELD_Y1 200
+#define GOAL_Y0 112
+#define GOAL_Y1 160
+#define ATH_SPEED 2
+#define TOUCH_X 12
+#define TOUCH_Y 8
+#define DRIBBLE 10
+#define BALL_KICK 72
+#define BALL_STOP 16
+#define REGRAB 20
+#define GOAL_SCORE 500
+#define KICKOFF_FRAMES 60
+#define MATCH_TIME 3600
+#define CPU_SHOOT 120
+#define SPORTS_ROW 3
+#define SPORTS_CALL_ROW 10
+static s32 ball_x, ball_y, ball_vx, ball_vy;
+static int ball_owner, goals[2], match_t, kick_t, goal_by;
 /* versus fighting (engine/rules.ts VS_*, engine/game.ts fight) */
 #define VS_FLOOR 192
 #define VS_WALK 2
@@ -1967,6 +1989,201 @@ static void vs_draw(void)
 	}
 }
 
+/* ------------------------------------------------------------- sports */
+
+/* two athletes a team with four places, else one against one */
+static int athletes(void)
+{
+	return nplayers >= 4 ? 4 : 2;
+}
+
+/* an athlete's place (engine/game.ts home) */
+static void home_of(int i, s32 *x, s32 *fy)
+{
+	s32 w = level_w, mid = w >> 1;
+	*x = i < 2 ? ((i & 1) ? mid + 48 : mid - 48) : ((i & 1) ? w - FIELD_X0 - 80 : FIELD_X0 + 80);
+	*fy = (FIELD_Y0 + FIELD_Y1) >> 1;
+}
+
+/* everyone at their places, the ball still in the middle */
+static void sports_kickoff(void)
+{
+	int i;
+	for (i = 0; i < athletes(); i++) {
+		struct player *p = &pl[i];
+		s32 hx, hy;
+		if (!p->active)
+			continue;
+		home_of(i, &hx, &hy);
+		p->x = hx;
+		p->y = hy * 16;
+		p->aim_x = (i & 1) ? -1 : 1;
+		p->aim_y = 0;
+		p->flip = i & 1;
+		p->fire_wait = 0;
+		p->running = 0;
+	}
+	ball_x = (s32)(level_w >> 1) * 16;
+	ball_y = (s32)((FIELD_Y0 + FIELD_Y1) >> 1) * 16;
+	ball_vx = ball_vy = 0;
+	ball_owner = -1;
+	kick_t = KICKOFF_FRAMES;
+}
+
+/* an athlete, a frame (engine/game.ts run) */
+static void sports_run(struct player *p)
+{
+	int dx = (p->pad & BTN_LEFT) ? -1 : (p->pad & BTN_RIGHT) ? 1 : 0;
+	int dy = (p->pad & BTN_UP) ? -1 : (p->pad & BTN_DOWN) ? 1 : 0;
+	p->t++;
+	p->on_ground = 1;
+	p->running = 0;
+	if (kick_t)
+		return;
+	if (p->fire_wait)
+		p->fire_wait--;
+	if (dx || dy) {
+		s32 fy = (p->y >> 4) + dy * ATH_SPEED;
+		p->aim_x = dx;
+		p->aim_y = dy;
+		p->x += dx * ATH_SPEED;
+		if (p->x < FIELD_X0)
+			p->x = FIELD_X0;
+		if (p->x > level_w - FIELD_X0)
+			p->x = level_w - FIELD_X0;
+		p->y = (fy < FIELD_Y0 ? FIELD_Y0 : fy > FIELD_Y1 ? FIELD_Y1 : fy) * 16;
+		p->running = 1;
+	}
+	if (p->aim_x)
+		p->flip = p->aim_x < 0;
+	if (PRESSED(p, BTN_1) && ball_owner == (int)(p - pl)) {
+		ball_vx = p->aim_x * BALL_KICK;
+		ball_vy = p->aim_y * BALL_KICK;
+		ball_owner = -1;
+		p->fire_wait = REGRAB;
+		sfx(SFX_KICK, p->x);
+	}
+}
+
+/* a goal: the scoring team's players score, and play starts again from the middle */
+static void sports_goal(int team)
+{
+	int i;
+	goals[team]++;
+	goal_by = team;
+	for (i = 0; i < athletes(); i++)
+		if (pl[i].active && !pl[i].cpu && (i & 1) == team)
+			pl[i].score += GOAL_SCORE;
+	sfx(SFX_RESCUE, ball_x >> 4);
+	sports_kickoff();
+}
+
+/* the ball, a frame (engine/game.ts updateBall) */
+static void update_ball(void)
+{
+	int i;
+	s32 bx, by;
+	if (kick_t) {
+		kick_t--;
+		return;
+	}
+	match_t--;
+	if (ball_owner >= 0) {
+		struct player *o = &pl[ball_owner];
+		ball_x = (o->x + o->aim_x * DRIBBLE) * 16;
+		ball_y = o->y;
+		ball_vx = ball_vy = 0;
+	} else {
+		int mouth;
+		ball_x += ball_vx;
+		ball_y += ball_vy;
+		ball_vx -= ball_vx >> 4;
+		ball_vy -= ball_vy >> 4;
+		if (vs_abs(ball_vx) < BALL_STOP)
+			ball_vx = 0;
+		if (vs_abs(ball_vy) < BALL_STOP)
+			ball_vy = 0;
+		if (ball_y < FIELD_Y0 * 16 || ball_y > FIELD_Y1 * 16) {
+			ball_y = ball_y < FIELD_Y0 * 16 ? FIELD_Y0 * 16 : FIELD_Y1 * 16;
+			ball_vy = -ball_vy;
+		}
+		mouth = ball_y >= GOAL_Y0 * 16 && ball_y <= GOAL_Y1 * 16;
+		if (ball_x < FIELD_X0 * 16 || ball_x > (s32)(level_w - FIELD_X0) * 16) {
+			if (mouth) {
+				sports_goal(ball_x < FIELD_X0 * 16 ? 1 : 0);
+				return;
+			}
+			ball_x = ball_x < FIELD_X0 * 16 ? FIELD_X0 * 16 : (s32)(level_w - FIELD_X0) * 16;
+			ball_vx = -ball_vx;
+		}
+	}
+	/* a touch takes a loose ball, or steals it from the other team */
+	bx = ball_x >> 4;
+	by = ball_y >> 4;
+	for (i = 0; i < athletes(); i++) {
+		struct player *p = &pl[i];
+		if (!p->active || p->fire_wait || i == ball_owner)
+			continue;
+		if (vs_abs(p->x - bx) > TOUCH_X || vs_abs((p->y >> 4) - by) > TOUCH_Y)
+			continue;
+		if (ball_owner >= 0 && (ball_owner & 1) == (i & 1))
+			continue;
+		if (ball_owner >= 0)
+			pl[ball_owner].fire_wait = REGRAB;
+		ball_owner = i;
+		ball_vx = ball_vy = 0;
+		break;
+	}
+}
+
+/* the CPU athlete's pad (engine/game.ts sportsCpuPad) */
+static u16 sports_cpu_pad(struct player *p)
+{
+	int k = (int)(p - pl), team = k & 1, i, near = -1, dx, dy;
+	s32 bx = ball_x >> 4, by = ball_y >> 4, goal_x = team ? FIELD_X0 : level_w - FIELD_X0, fy = p->y >> 4, tx, ty, best = 0x7fffffff;
+	if (ball_owner == k) {
+		if (vs_abs(goal_x - p->x) < CPU_SHOOT && (plat_t & 7) == 0)
+			return BTN_1;
+		tx = goal_x;
+		ty = (GOAL_Y0 + GOAL_Y1) >> 1;
+	} else {
+		for (i = team; i < athletes(); i += 2) {
+			struct player *q = &pl[i];
+			s32 d;
+			if (!q->active)
+				continue;
+			d = vs_abs(q->x - bx) + vs_abs((q->y >> 4) - by);
+			if (d < best) {
+				best = d;
+				near = i;
+			}
+		}
+		if (near == k) {
+			tx = bx;
+			ty = by;
+		} else {
+			home_of(k, &tx, &ty);
+			ty = by;
+		}
+	}
+	dx = vs_abs(tx - p->x) > 2 ? sgn(tx - p->x) : 0;
+	dy = vs_abs(ty - fy) > 2 ? sgn(ty - fy) : 0;
+	return (u16)((dx < 0 ? BTN_LEFT : dx > 0 ? BTN_RIGHT : 0) | (dy < 0 ? BTN_UP : dy > 0 ? BTN_DOWN : 0));
+}
+
+/* sports' HUD on the text layer (play/renderer.ts drawSports) */
+static void sports_draw(void)
+{
+	put_char(17, SPORTS_ROW, 'A', INK_CYAN);
+	print_num(19, SPORTS_ROW, (u32)goals[0], 2, INK_CYAN);
+	print_num(23, SPORTS_ROW, (u32)((match_t > 0 ? match_t : 0) + 59) / 60, 2, INK_WHITE);
+	print_num(27, SPORTS_ROW, (u32)goals[1], 2, INK_RED);
+	put_char(30, SPORTS_ROW, 'B', INK_RED);
+	blank(18, SPORTS_CALL_ROW, 12);
+	if (kick_t)
+		print(goal_by < 0 ? 20 : 21, SPORTS_CALL_ROW, goal_by < 0 ? "KICK OFF" : "GOAL!", INK_ACCENT);
+}
+
 /* ------------------------------------------------------------- the quiz */
 
 /* the timing marker's cell at frame t: across the bar and back (engine/quiz.ts timingCell) */
@@ -2236,6 +2453,20 @@ static void player_join(int k)
 			lead = i;
 			break;
 		}
+	if (sports) {
+		/* sports: an athlete at its place, facing the other team's goal */
+		s32 hx, hy;
+		if (k >= athletes())
+			return;
+		home_of(k, &hx, &hy);
+		player_spawn(p, hx, hy);
+		p->energy = R->energy;
+		p->hurt = 0;
+		p->aim_x = (k & 1) ? -1 : 1;
+		p->aim_y = 0;
+		p->flip = k & 1;
+		return;
+	}
 	if (versus) {
 		/* versus fighting: players 1 and 2 at their corners */
 		if (k > 1)
@@ -2420,6 +2651,11 @@ static void game_reset(void)
 	puzzle_cpu = puzzle && (D->flags2 & WM_F2_PUZZLE_CPU) != 0;
 	quiz = (D->flags2 & WM_F2_QUIZ) != 0;
 	versus = (D->flags2 & WM_F2_VERSUS) != 0;
+	sports = (D->flags2 & WM_F2_SPORTS) != 0;
+	goals[0] = goals[1] = 0;
+	match_t = MATCH_TIME;
+	goal_by = -1;
+	ball_owner = -1;
 	vs_round = 1;
 	vs_phase = vs_t = 0;
 	vs_time = VS_TIME;
@@ -3368,6 +3604,15 @@ static void update_player(struct player *p)
 	s32 fy, d;
 	if (!p->active)
 		return;
+	if (sports) {
+		/* the CPU athlete's pad in place of the port's */
+		if (p->cpu) {
+			p->last = p->pad;
+			p->pad = sports_cpu_pad(p);
+		}
+		sports_run(p);
+		return;
+	}
 	if (versus) {
 		/* the CPU fighter's pad in place of the port's */
 		if (p->cpu) {
@@ -4248,6 +4493,10 @@ static void update_maze_chasers(void)
 static void update_enemies(int playing)
 {
 	int i, k;
+	if (sports) {
+		update_ball();
+		return;
+	}
 	if (versus) {
 		update_versus();
 		return;
@@ -4521,6 +4770,13 @@ static void update_camera(int snap)
 	/* the maze and the puzzle: one screen, the camera still at its top left */
 	if (maze || puzzle || quiz || versus) {
 		cam_x = cam_y = 0;
+		return;
+	}
+	/* sports: the camera keeps the ball in the middle */
+	if (sports) {
+		s32 x = (ball_x >> 4) - (SCREEN_W >> 1);
+		cam_x = x < 0 ? 0 : x > level_w - SCREEN_W ? level_w - SCREEN_W : x;
+		cam_y = 0;
 		return;
 	}
 	if (topdown) {
@@ -4886,6 +5142,9 @@ static void draw_actors_by_depth(void)
 static void draw_world(void)
 {
 	int k;
+	/* sports: the ball first, so it shows over the athletes (the earlier sprite is drawn in front) */
+	if (sports)
+		put_sprite((int)(ball_x >> 4) - cam_x - 8, (int)(ball_y >> 4) - cam_y - 12, TILE_BALL, PAL_GEMS);
 	if (puzzle || quiz) {
 		if (puzzle)
 			draw_wells();
@@ -5083,7 +5342,7 @@ static void hud(void)
 			print_num(col + 3, 0, p->score, 6, INK_WHITE);
 			blank(col + 9, 0, room - 6 > 0 ? room - 6 : 0);
 			/* versus fighting shows health as bars (vs_draw), not as energy */
-			if (!versus)
+			if (!versus && !sports)
 				for (e = 0; e < 9 && e < room; e++)
 					put_char(col + 3 + e, 1, e < p->energy ? '+' : ' ', INK_RED);
 			/* the shooter's bombs and the top-down grenades under the energy */
@@ -5305,6 +5564,15 @@ static int play(int first)
 		player_join(1);
 		pl[1].cpu = 1;
 	}
+	/* sports: the CPU plays every empty place, and the ball waits in the middle */
+	if (sports) {
+		for (k = 0; k < athletes() && k < nplayers; k++)
+			if (!pl[k].active) {
+				player_join(k);
+				pl[k].cpu = 1;
+			}
+		sports_kickoff();
+	}
 	/* versus fighting: the CPU fights for an empty corner */
 	if (versus)
 		for (k = 0; k < 2 && k < nplayers; k++)
@@ -5326,7 +5594,7 @@ static int play(int first)
 		read_inputs();
 		if (outcome < 0)
 			for (k = 0; k < nplayers; k++)
-				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (credits || free_play()) && start_pressed(k)) {
+				if ((!pl[k].active || pl[k].cpu) && (!puzzle || k < WELLS) && (!versus || k < 2) && (!sports || k < athletes()) && (credits || free_play()) && start_pressed(k)) {
 					if (!free_play())
 						credits--;
 					SFX_CENTRE(SFX_START);
@@ -5337,7 +5605,12 @@ static int play(int first)
 						MUSIC(MUSIC_PLAY);
 					}
 					/* a player taking the CPU's well: empty, with a credit's lives and no score */
-					if (pl[k].cpu) {
+					if (pl[k].cpu && sports) {
+						/* sports: the player takes the athlete where it stands */
+						pl[k].cpu = 0;
+						pl[k].score = 0;
+						pl[k].last = pl[k].pad = hw_pad[k];
+					} else if (pl[k].cpu) {
 						pl[k].cpu = 0;
 						pl[k].active = 0;
 						pl[k].score = 0;
@@ -5391,6 +5664,28 @@ static int play(int first)
 				end_t = frame_count;
 				draw_screen(WM_SCR_CLEAR, 1);
 				MUSIC(MUSIC_CLEAR);
+			}
+		}
+		/* sports: its HUD; past the match's time a win or a draw for a team with a player in clears the level */
+		if (sports && outcome < 0) {
+			sports_draw();
+			if (match_t <= 0) {
+				int ok = 0;
+				for (k = 0; k < athletes(); k++)
+					if (pl[k].active && !pl[k].cpu && (goals[0] == goals[1] || (goals[0] > goals[1] ? !(k & 1) : (k & 1))))
+						ok = 1;
+				end_t = frame_count;
+				if (ok) {
+					blank(15, 16, 18);
+					outcome = END_CLEAR;
+					draw_screen(WM_SCR_CLEAR, 1);
+					MUSIC(MUSIC_CLEAR);
+				} else {
+					outcome = END_OVER;
+					clear_text();
+					draw_screen(WM_SCR_GAMEOVER, 1);
+					MUSIC(MUSIC_GAMEOVER);
+				}
 			}
 		}
 		/* versus fighting: its HUD; the match's winner clears the level, or the CPU's win ends the game */

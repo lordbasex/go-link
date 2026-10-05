@@ -203,7 +203,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
     { value: "yes", label: t.rules.yes },
     { value: "no", label: t.rules.no },
   ] as const;
-  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies" | "doubleJump" | "jetpack" | "weapons" | "stomp" | "depth" | "crosshair" | "ship" | "vertical" | "topdown" | "maze" | "puzzle" | "puzzleCpu" | "quiz" | "versus") => (
+  const flag = (key: "touchHurts" | "enemiesChase" | "enemiesShoot" | "exitNeedsEnemies" | "doubleJump" | "jetpack" | "weapons" | "stomp" | "depth" | "crosshair" | "ship" | "vertical" | "topdown" | "maze" | "puzzle" | "puzzleCpu" | "quiz" | "versus" | "sports") => (
     <div className="wm-game-stack" key={key}>
       <span className="wm-field-label">{t.rules[key]}</span>
       <Segmented label={t.rules[key]} value={r[key] ? "yes" : "no"} options={[...yesNo]} onChange={(v) => set({ [key]: v === "yes" })} />
@@ -257,6 +257,7 @@ function RulesCard({ store, saved }: { store: EditorStore; saved: Partial<GameRu
       {r.puzzle && flag("puzzleCpu")}
       {flag("quiz")}
       {flag("versus")}
+      {flag("sports")}
       <p className="wm-dim wm-small" role="status">
         {fill(t.rules.jump, { ...measureJump(r, Math.min(...levelHeroes(store.project).heights)) })}
       </p>

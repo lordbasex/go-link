@@ -131,7 +131,9 @@ The board is the same for all of them: Capcom CPS-1 laid out as the `slammast` s
 - **Controls (4 × 3):** B1 B2 B3 answer A B C; stick for minigames.
 - **Size:** M.
 
-## 12. Sports
+## 12. Sports (available, phase 1: football)
+
+**Phase 1 built** (2026-10-04): the rule `sports` (the Rules card's **Sports**; on in a new sports game, whose level the wizard makes a field with stands and a goal at each end). Football seen from above: players 1 and 3 (team A, attacking right) against 2 and 4 (team B); with fewer than four places it is one against one, and the CPU plays every empty place (the team's nearest goes for the ball, the others hold their places level with it, and with the ball it runs at the goal and shoots when near); a player's Start takes a CPU athlete where it stands. Athletes run in 8 directions; a touch takes a loose ball, which then rolls ahead of its owner; an opponent's touch steals it; B1 kicks it the way you face; it slows down and bounces off the sides. A goal (the ball through a goal's mouth) is 500 points for each player of the scoring team, and play starts again from the middle ("KICK OFF", "GOAL!"); the match lasts a minute, and a win or a draw for a team with a player clears the level. The score and the seconds are on the text layer; the ball is a sprite of its own; the camera follows the ball. Play mode and the ROM alike (`wm_data` version 24, `WM_F2_SPORTS`); `rom/tools/lab/runs/sports-match.json` (a bot with a CPU teammate against two CPU athletes) matches the real core at tolerance 0 and play mode on every frame for all four athletes. Next: passes (B2) to the nearest teammate, a goalkeeper, more sports (basketball, wrestling).
 
 - **The player:** wrestling, football or basketball with simple arcade rules: a match against the clock, passes and shots, or grapples and pins.
 - **Engine:** new per sport: a field with its own camera, a ball or grapple physics, team AI, match rules and scoring. Little of today's engine applies beyond the 4-player join, sprites and menus.

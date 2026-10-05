@@ -20,6 +20,7 @@ import { mazeProject } from "./mazeFixture";
 import { puzzleProject } from "./puzzleFixture";
 import { quizGamesProject, quizProject } from "./quizFixture";
 import { versusProject } from "./versusFixture";
+import { sportsProject } from "./sportsFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
@@ -56,7 +57,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(23);
+    expect(u16(d, 4)).toBe(24);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -230,6 +231,10 @@ describe("Create ROM", () => {
       const qz = resolve(out, "quiz");
       mkdirSync(qz, { recursive: true });
       writeFileSync(resolve(qz, "slammast.zip"), await zipSet(packGame(quizProject(), engine, (id) => pictures.get(id) ?? null).files));
+      // sports: a football field two screens wide (rom/tools/lab/runs/sports-match.json)
+      const sp = resolve(out, "sports");
+      mkdirSync(sp, { recursive: true });
+      writeFileSync(resolve(sp, "slammast.zip"), await zipSet(packGame(sportsProject(), engine, (id) => pictures.get(id) ?? null).files));
       // versus fighting: a floor and two corners (rom/tools/lab/runs/versus-match.json)
       const vs = resolve(out, "versus");
       mkdirSync(vs, { recursive: true });

@@ -8,6 +8,7 @@ import { PUZZLE_RULES, FALL_START, WELL_ROWS, WELL_COLS, GEM_SCORE, PUZZLE_GOAL,
 import { markMatches } from "./puzzle";
 import { QUIZ_RULES, QUIZ_SCORE, QUIZ_BONUS, QUIZ_TIME, REVEAL_FRAMES, MASH_TIME, MASH_SCORE, TIMING_W, TIMING_STEP, TIMING_SCORE, TIMING_LOSS, MEM_LEN, MEM_LETTER } from "./rules";
 import { memorySeq, quizLines, quizText, timingCell } from "./quiz";
+import { SPORTS_RULES, KICKOFF_FRAMES, DRIBBLE, REGRAB, BALL_KICK, FIELD_X0, FIELD_Y0, GOAL_Y0, GOAL_Y1, GOAL_SCORE, MATCH_TIME } from "./rules";
 import { VERSUS_RULES, VS_START, VS_HP, VS_INTRO, VS_GAP, VS_WALK, VS_PUNCH_DMG, VS_HIT_STUN, VS_PUNCH_REACH, VS_CHIP, VS_TIME, VS_PAUSE, VS_ROUND_SCORE } from "./rules";
 import { AIM_FRAMES, DOT_SCORE, EAT_SCORE, FRIGHT_FRAMES, MAZE_RULES, GRENADES, GRENADE_FUSE, TOPDOWN_RULES, VERTICAL_RULES, BOMBS, CLIP, GUNSHIP_HOLD, GUNSHIP_HP, MAX_POWER, SHIP_FIRE, SHIP_RULES, CROSS_SPEED, LIGHTGUN_RULES, RELOAD_FRAMES, ROUTE_STEP, BEATEMUP_RULES, BOSS_HP, BOSS_REST, KNIFE_HITS, COMBO_WINDOW, ENEMY_GAP, FALL_FRAMES, GRAB_FRAMES, PIPE_USES, PUNCH_FRAMES, PUNCH_REACH, THROW_DIST, Game, Input, Tag, decodeCells, levelFromProject, FALL_BACK, FALL_SHAKE, placePlatform, platformOf, sampleLevel, type LevelObject, type LevelView } from "./index";
 
@@ -1639,5 +1640,45 @@ describe("versus fighting (genres.md, phase 1)", () => {
     const h = new Game(flat(), { rules: VERSUS_RULES, players: 1, maxPlayers: 2 });
     for (let i = 0; i < 20000 && h.outcome === "playing"; i++) h.step([0, 0, 0, 0]);
     expect(h.outcome).toBe("over");
+  });
+});
+
+describe("sports: football (genres.md, phase 1)", () => {
+  const wide = () => flat(undefined, []);
+  it("a touch takes the ball, it rolls ahead of its owner, B1 kicks it and it slows to a stop", () => {
+    const g = new Game(wide(), { rules: SPORTS_RULES, players: 2, maxPlayers: 2 });
+    const p = g.players[0]!;
+    // player 2 is in but stands still, out of the way at the field's top
+    g.players[1]!.y = FIELD_Y0 * 16;
+    run(g, KICKOFF_FRAMES, 0);
+    // player 1 runs right at the ball in the middle
+    for (let i = 0; i < 60 && g.ballOwner !== 0; i++) g.step([Input.Right, 0, 0, 0]);
+    expect(g.ballOwner).toBe(0);
+    g.step([Input.Right, 0, 0, 0]);
+    expect(g.ballX >> 4).toBe(p.x + DRIBBLE);
+    g.step([Input.B1, 0, 0, 0]);
+    expect([g.ballOwner, p.fireWait]).toEqual([-1, REGRAB]);
+    expect(g.ballVx).toBe(BALL_KICK - (BALL_KICK >> 4));
+    for (let i = 0; i < 200; i++) g.step([0, 0, 0, 0]);
+    expect(g.ballVx === 0 || g.ballOwner >= 0).toBe(true);
+  });
+
+  it("the ball into a goal's mouth scores for the other side and starts again from the middle", () => {
+    const g = new Game(wide(), { rules: SPORTS_RULES, players: 1, maxPlayers: 2 });
+    run(g, KICKOFF_FRAMES, 0);
+    g.ballX = (g.level.width - FIELD_X0 - 4) * 16;
+    g.ballY = ((GOAL_Y0 + GOAL_Y1) >> 1) * 16;
+    g.ballVx = BALL_KICK;
+    g.step([0, 0, 0, 0]);
+    expect(g.goals).toEqual([1, 0]);
+    expect(g.players[0]!.score).toBe(GOAL_SCORE);
+    expect([g.ballX >> 4, g.kickT]).toEqual([g.level.width >> 1, KICKOFF_FRAMES]);
+  });
+
+  it("four places make two against two; the match ends after its time with a result", () => {
+    const g = new Game(wide(), { rules: SPORTS_RULES, players: 1, maxPlayers: 4 });
+    expect(g.players.map((p) => [p.active, p.cpu])).toEqual([[true, false], [true, true], [true, true], [true, true]]);
+    for (let i = 0; i < MATCH_TIME + 20 * KICKOFF_FRAMES && g.outcome === "playing"; i++) g.step([0, 0, 0, 0]);
+    expect(g.outcome).not.toBe("playing");
   });
 });

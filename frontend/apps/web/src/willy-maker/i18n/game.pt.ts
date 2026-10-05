@@ -126,6 +126,7 @@ export const gamePt: GameMessages = {
     puzzleCpu: "Rival da CPU (quebra-cabeça: enquanto o jogador 2 não está, a CPU joga o segundo poço e manda pedras para você)",
     quiz: "Perguntas (as perguntas do jogo na tela, respondidas com B1 B2 B3; ninguém anda)",
     versus: "Luta um contra um (os jogadores 1 e 2 se enfrentam: B1 soca, B2 chuta, segurar para trás bloqueia; melhor de três rodadas, a CPU luta se faltar um jogador)",
+    sports: "Esportes (futebol visto de cima: os jogadores 1 e 3 contra 2 e 4, B1 chuta, a CPU joga em cada lugar vazio; a partida dura um minuto)",
     jump: "Medido no motor, o pulo chega a {peak} px: plataformas de até {ledge} px de altura.",
     crateClimb: "Subir numa caixa de 32 px",
     climbJump: "Pulando",

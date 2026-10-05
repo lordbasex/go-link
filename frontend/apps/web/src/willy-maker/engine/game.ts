@@ -130,6 +130,22 @@ import {
   QUIZ_TIME,
   REVEAL_FRAMES,
   QUIZ_SCORE,
+  FIELD_X0,
+  FIELD_Y0,
+  FIELD_Y1,
+  GOAL_Y0,
+  GOAL_Y1,
+  ATH_SPEED,
+  TOUCH_X,
+  TOUCH_Y,
+  DRIBBLE,
+  BALL_KICK,
+  BALL_STOP,
+  REGRAB,
+  GOAL_SCORE,
+  KICKOFF_FRAMES,
+  MATCH_TIME,
+  CPU_SHOOT,
   VS_FLOOR,
   VS_START,
   VS_WALK,
@@ -504,6 +520,16 @@ export class Game {
   readonly vsWins = [0, 0];
   vsWinner = -1;
   vsMatch = -1;
+  /** Sports: the ball (1/16 px, its speed, who has it, -1 nobody), each team's goals, the match's frames left, the kickoff's freeze, the last goal's team (-1 none yet). */
+  ballX = 0;
+  ballY = 0;
+  ballVx = 0;
+  ballVy = 0;
+  ballOwner = -1;
+  readonly goals = [0, 0];
+  matchT = MATCH_TIME;
+  kickT = KICKOFF_FRAMES;
+  goalBy = -1;
   platforms: Platform[] = [];
   enemyShots: Shot[] = [];
   cameraLocks: (Rect & { name: string; done: boolean })[] = [];
@@ -572,6 +598,16 @@ export class Game {
     if (this.rules.puzzle && this.rules.puzzleCpu && this.players[1] && !this.players[1].active) {
       this.join(1);
       this.players[1].cpu = true;
+    }
+    // sports: the CPU plays every empty place, and the ball waits in the middle
+    if (this.rules.sports) {
+      for (let i = 0; i < this.athletes(); i++) {
+        const p = this.players[i];
+        if (!p || p.active) continue;
+        this.join(i);
+        p.cpu = true;
+      }
+      this.kickoff();
     }
     // versus fighting: the CPU fights for an empty corner (players 1 and 2)
     if (this.rules.versus)
@@ -911,6 +947,17 @@ export class Game {
   join(i: number): void {
     const p = this.players[i];
     if (!p || p.active || p.lives <= 0) return;
+    // sports: an athlete at its place, facing the other team's goal
+    if (this.rules.sports) {
+      if (i >= this.athletes()) return;
+      const home = this.home(i);
+      spawn(p, home.x, home.fy);
+      p.aimX = i % 2 ? -1 : 1;
+      p.aimY = 0;
+      p.flip = i % 2 === 1;
+      this.events.push({ kind: "join", player: i });
+      return;
+    }
     // versus fighting: players 1 and 2 at their corners
     if (this.rules.versus) {
       if (i > 1) return;
@@ -2100,6 +2147,165 @@ export class Game {
     }
   }
 
+  // ------------------------------------------------------------- sports
+
+  /** Two athletes a team with four places, else one against one. */
+  athletes(): number {
+    return this.maxPlayers >= 4 ? 4 : 2;
+  }
+
+  /** An athlete's place: attackers (players 1 and 2) near the middle, defenders (3 and 4) near their goal. */
+  private home(i: number): { x: number; fy: number } {
+    const w = this.level.width;
+    const mid = w >> 1;
+    const b = i % 2;
+    const x = i < 2 ? (b ? mid + 48 : mid - 48) : b ? w - FIELD_X0 - 80 : FIELD_X0 + 80;
+    return { x, fy: (FIELD_Y0 + FIELD_Y1) >> 1 };
+  }
+
+  /** Everyone at their places, the ball still in the middle, KICKOFF_FRAMES before play. */
+  private kickoff(): void {
+    for (let i = 0; i < this.athletes(); i++) {
+      const p = this.players[i]!;
+      if (!p.active) continue;
+      const home = this.home(i);
+      p.x = home.x;
+      p.y = home.fy * 16;
+      p.aimX = i % 2 ? -1 : 1;
+      p.aimY = 0;
+      p.flip = i % 2 === 1;
+      p.fireWait = 0;
+      p.running = false;
+    }
+    this.ballX = (this.level.width >> 1) * 16;
+    this.ballY = ((FIELD_Y0 + FIELD_Y1) >> 1) * 16;
+    this.ballVx = this.ballVy = 0;
+    this.ballOwner = -1;
+    this.kickT = KICKOFF_FRAMES;
+  }
+
+  /** An athlete, a frame: it runs in 8 directions (facing the way it ran) and kicks the ball it has with B1. */
+  private run(p: Player): void {
+    p.t++;
+    p.onGround = true;
+    p.running = false;
+    if (this.kickT) return;
+    if (p.fireWait) p.fireWait--;
+    const dx = p.pad & Input.Left ? -1 : p.pad & Input.Right ? 1 : 0;
+    const dy = p.pad & Input.Up ? -1 : p.pad & Input.Down ? 1 : 0;
+    if (dx || dy) {
+      p.aimX = dx;
+      p.aimY = dy;
+      p.x = Math.max(FIELD_X0, Math.min(this.level.width - FIELD_X0, p.x + dx * ATH_SPEED));
+      p.y = Math.max(FIELD_Y0, Math.min(FIELD_Y1, (p.y >> 4) + dy * ATH_SPEED)) * 16;
+      p.running = true;
+    }
+    if (p.aimX) p.flip = p.aimX < 0;
+    if (this.pressed(p, Input.B1) && this.ballOwner === p.index) {
+      this.ballVx = p.aimX * BALL_KICK;
+      this.ballVy = p.aimY * BALL_KICK;
+      this.ballOwner = -1;
+      p.fireWait = REGRAB;
+      this.events.push({ kind: "kick", player: p.index });
+    }
+  }
+
+  /** The ball, a frame: with its owner, or rolling, slowing, bouncing; into a goal; taken by a touch. */
+  private updateBall(): void {
+    if (this.kickT) {
+      this.kickT--;
+      return;
+    }
+    this.matchT--;
+    const w = this.level.width;
+    if (this.ballOwner >= 0) {
+      const o = this.players[this.ballOwner]!;
+      this.ballX = (o.x + o.aimX * DRIBBLE) * 16;
+      this.ballY = o.y;
+      this.ballVx = this.ballVy = 0;
+    } else {
+      this.ballX += this.ballVx;
+      this.ballY += this.ballVy;
+      this.ballVx -= this.ballVx >> 4;
+      this.ballVy -= this.ballVy >> 4;
+      if (Math.abs(this.ballVx) < BALL_STOP) this.ballVx = 0;
+      if (Math.abs(this.ballVy) < BALL_STOP) this.ballVy = 0;
+      if (this.ballY < FIELD_Y0 * 16 || this.ballY > FIELD_Y1 * 16) {
+        this.ballY = this.ballY < FIELD_Y0 * 16 ? FIELD_Y0 * 16 : FIELD_Y1 * 16;
+        this.ballVy = -this.ballVy;
+      }
+      const inMouth = this.ballY >= GOAL_Y0 * 16 && this.ballY <= GOAL_Y1 * 16;
+      if (this.ballX < FIELD_X0 * 16 || this.ballX > (w - FIELD_X0) * 16) {
+        if (inMouth) return this.goal(this.ballX < FIELD_X0 * 16 ? 1 : 0);
+        this.ballX = this.ballX < FIELD_X0 * 16 ? FIELD_X0 * 16 : (w - FIELD_X0) * 16;
+        this.ballVx = -this.ballVx;
+      }
+    }
+    // a touch takes a loose ball, or steals it from the other team
+    const bx = this.ballX >> 4;
+    const by = this.ballY >> 4;
+    for (let i = 0; i < this.athletes(); i++) {
+      const p = this.players[i]!;
+      if (!p.active || p.fireWait || i === this.ballOwner) continue;
+      if (Math.abs(p.x - bx) > TOUCH_X || Math.abs((p.y >> 4) - by) > TOUCH_Y) continue;
+      if (this.ballOwner >= 0 && this.ballOwner % 2 === i % 2) continue;
+      if (this.ballOwner >= 0) this.players[this.ballOwner]!.fireWait = REGRAB;
+      this.ballOwner = i;
+      this.ballVx = this.ballVy = 0;
+      break;
+    }
+  }
+
+  /** A goal: the scoring team's players score, and play starts again from the middle. */
+  private goal(team: number): void {
+    this.goals[team]!++;
+    this.goalBy = team;
+    for (let i = 0; i < this.athletes(); i++) {
+      const p = this.players[i]!;
+      if (p.active && !p.cpu && i % 2 === team) p.score += GOAL_SCORE;
+    }
+    this.events.push({ kind: "rescue", name: "goal", player: team });
+    this.kickoff();
+  }
+
+  /** The CPU athlete's pad: with the ball, run at the goal and shoot near it; the team's nearest to a loose ball goes for it; the others hold their places, level with the ball. */
+  private sportsCpuPad(p: Player): number {
+    const bx = this.ballX >> 4;
+    const by = this.ballY >> 4;
+    const team = p.index % 2;
+    const goalX = team ? FIELD_X0 : this.level.width - FIELD_X0;
+    const fy = p.y >> 4;
+    let tx: number;
+    let ty: number;
+    if (this.ballOwner === p.index) {
+      if (Math.abs(goalX - p.x) < CPU_SHOOT && (this.frame & 7) === 0) return Input.B1;
+      tx = goalX;
+      ty = (GOAL_Y0 + GOAL_Y1) >> 1;
+    } else {
+      let near = -1;
+      let best = Infinity;
+      for (let i = team; i < this.athletes(); i += 2) {
+        const q = this.players[i]!;
+        if (!q.active) continue;
+        const d = Math.abs(q.x - bx) + Math.abs((q.y >> 4) - by);
+        if (d < best) {
+          best = d;
+          near = i;
+        }
+      }
+      if (near === p.index) {
+        tx = bx;
+        ty = by;
+      } else {
+        tx = this.home(p.index).x;
+        ty = by;
+      }
+    }
+    const dx = Math.abs(tx - p.x) > 2 ? Math.sign(tx - p.x) : 0;
+    const dy = Math.abs(ty - fy) > 2 ? Math.sign(ty - fy) : 0;
+    return (dx < 0 ? Input.Left : dx > 0 ? Input.Right : 0) | (dy < 0 ? Input.Up : dy > 0 ? Input.Down : 0);
+  }
+
   // ------------------------------------------------------------- versus
 
   /** The other fighter. */
@@ -2269,6 +2475,7 @@ export class Game {
   }
 
   private updatePlayer(p: Player): void {
+    if (this.rules.sports) return this.run(p);
     if (this.rules.versus) return this.fight(p);
     if (this.rules.quiz) return this.answerQuiz(p);
     if (this.rules.puzzle) return this.playWell(p);
@@ -2566,6 +2773,7 @@ export class Game {
   }
 
   private updateEnemies(): void {
+    if (this.rules.sports) return this.updateBall();
     if (this.rules.versus) return this.updateVersus();
     if (this.rules.quiz) return this.updateQuiz();
     if (this.rules.puzzle) return;
@@ -2773,6 +2981,12 @@ export class Game {
       this.camY = 0;
       return;
     }
+    // sports: the camera keeps the ball in the middle
+    if (this.rules.sports) {
+      this.camX = Math.max(0, Math.min(this.level.width - SCREEN_W, (this.ballX >> 4) - (SCREEN_W >> 1)));
+      this.camY = 0;
+      return;
+    }
     if (this.rules.topdown) return this.updateTopCamera(snap);
     if (this.rules.crosshair || this.rules.ship) return this.updateRoute(snap);
     let sx = 0;
@@ -2853,6 +3067,16 @@ export class Game {
       if (p.cpu) {
         // a player pressing Start takes the CPU's well, empty, with a credit's lives and no score
         if (pad & Input.Start && !(this.humanLast[p.index]! & Input.Start)) {
+          // sports: the player takes the athlete where it stands
+          if (this.rules.sports) {
+            p.cpu = false;
+            p.score = 0;
+            this.humanLast[p.index] = pad;
+            p.last = pad;
+            p.pad = pad;
+            this.updatePlayer(p);
+            continue;
+          }
           p.cpu = false;
           p.active = false;
           p.score = 0;
@@ -2867,7 +3091,7 @@ export class Game {
         }
         this.humanLast[p.index] = pad;
         p.last = p.pad;
-        p.pad = this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
+        p.pad = this.rules.sports ? this.sportsCpuPad(p) : this.rules.versus ? this.fightCpuPad(p) : cpuPad(p.well!);
         this.updatePlayer(p);
         continue;
       }
@@ -2886,7 +3110,16 @@ export class Game {
     this.updateCamera();
     if (this.exitClosed) this.exitClosed--;
     // the light gun: the level ends where the camera's route does, with no lock holding it
-    if (this.rules.versus) {
+    if (this.rules.sports) {
+      // sports: past the match's time, a win or a draw for a team with a player in clears the level
+      if (this.matchT <= 0) {
+        const [a, b] = this.goals as [number, number];
+        const ok = this.players.slice(0, this.athletes()).some((p, i) => p.active && !p.cpu && (a === b || (a > b ? i % 2 === 0 : i % 2 === 1)));
+        this.outcome = ok ? "cleared" : "over";
+        this.events.push({ kind: ok ? "cleared" : "over" });
+        return;
+      }
+    } else if (this.rules.versus) {
       // versus fighting: the match's winner clears the level, or the CPU's win ends the game
       if (this.vsMatch >= 0) {
         const human = !this.players[this.vsMatch]!.cpu;

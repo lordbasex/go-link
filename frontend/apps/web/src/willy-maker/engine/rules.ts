@@ -231,6 +231,11 @@ export interface GameRules {
    * corner.
    */
   versus: boolean;
+  /**
+   * Sports (genres.md): arcade football seen from above, a team of the even
+   * players against the odd ones, the CPU playing every empty place.
+   */
+  sports: boolean;
 }
 
 /** The platformer's points per coin and the bounces of a spring and a stomp (1/16 px per frame), the ROM's numbers. */
@@ -266,6 +271,7 @@ export const DEFAULT_RULES: GameRules = {
   puzzleCpu: false,
   quiz: false,
   versus: false,
+  sports: false,
 };
 
 /** A new platformer's rules (genres.md, T-22): no weapons, enemies stomped and hurting on touch, an exit open from the start. */
@@ -294,6 +300,9 @@ export const QUIZ_RULES: Partial<GameRules> = { quiz: true, weapons: false, stom
 
 /** A new versus fighting game's rules: two fighters on one screen, no weapons, no exit. */
 export const VERSUS_RULES: Partial<GameRules> = { versus: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
+
+/** A new sports game's rules: football on a field two screens wide, no weapons, no enemies, no exit. */
+export const SPORTS_RULES: Partial<GameRules> = { sports: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: false, exitNeedsEnemies: false, respawnOnHurt: false };
 
 /** A new beat 'em up's rules (genres.md): walking in depth, no guns, enemies that come for the players and take six hits, a hit player blinking in place, an exit after every enemy is down. */
 export const BEATEMUP_RULES: Partial<GameRules> = { depth: true, weapons: false, stomp: false, touchHurts: false, enemiesShoot: false, enemiesChase: true, exitNeedsEnemies: true, enemyHp: 6, respawnOnHurt: false };
@@ -380,6 +389,7 @@ export function rulesWith(saved: Partial<GameRules> | undefined): GameRules {
     puzzleCpu: bool(r.puzzleCpu, false),
     quiz: bool(r.quiz, false),
     versus: bool(r.versus, false),
+    sports: bool(r.sports, false),
   };
 }
 
@@ -715,3 +725,40 @@ export const VS_CPU_EVERY = 20;
 export const VS_BAR = 20;
 export const VS_BAR_ROW = 3;
 export const VS_CALL_ROW = 10;
+
+/**
+ * Sports (genres.md, phase 1: football), the ROM's numbers too. The field
+ * runs from FIELD_X0 to the level's width less FIELD_X0 and from FIELD_Y0 to
+ * FIELD_Y1 (feet); the goals are its ends between GOAL_Y0 and GOAL_Y1. Players
+ * 1 and 3 (team A) attack right, 2 and 4 (team B) left; with fewer than four
+ * places it is one against one. Athletes run ATH_SPEED px a frame in 8
+ * directions; touching a loose ball (within TOUCH_X, TOUCH_Y) takes it, and it
+ * rolls DRIBBLE px ahead of its owner; an opponent's touch steals it; B1 kicks
+ * it BALL_KICK (1/16 px a frame) the way the athlete faces, and the kicker
+ * cannot take it back for REGRAB frames. A loose ball slows by 1/16 a frame
+ * (stopping under BALL_STOP: below 16 the 1/16 rounds to nothing) and
+ * bounces off the field's sides. A goal scores
+ * GOAL_SCORE for each player of the scoring team and starts again from the
+ * middle after KICKOFF_FRAMES; the match lasts MATCH_TIME frames of play, and
+ * a win or a draw for a team with a player in clears the level.
+ */
+export const FIELD_X0 = 16;
+export const FIELD_Y0 = 64;
+export const FIELD_Y1 = 200;
+export const GOAL_Y0 = 112;
+export const GOAL_Y1 = 160;
+export const ATH_SPEED = 2;
+export const TOUCH_X = 12;
+export const TOUCH_Y = 8;
+export const DRIBBLE = 10;
+export const BALL_KICK = 72;
+export const BALL_STOP = 16;
+export const REGRAB = 20;
+export const GOAL_SCORE = 500;
+export const KICKOFF_FRAMES = 60;
+export const MATCH_TIME = 3600;
+/** The CPU: it shoots once nearer than CPU_SHOOT px to the goal, pressing B1 on frames a multiple of 8. */
+export const CPU_SHOOT = 120;
+/** The score's row on the text layer, and the call's (KICK OFF, GOAL!). */
+export const SPORTS_ROW = 3;
+export const SPORTS_CALL_ROW = 10;

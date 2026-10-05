@@ -8,7 +8,7 @@
 //    with a street on scroll2 (16x16 tiles), each with its own palette.
 // It writes the tiles into the graphics region and C tables (art_data.c).
 
-import { dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
+import { ballPen, dronePen, gemPen, powerPen, shipPen } from "../../frontend/apps/web/src/willy-maker/engine/shipArt.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -759,9 +759,11 @@ export function addArt(gfx, defs, genDir, opts = {}) {
         if (k === 6) return [15, 13, 11, 0, 14][pen];
         return [15, 1 + k, 11, 0, 6 + k][pen];
       })));
-    h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash; + 6: the rival's stone */`, `#define PAL_GEMS ${objPalettes.length}`);
+    // sports: the ball (engine/shipArt.ts ballPen), in the gems' palette: white, the stone's dark gray, black
+    gfx.tile16(code + 7, Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => [15, 11, 14, 0][ballPen(x, y)])));
+    h.push(`#define TILE_GEM ${hex4(code)} /* + color - 1 (0-4); + 5: the flash; + 6: the rival's stone */`, `#define TILE_BALL ${hex4(code + 7)} /* sports: the ball, in PAL_GEMS */`, `#define PAL_GEMS ${objPalettes.length}`);
     objPalettes.push([0xf000, 0xfe34, 0xf3c5, 0xf38f, 0xffc2, 0xfb5e, 0xf912, 0xf173, 0xf149, 0xfa71, 0xf629, 0xffff, 0xfccd, 0xf889, 0xf445, 0]);
-    code += 7;
+    code += 8;
   }
   if (objPalettes.length > 32) throw new Error(`${objPalettes.length} sprite palettes: the board has 32`);
   c.push(cArray("u16", "obj_palettes", objPalettes.flat().map(hex4), 8));

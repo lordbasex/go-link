@@ -7,8 +7,8 @@
 
 import { BODY_H, CELL, SCREEN_H, SCREEN_W, Tag, YAWN_AFTER, type Game } from "../engine";
 import { BOSS_HUD_STEP } from "../engine/rules";
-import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
-import { CLEAR_FRAMES, FLY_MID, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
+import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, dronePen, gemPen, powerPen, shipPen } from "../engine/shipArt";
+import { CLEAR_FRAMES, FLY_MID, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
@@ -171,6 +171,8 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
     // the quiz is all text, drawn over the HUD below
   } else if (game.rules.puzzle) drawWells(ctx, game);
   else drawObjects(ctx, game, sprites, o.variants, o.ownHeroes, o.pickupLooks);
+  // sports: the ball over the athletes (rom/tools/art.mjs TILE_BALL)
+  if (game.rules.sports) drawPens(ctx, (game.ballX >> 4) - 8, (game.ballY >> 4) - 12, 16, 16, ballPen, ["", "#ffffff", "#555566", "#000000"]);
   if (o.overlays.collision) drawCollision(ctx, game);
   if (o.overlays.hitboxes) drawHitboxes(ctx, game, colors);
   if (o.ghost) {
@@ -188,6 +190,22 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
   if (game.rules.crosshair) drawCrosshairs(ctx, game);
   if (game.rules.quiz) drawQuiz(ctx, game);
   if (game.rules.versus) drawVersus(ctx, game);
+  if (game.rules.sports) drawSports(ctx, game);
+}
+
+/** Sports' HUD, as the ROM prints it: each team's goals with the seconds left between them, and the call (KICK OFF, GOAL!). */
+function drawSports(ctx: CanvasRenderingContext2D, game: Game): void {
+  const at = (col: number, row: number, text: string, ink: string) => drawBoardText(ctx, text, col * 8, row * 8, 1, ink);
+  at(17, SPORTS_ROW, `A ${game.goals[0]}`, TEXT_INKS.cyan);
+  at(23, SPORTS_ROW, String(Math.ceil(Math.max(0, game.matchT) / 60)).padStart(2, "0"), TEXT_INKS.white);
+  at(28, SPORTS_ROW, `${game.goals[1]} B`, TEXT_INKS.red);
+  const call = sportsCall(game);
+  if (call) at(Math.floor((48 - call.length) / 2), SPORTS_CALL_ROW, call, TEXT_INKS.accent);
+}
+
+/** Sports' call while play waits: KICK OFF, or GOAL! after a goal. */
+export function sportsCall(game: Game): string {
+  return game.kickT ? (game.goalBy < 0 ? "KICK OFF" : "GOAL!") : "";
 }
 
 /**
@@ -759,7 +777,7 @@ function drawHud(ctx: CanvasRenderingContext2D, game: Game, colors: OverlayColor
     }
     ctx.fillText(String(p.score).padStart(6, "0"), x + 14, 4);
     // versus fighting shows health as bars (drawVersus), not as lives
-    if (!game.rules.versus) for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
+    if (!game.rules.versus && !game.rules.sports) for (let k = 0; k < p.lives; k++) ctx.fillRect(x + 14 + k * 5, 12, 3, 3);
     if (p.ammo) ctx.fillText(`${o.words.ammo} ${p.ammo}`, x + 34, 12);
     // the light gun: an empty gun says to reload (B2)
     else if (game.rules.crosshair && ((game.frame >> 4) & 1 || p.reloadT)) ctx.fillText(p.reloadT ? "..." : (o.words.reload ?? "RELOAD"), x + 34, 12);

@@ -30,10 +30,10 @@ describe("Willy Maker app", () => {
     // step 1: the genre, the platform shooter, the platformer (T-22), the beat 'em up and the light gun can be chosen today
     const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
     expect(genres).toHaveLength(13);
-    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Versus"), expect.stringContaining("Puzzle"), expect.stringContaining("Quiz")]);
-    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(2);
+    expect(genres.filter((g) => !(g as HTMLButtonElement).disabled).map((g) => g.textContent)).toEqual([expect.stringContaining("Platform shooter"), expect.stringContaining("Platformer"), expect.stringContaining("Beat 'em up"), expect.stringContaining("Light gun"), expect.stringContaining("Horizontal shooter"), expect.stringContaining("Vertical shooter"), expect.stringContaining("Top-down run and gun"), expect.stringContaining("Maze"), expect.stringContaining("Versus"), expect.stringContaining("Puzzle"), expect.stringContaining("Quiz"), expect.stringContaining("Sports")]);
+    expect(genres.filter((g) => g.textContent?.includes("Coming soon"))).toHaveLength(1);
     expect(genres[0]).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(screen.getByRole("radio", { name: /Sports/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Racing/ }));
     expect(genres[0]).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: /Next: the board/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Empty/ }));
