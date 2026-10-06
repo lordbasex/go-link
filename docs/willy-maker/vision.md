@@ -45,4 +45,4 @@ Every game made in Willy Maker should be playable by an AI before anyone else pl
 2. The AI playtester.
 3. More genres on the CPS-1, in the order of [genres.md](genres.md), each one as an experiment with a frozen spec and a jury.
 4. The first bigger board, chosen when a genre needs what the CPS-1 cannot do.
-5. go-link's own engine.
+5. go-link's own engine (its base: [go-link-hd.md](../go-link-hd.md)).

@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Docs
+
+- **go-link HD's base** ([docs/go-link-hd.md](docs/go-link-hd.md)): what go-link's own 2D engine will support, each item marked Base, Later or Idea (simulation, picture, camera, sound, controls, rules, saves, game package, go-link and Willy Maker), with budgets, phases and the decisions taken: a libretro core of our own in Go, also built to WebAssembly, pixel art on a 640 × 360 screen first, the platformer first. Nothing is built yet.
+
 ## [0.2.1] - 2026-10-05
 
 ### Fixed (apps)
