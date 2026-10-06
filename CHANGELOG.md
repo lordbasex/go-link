@@ -4,10 +4,16 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-05
+
 ### Fixed (apps)
 
 - **iOS: the room's drawer fits the screen with a skin.** The skin's shell covers the whole screen, and it made the room taller than the screen, so the drawer (chat, players, you), Game settings and the name step sat about 60 points below the bottom: on an iPhone 17 Pro Max the chat's text field was off screen. Found in a live four-player test (iPhone, Android and two browsers on the public signaling server).
 - **Android: chatting with the phone held sideways.** With the keyboard open in landscape, the chat sheet kept its handle, its tabs and 85 % of the screen, and the text field was squeezed out of sight; now it keeps only the messages and the field, at the full height left.
+
+### Core patches
+
+- **The first patch went upstream**: `0014` (the YM2151's load code gave every FM channel the wrong algorithm) is proposed to mame2003-plus as [libretro/mame2003-plus-libretro#2041](https://github.com/libretro/mame2003-plus-libretro/pull/2041). The others follow one by one if it is accepted.
 
 ## [0.2.0] - 2026-10-05
 

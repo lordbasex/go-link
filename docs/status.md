@@ -30,7 +30,7 @@
 2. **Apple Developer ID:** sign and notarize the macOS app so it opens without warnings.
 3. **Real phone tests:** touch gamepad, full screen and voice on iOS and Android.
 4. **End-to-end tests with real games** and four players.
-5. **Emulator core patches** (see [cores/mame2003-plus](../cores/mame2003-plus/README.md#pending)): eighteen patches now; since 2026-10-05 the games tried resume with identical pictures and the same sound (Aliens and X-Men included); next, propose them upstream (an outward step for the maintainer to approve) and decide whether to distribute the patched core.
+5. **Emulator core patches** (see [cores/mame2003-plus](../cores/mame2003-plus/README.md#pending)): eighteen patches now; since 2026-10-05 the games tried resume with identical pictures and the same sound (Aliens and X-Men included); the first one went upstream on 2026-10-05 ([#2041](https://github.com/libretro/mame2003-plus-libretro/pull/2041), the YM2151 load bug); the rest follow one by one if it is accepted. Distributing the patched core is still undecided.
 6. **Release 0.1.8** with Willy Maker, the ROM validator and go-link's own sets (the website already has them; the device app needs the release).
 7. **Willy Maker stage 2:** Create ROM in the browser from a data-driven engine is built ([engine.md](willy-maker/engine.md)); own enemies and civilians in the ROM followed, and **Play on my go-link** opens the created game's own room on the linked go-link in one click (2026-10-04, device 0.1.9: `@maker`, `tests/maker-room.spec.ts` with `E2E_CORE_DIR`).
 8. **The ROM's next stage:** ladder climbing animation, a camera for players on distant floors, QSound music and effects, and the remaining levels of the [game bible](rom/story.md).

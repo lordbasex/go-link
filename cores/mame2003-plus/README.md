@@ -77,7 +77,7 @@ License: mame2003-plus uses the MAME license (non-commercial use); these patches
 
 None of this is used yet: the device downloads the official core from the buildbot, and these patches were only built for testing. A save state made with one core build does not load in another (the saved items differ), so a device that changes cores must not reuse old saves (the probe cache is already keyed by the core's SHA-256).
 
-1. **Pull request upstream**, one patch at a time: the generic ones first (`0005`, `0006`, `0008`, `0011`-`0014`), then the drivers and chips (`0001`-`0004`, `0007`, `0009`, `0010`, `0015`-`0018`). `0014` is a plain bug fix and the easiest to accept.
+1. **Pull request upstream**, one patch at a time: `0014`, a plain bug fix, went first ([libretro/mame2003-plus-libretro#2041](https://github.com/libretro/mame2003-plus-libretro/pull/2041), 2026-10-05, against the current master). If it is accepted, the generic ones follow (`0005`, `0006`, `0008`, `0011`-`0013`), then the drivers and chips (`0001`-`0004`, `0007`, `0009`, `0010`, `0015`-`0018`). When `0014` is merged, `UPSTREAM` moves past it and the patch is removed.
 2. ~~Aliens is not exact~~: fixed by `0011`-`0014` (2026-10-05).
 3. ~~X-Men does not resume from later saves~~: fixed by `0011`-`0015` (2026-10-05); its sound is the same level but not bit-identical (the time base, above).
 4. **The general cause is MAME 0.78's timers:** a pending MAME timer is not saved (0.78 has no timer save support). `0006` handles the YM2151 ones; other chips with MAME timers (YM2203/YM2608/YM2610 through `fm.c`, the 50 µs NMI kludge of The Simpsons' Z80, one-shot timers of many drivers) can lose an event if the save falls just before it fires.
