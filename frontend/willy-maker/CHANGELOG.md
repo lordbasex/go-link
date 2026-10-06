@@ -4,6 +4,10 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ## [Unreleased]
 
+### Docs
+
+- **The AI playtester's specification** ([docs/willy-maker/ai-playtester.md](../../docs/willy-maker/ai-playtester.md)): what Test with AI will do, each item marked Base, Later or Idea (players, training, the report, the editor, genres, data and privacy, QA bots in rooms), with budgets, phases and the decisions taken: a small network trained on each game with the route bot as its teacher, reading the game's state, in the browser, the platformer first. Nothing is built yet.
+
 ### Changed
 
 - **Your characters instead of Willy**: in Characters, hovering an animation that already has frames plays your character's own frames (Willy stays the example for the ones without), and the editor draws your own hero, enemies, civilians and pickups with their sprite on the canvas, in the sprite picker and in Properties, where it showed boxes. Each animation's dot is green once it has frames and grey while it has none (it was always grey).

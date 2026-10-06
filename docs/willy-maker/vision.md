@@ -29,6 +29,8 @@ Step 3 fits go-link as it is: the device already runs a libretro core and stream
 
 ## The AI playtester
 
+Its full specification, item by item: [ai-playtester.md](ai-playtester.md).
+
 Every game made in Willy Maker should be playable by an AI before anyone else plays it: "Test with AI" trains a small player on that game and reports, with videos, how often a level is cleared, where players die, which jumps are almost impossible and where they get stuck.
 
 - **Why it is cheap:** the pieces exist. The board simulator runs in WebAssembly (validation level 3), each ROM keeps an exact game state in RAM (experiment 1's `lab_state`), and a route bot already plays from it ([harness](../experiments/harness.md)).
