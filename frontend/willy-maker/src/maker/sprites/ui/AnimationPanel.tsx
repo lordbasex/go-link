@@ -201,17 +201,25 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
           </div>
           <ol className="wms-frames">
             {(current?.frames ?? []).map((id, i) => (
-              <li key={`${id}-${i}`} className="wms-frame-chip" onDoubleClick={() => onEditFrame?.(id)}>
-                <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
+              <li key={`${id}-${i}`} className="wms-frame-chip">
+                {onEditFrame ? (
+                  // the picture is the button that opens the pixel editor (a pencil on it, a bigger one over it on hover; the tooltip says it)
+                  <button type="button" className="wms-frame-open" aria-label={fmt(t.pixel.edit, { n: numberOf(id) })} data-tip={fmt(t.pixel.edit, { n: numberOf(id) })} onClick={() => onEditFrame(id)}>
+                    <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
+                    <span className="wms-frame-pen" aria-hidden="true">
+                      ✎
+                    </span>
+                    <span className="wms-frame-hover" aria-hidden="true">
+                      ✎
+                    </span>
+                  </button>
+                ) : (
+                  <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
+                )}
                 <span className="wms-frame-n">
                   {numberOf(id)}
                   {edited?.has(id) ? ` · ${t.pixel.edited}` : ""}
                 </span>
-                {onEditFrame && (
-                  <button type="button" className="wms-x wms-edit" aria-label={fmt(t.pixel.edit, { n: numberOf(id) })} data-tip={fmt(t.pixel.edit, { n: numberOf(id) })} onClick={() => onEditFrame(id)} onDoubleClick={(e) => e.stopPropagation()}>
-                    ✎
-                  </button>
-                )}
                 <button
                   type="button"
                   className="wms-x"
@@ -227,7 +235,7 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
           <div className="wms-row">
             {onDrawFrames && (
               <button type="button" className="wms-cap" onClick={() => onDrawFrames(active)}>
-                {t.pixel.drawFrames}
+                {current?.frames.length ? t.pixel.editFrames : t.pixel.drawFrames}
               </button>
             )}
             <button type="button" className="wms-cap is-on" disabled={!selectedCount} onClick={() => onAddSelected(active)}>

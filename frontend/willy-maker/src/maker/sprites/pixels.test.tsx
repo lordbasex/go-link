@@ -217,6 +217,85 @@ describe("the pixel editor", () => {
     expect(colorAt(f.pic, 2, 2)).not.toBeNull();
   });
 
+  it("mirrors what it draws around the frame's middle", () => {
+    const { canvas, at, onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: /^Mirror drawing/ }));
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.pointerDown(canvas(), at(1, 3));
+    fireEvent.pointerUp(canvas(), at(1, 3));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    expect(row(result(onApply)[0]!.pic, 3)).toBe("RB....BR");
+  });
+
+  it("lifts a box of pixels, moves it and puts it down", () => {
+    const { canvas, at, onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.pointerDown(canvas(), at(2, 2));
+    fireEvent.pointerUp(canvas(), at(2, 2));
+    fireEvent.click(screen.getByRole("button", { name: "Select pixels (M)" }));
+    fireEvent.pointerDown(canvas(), at(1, 1));
+    fireEvent.pointerMove(canvas(), at(3, 3));
+    fireEvent.pointerUp(canvas(), at(3, 3));
+    fireEvent.pointerDown(canvas(), at(2, 2));
+    fireEvent.pointerMove(canvas(), at(4, 2));
+    fireEvent.pointerUp(canvas(), at(4, 2));
+    // nudged one more pixel right with the arrow
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    expect(row(result(onApply)[0]!.pic, 2)).toBe("R....B.R");
+  });
+
+  it("replaces a color, outlines the drawing and changes the canvas size", () => {
+    const { canvas, at, onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace a color (K)" }));
+    fireEvent.pointerDown(canvas(), at(0, 0));
+    fireEvent.click(screen.getByRole("button", { name: "Pencil (B)" }));
+    fireEvent.click(screen.getByRole("button", { name: R }));
+    fireEvent.pointerDown(canvas(), at(3, 3));
+    fireEvent.pointerUp(canvas(), at(3, 3));
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.click(screen.getByRole("button", { name: /^Outline: the current color/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Canvas size" }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Width" }), { target: { value: "10" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Height" }), { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "Change size" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    const f = result(onApply)[0]! as unknown as { pic: Pixels & { px: number; py: number } };
+    expect([f.pic.w, f.pic.h, f.pic.px, f.pic.py]).toEqual([10, 9, 5, 8]);
+    // the old row 0 is now row 1, one pixel to the right; the border went blue, and the outline is inside it and around the red dot
+    expect(row(f.pic, 1)).toBe(".BBBBBBBB.");
+    expect(row(f.pic, 4)).toBe(".BBBRB.BB.");
+  });
+
+  it("keeps a paste to itself: the screen behind never sees it", () => {
+    open();
+    const behind = vi.fn();
+    document.addEventListener("paste", behind);
+    fireEvent.paste(screen.getByRole("dialog"), { clipboardData: { items: [], files: [], getData: () => "" } });
+    document.removeEventListener("paste", behind);
+    expect(behind).not.toHaveBeenCalled();
+  });
+
+  it("pastes SVG code onto a vector layer as shapes fitted to the frame, in the board's colors", () => {
+    const { onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: "New vector layer (shapes)" }));
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="0" y="0" width="100" height="100" fill="#0000FE"/></svg>';
+    fireEvent.paste(screen.getByRole("dialog"), { clipboardData: { items: [], files: [], getData: () => svg } });
+    expect(screen.getByText("SVG: 1 shapes added, fitted to the frame with the board's colors.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    const f = result(onApply)[0] as unknown as { pic: Pixels; layers: { shapes?: unknown[] }[] };
+    // the whole 8 × 8 frame, blue snapped to the board's #0000ff
+    expect(f.layers[1]!.shapes).toEqual([{ kind: "rect", points: [[0, 0], [7, 7]], fill: B, stroke: null, width: 0 }]);
+    expect(row(f.pic, 4)).toBe("BBBBBBBB");
+  });
+
+  it("uses the board it is given: its palette size and zone height", () => {
+    render(<PixelEditor t={spritesEn.pixel} board={{ snap: (c) => c, perPalette: 1, zoneRows: 4 }} anim="Standing" fps={6} frames={[{ id: "f1", pic: { ...stroke(rect(blank(8, 8), 0, 0, 7, 7, R, false), 3, 3, 3, 3, B), px: 4, py: 7 } }]} start={0} size={{ w: 8, h: 8 }} palette={[R, B]} onApply={() => undefined} onCancel={() => undefined} />);
+    expect(screen.getByText("Zone 2: 2 of 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Bring down to 1 colors/ })).toBeInTheDocument();
+  });
+
   it("counts each zone's colors against the board's 15", () => {
     open();
     expect(screen.getByText("Zone 1: 1 of 15")).toBeInTheDocument();

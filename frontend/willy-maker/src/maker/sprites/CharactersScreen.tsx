@@ -19,10 +19,13 @@ import { ANIMS, DEFAULT_HEIGHT, HEIGHTS } from "./presets";
 import { fmt, useSpritesText } from "./text";
 import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
-import { PixelEditor, type EditorFrame, type EditorLayer } from "./ui/PixelEditor";
+import { editorBoard, PixelEditor, type EditorFrame, type EditorLayer } from "./ui/PixelEditor";
+import { boardOf } from "../board/cps1";
 import { colorsOf } from "./pixels";
 import { cleanShapes } from "./vector";
 import { BoardPanel } from "./ui/BoardPanel";
+import { drawArt } from "../ui/render";
+import { useProjectImages } from "../ui/useTileImages";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
 import { rowsOf } from "./rows";
@@ -504,9 +507,10 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     newCharacter();
   };
 
-  // a picture pasted anywhere on the tab (copied from an image AI's chat), unless a text field takes the paste
+  // a picture pasted anywhere on the tab (copied from an image AI's chat), unless a text field or the pixel editor takes the paste
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (editing) return;
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable)) return;
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
@@ -543,6 +547,23 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
         e.target.value = "";
       }}
     />
+  );
+
+  // the editor's preview "In the level": the first level's art at the frame's scale, its player start under the feet
+  const images = useProjectImages(project);
+  const level = project.levels?.[0];
+  const startAt = level?.layers.flatMap((l) => (l.kind === "objects" ? l.items : [])).find((o) => o.type === "player_start");
+  const backdrop = useMemo(
+    () =>
+      level
+        ? (ctx: CanvasRenderingContext2D, w: number, h: number, zoom: number, feetX: number, feetY: number) => {
+            const fx = startAt ? startAt.x : 48;
+            const fy = startAt ? startAt.y : level.size.h - 32;
+            drawArt(ctx, level, { x: fx - feetX / zoom, y: fy - feetY / zoom, zoom, w, h }, 1, images);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+          }
+        : undefined,
+    [level, startAt, images],
   );
 
   return (
@@ -845,6 +866,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           start={editing.start}
           size={newFrameSize()}
           palette={zones ? [...new Set(zones.zones.flatMap((z) => z.palette))] : []}
+          board={editorBoard(boardOf(project))}
+          backdrop={backdrop}
           onCancel={() => setEditing(null)}
           onApply={(result) => applyEditor(editing.anim, result)}
         />

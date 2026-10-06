@@ -14,19 +14,27 @@
 // gives its colors to the ones recolored for players 2 to 4. A vector layer
 // (like Scratch's vector costumes) holds shapes that can be selected, moved,
 // resized, recolored and put in front or behind, shown as the board's pixels;
-// Convert to bitmap keeps the pixels and drops the shapes. Undo covers
+// Convert to bitmap keeps the pixels and drops the shapes. More tools
+// (sprites/tools.ts): mirror drawing, a selection to move, flip, turn, cut,
+// copy and paste, replace a color, an automatic outline, bring the zones down
+// to 15 colors, a new canvas size that keeps the feet, a picture pasted or
+// opened into a new layer, and the animation seen in the game's first level.
+// Undo covers
 // drawing, the layers and the frame list alike. The drawing is
 // sprites/pixels.ts.
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { ArrowDown, ArrowUp, BringToFront, ChevronsDown, Circle, Copy, Eraser, Eye, EyeOff, FlipHorizontal2, FlipVertical2, Hexagon, ImageDown, Lock, LockOpen, Minus, MousePointer2, PaintBucket, Pencil, PenTool, Pipette, Plus, Redo2, SendToBack, Shirt, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
-import { snapColor } from "../../board/cps1";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { ArrowDown, ArrowUp, Blend, FileUp, BringToFront, ChevronsDown, Columns2, ImagePlus, Replace, RotateCw, Scaling, SquareDashed, Wand2, Circle, Copy, Eraser, Eye, EyeOff, FlipHorizontal2, FlipVertical2, Hexagon, ImageDown, Lock, LockOpen, Minus, MousePointer2, PaintBucket, Pencil, PenTool, Pipette, Plus, Redo2, SendToBack, Shirt, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { boardOf } from "../../board/cps1";
 import type { SpritesMessages } from "../../i18n/sprites.en";
 import { bandColors, blank, colorAt, colorsOf, composite, copy, ellipse, fill, flip, rect, stroke, type Color, type Pixels } from "../pixels";
 import { fmt } from "../text";
+import { decodeImage, rasterSvg } from "../image";
+import { svgShapes } from "../svg";
+import { boxBetween, fitPicture, lift, outline as outlineOf, recolorBands, replaceColor, resizeCanvas, resizeOffset, rotate, stamp, zoneMerges, type Rect } from "../tools";
 import { boxOf, moveShape, rasterize, resizeShape, shapeAt, type Shape, type ShapeKind } from "../vector";
 
-export type PixelTool = "pencil" | "eraser" | "fill" | "picker" | "line" | "rect" | "ellipse" | "select" | "polygon";
+export type PixelTool = "pencil" | "eraser" | "fill" | "picker" | "line" | "rect" | "ellipse" | "select" | "polygon" | "marquee" | "replace";
 const TOOLS: { id: PixelTool; key: string; icon: typeof Pencil }[] = [
   { id: "pencil", key: "b", icon: Pencil },
   { id: "eraser", key: "e", icon: Eraser },
@@ -35,6 +43,8 @@ const TOOLS: { id: PixelTool; key: string; icon: typeof Pencil }[] = [
   { id: "line", key: "l", icon: Minus },
   { id: "rect", key: "r", icon: Square },
   { id: "ellipse", key: "o", icon: Circle },
+  { id: "marquee", key: "m", icon: SquareDashed },
+  { id: "replace", key: "k", icon: Replace },
 ];
 const SHAPES: PixelTool[] = ["line", "rect", "ellipse"];
 /** A vector layer's tools: select (move, resize), the shapes, and pick a color. */
@@ -47,6 +57,9 @@ const VECTOR_TOOLS: { id: PixelTool; key: string; icon: typeof Pencil }[] = [
   { id: "picker", key: "i", icon: Pipette },
 ];
 const MAX_UNDO = 100;
+/** The tools that draw (and so can mirror). */
+const MIRRORS: PixelTool[] = ["pencil", "eraser", "fill", "line", "rect", "ellipse"];
+const MAX_SIDE = 128;
 
 export interface EditedFrame extends Pixels {
   px: number;
@@ -83,8 +96,25 @@ export interface FrameIn {
   layers?: EditorLayer[];
 }
 
+/** What the editor needs from the game's board: its colors and how its sprite palettes are laid out. */
+export interface EditorBoard {
+  /** The board's nearest color to any color. */
+  snap(hex: string): string;
+  /** Colors in one zone's palette. */
+  perPalette: number;
+  /** A zone's height in rows (the board's sprite tile). */
+  zoneRows: number;
+}
+
+/** The editor's board for a project's profile (only CPS-1 for now). */
+export function editorBoard(profile = boardOf()): EditorBoard {
+  return { snap: profile.colors.snap, perPalette: profile.colors.perPalette, zoneRows: profile.sprites.tile };
+}
+
 export interface PixelEditorProps {
   t: SpritesMessages["pixel"];
+  /** The game's board (the CPS-1 when left out). */
+  board?: EditorBoard;
   /** The animation's name ("Standing"). */
   anim: string;
   fps: number;
@@ -95,6 +125,8 @@ export interface PixelEditorProps {
   size: { w: number; h: number };
   /** The character's colors, offered first. */
   palette: readonly string[];
+  /** Draws the game's first level behind the preview, its player start at the frame's feet (canvas pixels); none hides "In the level". */
+  backdrop?: (ctx: CanvasRenderingContext2D, w: number, h: number, zoom: number, feetX: number, feetY: number) => void;
   /** The animation as the editor leaves it, in order (new frames have a null id). */
   onApply: (frames: EditorFrame[]) => void;
   onCancel: () => void;
@@ -115,7 +147,10 @@ function blankLike(f: EditorFrame): EditorFrame {
   return { id: null, pic: { ...empty, px: f.pic.px, py: f.pic.py }, layers: f.layers.map((l) => ({ ...l, pic: blank(f.pic.w, f.pic.h), locked: false })), changed: true };
 }
 
-export function PixelEditor({ t, anim, fps, frames: initial, start, size, palette, onApply, onCancel }: PixelEditorProps) {
+export function PixelEditor({ t, board = editorBoard(), anim, fps, frames: initial, start, size, palette, backdrop, onApply, onCancel }: PixelEditorProps) {
+  const snapColor = board.snap;
+  const MAX = board.perPalette;
+  const ROWS = board.zoneRows;
   const [frames, setFrames] = useState<EditorFrame[]>(() =>
     initial.length
       ? initial.map((f) => ({ id: f.id, pic: { ...copy(f.pic), px: f.pic.px, py: f.pic.py }, layers: f.layers?.length ? f.layers : [layer(t.layerBase, copy(f.pic))], changed: false }))
@@ -139,6 +174,17 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   const [outline, setOutline] = useState("#000000");
   const [width, setWidth] = useState(1);
   const [fillOn, setFillOn] = useState(true);
+  // mirror drawing around the frame's middle; a selection lifted off a layer (its pixels, where they are, the layer without them)
+  const [mirror, setMirror] = useState(false);
+  const [float, setFloat] = useState<{ frame: number; layer: number; piece: Pixels; x: number; y: number; rest: Pixels } | null>(null);
+  const [marq, setMarq] = useState<Rect | null>(null);
+  const clip = useRef<{ piece: Pixels; x: number; y: number } | null>(null);
+  const [sizing, setSizing] = useState<{ w: number; h: number } | null>(null);
+  const [inLevel, setInLevel] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+  const svgFile = useRef<HTMLInputElement>(null);
+  // a short message in the footer (an SVG with parts left out, a file that could not be read)
+  const [notice, setNotice] = useState<string | null>(null);
   const frame = frames[cur]!;
   const pic = frame.pic;
   const lay = Math.min(li, frame.layers.length - 1);
@@ -149,6 +195,8 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   const isVector = shapes !== undefined;
   // the tool in use: a vector layer has its own set
   const active: PixelTool = isVector ? (VECTOR_TOOLS.some((x) => x.id === tool) ? tool : "select") : tool === "select" || tool === "polygon" ? "pencil" : tool;
+  // the selection belongs to one frame and layer
+  const floatHere = float && float.frame === cur && float.layer === lay ? float : null;
   const fit = Math.max(2, Math.min(16, Math.floor(Math.min(520 / pic.w, 440 / pic.h))));
   const [zoom, setZoom] = useState(fit);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
@@ -183,6 +231,8 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   const doUndo = () => {
     const prev = undo[undo.length - 1];
     if (!prev) return;
+    // a selection not yet put down goes back where it was
+    setFloat(null);
     setUndo((u) => u.slice(0, -1));
     setRedo((r) => [...r, snapshot()]);
     setFrames(prev.frames);
@@ -191,6 +241,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   const doRedo = () => {
     const next = redo[redo.length - 1];
     if (!next) return;
+    setFloat(null);
     setRedo((r) => r.slice(0, -1));
     setUndo((u) => [...u, snapshot()]);
     setFrames(next.frames);
@@ -232,9 +283,153 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     push(next, to);
   };
 
+  // ---- the selection
+  /** The frames with the selection put down (as they are when there is none). */
+  const settled = (fs = frames): EditorFrame[] =>
+    float ? fs.map((f, i) => (i === float.frame ? withLayers(f, f.layers.map((l, k) => (k === float.layer ? { ...l, pic: stamp(float.rest, float.piece, float.x, float.y) } : l))) : f)) : fs;
+  /** Puts the selection down: one undo step. */
+  const commitFloat = () => {
+    if (!float) return;
+    push(settled(), cur);
+    setFloat(null);
+  };
+  // moving to another frame or layer puts the selection down
+  useEffect(() => {
+    if (float && (float.frame !== cur || float.layer !== lay)) commitFloat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, lay]);
+  /** The selection's pixels changed (flipped, turned): kept on the same corner. */
+  const reshape = (piece: Pixels) => float && setFloat({ ...float, piece });
+  /** Deletes the selected pixels (the layer keeps the rest). */
+  const deleteFloat = () => {
+    if (!floatHere) return;
+    setFloat(null);
+    draw(floatHere.rest);
+  };
+  /** A picture as a new selection on the current bitmap layer (pasted), the current selection put down first. */
+  const floatOn = (piece: Pixels, x: number, y: number) => {
+    const base = floatHere ? stamp(floatHere.rest, floatHere.piece, floatHere.x, floatHere.y) : layerNow.pic;
+    if (floatHere) push(settled(), cur);
+    setFloat({ frame: cur, layer: lay, piece, x, y, rest: base });
+    setTool("marquee");
+  };
+  /** A picture file (opened or pasted) into a new layer, fitted to the frame and standing on its feet, selected to move it. */
+  const takePicture = async (bytes: Uint8Array, type: string) => {
+    let piece: Pixels | null = null;
+    if (type === "image/svg+xml") piece = await rasterSvg(new TextDecoder().decode(bytes), pic.w, pic.py + 1, snapColor);
+    else
+      try {
+        piece = fitPicture(await decodeImage(bytes, type), pic.w, pic.h, snapColor);
+      } catch {
+        piece = null;
+      }
+    if (!piece) {
+      setNotice(t.pictureBad);
+      return;
+    }
+    const at = lay + 1;
+    const layers = [...L.slice(0, at), layer(fmt(t.pictureLayer, { n: L.length + 1 }), blank(pic.w, pic.h)), ...L.slice(at)];
+    const fs = settled().map((f, i) => (i === cur ? withLayers(f, layers) : f));
+    push(fs, cur);
+    setLi(at);
+    setFloat({ frame: cur, layer: at, piece, x: Math.max(0, Math.min(pic.w - piece.w, pic.px - (piece.w >> 1))), y: Math.max(0, pic.py + 1 - piece.h), rest: blank(pic.w, pic.h) });
+    setTool("marquee");
+  };
+  /** An SVG's shapes added to the current vector layer, on top. */
+  const takeSvgShapes = (text: string) => {
+    if (!shapes) return;
+    const got = svgShapes(text, pic.w, pic.h, { x: pic.px, y: pic.py }, snapColor);
+    if (!got || !got.shapes.length) {
+      setNotice(t.svgBad);
+      return;
+    }
+    setShapes([...shapes, ...got.shapes], shapes.length + got.shapes.length - 1);
+    setTool("select");
+    setNotice(got.skipped ? fmt(t.svgSkipped, { n: got.shapes.length, skipped: got.skipped }) : fmt(t.svgDone, { n: got.shapes.length }));
+  };
+  /** A picture file: an SVG on a vector layer becomes its shapes; anything else a new picture layer. */
+  const takeFile = (f: File) => {
+    const svg = f.type === "image/svg+xml" || /\.svg$/i.test(f.name);
+    if (svg && isVector) void f.text().then(takeSvgShapes);
+    else void f.arrayBuffer().then((b) => takePicture(new Uint8Array(b), svg ? "image/svg+xml" : f.type));
+  };
+  const paste = (e: ClipboardEvent<HTMLDivElement>) => {
+    // the editor keeps every paste (the screen behind would take a picture as a new sheet)
+    e.stopPropagation();
+    const f = [...e.clipboardData.items].find((x) => x.type.startsWith("image/"))?.getAsFile();
+    if (f) {
+      e.preventDefault();
+      takeFile(f);
+      return;
+    }
+    // SVG code copied from a drawing program or a web page
+    const text = e.clipboardData.getData("text/plain");
+    if (/<svg[\s>]/i.test(text)) {
+      e.preventDefault();
+      if (isVector) takeSvgShapes(text);
+      else void takePicture(new TextEncoder().encode(text), "image/svg+xml");
+    }
+  };
+
+  // ---- whole-layer and whole-animation tools
+  /** Replace: a color takes the current one, in this layer, or (Shift) in every layer of every frame. A vector layer's shapes change color too. */
+  const replaceIn = (l: EditorLayer, from: string): EditorLayer =>
+    l.shapes
+      ? { ...l, shapes: l.shapes.map((x) => ({ ...x, fill: x.fill === from ? color : x.fill, stroke: x.stroke === from ? color : x.stroke })), pic: rasterize(l.shapes.map((x) => ({ ...x, fill: x.fill === from ? color : x.fill, stroke: x.stroke === from ? color : x.stroke })), l.pic.w, l.pic.h) }
+      : { ...l, pic: replaceColor(l.pic, from, color) };
+  const replaceAt = (x: number, y: number, everywhere: boolean) => {
+    const from = colorAt(everywhere ? pic : layerNow.pic, x, y);
+    if (!from || from === color) return;
+    if (everywhere) push(frames.map((f) => withLayers(f, f.layers.map((l) => (l.locked ? l : replaceIn(l, from))))));
+    else push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l, k) => (k === lay ? replaceIn(l, from) : l))) : f)));
+  };
+  /** Brings every zone down to the board's 15 colors over the whole animation (the least used go to the nearest kept). */
+  const reduce = () => {
+    const merges = zoneMerges(settled().map((f) => ({ pic: f.pic, feetY: f.pic.py })), MAX, ROWS);
+    push(
+      settled().map((f) => {
+        const layers = f.layers.map((l) => {
+          const next = recolorBands(l.pic, f.pic.py, merges, ROWS);
+          // a vector layer whose pixels change becomes a bitmap one
+          return next === l.pic ? l : { ...l, pic: next, shapes: undefined };
+        });
+        return layers.some((l, k) => l !== f.layers[k]) ? withLayers(f, layers) : f;
+      }),
+    );
+    setFloat(null);
+  };
+  /** Every frame in a new canvas size, the drawing as centred and as far from the bottom as before (the feet and shapes move with it). */
+  const resizeAll = (nw: number, nh: number) => {
+    push(
+      settled().map((f) => {
+        const { dx, dy } = resizeOffset(f.pic.w, f.pic.h, nw, nh);
+        const layers = f.layers.map((l) => {
+          if (!l.shapes) return { ...l, pic: resizeCanvas(l.pic, nw, nh, dx, dy) };
+          const moved = l.shapes.map((x) => moveShape(x, dx, dy));
+          return { ...l, shapes: moved, pic: rasterize(moved, nw, nh) };
+        });
+        const out = composite(layers, nw, nh);
+        return { ...f, layers, pic: { ...out, px: f.pic.px + dx, py: f.pic.py + dy }, changed: true };
+      }),
+    );
+    setFloat(null);
+    setSizing(null);
+  };
+  /** The mirrored column (around the frame's middle). */
+  const mx = (x: number) => pic.w - 1 - x;
+  const mirrored = mirror && MIRRORS.includes(active);
+
   const ink: Color = active === "eraser" ? null : color;
-  const shape = (base: Pixels, x0: number, y0: number, x1: number, y1: number) =>
+  const shape1 = (base: Pixels, x0: number, y0: number, x1: number, y1: number) =>
     active === "line" ? stroke(base, x0, y0, x1, y1, ink, brush) : active === "rect" ? rect(base, x0, y0, x1, y1, ink, filled) : ellipse(base, x0, y0, x1, y1, ink, filled);
+  const shape = (base: Pixels, x0: number, y0: number, x1: number, y1: number) => {
+    const one = shape1(base, x0, y0, x1, y1);
+    return mirrored ? shape1(one, mx(x0), y0, mx(x1), y1) : one;
+  };
+  const line = (base: Pixels, x0: number, y0: number, x1: number, y1: number) => {
+    const one = stroke(base, x0, y0, x1, y1, ink, brush);
+    return mirrored ? stroke(one, mx(x0), y0, mx(x1), y1, ink, brush) : one;
+  };
 
   // ---- vector layers
   /** A layer with these shapes, its pixels made from them. */
@@ -273,6 +468,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     setPreview(null);
     if (shapes && pts.length >= 3) setShapes([...shapes, newShape("polygon", pts)], shapes.length);
   };
+  const sdrag = useRef<{ mode: "box" | "move"; x0: number; y0: number; ox: number; oy: number } | null>(null);
   const vdrag = useRef<{ mode: "new" | "move" | "resize"; x0: number; y0: number; before: Shape[]; now: Shape[] } | null>(null);
   const vectorDown = (x: number, y: number, e: PointerEvent<HTMLCanvasElement>) => {
     if (!shapes) return;
@@ -342,7 +538,28 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       return;
     }
     if (active === "fill") {
-      draw(fill(layerNow.pic, x, y, color));
+      const one = fill(layerNow.pic, x, y, color);
+      draw(mirrored ? fill(one, mx(x), y, color) : one);
+      return;
+    }
+    if (active === "replace") {
+      replaceAt(x, y, e.shiftKey);
+      return;
+    }
+    if (active === "marquee") {
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } catch {
+        // goes on without the capture
+      }
+      // inside the selection: move it; elsewhere: put it down and start a new one
+      if (floatHere && x >= floatHere.x && y >= floatHere.y && x < floatHere.x + floatHere.piece.w && y < floatHere.y + floatHere.piece.h) {
+        sdrag.current = { mode: "move", x0: x, y0: y, ox: floatHere.x, oy: floatHere.y };
+        return;
+      }
+      if (float) commitFloat();
+      sdrag.current = { mode: "box", x0: x, y0: y, ox: 0, oy: 0 };
+      setMarq(boxBetween(pic, x, y, x, y));
       return;
     }
     // keep the stroke when the pointer leaves the canvas (a pointer the browser does not know cannot be captured: draw anyway)
@@ -353,7 +570,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     }
     const isShape = SHAPES.includes(active);
     const base = layerNow.pic;
-    const now = isShape ? shape(base, x, y, x, y) : stroke(base, x, y, x, y, ink, brush);
+    const now = isShape ? shape(base, x, y, x, y) : line(base, x, y, x, y);
     drag.current = { x0: x, y0: y, before: base, now, lx: x, ly: y, shape: isShape };
     if (isShape) setPreview(now);
     else showNow(now);
@@ -365,13 +582,19 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       vectorMove(x, y);
       return;
     }
+    const sd = sdrag.current;
+    if (sd) {
+      if (sd.mode === "box") setMarq(boxBetween(pic, sd.x0, sd.y0, x, y));
+      else if (floatHere) setFloat({ ...floatHere, x: sd.ox + x - sd.x0, y: sd.oy + y - sd.y0 });
+      return;
+    }
     const d = drag.current;
     if (!d) return;
     if (d.shape) {
       d.now = shape(d.before, d.x0, d.y0, x, y);
       setPreview(d.now);
     } else if (x !== d.lx || y !== d.ly) {
-      d.now = stroke(d.now, d.lx, d.ly, x, y, ink, brush);
+      d.now = line(d.now, d.lx, d.ly, x, y);
       d.lx = x;
       d.ly = y;
       showNow(d.now);
@@ -382,11 +605,29 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       vectorUp();
       return;
     }
+    const sd = sdrag.current;
+    if (sd) {
+      sdrag.current = null;
+      if (sd.mode === "box" && marq) {
+        const { piece, rest } = lift(layerNow.pic, marq);
+        setFloat({ frame: cur, layer: lay, piece, x: marq.x, y: marq.y, rest });
+      }
+      setMarq(null);
+      return;
+    }
     const d = drag.current;
     if (!d) return;
     drag.current = null;
     setPreview(null);
     draw(d.now, d.before);
+  };
+
+  const pickTool = (id: PixelTool) => {
+    setNotice(null);
+    if (float && id !== "marquee") commitFloat();
+    setTool(id);
+    setPoly(null);
+    setPreview(null);
   };
 
   const keys = (e: KeyboardEvent) => {
@@ -399,7 +640,22 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     } else if (mod && e.key.toLowerCase() === "y") {
       e.preventDefault();
       doRedo();
-    } else if (e.key === "Escape") {
+    } else if (mod && floatHere && (e.key.toLowerCase() === "c" || e.key.toLowerCase() === "x")) {
+      e.preventDefault();
+      clip.current = { piece: copy(floatHere.piece), x: floatHere.x, y: floatHere.y };
+      if (e.key.toLowerCase() === "x") deleteFloat();
+    } else if (mod && e.key.toLowerCase() === "v" && clip.current && !isVector && canDraw) {
+      // the picture copied here; a picture from another program comes through the paste event
+      e.preventDefault();
+      floatOn(copy(clip.current.piece), clip.current.x, clip.current.y);
+    } else if (floatHere && e.key.startsWith("Arrow")) {
+      // arrows nudge the selection a pixel
+      e.preventDefault();
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key] ?? [0, 0];
+      setFloat({ ...floatHere, x: floatHere.x + d[0]!, y: floatHere.y + d[1]! });
+    } else if (floatHere && (e.key === "Delete" || e.key === "Backspace")) deleteFloat();
+    else if (float && (e.key === "Enter" || e.key === "Escape")) commitFloat();
+    else if (e.key === "Escape") {
       // Esc first drops a polygon being drawn, then a selection, then the editor
       if (poly) finishPolygon([]);
       else if (sel !== null) setSel(null);
@@ -412,12 +668,16 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     else if (e.key === "ArrowDown" || e.key === "ArrowRight") setCur((c) => Math.min(frames.length - 1, c + 1));
     else if (!mod) {
       const hit = (isVector ? VECTOR_TOOLS : TOOLS).find((x) => x.key === e.key.toLowerCase());
-      if (hit) setTool(hit.id);
+      if (hit) pickTool(hit.id);
+      else if (e.key.toLowerCase() === "x" && !isVector) setMirror((m) => !m);
     }
   };
 
   // the canvas: the frames around it faint (onion skin), the picture (or the shape being drawn), the grid, the zones and the feet
-  const shown = useMemo(() => (preview ? composite(L.map((l, k) => (k === lay ? { ...l, pic: preview } : l)), pic.w, pic.h) : pic), [preview, L, lay, pic]);
+  const shown = useMemo(() => {
+    const over = preview ?? (floatHere ? stamp(floatHere.rest, floatHere.piece, floatHere.x, floatHere.y) : null);
+    return over ? composite(L.map((l, k) => (k === lay ? { ...l, pic: over } : l)), pic.w, pic.h) : pic;
+  }, [preview, floatHere, L, lay, pic]);
   useEffect(() => {
     const c = canvas.current;
     const ctx = c?.getContext("2d");
@@ -452,7 +712,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     ctx.strokeStyle = "rgba(236,48,19,0.8)";
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
-    for (let y = pic.py + 1 - 16; y > 0; y -= 16) ctx.moveTo(0, y * zoom + 0.5), ctx.lineTo(c.width, y * zoom + 0.5);
+    for (let y = pic.py + 1 - ROWS; y > 0; y -= ROWS) ctx.moveTo(0, y * zoom + 0.5), ctx.lineTo(c.width, y * zoom + 0.5);
     ctx.stroke();
     ctx.setLineDash([]);
     // the feet point
@@ -463,6 +723,23 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     ctx.moveTo(fx - zoom * 2, fy), ctx.lineTo(fx + zoom * 2, fy);
     ctx.moveTo(fx, fy - zoom * 2), ctx.lineTo(fx, fy + zoom);
     ctx.stroke();
+    // the mirror's axis
+    if (mirrored) {
+      ctx.strokeStyle = "rgba(40,120,255,0.8)";
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo((pic.w / 2) * zoom, 0), ctx.lineTo((pic.w / 2) * zoom, c.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // the selection (or the box being drawn)
+    const sbox = marq ?? (floatHere ? { x: floatHere.x, y: floatHere.y, w: floatHere.piece.w, h: floatHere.piece.h } : null);
+    if (sbox) {
+      ctx.strokeStyle = "rgba(40,120,255,1)";
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(sbox.x * zoom + 0.5, sbox.y * zoom + 0.5, sbox.w * zoom - 1, sbox.h * zoom - 1);
+      ctx.setLineDash([]);
+    }
     // a vector layer's selected shape: its box and the corner that resizes it
     const chosen = sel !== null ? shapes?.[sel] : undefined;
     if (chosen) {
@@ -474,16 +751,26 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       ctx.fillStyle = "rgba(40,120,255,1)";
       ctx.fillRect((b.x + b.w) * zoom, (b.y + b.h) * zoom, zoom, zoom);
     }
-  }, [shown, zoom, grid, onion, frames, cur, pic, sel, shapes]);
+  }, [shown, zoom, grid, onion, frames, cur, pic, sel, shapes, mirrored, marq, floatHere]);
 
   const colors = useMemo(() => [...new Set([...palette.map((c) => c.toLowerCase()), ...frames.flatMap((f) => colorsOf(f.pic))])], [palette, frames]);
-  const bands = useMemo(() => bandColors(pic, pic.py), [pic]);
+  const bands = useMemo(() => bandColors(pic, pic.py, ROWS), [pic]);
+  // the board gives each zone one palette for every frame: the animation's count matters
+  const animBands = useMemo(() => {
+    const all: Set<string>[] = [];
+    for (const f of frames) bandColors(f.pic, f.pic.py, ROWS).forEach((b, i) => b.forEach((c) => (all[i] ??= new Set()).add(c)));
+    return Array.from({ length: all.length }, (_, i) => all[i]?.size ?? 0);
+  }, [frames]);
+  const over = animBands.some((n) => n > MAX);
+  // the preview restarts only when the pictures change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const previewFrames = useMemo(() => settled().map((f) => f.pic), [frames, float]);
   const title = fmt(t.title, { name: anim });
   const frameName = (i: number) => fmt(t.frameOf, { n: i + 1, total: frames.length });
 
   return (
     <div className="wms-pe-back" role="presentation">
-      <div ref={root} className="wms-pe" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={keys}>
+      <div ref={root} className="wms-pe" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={keys} onPaste={paste}>
         <div className="wms-pe-top">
           <strong className="wms-pe-title">{title}</strong>
           <span className="wms-dim wms-mono">
@@ -496,16 +783,62 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
           <button type="button" className="wms-cap" aria-label={t.redo} title={t.redo} disabled={!redo.length} onClick={doRedo}>
             <Redo2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.flipH} title={t.flipH} onClick={() => push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => (l.shapes ? vectorLayer(l, l.shapes.map((x) => ({ ...x, points: x.points.map(([px, py]) => [pic.w - 1 - px, py] as [number, number]) }))) : { ...l, pic: flip(l.pic) }))) : f)))}>
+          <button type="button" className="wms-cap" aria-label={t.openPicture} title={t.openPicture} onClick={() => file.current?.click()}>
+            <ImagePlus size={16} />
+          </button>
+          <input
+            ref={file}
+            type="file"
+            accept="image/png,image/webp,image/jpeg,image/gif,image/svg+xml,.svg"
+            hidden
+            aria-label={t.openPicture}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) takeFile(f);
+            }}
+          />
+          <button type="button" className={`wms-cap${sizing ? " is-on" : ""}`} aria-label={t.canvasSize} title={t.canvasSize} aria-expanded={!!sizing} onClick={() => setSizing(sizing ? null : { w: pic.w, h: pic.h })}>
+            <Scaling size={16} />
+          </button>
+          {floatHere && (
+            <button type="button" className="wms-cap" aria-label={t.rotate} title={t.rotate} onClick={() => reshape(rotate(floatHere.piece))}>
+              <RotateCw size={16} />
+            </button>
+          )}
+          <button type="button" className="wms-cap" aria-label={floatHere ? t.flipSelH : t.flipH} title={floatHere ? t.flipSelH : t.flipH} onClick={() => floatHere ? reshape(flip(floatHere.piece)) : push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => (l.shapes ? vectorLayer(l, l.shapes.map((x) => ({ ...x, points: x.points.map(([px, py]) => [pic.w - 1 - px, py] as [number, number]) }))) : { ...l, pic: flip(l.pic) }))) : f)))}>
             <FlipHorizontal2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.flipV} title={t.flipV} onClick={() => push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => (l.shapes ? vectorLayer(l, l.shapes.map((x) => ({ ...x, points: x.points.map(([px, py]) => [px, pic.h - 1 - py] as [number, number]) }))) : { ...l, pic: flip(l.pic, true) }))) : f)))}>
+          <button type="button" className="wms-cap" aria-label={floatHere ? t.flipSelV : t.flipV} title={floatHere ? t.flipSelV : t.flipV} onClick={() => floatHere ? reshape(flip(floatHere.piece, true)) : push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => (l.shapes ? vectorLayer(l, l.shapes.map((x) => ({ ...x, points: x.points.map(([px, py]) => [px, pic.h - 1 - py] as [number, number]) }))) : { ...l, pic: flip(l.pic, true) }))) : f)))}>
             <FlipVertical2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.clear} title={t.clear} disabled={!canDraw} onClick={() => (isVector ? setShapes([], null) : draw(blank(pic.w, pic.h)))}>
+          <button type="button" className="wms-cap" aria-label={floatHere ? t.deleteSel : t.clear} title={floatHere ? t.deleteSel : t.clear} disabled={!canDraw} onClick={() => (floatHere ? deleteFloat() : isVector ? setShapes([], null) : draw(blank(pic.w, pic.h)))}>
             <Trash2 size={16} />
           </button>
         </div>
+        {sizing && (
+          <form
+            className="wms-pe-sizing"
+            aria-label={t.canvasSize}
+            onSubmit={(e) => {
+              e.preventDefault();
+              resizeAll(sizing.w, sizing.h);
+            }}
+          >
+            <label>
+              {t.width}
+              <input type="number" min={8} max={MAX_SIDE} value={sizing.w} onChange={(e) => setSizing({ ...sizing, w: Math.max(8, Math.min(MAX_SIDE, Math.round(Number(e.target.value) || 8))) })} />
+            </label>
+            <label>
+              {t.height}
+              <input type="number" min={8} max={MAX_SIDE} value={sizing.h} onChange={(e) => setSizing({ ...sizing, h: Math.max(8, Math.min(MAX_SIDE, Math.round(Number(e.target.value) || 8))) })} />
+            </label>
+            <span className="wms-note">{t.canvasSizeHint}</span>
+            <button type="submit" className="wms-cap is-on">
+              {t.resize}
+            </button>
+          </form>
+        )}
 
         <div className="wms-pe-body">
           <div className="wms-pe-strip">
@@ -551,15 +884,40 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
                 aria-pressed={active === id}
                 aria-label={t[id]}
                 title={t[id]}
-                onClick={() => {
-                  setTool(id);
-                  setPoly(null);
-                  setPreview(null);
-                }}
+                onClick={() => pickTool(id)}
               >
                 <Icon size={18} />
               </button>
             ))}
+            {!isVector && (
+              <span className="wms-pe-vops">
+                <button type="button" className={`wms-cap wms-pe-tool${mirror ? " is-on" : ""}`} aria-pressed={mirror} aria-label={t.mirror} title={t.mirror} onClick={() => setMirror((m) => !m)}>
+                  <Columns2 size={16} />
+                </button>
+                <button type="button" className="wms-cap wms-pe-tool" aria-label={t.autoOutline} title={t.autoOutline} disabled={!canDraw} onClick={() => draw(outlineOf(layerNow.pic, color))}>
+                  <Wand2 size={16} />
+                </button>
+              </span>
+            )}
+            {isVector && (
+              <span className="wms-pe-vops">
+                <button type="button" className="wms-cap wms-pe-tool" aria-label={t.importSvg} title={t.importSvg} disabled={!canDraw} onClick={() => svgFile.current?.click()}>
+                  <FileUp size={16} />
+                </button>
+                <input
+                  ref={svgFile}
+                  type="file"
+                  accept="image/svg+xml,.svg"
+                  hidden
+                  aria-label={t.importSvg}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) void f.text().then(takeSvgShapes);
+                  }}
+                />
+              </span>
+            )}
             {isVector && sel !== null && (
               <span className="wms-pe-vops">
                 <button type="button" className="wms-cap wms-pe-tool" aria-label={t.forward} title={t.forward} onClick={() => order(1)}>
@@ -576,7 +934,6 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
                 </button>
               </span>
             )}
-            {isVector && active === "polygon" && <p className="wms-note wms-pe-opt">{t.polygonHint}</p>}
             {!isVector && (active === "pencil" || active === "eraser" || active === "line") && (
               <label className="wms-pe-opt">
                 <span>{t.size}</span>
@@ -709,14 +1066,25 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
             <span className="wms-h">{t.zones}</span>
             <ul className="wms-pe-zones">
               {bands.map((b, i) => (
-                <li key={i} className={b.length > 15 ? "is-over" : undefined}>
-                  {fmt(t.zone, { n: i + 1, used: b.length })}
-                  {b.length > 15 && <span className="wms-note"> {t.zoneOver}</span>}
+                <li key={i} className={b.length > MAX || (animBands[i] ?? 0) > MAX ? "is-over" : undefined}>
+                  {fmt(t.zone, { n: i + 1, used: b.length, max: MAX })}
+                  {frames.length > 1 && <span className="wms-dim"> · {fmt(t.zoneAll, { n: animBands[i] ?? 0 })}</span>}
+                  {(b.length > MAX || (animBands[i] ?? 0) > MAX) && <span className="wms-note"> {fmt(t.zoneOver, { max: MAX })}</span>}
                 </li>
               ))}
             </ul>
+            {over && (
+              <button type="button" className="wms-cap" title={fmt(t.reduceHint, { max: MAX })} onClick={reduce}>
+                <Blend size={14} /> {fmt(t.reduce, { max: MAX })}
+              </button>
+            )}
             <span className="wms-h">{t.preview}</span>
-            <Preview frames={frames.map((f) => f.pic)} fps={fps} />
+            {backdrop && (
+              <label className="wms-check">
+                <input type="checkbox" checked={inLevel} onChange={(e) => setInLevel(e.target.checked)} /> {t.inLevel}
+              </label>
+            )}
+            <Preview frames={previewFrames} fps={fps} backdrop={inLevel ? backdrop : undefined} />
           </div>
         </div>
 
@@ -742,11 +1110,13 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
             <input type="checkbox" checked={onion} onChange={(e) => setOnion(e.target.checked)} /> {t.onion}
           </label>
           <span className="wms-mono wms-dim">{cursor ? fmt(t.cursor, cursor) : ""}</span>
-          <span className="wms-note wms-pe-hint">{t.hint}</span>
+          <span className="wms-note wms-pe-hint" aria-live="polite">
+            {notice ?? (isVector && active === "polygon" ? t.polygonHint : !isVector && active === "marquee" ? t.marqueeHint : !isVector && active === "replace" ? t.replaceHint : t.hint)}
+          </span>
           <button type="button" className="wms-cap" onClick={onCancel}>
             {t.cancel}
           </button>
-          <button type="button" className="wms-cap is-on" onClick={() => onApply(frames)}>
+          <button type="button" className="wms-cap is-on" onClick={() => onApply(settled())}>
             {t.apply}
           </button>
         </div>
@@ -783,7 +1153,7 @@ function FrameThumb({ pic }: { pic: Pixels }) {
 }
 
 /** The animation playing at its speed, every frame on the same feet. */
-function Preview({ frames, fps }: { frames: EditedFrame[]; fps: number }) {
+function Preview({ frames, fps, backdrop }: { frames: EditedFrame[]; fps: number; backdrop?: PixelEditorProps["backdrop"] }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
@@ -796,15 +1166,18 @@ function Preview({ frames, fps }: { frames: EditedFrame[]; fps: number }) {
     const t0 = performance.now();
     let id = 0;
     const tick = (now: number) => {
-      const i = Math.floor(((now - t0) / 1000) * Math.max(1, fps)) % frames.length;
+      // a frame's timestamp can come a little before t0
+      const i = Math.floor((Math.max(0, now - t0) / 1000) * Math.max(1, fps)) % frames.length;
       const f = frames[i]!;
       ctx.clearRect(0, 0, c.width, c.height);
       ctx.imageSmoothingEnabled = false;
+      // the level behind, at the same scale, its player start under the feet
+      if (backdrop) backdrop(ctx, c.width, c.height, scale, c.width / 2, c.height - 4);
       ctx.drawImage(pics[i]!, Math.round(c.width / 2 - f.px * scale), Math.round(c.height - 4 - (f.py + 1) * scale), f.w * scale, f.h * scale);
       id = requestAnimationFrame(tick);
     };
     tick(t0);
     return () => cancelAnimationFrame(id);
-  }, [frames, fps]);
+  }, [frames, fps, backdrop]);
   return <canvas ref={ref} className="wms-pe-preview" width={200} height={150} aria-hidden="true" />;
 }

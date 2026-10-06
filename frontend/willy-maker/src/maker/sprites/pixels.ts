@@ -159,13 +159,14 @@ export function colorsOf(p: Pixels): string[] {
 }
 
 /**
- * The colors of each 16 px row band counted from the feet up (the zones the
- * board gives a palette of 15 colors each), bottom band first.
+ * The colors of each band of `rows` rows (the board's sprite tile: 16 on the
+ * CPS-1) counted from the feet up, the zones the board gives a palette each,
+ * bottom band first.
  */
-export function bandColors(p: Pixels, feetY: number): string[][] {
+export function bandColors(p: Pixels, feetY: number, rows = 16): string[][] {
   const bands: Set<string>[] = [];
   for (let y = 0; y < p.h; y++) {
-    const band = Math.max(0, Math.floor((feetY - y) / 16));
+    const band = Math.max(0, Math.floor((feetY - y) / rows));
     const set = (bands[band] ??= new Set());
     for (let x = 0; x < p.w; x++) {
       const c = colorAt(p, x, y);
