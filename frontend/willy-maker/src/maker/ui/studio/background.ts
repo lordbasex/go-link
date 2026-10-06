@@ -7,6 +7,8 @@
 // level's height and the level grows when the picture is wider; a growing
 // level ends on the 32 px grid, so the picture is stretched (a few pixels at
 // most) to end there too and no strip of the level is left without art.
+// Add scene puts another picture (or the same art again) after the level's
+// end, so the background goes on: the level grows by its width.
 
 import { setPicture, preparePicture, type PreparedPicture } from "../../editor/pictureImport";
 import type { EditorStore } from "../../editor/store";
@@ -15,6 +17,8 @@ import type { AssetRef, Level, Project } from "../../model";
 import { checkSheetFile } from "../../sprites/sheetInput";
 import { decodeImage, encodePng } from "../../sprites/image";
 import type { Rgba } from "../../sprites/detect";
+import { drawArt, type TileImage } from "../render";
+import type { TileLayer } from "../../model";
 
 export type BackgroundResult = "ok" | "not-image" | "failed";
 
@@ -72,6 +76,68 @@ export async function importBackground(store: EditorStore, levelId: string, file
     if (!level) return "failed";
     const fitted = await fitBackground(level, file, true);
     store.editProject(label, (p) => putBackground(p, fitted, file.name));
+    return "ok";
+  } catch {
+    return "failed";
+  }
+}
+
+/** A tileset picture's pixels, from the image the canvas already draws (null when it is not loaded). */
+export function tilesetPixels(img: TileImage | undefined): { rgba: Rgba; columns: number } | null {
+  if (!img || typeof document === "undefined") return null;
+  const el = img.img as HTMLImageElement;
+  const w = el.naturalWidth || (el as unknown as { width: number }).width;
+  const h = el.naturalHeight || (el as unknown as { height: number }).height;
+  if (!w || !h) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(el, 0, 0);
+  return { rgba: { w, h, data: ctx.getImageData(0, 0, w, h).data }, columns: img.columns };
+}
+
+/** The level's art as one picture at board scale (what the canvas shows), or null when it cannot be drawn. */
+export function levelPicture(level: Level, images: Map<string, TileImage>): Rgba | null {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = level.size.w;
+  canvas.height = level.size.h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  drawArt(ctx, level, { x: 0, y: 0, zoom: 1, w: level.size.w, h: level.size.h }, 1, images);
+  return { w: level.size.w, h: level.size.h, data: ctx.getImageData(0, 0, level.size.w, level.size.h).data };
+}
+
+/**
+ * Add scene: a picture file (or `"repeat"`: the level's own art again) goes
+ * after the level's end on the play layer, scaled to the level's height, and
+ * the level grows by its width; the art already there stays, as one undo
+ * step. The same art repeated adds no new tiles.
+ */
+export async function appendBackground(store: EditorStore, levelId: string, images: Map<string, TileImage>, source: File | "repeat", label: string): Promise<BackgroundResult> {
+  if (source !== "repeat" && !isImageFile(source)) return "not-image";
+  try {
+    const level = store.level(levelId);
+    if (!level) return "failed";
+    let src: Rgba | null;
+    if (source === "repeat") src = levelPicture(level, images);
+    else {
+      const bytes = new Uint8Array(await source.arrayBuffer());
+      const type = checkSheetFile(bytes, source.type);
+      src = onLevelGrid(await decodeImage(bytes, type || source.type || "image/png"), level.size.h);
+    }
+    if (!src) return "failed";
+    const play = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "play");
+    const current = tilesetPixels(images.get(play?.tileset ?? ""));
+    const prepared = preparePicture(level, src, { layer: "play", height: level.size.h, x: level.size.w, repeat: false, grow: true, keyMagenta: false }, current);
+    const ts = prepared.fit.tileset;
+    const asset = await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png");
+    store.editProject(label, (p) => {
+      const before = p.tilesets.find((t) => t.id === `ts-pic-${levelId}-play`) as unknown as { file?: string } | undefined;
+      putBackground(p, { prepared, asset }, source === "repeat" ? (before?.file ?? "") : before?.file ? `${before.file} + ${source.name}` : source.name);
+    });
     return "ok";
   } catch {
     return "failed";

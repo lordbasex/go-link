@@ -2031,3 +2031,99 @@
   width: 100%;
   height: 100%;
 }
+
+/* Add scene: after the level's end */
+.studio-stage-pad {
+  position: relative;
+}
+.studio-add-scene {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.studio-add-scene-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px dashed var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.studio-add-scene-main:hover,
+.studio-add-scene-main:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.studio-add-scene-repeat {
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/* the timeline under the canvas */
+.studio-timeline {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.studio-timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.studio-timeline-strip {
+  position: relative;
+  height: 48px;
+  overflow: hidden;
+  background: var(--color-neutral-100);
+  cursor: pointer;
+  touch-action: none;
+}
+.studio-timeline-strip canvas {
+  display: block;
+  width: 100%;
+  height: 48px;
+}
+.studio-timeline-strip:focus-visible {
+  outline: 2px solid var(--color-accent);
+}
+.studio-timeline-screen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 1px 3px;
+  border-left: 1px dashed color-mix(in srgb, #fff 55%, transparent);
+  color: #fff;
+  font-size: 9px;
+  text-shadow: 0 0 2px #000;
+  pointer-events: none;
+}
+.studio-timeline-section {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-accent);
+  pointer-events: none;
+}
+.studio-timeline-view {
+  position: absolute;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 9999px color-mix(in srgb, #000 28%, transparent);
+  pointer-events: none;
+}

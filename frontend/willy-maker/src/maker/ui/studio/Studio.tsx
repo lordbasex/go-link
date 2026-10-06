@@ -19,7 +19,8 @@ import { autosaver, saveProject } from "../../io/storage";
 import { ExportView } from "../organisms/ExportView";
 import { PromptDialog } from "../organisms/PromptDialog";
 import { useProjectImages } from "../useTileImages";
-import { importBackground } from "./background";
+import { appendBackground, importBackground } from "./background";
+import { StageTimeline, type TimelineView } from "./StageTimeline";
 import { openExample } from "./example";
 import { catalog, itemOfObject, roleOf } from "./catalog";
 import { LayersPanel } from "./LayersPanel";
@@ -236,6 +237,17 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
   const stop = () => ui.set({ playing: false });
 
   const pickBackground = () => bgInput.current?.click();
+  // Add scene: another picture (or the same art) after the level's end
+  const sceneInput = useRef<HTMLInputElement>(null);
+  const addScene = async (source: File | "repeat") => {
+    ui.flash(t.toast.fitting);
+    const r = await appendBackground(store, level.id, images, source, t.undoLabels.addScene);
+    if (r === "ok") ui.flash(t.toast.sceneReady(store.level(level.id)?.size.w ?? level.size.w));
+    else ui.flash(r === "not-image" ? t.toast.notImage : t.toast.bgFailed);
+  };
+  // what the canvas shows, for the timeline
+  const [view, setView] = useState<TimelineView | null>(null);
+  const onView = useCallback(() => setView(stage.current?.view() ?? null), []);
   const setBackground = async (file: File) => {
     ui.flash(t.toast.fitting);
     const r = await importBackground(store, level.id, file, t.undoLabels.background);
@@ -696,6 +708,9 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                   onInsertBackground={pickBackground}
                   onExample={() => void useExample()}
                   onDemo={startDemo}
+                  onAddScene={(f) => (f ? void addScene(f) : sceneInput.current?.click())}
+                  onRepeatScene={() => void addScene("repeat")}
+                  onView={onView}
                 />
               )}
               {s.toast && (
@@ -704,6 +719,29 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                 </div>
               )}
             </div>
+            {!s.playing && (
+              <StageTimeline
+                level={level}
+                version={version}
+                images={images}
+                view={view}
+                label={t.timeline.label}
+                size={t.timeline.size(level.size.w, level.size.h, Math.max(1, Math.ceil(level.size.w / 384)))}
+                onGoTo={(x, y) => stage.current?.goTo(x, y)}
+              />
+            )}
+            <input
+              ref={sceneInput}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label={t.addScene.add}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void addScene(f);
+              }}
+            />
           </main>
           <RightPanel
             onNewGroup={newGroup}

@@ -14,22 +14,7 @@ import { decodeImage, encodePng } from "../../sprites/image";
 import type { Rgba } from "../../editor/picture";
 import type { TileImage } from "../render";
 import { Capsule } from "../atoms";
-
-/** A tileset picture's pixels, from the image the canvas already draws. */
-function pixelsOf(img: TileImage | undefined): { rgba: Rgba; columns: number } | null {
-  if (!img || typeof document === "undefined") return null;
-  const el = img.img as HTMLImageElement;
-  const w = el.naturalWidth || (el as unknown as { width: number }).width;
-  const h = el.naturalHeight || (el as unknown as { height: number }).height;
-  if (!w || !h) return null;
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.drawImage(el, 0, 0);
-  return { rgba: { w, h, data: ctx.getImageData(0, 0, w, h).data }, columns: img.columns };
-}
+import { tilesetPixels } from "../studio/background";
 
 export function PictureDialog({ store, level, layer, images, onClose }: { store: EditorStore; level: Level; layer: PictureLayer; images: Map<string, TileImage>; onClose: (applied: boolean) => void }) {
   const t = useCore().picture;
@@ -50,7 +35,7 @@ export function PictureDialog({ store, level, layer, images, onClose }: { store:
     const id = setTimeout(() => {
       try {
         const layerNow = level.layers.find((l) => l.kind === "tiles" && l.id === layer);
-        const current = keep && layerNow && layerNow.kind === "tiles" ? pixelsOf(images.get(layerNow.tileset ?? "")) : null;
+        const current = keep && layerNow && layerNow.kind === "tiles" ? tilesetPixels(images.get(layerNow.tileset ?? "")) : null;
         setPrepared(preparePicture(level, file, opts, current));
       } catch {
         setError(true);
