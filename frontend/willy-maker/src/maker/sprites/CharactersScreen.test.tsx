@@ -151,11 +151,11 @@ describe("CharactersScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: /Add the selected frames/ }));
     await screen.findByText("Head");
     fireEvent.click(screen.getByRole("button", { name: "Edit frame 1" }));
-    const dialog = screen.getByRole("dialog", { name: "Edit frame · Standing 1" });
+    const dialog = screen.getByRole("dialog", { name: "Edit frames · Standing" });
     // the frame at its size on the board: 44 px tall
     expect(dialog).toHaveTextContent(/\d+ × 44 px/);
     fireEvent.click(screen.getByRole("button", { name: "Flip left to right" }));
-    fireEvent.click(screen.getByRole("button", { name: "Use this frame" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByText("1 · edited")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
@@ -169,6 +169,30 @@ describe("CharactersScreen", () => {
     const f1 = ch.source.frames.find((f) => f.id === "f1")!;
     expect(f1.edit).toMatchObject({ ref: expect.stringMatching(/^sha256:/), h: 44 });
     expect(ch.source.frames.find((f) => f.id === "f2")!.edit).toBeUndefined();
+  });
+
+  it("draws a character from scratch: no sheet, its frames drawn in the editor and kept with it", async () => {
+    const { onChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "✎ Draw from scratch" }));
+    expect(screen.getByRole("dialog", { name: "Edit frames · Standing" })).toHaveTextContent(/Frame 1 of 1 · 33 × 44 px/);
+    // two frames: the blank one and a copy, a little different
+    fireEvent.click(screen.getByRole("button", { name: "Duplicate this frame" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flip left to right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    expect(screen.getByRole("button", { name: /^Standingidle\s*2 of 4/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Pixel" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save character" }));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const ch = onChange.mock.calls[0]![0].characters[0] as unknown as { id: string; anims: Record<string, { frames: string[] }>; source: { sheet: string | null; frames: { id: string; drawn?: boolean; edit?: unknown }[] } };
+    expect(ch.id).toBe("pixel");
+    expect(ch.anims.idle!.frames).toEqual(["f1", "f2"]);
+    expect(ch.source.sheet).toBeNull();
+    expect(ch.source.frames).toMatchObject([
+      { id: "f1", drawn: true, w: 33, h: 44, edit: { ref: expect.stringMatching(/^sha256:/) } },
+      { id: "f2", drawn: true, edit: { ref: expect.stringMatching(/^sha256:/) } },
+    ]);
   });
 
   it("edits boxes: delete with the keyboard, add one, move the pivot", async () => {

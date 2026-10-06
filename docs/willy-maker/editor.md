@@ -102,15 +102,16 @@ The site's home (`ui/studio/GamesHome.tsx`) in the same look: the brand, New gam
 
 ## Pixel editor
 
-Characters › an animation's frame › ✎ (or a double click on the frame) opens the frame in the pixel editor (`sprites/ui/PixelEditor.tsx`, the drawing in `sprites/pixels.ts`), laid out like Scratch's costume editor and made for the board:
+The pixel editor (`sprites/ui/PixelEditor.tsx`, the drawing in `sprites/pixels.ts`) opens one animation of a character, laid out like Scratch's costume editor and made for the board. It opens from Characters: ✎ on a frame (or a double click), **✎ Draw frames** under an animation, or **✎ Draw from scratch** on a new character, which draws one with no sheet at all.
 
-- **Top**: the frame's name and size on the board, undo and redo (⌘Z, ⇧⌘Z; 100 steps), flip left to right and upside down, clear.
-- **Tools** (left): pencil B, eraser E, bucket G (the area of one color, side by side), pick a color I (or Alt with any tool), line L, rectangle R and ellipse O (outlined or filled); a brush of 1 to 4 pixels for the pencil, the eraser and the line.
-- **Canvas**: the frame at its size on the board, zoomed (fit, + and −) over a checkerboard for the transparent pixels, with a pixel grid, the 16 px zones counted from the feet (dashed) and the feet point.
-- **Colors** (right): the current color, any color snapped to the board's nearest (the CPS-1 shows 4096), the character's colors to pick from, and each zone's count of the 15 colors the board gives it (over 15, the board merges the closest).
-- **Use this frame** puts the pixels in the character in place of the box's picture; the frame shows "edited" and Save character keeps them with it (`source.frames[].edit`, [file-format.md](file-format.md)), so they come back when it opens again. The animations, zones, atlas, play mode and the ROM read it like any other frame.
+- **Frames** (left, like Scratch's costumes): the animation's frames in order; a new blank frame after the current one, duplicate, move up and down, remove from the animation (the sheet's box stays); ↑ ↓ ← → go from frame to frame.
+- **Top**: the animation's name, the frame's number and size on the board, undo and redo (⌘Z, ⇧⌘Z; 100 steps, covering both drawing and the frame list), flip left to right and upside down, clear.
+- **Tools**: pencil B, eraser E, bucket G (the area of one color, side by side), pick a color I (or Alt with any tool), line L, rectangle R and ellipse O (outlined or filled); a brush of 1 to 4 pixels for the pencil, the eraser and the line.
+- **Canvas**: the frame at its size on the board, zoomed (fit, + and −) over a checkerboard for the transparent pixels, with a pixel grid, the 16 px zones counted from the feet (dashed), the feet point, and **onion skin**: the frame before (fainter) and the one after (faintest), lined up on the feet.
+- **Colors and preview** (right): the current color, any color snapped to the board's nearest (the CPS-1 shows 4096), the character's colors, each zone's count of the 15 colors the board gives it (over 15, the board merges the closest), and the animation playing at its frames per second.
+- **Use these frames** puts the animation back: its frames in order, the ones drawn on with their own pixels (marked "edited"), the new ones as drawn frames (`source.frames[]` with `drawn` and `edit`, [file-format.md](file-format.md)). Save character keeps them; a character drawn from scratch saves with `source.sheet` null. The animations, zones, atlas, play mode and the ROM read them like any other frame, and detecting the sheet's frames again keeps the drawn ones.
 
-The next steps of the editor: frames and animation (a strip of frames per animation, onion skin, drawing a character from nothing), layers per frame, a vector mode with Convert to bitmap, and more tools (symmetry, selection, replace a color, an automatic outline).
+The next steps of the editor: layers per frame, a vector mode with Convert to bitmap, and more tools (symmetry, selection, replace a color, an automatic outline).
 
 ## Workspaces
 

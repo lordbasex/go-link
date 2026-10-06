@@ -35,6 +35,8 @@ export interface AnimationPanelProps {
   onRows?(sheet: number): string;
   /** Opens a frame in the pixel editor. */
   onEditFrame?(id: string): void;
+  /** Opens an animation in the pixel editor to draw its frames (one with none yet). */
+  onDrawFrames?(name: string): void;
   /** The frames whose pixels were edited by hand. */
   edited?: ReadonlySet<string>;
 }
@@ -70,7 +72,7 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows, onEditFrame, edited }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows, onEditFrame, onDrawFrames, edited }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
   const [sheet, setSheet] = useState(0);
   const [rowsNote, setRowsNote] = useState("");
@@ -223,6 +225,11 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
             ))}
           </ol>
           <div className="wms-row">
+            {onDrawFrames && (
+              <button type="button" className="wms-cap" onClick={() => onDrawFrames(active)}>
+                {t.pixel.drawFrames}
+              </button>
+            )}
             <button type="button" className="wms-cap is-on" disabled={!selectedCount} onClick={() => onAddSelected(active)}>
               + {t.addSelected}
               {selectedCount ? ` (${selectedCount})` : ""}
