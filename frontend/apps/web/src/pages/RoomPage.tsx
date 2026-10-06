@@ -1265,7 +1265,7 @@ export function RoomPage() {
   );
 
   return (
-    <div className={`page room-page${consoleMode ? " is-console-mode" : ""}`}>
+    <div className={`page room-page${consoleMode ? " is-console-mode" : ""}${inHeader ? " is-header-hero" : ""}`}>
       {inHeader ? (
         <>
           {createPortal(hero, headerInfo!)}
