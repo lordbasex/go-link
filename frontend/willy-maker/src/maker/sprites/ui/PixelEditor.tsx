@@ -8,14 +8,18 @@
 // from the feet, the feet point, and the frames before and after it faint:
 // onion skin); on the right the colors, each zone's count of the 15 colors
 // the board gives it, and the animation playing. Colors snap to the board's
-// (the CPS-1 shows 4096). Undo covers drawing and the frame list alike. The
-// drawing is sprites/pixels.ts.
+// (the CPS-1 shows 4096). Each frame is a stack of layers (body, clothes,
+// weapon, outline…): the tools draw on the current one, the frame is the
+// layers that show one over the other, and a layer marked as the shirt
+// gives its colors to the ones recolored for players 2 to 4. Undo covers
+// drawing, the layers and the frame list alike. The drawing is
+// sprites/pixels.ts.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { ArrowDown, ArrowUp, Circle, Copy, Eraser, FlipHorizontal2, FlipVertical2, Minus, PaintBucket, Pencil, Pipette, Plus, Redo2, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsDown, Circle, Copy, Eraser, Eye, EyeOff, FlipHorizontal2, FlipVertical2, Lock, LockOpen, Minus, PaintBucket, Pencil, Pipette, Plus, Redo2, Shirt, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { snapColor } from "../../board/cps1";
 import type { SpritesMessages } from "../../i18n/sprites.en";
-import { bandColors, blank, colorAt, colorsOf, copy, ellipse, fill, flip, rect, stroke, type Color, type Pixels } from "../pixels";
+import { bandColors, blank, colorAt, colorsOf, composite, copy, ellipse, fill, flip, rect, stroke, type Color, type Pixels } from "../pixels";
 import { fmt } from "../text";
 
 export type PixelTool = "pencil" | "eraser" | "fill" | "picker" | "line" | "rect" | "ellipse";
@@ -36,12 +40,32 @@ export interface EditedFrame extends Pixels {
   py: number;
 }
 
+/** One layer of a frame. */
+export interface EditorLayer {
+  name: string;
+  pic: Pixels;
+  visible: boolean;
+  locked: boolean;
+  /** Its colors are the shirt's: recolored for players 2 to 4. */
+  shirt: boolean;
+}
+
 /** A frame of the animation in the editor: an existing frame id, or null for one made here. */
 export interface EditorFrame {
   id: string | null;
+  /** What the frame looks like: its layers that show, one over the other. */
   pic: EditedFrame;
+  /** Bottom first. */
+  layers: EditorLayer[];
   /** Drawn on (or new) since the editor opened. */
   changed: boolean;
+}
+
+/** A frame as it comes in: its picture, and its layers when it has them. */
+export interface FrameIn {
+  id: string;
+  pic: EditedFrame;
+  layers?: EditorLayer[];
 }
 
 export interface PixelEditorProps {
@@ -50,7 +74,7 @@ export interface PixelEditorProps {
   anim: string;
   fps: number;
   /** The animation's frames, in order, and the one to show first. */
-  frames: { id: string; pic: EditedFrame }[];
+  frames: FrameIn[];
   start: number;
   /** The size a new frame takes when the animation has none yet. */
   size: { w: number; h: number };
@@ -62,11 +86,28 @@ export interface PixelEditorProps {
 }
 
 const blankFrame = (w: number, h: number): EditedFrame => ({ ...blank(w, h), px: w >> 1, py: h - 1 });
+const layer = (name: string, pic: Pixels): EditorLayer => ({ name, pic, visible: true, locked: false, shirt: false });
+
+/** The frame with its layers changed: its picture made again from them. */
+function withLayers(f: EditorFrame, layers: EditorLayer[], changed = true): EditorFrame {
+  const pic = composite(layers, f.pic.w, f.pic.h);
+  return { ...f, layers, pic: { ...pic, px: f.pic.px, py: f.pic.py }, changed: f.changed || changed };
+}
+
+/** A blank frame with the same layers (names, shirt and visibility) as another, empty. */
+function blankLike(f: EditorFrame): EditorFrame {
+  const empty = blankFrame(f.pic.w, f.pic.h);
+  return { id: null, pic: { ...empty, px: f.pic.px, py: f.pic.py }, layers: f.layers.map((l) => ({ ...l, pic: blank(f.pic.w, f.pic.h), locked: false })), changed: true };
+}
 
 export function PixelEditor({ t, anim, fps, frames: initial, start, size, palette, onApply, onCancel }: PixelEditorProps) {
   const [frames, setFrames] = useState<EditorFrame[]>(() =>
-    initial.length ? initial.map((f) => ({ id: f.id, pic: { ...copy(f.pic), px: f.pic.px, py: f.pic.py }, changed: false })) : [{ id: null, pic: blankFrame(size.w, size.h), changed: true }],
+    initial.length
+      ? initial.map((f) => ({ id: f.id, pic: { ...copy(f.pic), px: f.pic.px, py: f.pic.py }, layers: f.layers?.length ? f.layers : [layer(t.layerBase, copy(f.pic))], changed: false }))
+      : [{ id: null, pic: blankFrame(size.w, size.h), layers: [layer(t.layerBase, blank(size.w, size.h))], changed: true }],
   );
+  // the layer the tools draw on (by place, from the bottom)
+  const [li, setLi] = useState(0);
   const [cur, setCur] = useState(Math.max(0, Math.min(start, initial.length - 1)));
   // undo and redo hold the whole list (drawing and adding, deleting or moving frames alike)
   const [undo, setUndo] = useState<{ frames: EditorFrame[]; cur: number }[]>([]);
@@ -79,11 +120,15 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   const [onion, setOnion] = useState(true);
   const frame = frames[cur]!;
   const pic = frame.pic;
+  const lay = Math.min(li, frame.layers.length - 1);
+  const layerNow = frame.layers[lay]!;
+  // drawing on a hidden or locked layer would change nothing you can see, or something you protected
+  const canDraw = layerNow.visible && !layerNow.locked;
   const fit = Math.max(2, Math.min(16, Math.floor(Math.min(520 / pic.w, 440 / pic.h))));
   const [zoom, setZoom] = useState(fit);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   // a stroke or shape being drawn: where it started, the picture before it and as it is now, the last point
-  const drag = useRef<{ x0: number; y0: number; before: EditedFrame; now: Pixels; lx: number; ly: number; shape: boolean } | null>(null);
+  const drag = useRef<{ x0: number; y0: number; before: Pixels; now: Pixels; lx: number; ly: number; shape: boolean } | null>(null);
   const [preview, setPreview] = useState<Pixels | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -97,12 +142,18 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     setFrames(nextFrames);
     setCur(Math.max(0, Math.min(nextCur, nextFrames.length - 1)));
   };
-  /** The current frame's picture changed (one undo step, from `before`). */
-  const draw = (next: Pixels, before?: EditedFrame) => {
-    if (next === (before ?? pic)) return;
-    const changed = frames.map((f, i) => (i === cur ? { ...f, pic: { ...next, px: f.pic.px, py: f.pic.py }, changed: true } : f));
-    const was = before ? frames.map((f, i) => (i === cur ? { ...f, pic: before } : f)) : frames;
+  /** The current layer's pixels changed (one undo step, from `before`). */
+  const draw = (next: Pixels, before?: Pixels) => {
+    if (next === (before ?? layerNow.pic)) return;
+    const setLayer = (f: EditorFrame, p: Pixels) => withLayers(f, f.layers.map((l, k) => (k === lay ? { ...l, pic: p } : l)));
+    const changed = frames.map((f, i) => (i === cur ? setLayer(f, next) : f));
+    const was = before ? frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l, k) => (k === lay ? { ...l, pic: before } : l)), false) : f)) : frames;
     push(changed, cur, { frames: was, cur });
+  };
+  /** The current frame's layers changed (added, removed, moved, merged, shown, locked, renamed). */
+  const relayer = (layers: EditorLayer[], nextLi = lay) => {
+    push(frames.map((f, i) => (i === cur ? withLayers(f, layers) : f)));
+    setLi(Math.max(0, Math.min(nextLi, layers.length - 1)));
   };
   const doUndo = () => {
     const prev = undo[undo.length - 1];
@@ -122,8 +173,29 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   };
 
   // the frame list
-  const addFrame = () => push([...frames.slice(0, cur + 1), { id: null, pic: blankFrame(pic.w, pic.h), changed: true }, ...frames.slice(cur + 1)], cur + 1);
-  const duplicate = () => push([...frames.slice(0, cur + 1), { id: null, pic: { ...copy(pic), px: pic.px, py: pic.py }, changed: true }, ...frames.slice(cur + 1)], cur + 1);
+  const addFrame = () => push([...frames.slice(0, cur + 1), blankLike(frame), ...frames.slice(cur + 1)], cur + 1);
+  const duplicate = () => push([...frames.slice(0, cur + 1), { ...frame, id: null, layers: frame.layers.map((l) => ({ ...l, pic: copy(l.pic) })), changed: true }, ...frames.slice(cur + 1)], cur + 1);
+
+  // the layers of the current frame (the list shows the top one first)
+  const L = frame.layers;
+  const addLayer = () => relayer([...L.slice(0, lay + 1), layer(fmt(t.layerN, { n: L.length + 1 }), blank(pic.w, pic.h)), ...L.slice(lay + 1)], lay + 1);
+  const duplicateLayer = () => relayer([...L.slice(0, lay + 1), { ...layerNow, name: fmt(t.layerCopy, { name: layerNow.name }), pic: copy(layerNow.pic), locked: false }, ...L.slice(lay + 1)], lay + 1);
+  const deleteLayer = () => L.length > 1 && relayer(L.filter((_, k) => k !== lay), lay - 1);
+  const moveLayer = (d: number) => {
+    const to = lay + d;
+    if (to < 0 || to >= L.length) return;
+    const next = [...L];
+    [next[lay], next[to]] = [next[to]!, next[lay]!];
+    relayer(next, to);
+  };
+  /** The current layer onto the one under it, as one. */
+  const mergeDown = () => {
+    if (lay === 0) return;
+    const under = L[lay - 1]!;
+    const merged = composite([{ pic: under.pic, visible: true }, { pic: layerNow.pic, visible: layerNow.visible }], pic.w, pic.h);
+    relayer([...L.slice(0, lay - 1), { ...under, pic: merged }, ...L.slice(lay + 1)], lay - 1);
+  };
+  const setLayerProps = (k: number, patch: Partial<EditorLayer>) => relayer(L.map((l, j) => (j === k ? { ...l, ...patch } : l)), k);
   const remove = () => frames.length > 1 && push(frames.filter((_, i) => i !== cur), Math.max(0, cur - 1));
   const moveBy = (d: number) => {
     const to = cur + d;
@@ -142,7 +214,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
     return { x: Math.floor(((e.clientX - r.left) / r.width) * pic.w), y: Math.floor(((e.clientY - r.top) / r.height) * pic.h) };
   };
   // the drawing in progress lives in the drag (events can come faster than the screen redraws)
-  const showNow = (p: Pixels) => setFrames((fs) => fs.map((f, i) => (i === cur ? { ...f, pic: { ...p, px: f.pic.px, py: f.pic.py } } : f)));
+  const showNow = (p: Pixels) => setFrames((fs) => fs.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l, k) => (k === lay ? { ...l, pic: p } : l)), f.changed) : f)));
   const down = (e: PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     const { x, y } = at(e);
@@ -152,8 +224,9 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       if (c) setColor(c);
       return;
     }
+    if (!canDraw) return;
     if (tool === "fill") {
-      draw(fill(pic, x, y, color));
+      draw(fill(layerNow.pic, x, y, color));
       return;
     }
     // keep the stroke when the pointer leaves the canvas (a pointer the browser does not know cannot be captured: draw anyway)
@@ -163,8 +236,9 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
       // drawing goes on without the capture
     }
     const isShape = SHAPES.includes(tool);
-    const now = isShape ? shape(pic, x, y, x, y) : stroke(pic, x, y, x, y, ink, brush);
-    drag.current = { x0: x, y0: y, before: pic, now, lx: x, ly: y, shape: isShape };
+    const base = layerNow.pic;
+    const now = isShape ? shape(base, x, y, x, y) : stroke(base, x, y, x, y, ink, brush);
+    drag.current = { x0: x, y0: y, before: base, now, lx: x, ly: y, shape: isShape };
     if (isShape) setPreview(now);
     else showNow(now);
   };
@@ -213,7 +287,7 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
   };
 
   // the canvas: the frames around it faint (onion skin), the picture (or the shape being drawn), the grid, the zones and the feet
-  const shown = preview ?? pic;
+  const shown = useMemo(() => (preview ? composite(L.map((l, k) => (k === lay ? { ...l, pic: preview } : l)), pic.w, pic.h) : pic), [preview, L, lay, pic]);
   useEffect(() => {
     const c = canvas.current;
     const ctx = c?.getContext("2d");
@@ -281,13 +355,13 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
           <button type="button" className="wms-cap" aria-label={t.redo} title={t.redo} disabled={!redo.length} onClick={doRedo}>
             <Redo2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.flipH} title={t.flipH} onClick={() => draw(flip(pic))}>
+          <button type="button" className="wms-cap" aria-label={t.flipH} title={t.flipH} onClick={() => push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => ({ ...l, pic: flip(l.pic) }))) : f)))}>
             <FlipHorizontal2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.flipV} title={t.flipV} onClick={() => draw(flip(pic, true))}>
+          <button type="button" className="wms-cap" aria-label={t.flipV} title={t.flipV} onClick={() => push(frames.map((f, i) => (i === cur ? withLayers(f, f.layers.map((l) => ({ ...l, pic: flip(l.pic, true) }))) : f)))}>
             <FlipVertical2 size={16} />
           </button>
-          <button type="button" className="wms-cap" aria-label={t.clear} title={t.clear} onClick={() => draw(blank(pic.w, pic.h))}>
+          <button type="button" className="wms-cap" aria-label={t.clear} title={t.clear} disabled={!canDraw} onClick={() => draw(blank(pic.w, pic.h))}>
             <Trash2 size={16} />
           </button>
         </div>
@@ -362,6 +436,55 @@ export function PixelEditor({ t, anim, fps, frames: initial, start, size, palett
           </div>
 
           <div className="wms-pe-side">
+            <span className="wms-h">{t.layers}</span>
+            <ol className="wms-pe-layers" aria-label={t.layers}>
+              {L.map((l, k) => ({ l, k }))
+                .reverse()
+                .map(({ l, k }) => (
+                  <li key={k} className={`wms-pe-layer${k === lay ? " is-on" : ""}`}>
+                    <button type="button" className="wms-pe-icon" aria-label={`${l.visible ? t.hide : t.show}: ${l.name}`} title={l.visible ? t.hide : t.show} onClick={() => setLayerProps(k, { visible: !l.visible })}>
+                      {l.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+                    <button type="button" className="wms-pe-icon" aria-label={`${l.locked ? t.unlock : t.lock}: ${l.name}`} title={l.locked ? t.unlock : t.lock} onClick={() => setLayerProps(k, { locked: !l.locked })}>
+                      {l.locked ? <Lock size={14} /> : <LockOpen size={14} />}
+                    </button>
+                    <button type="button" className={`wms-pe-icon${l.shirt ? " is-on" : ""}`} aria-pressed={l.shirt} aria-label={`${t.shirt}: ${l.name}`} title={t.shirtHelp} onClick={() => setLayerProps(k, { shirt: !l.shirt })}>
+                      <Shirt size={14} />
+                    </button>
+                    <input
+                      className="wms-pe-layer-name"
+                      aria-label={fmt(t.layerName, { n: k + 1 })}
+                      value={l.name}
+                      onFocus={() => setLi(k)}
+                      onChange={(e) => setFrames((fs) => fs.map((f, i) => (i === cur ? { ...f, layers: f.layers.map((x, j) => (j === k ? { ...x, name: e.target.value } : x)) } : f)))}
+                    />
+                    <button type="button" className="wms-pe-pick" aria-label={fmt(t.drawOn, { name: l.name })} aria-pressed={k === lay} onClick={() => setLi(k)}>
+                      <LayerThumb pic={l.pic} />
+                    </button>
+                  </li>
+                ))}
+            </ol>
+            <div className="wms-pe-layer-actions">
+              <button type="button" className="wms-cap" aria-label={t.newLayer} title={t.newLayer} onClick={addLayer}>
+                <Plus size={14} />
+              </button>
+              <button type="button" className="wms-cap" aria-label={t.duplicateLayer} title={t.duplicateLayer} onClick={duplicateLayer}>
+                <Copy size={14} />
+              </button>
+              <button type="button" className="wms-cap" aria-label={t.layerUp} title={t.layerUp} disabled={lay === L.length - 1} onClick={() => moveLayer(1)}>
+                <ArrowUp size={14} />
+              </button>
+              <button type="button" className="wms-cap" aria-label={t.layerDown} title={t.layerDown} disabled={lay === 0} onClick={() => moveLayer(-1)}>
+                <ArrowDown size={14} />
+              </button>
+              <button type="button" className="wms-cap" aria-label={t.mergeDown} title={t.mergeDown} disabled={lay === 0} onClick={mergeDown}>
+                <ChevronsDown size={14} />
+              </button>
+              <button type="button" className="wms-cap" aria-label={t.deleteLayer} title={t.deleteLayer} disabled={L.length < 2} onClick={deleteLayer}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+            {!canDraw && <p className="wms-note">{layerNow.locked ? t.lockedNote : t.hiddenNote}</p>}
             <label className="wms-pe-color">
               <span className="wms-h">{t.color}</span>
               <span className="wms-row">
@@ -428,6 +551,11 @@ function toCanvas(p: Pixels): HTMLCanvasElement {
   small.height = Math.max(1, p.h);
   small.getContext("2d")?.putImageData(new ImageData(new Uint8ClampedArray(p.rgba), p.w, p.h), 0, 0);
   return small;
+}
+
+/** A layer's picture, small, in the layers list. */
+function LayerThumb({ pic }: { pic: Pixels }) {
+  return <FrameThumb pic={pic} />;
 }
 
 /** A frame in the strip, drawn small. */

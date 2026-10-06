@@ -31,6 +31,8 @@ export interface FrameEdit {
   h: number;
   px: number;
   py: number;
+  /** The layers it was drawn in, bottom first (each a PNG of the frame's size), to edit them again. */
+  layers?: { name: string; ref: string; visible: boolean; locked: boolean; shirt?: boolean }[];
 }
 
 export interface DraftAnim {

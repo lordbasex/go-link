@@ -19,7 +19,8 @@ import { ANIMS, DEFAULT_HEIGHT, HEIGHTS } from "./presets";
 import { fmt, useSpritesText } from "./text";
 import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
-import { PixelEditor, type EditorFrame } from "./ui/PixelEditor";
+import { PixelEditor, type EditorFrame, type EditorLayer } from "./ui/PixelEditor";
+import { colorsOf } from "./pixels";
 import { BoardPanel } from "./ui/BoardPanel";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
@@ -89,6 +90,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const sourceBytes = useRef<{ bytes: Uint8Array; type: string } | null>(null);
   // frames drawn by hand in the pixel editor (by frame id), at their size on the board; saved as the frame's `edit`
   const [edits, setEdits] = useState<ReadonlyMap<string, ScaledFrame>>(new Map());
+  // and the layers they were drawn in (by frame id), when they have more than one or a shirt
+  const [layerEdits, setLayerEdits] = useState<ReadonlyMap<string, EditorLayer[]>>(new Map());
   // the animation open in the pixel editor, and the frame it opened on
   const [editing, setEditing] = useState<{ anim: string; start: number } | null>(null);
 
@@ -147,13 +150,27 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
         const asset = await getAsset(e.ref).catch(() => null);
         if (!asset) return null;
         const img = await decodeImage(asset.bytes, asset.type).catch(() => null);
-        return img ? ([id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }] as const) : null;
+        if (!img) return null;
+        // its layers, when it was drawn in more than one
+        const layers: EditorLayer[] = [];
+        for (const l of e.layers ?? []) {
+          const a = await getAsset(l.ref).catch(() => null);
+          const pic = a ? await decodeImage(a.bytes, a.type).catch(() => null) : null;
+          if (!pic) return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, null] as const;
+          layers.push({ name: l.name, pic: { w: pic.w, h: pic.h, rgba: new Uint8Array(pic.data) }, visible: l.visible, locked: l.locked, shirt: !!l.shirt });
+        }
+        return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, layers.length ? layers : null] as const;
       }),
     ).then((pairs) => {
       if (!live) return;
       setEdits((cur) => {
         const next = new Map(cur);
         for (const p of pairs) if (p) next.set(p[0], p[1]);
+        return next;
+      });
+      setLayerEdits((cur) => {
+        const next = new Map(cur);
+        for (const p of pairs) if (p?.[2]) next.set(p[0], p[2]);
         return next;
       });
     });
@@ -361,6 +378,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
 
   const newCharacter = () => {
     setEdits(new Map());
+    setLayerEdits(new Map());
     setEditing(null);
     setOpenId(null);
     setDraft(emptyDraft());
@@ -375,6 +393,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     const ch = project.characters.find((c) => c.id === id) as ImportedCharacter | undefined;
     if (!ch) return;
     setEdits(new Map());
+    setLayerEdits(new Map());
     setEditing(null);
     setOpenId(id);
     setSheet(null);
@@ -401,12 +420,25 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       result.forEach((f, i) => f.changed && next.set(ids[i]!, { w: f.pic.w, h: f.pic.h, rgba: f.pic.rgba, px: f.pic.px, py: f.pic.py }));
       return next;
     });
+    // the layers are kept when there is more than one, or a shirt
+    setLayerEdits((cur) => {
+      const next = new Map(cur);
+      result.forEach((f, i) => {
+        if (!f.changed) return;
+        if (f.layers.length > 1 || f.layers.some((l) => l.shirt)) next.set(ids[i]!, f.layers);
+        else next.delete(ids[i]!);
+      });
+      return next;
+    });
+    // a shirt layer's colors are the ones recolored for players 2 to 4
+    const shirt = [...new Set(result.flatMap((f) => f.layers.filter((l) => l.shirt && l.visible).flatMap((l) => colorsOf(l.pic))))].map((c) => c.toUpperCase());
     const preset = list.find((p) => p.name === anim) ?? ANIMS[draft.role].find((p) => p.name === anim);
     edit((d) => ({
       ...d,
       frames: [...d.frames, ...added],
       anims: { ...d.anims, [anim]: { fps: d.anims[anim]?.fps ?? preset?.fps ?? 8, loop: d.anims[anim]?.loop ?? preset?.loop ?? true, frames: ids } },
       hidden: d.hidden.filter((h) => h !== anim),
+      swapColors: [...new Set([...d.swapColors, ...shirt])],
     }));
     setActive(anim);
     setEditing(null);
@@ -433,7 +465,11 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           const e = edits.get(f.id);
           if (!e) return f;
           const pic = await putAsset(await encodePng(e.w, e.h, e.rgba), "image/png");
-          return { ...f, edit: { ref: pic, w: e.w, h: e.h, px: e.px, py: e.py } };
+          const ls = layerEdits.get(f.id);
+          const layers = ls
+            ? await Promise.all(ls.map(async (l) => ({ name: l.name, ref: await putAsset(await encodePng(l.pic.w, l.pic.h, l.pic.rgba), "image/png"), visible: l.visible, locked: l.locked, ...(l.shirt ? { shirt: true } : {}) })))
+            : undefined;
+          return { ...f, edit: { ref: pic, w: e.w, h: e.h, px: e.px, py: e.py, ...(layers ? { layers } : {}) } };
         }),
       );
       const saved = { ...draft, frames };
@@ -794,7 +830,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           t={t.pixel}
           anim={t.animNames[editing.anim] ?? editing.anim}
           fps={draft.anims[editing.anim]?.fps ?? list.find((p) => p.name === editing.anim)?.fps ?? 8}
-          frames={(draft.anims[editing.anim]?.frames ?? []).flatMap((id) => (shown.get(id) ? [{ id, pic: shown.get(id)! }] : []))}
+          frames={(draft.anims[editing.anim]?.frames ?? []).flatMap((id) => (shown.get(id) ? [{ id, pic: shown.get(id)!, layers: layerEdits.get(id) }] : []))}
           start={editing.start}
           size={newFrameSize()}
           palette={zones ? [...new Set(zones.zones.flatMap((z) => z.palette))] : []}

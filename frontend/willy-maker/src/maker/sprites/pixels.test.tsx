@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { spritesEn } from "../i18n/sprites.en";
-import { bandColors, blank, colorAt, colorsOf, ellipse, fill, flip, linePoints, rect, stroke, type Pixels } from "./pixels";
+import { bandColors, blank, colorAt, colorsOf, composite, ellipse, fill, flip, linePoints, rect, stroke, type Pixels } from "./pixels";
 import { PixelEditor } from "./ui/PixelEditor";
 
 const R = "#ff0000";
@@ -45,6 +45,14 @@ describe("pixels", () => {
     expect(row(fill(wall, 0, 0, B), 2)).toBe("R..");
     expect(row(flip(stroke(blank(3, 1), 0, 0, 0, 0, R)), 0)).toBe("..R");
     expect(row(flip(stroke(blank(1, 3), 0, 0, 0, 0, R), true), 2)).toBe("R");
+  });
+
+  it("lays the layers that show one over the other, bottom first", () => {
+    const under = rect(blank(3, 1), 0, 0, 2, 0, R, true);
+    const over = stroke(blank(3, 1), 1, 0, 1, 0, B);
+    expect(row(composite([{ pic: under, visible: true }, { pic: over, visible: true }], 3, 1), 0)).toBe("RBR");
+    expect(row(composite([{ pic: under, visible: false }, { pic: over, visible: true }], 3, 1), 0)).toBe(".B.");
+    expect(row(composite([{ pic: over, visible: true }, { pic: under, visible: true }], 3, 1), 0)).toBe("RRR");
   });
 
   it("counts the colors of each 16 px zone from the feet up", () => {
@@ -131,6 +139,44 @@ describe("the pixel editor", () => {
     expect(screen.getByText(/Frame 1 of 1 · 8 × 8 px/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
     expect(result(onApply)).toMatchObject([{ id: null, changed: true }]);
+  });
+
+  it("draws on the current layer, hides, locks, merges and marks a shirt layer", () => {
+    const { canvas, at, onApply } = open();
+    expect(screen.getByRole("textbox", { name: "Name of layer 1" })).toHaveValue("Base");
+    fireEvent.click(screen.getByRole("button", { name: "New layer (above this one)" }));
+    expect(screen.getByRole("textbox", { name: "Name of layer 2" })).toHaveValue("Layer 2");
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.pointerDown(canvas(), at(3, 3));
+    fireEvent.pointerUp(canvas(), at(3, 3));
+    fireEvent.click(screen.getByRole("button", { name: "Shirt: Layer 2" }));
+    // the base hidden: the frame is only the new layer
+    fireEvent.click(screen.getByRole("button", { name: "Hide: Base" }));
+    // a locked layer takes no paint
+    fireEvent.click(screen.getByRole("button", { name: "Lock: Layer 2" }));
+    expect(screen.getByText("This layer is locked: unlock it to draw on it.")).toBeInTheDocument();
+    fireEvent.pointerDown(canvas(), at(4, 3));
+    fireEvent.pointerUp(canvas(), at(4, 3));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    const f = result(onApply)[0] as unknown as { pic: Pixels; layers: { name: string; pic: Pixels; visible: boolean; locked: boolean; shirt: boolean }[] };
+    expect(row(f.pic, 3)).toBe("...B....");
+    expect(f.layers.map((l) => [l.name, l.visible, l.locked, l.shirt])).toEqual([
+      ["Base", false, false, false],
+      ["Layer 2", true, true, true],
+    ]);
+  });
+
+  it("merges a layer onto the one below", () => {
+    const { canvas, at, onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: "New layer (above this one)" }));
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.pointerDown(canvas(), at(3, 3));
+    fireEvent.pointerUp(canvas(), at(3, 3));
+    fireEvent.click(screen.getByRole("button", { name: "Merge onto the layer below" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    const f = result(onApply)[0] as unknown as { layers: { pic: Pixels }[] };
+    expect(f.layers).toHaveLength(1);
+    expect(row(f.layers[0]!.pic, 3)).toBe("R..B...R");
   });
 
   it("counts each zone's colors against the board's 15", () => {

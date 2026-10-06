@@ -100,7 +100,10 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
         "grid": { "w": 48, "h": 48 },
         "frames": [ { "id": "idle_0", "x": 412, "y": 63, "w": 69, "h": 115, "px": 35, "py": 114,
                       // optional: pixels drawn by hand in the pixel editor, at the frame's size on the board
-                      "edit": { "ref": "sha256:9c0d…", "w": 32, "h": 44, "px": 16, "py": 43 } },
+                      "edit": { "ref": "sha256:9c0d…", "w": 32, "h": 44, "px": 16, "py": 43,
+                                // optional: the layers it was drawn in, bottom first (each a PNG of the frame's size)
+                                "layers": [ { "name": "Base", "ref": "sha256:…", "visible": true, "locked": false },
+                                            { "name": "Shirt", "ref": "sha256:…", "visible": true, "locked": false, "shirt": true } ] } },
                     // a frame drawn from nothing: no box on the sheet, only its pixels
                     { "id": "f28", "x": 0, "y": 0, "w": 32, "h": 44, "px": 16, "py": 43, "drawn": true, "edit": { … } } ],
         "hiddenAnims": ["yawn"]       // optional: built-in animations deleted from the list

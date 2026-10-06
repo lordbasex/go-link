@@ -174,3 +174,20 @@ export function bandColors(p: Pixels, feetY: number): string[][] {
   }
   return Array.from({ length: bands.length }, (_, i) => [...(bands[i] ?? [])]);
 }
+
+/** One layer of a frame: its pixels and whether it shows. */
+export interface LayerPixels {
+  pic: Pixels;
+  visible: boolean;
+}
+
+/** The layers that show, bottom first, one over the other: what the frame looks like (and what the game gets). */
+export function composite(layers: readonly LayerPixels[], w: number, h: number): Pixels {
+  const out = blank(w, h);
+  for (const l of layers) {
+    if (!l.visible) continue;
+    const src = l.pic.rgba;
+    for (let i = 0; i < w * h * 4; i += 4) if (src[i + 3]! >= 128) out.rgba.set(src.subarray(i, i + 4), i);
+  }
+  return out;
+}

@@ -189,10 +189,37 @@ describe("CharactersScreen", () => {
     expect(ch.id).toBe("pixel");
     expect(ch.anims.idle!.frames).toEqual(["f1", "f2"]);
     expect(ch.source.sheet).toBeNull();
+    // one layer only, no shirt: no layers kept, the picture is enough
+    expect((ch.source.frames[0] as { edit?: { layers?: unknown } }).edit?.layers).toBeUndefined();
     expect(ch.source.frames).toMatchObject([
       { id: "f1", drawn: true, w: 33, h: 44, edit: { ref: expect.stringMatching(/^sha256:/) } },
       { id: "f2", drawn: true, edit: { ref: expect.stringMatching(/^sha256:/) } },
     ]);
+  });
+
+  it("keeps a frame's layers with the character and gives a shirt layer's colors to the recolored ones", async () => {
+    const { onChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "✎ Draw from scratch" }));
+    fireEvent.click(screen.getByRole("button", { name: "New layer (above this one)" }));
+    // a color of the board on the new layer, by the color picker, then a dot
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ee3311" } });
+    const c = screen.getByRole("img", { name: "Frame 1 of 1" }) as HTMLCanvasElement;
+    c.getBoundingClientRect = () => ({ left: 0, top: 0, width: 33, height: 44, right: 33, bottom: 44, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.pointerDown(c, { clientX: 10.5, clientY: 20.5, button: 0, pointerId: 1 });
+    fireEvent.pointerUp(c, { clientX: 10.5, clientY: 20.5, button: 0, pointerId: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Shirt: Layer 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Shirt" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save character" }));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const ch = onChange.mock.calls[0]![0].characters[0] as unknown as { swapColors: string[]; source: { frames: { edit?: { layers?: { name: string; ref: string; shirt?: boolean }[] } }[] } };
+    expect(ch.source.frames[0]!.edit!.layers).toMatchObject([
+      { name: "Base", ref: expect.stringMatching(/^sha256:/) },
+      { name: "Layer 2", ref: expect.stringMatching(/^sha256:/), shirt: true },
+    ]);
+    expect(ch.swapColors).toEqual(["#EE3311"]);
   });
 
   it("edits boxes: delete with the keyboard, add one, move the pivot", async () => {

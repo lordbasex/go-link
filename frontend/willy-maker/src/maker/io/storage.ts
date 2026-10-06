@@ -97,7 +97,11 @@ export function assetRefs(p: Project): Set<string> {
     if (typeof source?.sheet === "string" && source.sheet.startsWith("sha256:")) refs.add(source.sheet);
     // and the frames drawn by hand in the pixel editor
     if (Array.isArray(source?.frames))
-      for (const f of source.frames as { edit?: { ref?: unknown } }[]) if (typeof f?.edit?.ref === "string" && f.edit.ref.startsWith("sha256:")) refs.add(f.edit.ref);
+      for (const f of source.frames as { edit?: { ref?: unknown; layers?: { ref?: unknown }[] } }[]) {
+        if (typeof f?.edit?.ref === "string" && f.edit.ref.startsWith("sha256:")) refs.add(f.edit.ref);
+        // and the layers it was drawn in
+        for (const l of Array.isArray(f?.edit?.layers) ? f.edit.layers : []) if (typeof l?.ref === "string" && l.ref.startsWith("sha256:")) refs.add(l.ref);
+      }
   }
   for (const t of p.tilesets) if (t.image) refs.add(t.image);
   // the image AI prompt helper's reference pictures
