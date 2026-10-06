@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   DEFAULT_CONTROLS,
@@ -28,6 +29,7 @@ import { playDing, setDingOutput } from "../components/ding";
 import { t } from "../i18n";
 import { DEMO_DEVICE_NAME } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
+import { useHeaderSlot, useMediaQuery } from "../components/headerSlot";
 import { useJoinRoom, usePublicRoomMeta } from "../signal/useJoinRoom";
 import { useHostStream } from "../signal/useHostStream";
 import { AndroidAppCard } from "../components/AndroidAppCard";
@@ -1022,6 +1024,10 @@ export function RoomPage() {
     setPictureOpen(true);
   };
 
+  // Where the room's actions go (read before any early return: hooks).
+  const headerSlot = useHeaderSlot();
+  const wide = useMediaQuery("(min-width: 701px)");
+
   if (!demo) {
     switch (status.kind) {
       case "invalid":
@@ -1146,6 +1152,72 @@ export function RoomPage() {
       return next;
     });
 
+  // On wide screens the room's actions sit in the main header, next to the
+  // logo, instead of a row of their own under it.
+  const inHeader = wide && headerSlot !== null;
+  const roomActions = (
+    <>
+      {!demo && (
+        <button
+          type="button"
+          className={`icon-button tip-below icon-with-badge${chatHidden ? "" : " is-on"}`}
+          aria-label={chatHidden ? t.room.chatShow : t.room.chatHide}
+          data-tip={chatHidden ? t.room.chatShow : t.room.chatHide}
+          aria-pressed={!chatHidden}
+          onClick={() => {
+            const hide = !chatHidden;
+            setChatHidden(hide);
+            writeStorage(CHAT_HIDDEN_KEY, String(hide));
+          }}
+        >
+          <ChatIcon />
+          {chatHidden && unread > 0 && (
+            <span className="icon-badge">{unread > 99 ? "99+" : unread}</span>
+          )}
+        </button>
+      )}
+      <button
+        type="button"
+        className="icon-button tip-below"
+        onClick={() => setHelpOpen(true)}
+        aria-label={t.help.button}
+        data-tip={t.help.button}
+      >
+        <HelpIcon />
+      </button>
+      {inviteRoom && (
+        <button
+          type="button"
+          className="icon-button icon-button-primary tip-below"
+          aria-label={t.invite.button}
+          data-tip={t.invite.button}
+          onClick={() => setInviteOpen(true)}
+        >
+          <UserPlusIcon />
+        </button>
+      )}
+      {ownsRoom && (
+        <button
+          type="button"
+          className="icon-button icon-button-danger tip-below"
+          aria-label={t.room.closeGame}
+          data-tip={t.room.closeGame}
+          onClick={() => setConfirmClose(true)}
+        >
+          <PowerIcon />
+        </button>
+      )}
+      <Link
+        to="/rooms"
+        className="icon-button tip-below"
+        aria-label={t.room.leave}
+        data-tip={t.room.leaveHint}
+      >
+        <LogOutIcon />
+      </Link>
+    </>
+  );
+
   return (
     <div className={`page room-page${consoleMode ? " is-console-mode" : ""}`}>
       <PageHero
@@ -1186,67 +1258,9 @@ export function RoomPage() {
             )}
           </>
         }
-        actions={<>
-          {!demo && (
-            <button
-              type="button"
-              className={`icon-button tip-below icon-with-badge${chatHidden ? "" : " is-on"}`}
-              aria-label={chatHidden ? t.room.chatShow : t.room.chatHide}
-              data-tip={chatHidden ? t.room.chatShow : t.room.chatHide}
-              aria-pressed={!chatHidden}
-              onClick={() => {
-                const hide = !chatHidden;
-                setChatHidden(hide);
-                writeStorage(CHAT_HIDDEN_KEY, String(hide));
-              }}
-            >
-              <ChatIcon />
-              {chatHidden && unread > 0 && (
-                <span className="icon-badge">{unread > 99 ? "99+" : unread}</span>
-              )}
-            </button>
-          )}
-          <button
-            type="button"
-            className="icon-button tip-below"
-            onClick={() => setHelpOpen(true)}
-            aria-label={t.help.button}
-            data-tip={t.help.button}
-          >
-            <HelpIcon />
-          </button>
-          {inviteRoom && (
-            <button
-              type="button"
-              className="icon-button icon-button-primary tip-below"
-              aria-label={t.invite.button}
-              data-tip={t.invite.button}
-              onClick={() => setInviteOpen(true)}
-            >
-              <UserPlusIcon />
-            </button>
-          )}
-          {ownsRoom && (
-            <button
-              type="button"
-              className="icon-button icon-button-danger tip-below"
-              aria-label={t.room.closeGame}
-              data-tip={t.room.closeGame}
-              onClick={() => setConfirmClose(true)}
-            >
-              <PowerIcon />
-            </button>
-          )}
-          <Link
-            to="/rooms"
-            className="icon-button tip-below"
-            aria-label={t.room.leave}
-            data-tip={t.room.leaveHint}
-          >
-            <LogOutIcon />
-          </Link>
-        </>}
+        actions={inHeader ? undefined : roomActions}
       />
+      {inHeader && headerSlot && createPortal(roomActions, headerSlot)}
 
       <div className="page-body room-layout">
         <div className="room-main">

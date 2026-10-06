@@ -128,7 +128,8 @@ async function nav(p: Page, href: string) {
 }
 
 async function switchLang(p: Page, lang: Lang) {
-  await p.locator(`.lang-switch button[lang="${lang}"]`).first().click();
+  await p.locator(".lang-menu-button").first().click();
+  await p.locator(`.lang-menu [lang="${lang}"]`).click();
   await expect(p.locator("html")).toHaveAttribute("lang", lang);
 }
 

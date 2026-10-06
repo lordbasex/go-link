@@ -19,6 +19,7 @@ import { setTheme, useTheme } from "../theme";
 import { DevilIcon, GithubIcon } from "./Icons";
 import { launchDestroy, prefetchDestroy } from "../destroyLauncher";
 import { REPO_URL } from "../config";
+import { setHeaderSlot } from "./headerSlot";
 import { ROLE, homeHref } from "../role";
 
 export function Brand() {
@@ -92,26 +93,60 @@ export function ServerButton() {
   );
 }
 
-/** Three round language bubbles (EN, ES, PT). The change applies at once,
- * without reloading, so a running game is never cut. */
-export function LangSwitch() {
+/** One button with the current language; its menu picks another. The
+ * change applies at once, without reloading, so a running game is never cut. */
+export function LangMenu() {
   const lang = useLang();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const current = LANGS.find((l) => l.id === lang) ?? LANGS[0]!;
   return (
-    <div className="lang-switch" role="group" aria-label={t.lang.label}>
-      {LANGS.map((l) => (
-        <button
-          key={l.id}
-          type="button"
-          lang={l.id}
-          className={`lang-bubble${l.id === lang ? " is-active" : ""}`}
-          aria-pressed={l.id === lang}
-          aria-label={l.name}
-          title={l.name}
-          onClick={() => setLang(l.id)}
-        >
-          {l.label}
-        </button>
-      ))}
+    <div className="lang-menu-wrap" ref={ref}>
+      <button
+        type="button"
+        className={`icon-button header-icon lang-menu-button tip-below${open ? " is-on" : ""}`}
+        aria-label={`${t.lang.label}: ${current.name}`}
+        data-tip={open ? undefined : t.lang.label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {current.label}
+      </button>
+      {open && (
+        <div className="lang-menu" role="menu" aria-label={t.lang.label}>
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              role="menuitemradio"
+              lang={l.id}
+              aria-checked={l.id === lang}
+              className={`lang-menu-item${l.id === lang ? " is-active" : ""}`}
+              onClick={() => {
+                setLang(l.id);
+                setOpen(false);
+              }}
+            >
+              <span className="lang-menu-code">{l.label}</span>
+              {l.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,6 +160,9 @@ export function MainHeader() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const toolsRef = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
+  // A room keeps only the logo, its own actions (RoomPage puts them in the
+  // header slot) and the tools that matter while playing.
+  const inRoom = pathname.startsWith("/r/");
   useEffect(() => setToolsOpen(false), [pathname]);
   useEffect(() => {
     if (!toolsOpen) return;
@@ -140,10 +178,10 @@ export function MainHeader() {
     };
   }, [toolsOpen]);
   return (
-    <header className="app-header app-header-main">
+    <header className={`app-header app-header-main${inRoom ? " is-room" : ""}`}>
       <div className="header-left">
         <Brand />
-        <nav aria-label={t.nav.label} className="main-nav">
+        {!inRoom && <nav aria-label={t.nav.label} className="main-nav">
           {/* The device's own panel is for managing it: no landing page. */}
           {!panel &&
             (ROLE === "play" ? (
@@ -173,13 +211,15 @@ export function MainHeader() {
             <ToolsIcon />
             <span>{t.tools.nav}</span>
           </NavLink>
-        </nav>
+        </nav>}
       </div>
       <div className="header-right" ref={toolsRef}>
+        {inRoom && <div className="header-slot" ref={setHeaderSlot} />}
         {/* The landing keeps no link to a device and never connects. */}
         {ROLE !== "site" && <DeviceBadge />}
         {/* Always in sight (not folded into the tools on phones): it wants to be found. */}
         <DevilButton />
+        <LangMenu />
         <button
           type="button"
           className={`icon-button header-more${toolsOpen ? " is-on" : ""}`}
@@ -190,7 +230,6 @@ export function MainHeader() {
           <MoreIcon />
         </button>
         <div className={`header-tools${toolsOpen ? " is-open" : ""}`}>
-          <LangSwitch />
           {ROLE !== "site" && <ServerButton />}
           <ThemeButton />
           <a

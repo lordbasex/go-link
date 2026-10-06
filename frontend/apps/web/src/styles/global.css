@@ -79,13 +79,18 @@ code, kbd, .mono { font-family: var(--font-mono); }
 .app-header-room .header-left { gap: 20px; }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .app-header-room .header-right { gap: 10px; }
-.lang-switch { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--color-border-input); border-radius: 999px; }
-.lang-bubble { width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent; color: var(--color-text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; position: relative; }
-/* 44 px touch target around the 34 px bubble */
-.lang-bubble::after { content: ""; position: absolute; inset: -5px; }
-.lang-bubble:hover { color: var(--color-text); }
-.lang-bubble.is-active { background: var(--color-accent); color: var(--color-on-accent); }
-.lang-bubble:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.lang-menu-wrap { position: relative; display: inline-flex; }
+.lang-menu-button { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+.lang-menu-button.is-on { border-color: var(--color-accent); color: var(--color-accent-text); }
+.lang-menu {
+  position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; min-width: 168px; display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  border-radius: 16px; background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+.lang-menu-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border: none; border-radius: 999px; background: transparent; color: var(--color-text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.lang-menu-item:hover, .lang-menu-item:focus-visible { background: var(--color-surface-2); outline: none; }
+.lang-menu-item.is-active { color: var(--color-accent-text); font-weight: 600; }
+.lang-menu-code { width: 28px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--color-text-muted); }
+.lang-menu-item.is-active .lang-menu-code { color: var(--color-accent-text); }
 .header-divider { width: 1px; height: 28px; background: var(--color-border-input); flex-shrink: 0; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--color-text); }
 .brand:hover { color: var(--color-text); }
@@ -1893,6 +1898,21 @@ body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48
 .header-more { display: none; }
 .main-nav svg { display: none; }
 .nav-link { display: inline-flex; align-items: center; gap: 6px; }
+/* In a room: the logo, the room's actions, then the device, the language
+   and the "…" with the other tools, on every screen size. */
+.header-slot { display: flex; align-items: center; gap: 8px; padding-right: 14px; margin-right: 2px; border-right: 1px solid var(--color-divider); }
+.header-slot:empty { display: none; }
+@media (min-width: 701px) { .app-header-main.is-room { height: 64px; } }
+.app-header-main.is-room .header-right { position: relative; gap: 10px; }
+.app-header-main.is-room .header-more { display: inline-flex; }
+.app-header-main.is-room .header-more.is-on { border-color: var(--color-accent); color: var(--color-accent-text); }
+.app-header-main.is-room .header-tools { display: none; }
+.app-header-main.is-room .header-tools.is-open {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; position: absolute; z-index: 30; top: calc(100% + 10px); right: 0;
+  width: max-content; max-width: calc(100vw - 24px); padding: 12px; border-radius: 18px;
+  background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+.app-header-main.is-room .header-tools .icon-button[data-tip]::after { display: none; }
 @media (max-width: 700px) {
   .app-header, .app-header-main { height: 56px; min-height: 0; flex-wrap: nowrap; padding: 0 12px; padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box; gap: 8px; }
   .app-header-main .header-left { width: auto; gap: 0; }

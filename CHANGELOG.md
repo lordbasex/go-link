@@ -4,6 +4,11 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (website)
+
+- **A cleaner room header:** in a room, the top bar keeps only the logo, the room's own buttons (chat, How to play, Invite, Close game, Leave), your device, the language and a "…" with the signaling server, the theme and GitHub. The section tabs are gone there, and the room's buttons no longer take a row of their own under the title.
+- **Language is one button:** the three EN/ES/PT bubbles became one button with the current language and a menu to pick another, on every page.
+
 ### Docs
 
 - **go-link HD's base** ([docs/go-link-hd.md](docs/go-link-hd.md)): what go-link's own 2D engine will support, each item marked Base, Later or Idea (simulation, picture, camera, sound, controls, rules, saves, game package, go-link and Willy Maker), with budgets, phases and the decisions taken: a libretro core of our own in Go, also built to WebAssembly, pixel art on a 640 × 360 screen first, the platformer first. Nothing is built yet.

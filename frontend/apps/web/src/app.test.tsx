@@ -103,18 +103,23 @@ describe("languages", () => {
     FakeSocket.reset((env) => (env.type === "rooms_list" ? lobbyRooms : undefined));
     renderApp("/rooms");
     expect(await screen.findByRole("heading", { name: "Join a game" })).toBeInTheDocument();
-    const english = screen.getByRole("button", { name: "English" });
-    expect(english).toHaveAttribute("aria-pressed", "true");
+    // One button with the current language; its menu picks another.
+    const pick = async (name: string) => {
+      await userEvent.click(screen.getByRole("button", { name: /^(Language|Idioma): / }));
+      await userEvent.click(screen.getByRole("menuitemradio", { name: new RegExp(name) }));
+    };
+    expect(screen.getByRole("button", { name: "Language: English" })).toHaveAttribute("aria-haspopup", "menu");
 
-    await userEvent.click(screen.getByRole("button", { name: "Español" }));
+    await pick("Español");
     expect(screen.getByRole("button", { name: es.guest.join })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("es");
     expect(localStorage.getItem("go-link.lang")).toBe("es");
     expect(screen.getByRole("heading", { name: es.guest.title })).toBeInTheDocument(); // same page, nothing reloaded
 
-    await userEvent.click(screen.getByRole("button", { name: "Português" }));
-    expect(screen.getByRole("button", { name: "Português" })).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(screen.getByRole("button", { name: "English" }));
+    await pick("Português");
+    await userEvent.click(screen.getByRole("button", { name: /: Português$/ }));
+    expect(screen.getByRole("menuitemradio", { name: /Português/ })).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /English/ }));
     expect(screen.getByRole("button", { name: "Join" })).toBeInTheDocument();
   });
 });
