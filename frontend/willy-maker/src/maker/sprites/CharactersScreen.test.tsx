@@ -222,6 +222,27 @@ describe("CharactersScreen", () => {
     expect(ch.swapColors).toEqual(["#EE3311"]);
   });
 
+  it("keeps a vector layer's shapes with the character", async () => {
+    const { onChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "✎ Draw from scratch" }));
+    fireEvent.click(screen.getByRole("button", { name: "New vector layer (shapes)" }));
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ee3311" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ellipse (O)" }));
+    const c = screen.getByRole("img", { name: "Frame 1 of 1" }) as HTMLCanvasElement;
+    c.getBoundingClientRect = () => ({ left: 0, top: 0, width: 33, height: 44, right: 33, bottom: 44, x: 0, y: 0, toJSON: () => ({}) });
+    fireEvent.pointerDown(c, { clientX: 8.5, clientY: 4.5, button: 0, pointerId: 1 });
+    fireEvent.pointerMove(c, { clientX: 24.5, clientY: 18.5, button: 0, pointerId: 1 });
+    fireEvent.pointerUp(c, { clientX: 24.5, clientY: 18.5, button: 0, pointerId: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Ball" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save character" }));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const ch = onChange.mock.calls[0]![0].characters[0] as unknown as { source: { frames: { edit?: { layers?: { name: string; shapes?: unknown[] }[] } }[] } };
+    expect(ch.source.frames[0]!.edit!.layers![1]).toMatchObject({ name: "Vector 2", shapes: [{ kind: "ellipse", points: [[8, 4], [24, 18]], fill: "#ee3311", stroke: "#000000", width: 1 }] });
+  });
+
   it("edits boxes: delete with the keyboard, add one, move the pivot", async () => {
     setup();
     await drop();

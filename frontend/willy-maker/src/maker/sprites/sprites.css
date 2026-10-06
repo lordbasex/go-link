@@ -728,7 +728,10 @@
   color: var(--color-danger-text);
 }
 .wms-pe-hint {
-  max-width: 420px;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 380px;
+  font-size: 11px;
 }
 .wms-edit {
   right: auto;
@@ -783,6 +786,8 @@
   gap: 3px;
 }
 .wms-pe-strip-actions .wms-cap {
+  min-width: 0;
+  height: 28px;
   padding: 0;
   justify-content: center;
 }
@@ -877,4 +882,36 @@
   height: 28px;
   padding: 0;
   justify-content: center;
+}
+
+/* a vector layer's controls */
+.wms-pe-vops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+.wms-pe-vstyle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+}
+.wms-pe-vstyle input[type="color"] {
+  width: 36px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  background: none;
+}
+.wms-pe-pick {
+  position: relative;
+}
+.wms-pe-vbadge {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  color: var(--color-accent);
 }

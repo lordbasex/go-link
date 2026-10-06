@@ -179,6 +179,44 @@ describe("the pixel editor", () => {
     expect(row(f.layers[0]!.pic, 3)).toBe("R..B...R");
   });
 
+  it("draws shapes on a vector layer, selects, moves and recolors one, and converts the layer to bitmap", () => {
+    const { canvas, at, onApply } = open();
+    fireEvent.click(screen.getByRole("button", { name: "New vector layer (shapes)" }));
+    expect(screen.getByRole("textbox", { name: "Name of layer 2" })).toHaveValue("Vector 2");
+    // a vector layer's tools: a filled rectangle from (1, 1) to (3, 2), no outline
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.change(screen.getByRole("slider", { name: "Outline width" }), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle (R)" }));
+    fireEvent.pointerDown(canvas(), at(1, 1));
+    fireEvent.pointerMove(canvas(), at(3, 2));
+    fireEvent.pointerUp(canvas(), at(3, 2));
+    // select it and move it two pixels right
+    fireEvent.click(screen.getByRole("button", { name: /^Select \(V\)/ }));
+    fireEvent.pointerDown(canvas(), at(2, 1));
+    fireEvent.pointerMove(canvas(), at(4, 1));
+    fireEvent.pointerUp(canvas(), at(4, 1));
+    // with the Select tool, its fill takes the red picked from the palette
+    fireEvent.click(screen.getByRole("button", { name: R }));
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    let f = result(onApply)[0] as unknown as { pic: Pixels; layers: { shapes?: unknown[] }[] };
+    expect(row(f.pic, 1)).toBe("R..RRR.R");
+    expect(f.layers[1]!.shapes).toEqual([{ kind: "rect", points: [[3, 1], [5, 2]], fill: R, stroke: null, width: 0 }]);
+    // Convert to bitmap keeps the pixels, drops the shapes
+    cleanup();
+    const second = open();
+    fireEvent.click(screen.getByRole("button", { name: "New vector layer (shapes)" }));
+    fireEvent.click(screen.getByRole("button", { name: B }));
+    fireEvent.click(screen.getByRole("button", { name: "Rectangle (R)" }));
+    fireEvent.pointerDown(second.canvas(), second.at(2, 2));
+    fireEvent.pointerUp(second.canvas(), second.at(2, 2));
+    fireEvent.click(screen.getByRole("button", { name: /Convert to bitmap/ }));
+    expect(screen.getByRole("button", { name: "Pencil (B)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use these frames" }));
+    f = result(second.onApply)[0] as unknown as { pic: Pixels; layers: { shapes?: unknown[] }[] };
+    expect(f.layers[1]!.shapes).toBeUndefined();
+    expect(colorAt(f.pic, 2, 2)).not.toBeNull();
+  });
+
   it("counts each zone's colors against the board's 15", () => {
     open();
     expect(screen.getByText("Zone 1: 1 of 15")).toBeInTheDocument();

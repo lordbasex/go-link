@@ -103,7 +103,10 @@ Versioned JSON; the current `format` is 3. Unknown fields are kept on import (a 
                       "edit": { "ref": "sha256:9c0d…", "w": 32, "h": 44, "px": 16, "py": 43,
                                 // optional: the layers it was drawn in, bottom first (each a PNG of the frame's size)
                                 "layers": [ { "name": "Base", "ref": "sha256:…", "visible": true, "locked": false },
-                                            { "name": "Shirt", "ref": "sha256:…", "visible": true, "locked": false, "shirt": true } ] } },
+                                            { "name": "Shirt", "ref": "sha256:…", "visible": true, "locked": false, "shirt": true },
+                                            // a vector layer also keeps its shapes (its PNG is them as pixels)
+                                            { "name": "Vector 3", "ref": "sha256:…", "visible": true, "locked": false,
+                                              "shapes": [ { "kind": "ellipse", "points": [[8, 4], [24, 18]], "fill": "#ee3311", "stroke": "#000000", "width": 1 } ] } ] } },
                     // a frame drawn from nothing: no box on the sheet, only its pixels
                     { "id": "f28", "x": 0, "y": 0, "w": 32, "h": 44, "px": 16, "py": 43, "drawn": true, "edit": { … } } ],
         "hiddenAnims": ["yawn"]       // optional: built-in animations deleted from the list

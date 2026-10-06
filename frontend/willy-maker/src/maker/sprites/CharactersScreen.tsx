@@ -21,6 +21,7 @@ import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
 import { PixelEditor, type EditorFrame, type EditorLayer } from "./ui/PixelEditor";
 import { colorsOf } from "./pixels";
+import { cleanShapes } from "./vector";
 import { BoardPanel } from "./ui/BoardPanel";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
@@ -157,7 +158,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           const a = await getAsset(l.ref).catch(() => null);
           const pic = a ? await decodeImage(a.bytes, a.type).catch(() => null) : null;
           if (!pic) return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, null] as const;
-          layers.push({ name: l.name, pic: { w: pic.w, h: pic.h, rgba: new Uint8Array(pic.data) }, visible: l.visible, locked: l.locked, shirt: !!l.shirt });
+          // a vector layer's shapes come back with it
+          layers.push({ name: l.name, pic: { w: pic.w, h: pic.h, rgba: new Uint8Array(pic.data) }, visible: l.visible, locked: l.locked, shirt: !!l.shirt, ...(Array.isArray(l.shapes) ? { shapes: cleanShapes(l.shapes) } : {}) });
         }
         return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, layers.length ? layers : null] as const;
       }),
@@ -425,7 +427,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       const next = new Map(cur);
       result.forEach((f, i) => {
         if (!f.changed) return;
-        if (f.layers.length > 1 || f.layers.some((l) => l.shirt)) next.set(ids[i]!, f.layers);
+        if (f.layers.length > 1 || f.layers.some((l) => l.shirt || l.shapes)) next.set(ids[i]!, f.layers);
         else next.delete(ids[i]!);
       });
       return next;
@@ -467,7 +469,16 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           const pic = await putAsset(await encodePng(e.w, e.h, e.rgba), "image/png");
           const ls = layerEdits.get(f.id);
           const layers = ls
-            ? await Promise.all(ls.map(async (l) => ({ name: l.name, ref: await putAsset(await encodePng(l.pic.w, l.pic.h, l.pic.rgba), "image/png"), visible: l.visible, locked: l.locked, ...(l.shirt ? { shirt: true } : {}) })))
+            ? await Promise.all(
+                ls.map(async (l) => ({
+                  name: l.name,
+                  ref: await putAsset(await encodePng(l.pic.w, l.pic.h, l.pic.rgba), "image/png"),
+                  visible: l.visible,
+                  locked: l.locked,
+                  ...(l.shirt ? { shirt: true } : {}),
+                  ...(l.shapes ? { shapes: l.shapes } : {}),
+                })),
+              )
             : undefined;
           return { ...f, edit: { ref: pic, w: e.w, h: e.h, px: e.px, py: e.py, ...(layers ? { layers } : {}) } };
         }),
