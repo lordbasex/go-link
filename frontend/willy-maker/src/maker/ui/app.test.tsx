@@ -5,6 +5,12 @@ import { WillyMakerApp } from "..";
 import { coreEn } from "../i18n/core.en";
 import { coreEs } from "../i18n/core.es";
 import { corePt } from "../i18n/core.pt";
+import { promptEn } from "../i18n/prompt.en";
+import { promptEs } from "../i18n/prompt.es";
+import { promptPt } from "../i18n/prompt.pt";
+import { spritesEn } from "../i18n/sprites.en";
+import { spritesEs } from "../i18n/sprites.es";
+import { spritesPt } from "../i18n/sprites.pt";
 import { listProjects, loadProject, saveProject } from "../io/storage";
 import { newProject } from "../model";
 
@@ -21,11 +27,15 @@ describe("Willy Maker app", () => {
   it("keeps the same texts in every language", () => {
     expect(shape(coreEs)).toEqual(shape(coreEn));
     expect(shape(corePt)).toEqual(shape(coreEn));
+    expect(shape(spritesEs)).toEqual(shape(spritesEn));
+    expect(shape(spritesPt)).toEqual(shape(spritesEn));
+    expect(shape(promptEs)).toEqual(shape(promptEn));
+    expect(shape(promptPt)).toEqual(shape(promptEn));
   });
 
   it("creates a game with the wizard and opens the IDE", async () => {
     let opened: string | null = null;
-    render(<WillyMakerApp lang="en" onProjectId={(id) => (opened = id)} />);
+    render(<WillyMakerApp editor="classic" lang="en" onProjectId={(id) => (opened = id)} />);
     expect(screen.getByText("No games yet. Start one with “New game”.")).toBeInTheDocument();
     // step 1: the genre; every genre can be chosen today (racing was the last, 2026-10-04)
     const genres = within(screen.getByRole("radiogroup", { name: "What kind of game?" })).getAllByRole("radio");
@@ -67,7 +77,7 @@ describe("Willy Maker app", () => {
   it("lists saved games and opens one in Spanish", async () => {
     const p = newProject({ title: "Mi juego" });
     saveProject(p);
-    render(<WillyMakerApp lang="es" />);
+    render(<WillyMakerApp editor="classic" lang="es" />);
     expect(screen.getByText("Mi juego")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
     expect(await screen.findByRole("button", { name: "Construir" })).toBeInTheDocument();
@@ -76,7 +86,7 @@ describe("Willy Maker app", () => {
 
   it("asks before deleting a game", async () => {
     saveProject(newProject({ title: "Gone" }));
-    render(<WillyMakerApp lang="en" />);
+    render(<WillyMakerApp editor="classic" lang="en" />);
     fireEvent.click(screen.getByRole("button", { name: "More for Gone" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Delete “Gone” from this browser?");
@@ -87,7 +97,7 @@ describe("Willy Maker app", () => {
   it("opens the game named in the address", async () => {
     const p = newProject({ title: "Linked" });
     saveProject(p);
-    render(<WillyMakerApp lang="en" projectId={p.id} />);
+    render(<WillyMakerApp editor="classic" lang="en" projectId={p.id} />);
     expect(await screen.findByText("Level 1 · Level 1")).toBeInTheDocument();
   });
 });

@@ -5,10 +5,8 @@
 // starting point, then name and players, then the first level.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BEATEMUP_RULES, LIGHTGUN_RULES, MAZE_RULES, PUZZLE_RULES, QUIZ_RULES, RACING_RULES, SPORTS_RULES, VERSUS_RULES, PLATFORMER_RULES, SHIP_RULES, TOPDOWN_RULES, VERTICAL_RULES } from "../../engine/rules";
-import { shapeArenaLevel, shapeFieldLevel, shapePuzzleLevel, shapeTrackLevel } from "../../editor/puzzleLevel";
+import { applyGenre } from "../../editor/genres";
 import { useGameText } from "../../game/texts";
-import { defaultWalk } from "../../model";
 import { useCore } from "../../i18n";
 import { DEFAULT_GENRE, GENRES, genreAvailable, InputError, inputErrorText, newProject, objectLayer, type GenreId, type LayoutId, type Level, type Project } from "../../model";
 import { projectFromTemplate, addStarterTilesets, type TemplateId } from "../../templates";
@@ -134,50 +132,7 @@ export function Wizard({ onCreated }: { onCreated: (p: Project) => void }) {
       const exit = objectLayer(level).items.find((o) => o.type === "exit");
       if (exit) exit.x = Math.max(exit.x, level.size.w - 64);
     } else p = projectFromTemplate(start === "tiled" || start === "picture" ? "empty" : start, { title: name, author, layout, players, levelName: levelName.trim() || t.wizard.levelNamePh, screens, height });
-    p.genre = genre;
-    // a platformer starts with its own rules (no weapons, stomping), changeable in the Rules card
-    if (genre === "platformer") p.settings.rules = { ...(p.settings.rules ?? {}), ...PLATFORMER_RULES };
-    // a beat 'em up walks a street in depth: its rules, and a band over each level's floor
-    // a light gun game: crosshairs, a camera that moves by itself and holds at camera locks
-    if (genre === "light-gun") p.settings.rules = { ...(p.settings.rules ?? {}), ...LIGHTGUN_RULES };
-    // a horizontal shooter: ships over a level the camera scrolls by itself
-    if (genre === "horizontal-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...SHIP_RULES };
-    // a vertical shooter: the same ships, climbing the level from its bottom
-    if (genre === "vertical-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...VERTICAL_RULES };
-    // a top-down run and gun: seen from above, walking and shooting in 8 directions
-    if (genre === "top-down-shooter") p.settings.rules = { ...(p.settings.rules ?? {}), ...TOPDOWN_RULES };
-    // a maze game: grid moves, dots in every empty cell, chasers
-    if (genre === "maze") p.settings.rules = { ...(p.settings.rules ?? {}), ...MAZE_RULES };
-    // a racing game: cars on a ring track seen from above
-    if (genre === "racing") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...RACING_RULES };
-      for (const level of p.levels) shapeTrackLevel(level);
-    }
-    // a sports game: football on a field with a goal at each end
-    if (genre === "sports") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...SPORTS_RULES };
-      for (const level of p.levels) shapeFieldLevel(level);
-    }
-    // a versus fighting game: two fighters on a one-screen floor
-    if (genre === "versus-fighting") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...VERSUS_RULES };
-      for (const level of p.levels) shapeArenaLevel(level);
-    }
-    // a quiz game: questions on the screen, a few samples in the editor's language to start from
-    if (genre === "quiz-party") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...QUIZ_RULES };
-      p.quiz = gt.quiz.samples.map((q) => ({ ...q, a: [...q.a] as [string, string, string] }));
-      for (const level of p.levels) shapePuzzleLevel(level, true);
-    }
-    // a puzzle game: a well of falling gems per player, framed by the level's walls
-    if (genre === "puzzle") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...PUZZLE_RULES };
-      for (const level of p.levels) shapePuzzleLevel(level);
-    }
-    if (genre === "beat-em-up") {
-      p.settings.rules = { ...(p.settings.rules ?? {}), ...BEATEMUP_RULES };
-      for (const level of p.levels) level.walk = defaultWalk(level);
-    }
+    applyGenre(p, genre, gt.quiz.samples);
     await attachStarterImages(p);
     setBusy(false);
     reset();

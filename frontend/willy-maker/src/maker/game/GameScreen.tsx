@@ -18,6 +18,7 @@ import { ControllerPanel } from "./ControllerPanel";
 import { actionLabel, actionRows, heroChoices, levelHeroes, playerSlots, runTapMs, setActionLabel, setDip, setPlayerSlot, setPlayers, setRules, setRunTap, slotResolves } from "./settings";
 import { fill, issueText, useGameText, useMenusText } from "./texts";
 import { QuizCard } from "./QuizCard";
+import { SoundCard } from "./SoundCard";
 import "./game.css";
 
 export interface GameScreenProps {
@@ -145,6 +146,7 @@ export function GameScreen({ store, project, issues, onGo }: GameScreenProps) {
         <DipCard store={store} dip={s.dip} />
         <RulesCard store={store} saved={s.rules} />
         {rulesWith(s.rules).quiz && <QuizCard store={store} questions={project.quiz ?? []} />}
+        <SoundCard store={store} project={project} />
         <IssuesCard issues={issues} onGo={onGo} />
       </div>
     </div>

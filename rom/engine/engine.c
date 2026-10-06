@@ -470,6 +470,24 @@ static void stream(void)
 			load_col3(c);
 }
 
+/* the palettes of the own looks in a table of look addresses (enemy_looks, civ_looks, pickup_looks), n entries;
+   a look its table names twice is copied twice, which is harmless */
+static void load_look_palettes(u32 table, int n)
+{
+	int i, r;
+	if (table < WM_DATA_ADDR || table >= 2 * WM_DATA_ADDR)
+		return;
+	for (i = 0; i < n; i++) {
+		u32 a = ((const u32 *)table)[i];
+		const struct wm_look *l;
+		if (a < WM_DATA_ADDR || a >= 2 * WM_DATA_ADDR)
+			continue;
+		l = (const struct wm_look *)a;
+		for (r = 0; r < l->npal && l->pal + r < 32; r++)
+			load_palette(PAL_OBJ + l->pal + r, WM_LOOK_PALETTES(l) + r * 16);
+	}
+}
+
 static void video_init(void)
 {
 	int c, r;
@@ -518,6 +536,10 @@ static void video_init(void)
 			for (r = 0; r < l->npal && l->pal + r < 32; r++)
 				load_palette(PAL_OBJ + l->pal + r, WM_LOOK_PALETTES(l) + r * 16);
 	}
+	/* the game's own enemies', civilians' and pickups' looks (T-30): their palettes too, or they show a recruit's shirt */
+	load_look_palettes(D->enemy_looks, D->n_enemies < 16 ? D->n_enemies : 16);
+	load_look_palettes(D->civ_looks, D->n_civs < 8 ? D->n_civs : 8);
+	load_look_palettes(D->pickup_looks, D->n_pickups < 64 ? D->n_pickups : 64);
 	/* text: pen 1 ink, pen 2 shadow */
 	PALETTE[(PAL_SCROLL1 + INK_ACCENT) * 16 + 1] = 0xffa3;
 	PALETTE[(PAL_SCROLL1 + INK_WHITE) * 16 + 1] = 0xfeee;

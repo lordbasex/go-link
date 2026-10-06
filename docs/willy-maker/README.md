@@ -10,6 +10,7 @@ This page is the source of truth before any code is written. More detail lives i
 - [file-format.md](file-format.md): the project file, the `.zip` layout, the AI pack and its prompt.
 - [validation.md](validation.md): the four validation levels, from live rules to a power-on test on the device.
 - [vision.md](vision.md): where Willy Maker is going: every genre, a ladder of boards from the CPS-1 to go-link's own engine, and the principles that keep the code ready for it.
+- [editor.md](editor.md): the editor (Modernist look, zones over a picture, layers and groups, My games), the default since step 8 (the classic one behind `?editor=classic`), and its steps.
 - [genres.md](genres.md): the game genres as a roadmap (today the platform shooter, and the platformer on the same engine), with the mechanics, parts, board limits, controls and size of each.
 
 Willy Maker builds on the ROM project:

@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { snapColor } from "../board/cps1";
 import type { EditorStore } from "../editor/store";
-import type { Project, ValidationIssue } from "../model";
+import { ownSlot, type Project, type ValidationIssue } from "../model";
 import { Capsule, Eyebrow, Segmented } from "../ui/atoms";
 import { paletteFrom } from "../ui/render";
 import { useProjectImages } from "../ui/useTileImages";
@@ -184,6 +184,11 @@ export function MenusScreen({ store, project, version, screen, onScreen, focusFi
               {MUSIC_SLOTS.map((id) => (
                 <option key={id} value={id}>
                   {m.musicSlots[id]}
+                </option>
+              ))}
+              {(project.settings.sound?.songs ?? []).map((song) => (
+                <option key={song.id} value={ownSlot(song.id)}>
+                  {song.name}
                 </option>
               ))}
             </select>

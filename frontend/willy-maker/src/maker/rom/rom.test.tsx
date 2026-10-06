@@ -25,6 +25,7 @@ import { racingProject } from "./racingFixture";
 import { HERO_ID, HERO_PALETTES, heroCharacter, heroPicture } from "./heroFixture";
 import { layerGrid, type Project, type TileLayer } from "../model";
 import { bodyFor } from "../engine/rules";
+import { levelFromProject } from "../engine/level";
 
 // Create ROM end to end with the committed engine (public/willy-maker/engine,
 // rom/tools/engine.mjs): Game Spec v1's level packed, zipped and powered on
@@ -93,6 +94,20 @@ describe("Create ROM", () => {
     // nothing after the engine's sprites, up to the far layer's tiles
     const end = engine.manifest.sprites.code * 128 + sprites.length;
     expect(gfx.subarray(end, 0x100000).every((b) => b === 0xff)).toBe(true);
+  });
+
+  it("leaves out the objects hidden in the editor, alone or with their group (as play mode does)", () => {
+    const p = specProject();
+    const level = p.levels[0]!;
+    const items = level.layers.find((l) => l.kind === "objects")!.items as { type: string; hidden?: boolean; group?: string }[];
+    const all = packGame(p, engine, (id) => pictures.get(id) ?? null).stats.enemies;
+    const enemies = items.filter((o) => o.type === "enemy");
+    enemies[0]!.hidden = true;
+    expect(packGame(p, engine, (id) => pictures.get(id) ?? null).stats.enemies).toBe(all - 1);
+    level.groups = [{ id: "g", visible: false, locked: false, open: true }];
+    enemies[1]!.group = "g";
+    expect(packGame(p, engine, (id) => pictures.get(id) ?? null).stats.enemies).toBe(all - 2);
+    expect(levelFromProject(level).objects.filter((o) => o.type === "enemy")).toHaveLength(all - 2);
   });
 
   it("packs the double jump and the jet pack as header flags", () => {
@@ -654,4 +669,21 @@ describe("Create ROM with the game's own hero", () => {
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
   }, 30000);
+});
+
+describe("the characters Create ROM loads", () => {
+  it("are the players' heroes, the own enemies and civilians, and the pickups' looks", async () => {
+    const { usedCharacters } = await import("./createRom");
+    const { newProject, objectLayer } = await import("../model");
+    const p = newProject({ title: "Own", players: 1 });
+    p.characters.push({ id: "sentinel", role: "enemy" } as never, { id: "kid", role: "civilian" } as never, { id: "battery", role: "boss" } as never, { id: "unused", role: "enemy" } as never);
+    objectLayer(p.levels[0]!).items.push(
+      { name: "e1", type: "enemy", x: 0, y: 0, kind: "sentinel" },
+      { name: "c1", type: "civilian", x: 0, y: 0, kind: "kid" },
+      { name: "k1", type: "pickup", x: 0, y: 0, item: "health", look: "battery" },
+      // an enemy kind that names a character of another role is the engine's own
+      { name: "e2", type: "enemy", x: 0, y: 0, kind: "kid" },
+    );
+    expect([...usedCharacters(p)].sort()).toEqual(["battery", "kid", "sentinel"]);
+  });
 });

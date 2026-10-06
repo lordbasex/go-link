@@ -28,12 +28,17 @@ frontend/willy-maker/src/maker/
                     animations, palette zones, preview
   game/             the Game and Menus tabs (entry game/index.ts): actions, players, your controller,
                     DIP switches, the menu screens with their previews and fit checks
-  i18n/             the module's own texts: <part>.<lang>.ts (core, sprites, play, game, menus)
+  i18n/             the module's own texts: <part>.<lang>.ts (core, studio, sprites, play, game, menus, export, prompt)
   ui/               atomic design: atoms.tsx, molecules.tsx, organisms/, WillyMakerApp.tsx, render.ts
+  ui/studio/        the editor, the default ([editor.md](editor.md)): Studio.tsx, its UI state (state.ts), header, panels,
+                    options bar, canvas, footer, floating menus, My games (GamesHome.tsx), the wizard and demo;
+                    ui/modernist.css holds its design tokens, workspaces.css dresses the shared screens in them
 frontend/willy-maker/public/willy-maker/
   tiles/            city16.png and sky32.png (+ .json): the starter tilesets
   engine/           engine.bin and engine.json: the prebuilt ROM engine (rom/tools/engine.mjs)
 frontend/willy-maker/scripts/willy-maker-tiles.mjs   builds them from the ROM prototype's art
+frontend/willy-maker/vite.config.ts  also serves (dev) and copies (build) play mode's character atlases (player, robot,
+                    npcs) from apps/web/public/destroy at /destroy, so the maker's site has them from that one copy
 ```
 
 - The shell mounts the entry lazily, so the header shows while the editor loads. go-link.org keeps a card on `/tools` that links here, and its old `/tools/willy-maker[/:gameId]` addresses redirect here (with `?import=1` when that browser still has games made there).

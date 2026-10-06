@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
+import { readFileSync } from "node:fs";
 import { defineConfig, searchForWorkspaceRoot, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -55,8 +56,31 @@ function originTrials(): Plugin {
   };
 }
 
+// Play mode draws Willy, the robots and the people with the character atlases
+// go-link.org keeps for its own game (apps/web/public/destroy). The maker's
+// site serves the three it needs at the same path, from that one copy.
+const ATLAS_DIR = new URL("../apps/web/public/destroy/", import.meta.url);
+const ATLASES = ["player", "robot", "npcs"].flatMap((n) => [`${n}.json`, `${n}.webp`]);
+
+function playAtlases(): Plugin {
+  return {
+    name: "play-atlases",
+    configureServer(server) {
+      server.middlewares.use("/destroy", (req, res, next) => {
+        const file = (req.url ?? "").replace(/^\//, "").split("?")[0]!;
+        if (!ATLASES.includes(file)) return next();
+        res.setHeader("Content-Type", file.endsWith(".json") ? "application/json" : "image/webp");
+        res.end(readFileSync(new URL(file, ATLAS_DIR)));
+      });
+    },
+    generateBundle() {
+      for (const file of ATLASES) this.emitFile({ type: "asset", fileName: `destroy/${file}`, source: readFileSync(new URL(file, ATLAS_DIR)) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), contentSecurityPolicy(), originTrials()],
+  plugins: [react(), contentSecurityPolicy(), originTrials(), playAtlases()],
   server: {
     port: 5181,
     strictPort: true,

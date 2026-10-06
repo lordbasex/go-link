@@ -7,6 +7,7 @@
 
 import type { GameRules } from "../engine/rules";
 import type { GenreId } from "./genres";
+import type { GameSound } from "./sound";
 
 /** The current project format; older ones are migrated on load. */
 export const PROJECT_FORMAT = 3;
@@ -106,6 +107,8 @@ export interface GameSettings {
   levels: string[];
   /** The image AI prompt helper's last choices per kind (prompts/imagePrompt.ts), kept to repeat or adjust a request. */
   imagePrompts?: Record<string, Record<string, unknown>>;
+  /** The game's own effects and songs (model/sound.ts); the built-in ones otherwise. */
+  sound?: GameSound;
 }
 
 export type PaletteGroup = "sprite" | "play" | "far" | "text";
@@ -192,8 +195,57 @@ export interface LevelObject {
   /** A rectangle's size (camera_lock, boss arena); points have none. */
   w?: number;
   h?: number;
+  /** The layer group it is listed in (Level.groups); the objects' base group when missing. */
+  group?: string;
   /** The type's properties (player, kind, facing, patrol, size, hp, contents, item…). */
   [prop: string]: unknown;
+}
+
+/**
+ * What a zone is (docs/willy-maker/file-format.md): each kind is one
+ * collision tag, so the zones of a level are drawn into its collision layer.
+ */
+export const ZONE_KINDS = ["floor", "platform", "ladder", "crate", "breakable", "hazard", "water"] as const;
+export type ZoneKind = (typeof ZONE_KINDS)[number];
+export const ZONE_TAG: Record<ZoneKind, Tag> = { floor: "solid", platform: "oneway", ladder: "ladder", crate: "crate", breakable: "breakable", hazard: "hazard", water: "water" };
+
+/**
+ * A zone: a rectangle of the level (px, on the 16 px collision grid) that
+ * says what that part of the picture is. Later zones in the list are on top.
+ */
+export interface Zone {
+  id: string;
+  kind: ZoneKind;
+  /** The name the user typed; missing = the automatic one, the kind's name and `n`. */
+  name?: string;
+  /** The automatic name's number ("Floor 2"). */
+  n: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** The layer group it is listed in (Level.groups). */
+  group: string;
+  hidden?: boolean;
+  locked?: boolean;
+  /** Hits a breakable zone takes (the collision layer's per-cell `hp`); the engine's default when missing. */
+  hp?: number;
+}
+
+/**
+ * A group of the layers panel. The two base groups (objects, zones) always
+ * exist and cannot be deleted; hiding a group hides its members from the
+ * game too, locking it keeps them from being selected or edited.
+ */
+export interface LayerGroup {
+  id: string;
+  /** The name the user typed; missing = the automatic one (the base group's name, or "Group n"). */
+  name?: string;
+  n?: number;
+  base?: "objects" | "zones";
+  visible: boolean;
+  locked: boolean;
+  open: boolean;
 }
 
 interface LayerBase {
@@ -257,6 +309,12 @@ export interface Level {
    * and away from the screen. Only games with the `depth` rule use it.
    */
   walk?: WalkBand;
+  /**
+   * The level's zones and layer groups (format 4). When there are zones, the
+   * collision layer is drawn from the visible ones (model/zones.ts).
+   */
+  zones?: Zone[];
+  groups?: LayerGroup[];
 }
 
 export interface WalkBand {

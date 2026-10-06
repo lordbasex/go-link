@@ -32,7 +32,8 @@ test("Willy Maker: create, paint, place, play, undo, reload and export", async (
   const problems: string[] = [];
   page.on("pageerror", (e) => problems.push(String(e)));
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto(`${MAKER_URL}/`);
+  // the classic editor (the new one is the default; this checks the classic flow end to end)
+  await page.goto(`${MAKER_URL}/?editor=classic`);
 
   // the wizard: the genre (only the platform shooter today), then the Buenos Aires template
   await page.getByRole("button", { name: /Next: the board/ }).click();

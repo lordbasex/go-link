@@ -2,7 +2,7 @@
 
 // Create ROM in the browser: fetches the prebuilt engine once (same origin,
 // public/willy-maker/engine/), decodes the game's tileset pictures and its
-// players' own heroes' pictures from the asset store, packs the game (pack.ts) and zips the set. The power-on test
+// own characters' pictures (heroes, enemies, civilians, pickups) from the asset store, packs the game (pack.ts) and zips the set. The power-on test
 // (validation level 3) runs on the result in the Export tab.
 
 import { getAsset } from "../io/assets";
@@ -71,10 +71,28 @@ export async function tilesetPictures(project: Project, load: AssetLoader = getA
   return out;
 }
 
-/** The decoded pictures of the heroes the players use (not Willy), by character id. */
+/**
+ * The characters the game draws with its own pictures: the players' heroes (not Willy), the enemies and
+ * civilians whose kind is a character of that role, and the pickups' looks (pack.ts, rom/looks.ts).
+ */
+export function usedCharacters(project: Project): Set<string> {
+  const used = new Set(playerSlots(project).map((s) => s.character).filter((id) => id !== BUILTIN_HERO));
+  const roles = new Map(project.characters.map((c) => [c.id, c.role] as const));
+  for (const level of project.levels)
+    for (const layer of level.layers) {
+      if (layer.kind !== "objects") continue;
+      for (const o of layer.items) {
+        if ((o.type === "enemy" || o.type === "civilian") && typeof o.kind === "string" && roles.get(o.kind) === o.type) used.add(o.kind);
+        if (o.type === "pickup" && typeof o.look === "string" && roles.has(o.look)) used.add(o.look);
+      }
+    }
+  return used;
+}
+
+/** The decoded pictures of the characters the game draws (usedCharacters), by character id. */
 export async function characterPictures(project: Project, load: AssetLoader = getAsset): Promise<Map<string, Picture>> {
   const out = new Map<string, Picture>();
-  const used = new Set(playerSlots(project).map((s) => s.character).filter((id) => id !== BUILTIN_HERO));
+  const used = usedCharacters(project);
   for (const ch of project.characters) {
     if (!used.has(ch.id) || !ch.sheet) continue;
     const pic = await picture(ch.sheet, load);

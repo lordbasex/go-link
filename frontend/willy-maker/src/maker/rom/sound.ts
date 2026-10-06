@@ -9,7 +9,7 @@
 // engine pans an effect to where it happens on screen, and each song
 // channel has its own place.
 
-import type { Project } from "../model";
+import { ownSlot, type OwnEffect, type OwnSong, type Project, type SoundWave } from "../model";
 
 /** The chip plays a sample at pitch 0x1000 at this rate (4 MHz / 166). */
 export const QS_RATE = 24096;
@@ -55,7 +55,7 @@ function rng(seed: number): () => number {
   };
 }
 
-type Wave = "square" | "saw" | "tri" | "sine" | "pulse";
+type Wave = SoundWave;
 const osc = (w: Wave, ph: number, duty = 0.5) => {
   const p = ph - Math.floor(ph);
   if (w === "square") return p < duty ? 1 : -1;
@@ -133,7 +133,35 @@ export interface Sample {
   vol: number;
 }
 
-export function effects(): Record<SfxId, Sample> {
+/** An own effect's samples, from its layers (model/sound.ts), louder or softer by its volume. */
+export function renderEffect(e: OwnEffect): Sample {
+  const parts = e.layers.map((l, k) => {
+    if (l.kind === "tone") return sweep(l.seconds, l.from, l.to, l.wave, l.decay, l.noise ?? 0, 31 + k);
+    if (l.kind === "noise") return noise(l.seconds, l.from, l.to, l.decay, 41 + k);
+    const names = l.notes.trim().split(/\s+/).map(noteNumber).filter((n): n is number => n !== null);
+    return notes(names.map((n, i) => [hz(n), i === names.length - 1 ? l.last : l.step]), l.wave, l.decay);
+  });
+  const vol = Math.round((Math.max(0, Math.min(100, e.volume)) / 100) * 0xfff);
+  return { data: pcm(parts.length ? mix(...parts) : new Float32Array(1), 1.2), loop: 0, vol };
+}
+
+/** A note name ("c#5", "bb3") as a MIDI number, or null. */
+export function noteNumber(tok: string): number | null {
+  const m = /^([a-g])(#|b)?(-?\d)$/.exec(tok.toLowerCase());
+  if (!m) return null;
+  const NAMES: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+  return 12 * (Number(m[3]) + 1) + NAMES[m[1]!]! + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0);
+}
+
+/** The effects a game plays: its own where it has them, the built-in ones for the rest. */
+export function effects(project?: Project): Record<SfxId, Sample> {
+  const own = project?.settings.sound?.effects ?? {};
+  const out = builtInEffects();
+  for (const k of Object.keys(out) as SfxId[]) if (own[k]) out[k] = renderEffect(own[k]!);
+  return out;
+}
+
+function builtInEffects(): Record<SfxId, Sample> {
   const one = (f: Float32Array, vol = 0x700, gain = 1.2): Sample => ({ data: pcm(f, gain), loop: 0, vol });
   return {
     shot: one(mix(noise(0.09, 0.9, 0.3, 7, 11), sweep(0.09, 1400, 300, "square", 8)), 0x900),
@@ -177,9 +205,29 @@ const INSTRUMENTS = {
   kick: (): Sample => ({ data: pcm(mix(sweep(0.18, 150, 45, "sine", 5), noise(0.02, 0.9, 0.5, 8, 21)), 1.6), loop: 0, vol: 0xc99 }),
   snare: (): Sample => ({ data: pcm(mix(noise(0.16, 0.7, 0.4, 6, 22), sweep(0.1, 220, 180, "tri", 8)), 1.3), loop: 0, vol: 0x900 }),
   hat: (): Sample => ({ data: pcm(noise(0.05, 0.95, 0.9, 9, 23), 1), loop: 0, vol: 0x480 }),
+  // the tango's: a reed's buzz, a bowed string, a plucked one and a struck one
+  bandoneon: (): Sample => {
+    const f = new Float32Array(LOOP);
+    for (let i = 0; i < LOOP; i++) {
+      const ph = (i * 10) / LOOP;
+      f[i] = 0.55 * osc("saw", ph) + 0.35 * osc("square", ph, 0.3) + 0.2 * osc("square", ph * 2, 0.5);
+    }
+    return { data: pcm(f, 0.8), loop: LOOP, vol: 0x6a0 };
+  },
+  violin: (): Sample => {
+    const f = new Float32Array(LOOP);
+    for (let i = 0; i < LOOP; i++) {
+      const ph = (i * 10) / LOOP;
+      f[i] = 0.7 * osc("saw", ph) + 0.3 * osc("tri", ph * 2);
+    }
+    return { data: pcm(f, 0.8), loop: LOOP, vol: 0x5c0 };
+  },
+  pizz: (): Sample => ({ data: pcm(mix(sweep(0.35, 261.63, 261.63, "tri", 9), sweep(0.35, 523.25, 523.25, "sine", 12)), 1.3), loop: 0, vol: 0x9a0 }),
+  piano: (): Sample => ({ data: pcm(mix(sweep(0.8, 261.63, 261.63, "tri", 5), sweep(0.8, 523.25, 523.25, "sine", 7), sweep(0.8, 784.0, 784.0, "sine", 9)), 1.1), loop: 0, vol: 0x7a0 }),
 };
-type InstrumentId = keyof typeof INSTRUMENTS;
-const INSTRUMENT_IDS = Object.keys(INSTRUMENTS) as InstrumentId[];
+export type InstrumentId = keyof typeof INSTRUMENTS;
+/** The instruments a song's channel can name, in the driver's order (new ones go last). */
+export const INSTRUMENT_IDS = Object.keys(INSTRUMENTS) as InstrumentId[];
 
 /** The instruments' samples, in the songs' instrument order. */
 export function instruments(): Sample[] {
@@ -225,6 +273,38 @@ function song(tempo: number, loop: number | null, chans: { inst: InstrumentId; p
   const rows: [number, number][][] = [];
   for (let r = 0; r < n; r++) rows.push(chans.map((c, k) => [lines[k]![r] ?? HOLD, I[c.inst]]));
   return { tempo, pans: chans.map((c) => c.pan), rows, loop };
+}
+
+/** One of the game's own songs in the driver's form; throws an Error naming the first thing it cannot read. */
+export function compileSong(own: OwnSong): Song {
+  if (!own.channels.length) throw new Error("no channels");
+  for (const c of own.channels) if (!INSTRUMENT_IDS.includes(c.inst as InstrumentId)) throw new Error(`unknown instrument ${c.inst}`);
+  const out = song(own.tempo, own.loop, own.channels.map((c) => ({ inst: c.inst as InstrumentId, pan: c.pan, line: c.line || "." })));
+  if (own.loop !== null && own.loop >= out.rows.length) throw new Error(`loop row ${own.loop} is past the end (${out.rows.length} rows)`);
+  return out;
+}
+
+/** What is wrong with an own song, or null when it plays. */
+export function songProblem(own: OwnSong): string | null {
+  try {
+    compileSong(own);
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message.replace(/^song: /, "") : String(e);
+  }
+}
+
+/** The tunes a game can play, by music slot: the built-in ones and its own ("own:<id>") that can be read. */
+export function projectSongs(project?: Project): Record<string, Song> {
+  const out = songs();
+  for (const own of project?.settings.sound?.songs ?? []) {
+    try {
+      out[ownSlot(own.id)] = compileSong(own);
+    } catch {
+      // a song that cannot be read is silent; the review says why
+    }
+  }
+  return out;
 }
 
 const rep = (s: string, n: number) => Array.from({ length: n }, () => s).join(" ");
@@ -288,7 +368,8 @@ export function screenSongs(project: Project): (string | null)[] {
     const m = menus?.[screen]?.music ?? d;
     return m === "none" ? null : m;
   };
-  return [slot("title", "title"), slot("hud", "stage"), "clear", slot("continue", "continue"), slot("gameOver", "game-over")];
+  const clear = project.settings.sound?.clear;
+  return [slot("title", "title"), slot("hud", "stage"), clear && clear !== "none" ? clear : clear === "none" ? null : "clear", slot("continue", "continue"), slot("gameOver", "game-over")];
 }
 
 // ---------------------------------------------------------------- the ROM's data
@@ -299,6 +380,17 @@ export interface SoundPack {
   /** The Z80's view of the data at SOUND_DATA_ADDR. */
   data: Uint8Array;
   stats: { effects: number; instruments: number; songs: number; sampleBytes: number; dataBytes: number };
+}
+
+/** The bytes of the driver's data a game needs (packSound's data, without making the samples): at most SOUND_DATA_MAX. */
+export function soundDataBytes(project: Project): number {
+  const all = projectSongs(project);
+  const entry = 12;
+  let n = 16 + Object.keys(SFX).length * entry + INSTRUMENT_IDS.length * entry + 128 * 2;
+  const bySlot = screenSongs(project).map((slot) => (slot ? (all[slot] ?? all.stage!) : null));
+  n += bySlot.length * 2;
+  for (const s of bySlot) if (s && s.rows.length) n += 16 + s.rows.length * s.pans.length * 2;
+  return n;
 }
 
 /** Builds the samples and the driver's data for a game. */
@@ -318,10 +410,10 @@ export function packSound(project: Project, regionSize = 0x400000): SoundPack {
     const end = addr + len;
     return [bank, addr, end, s.loop, 0x1000, s.vol];
   };
-  const fx = effects();
+  const fx = effects(project);
   const fxEntries = (Object.keys(SFX) as SfxId[]).sort((a, b) => SFX[a] - SFX[b]).map((k) => place(fx[k]));
   const instEntries = INSTRUMENT_IDS.map((k) => place(INSTRUMENTS[k]()));
-  const all = songs();
+  const all = projectSongs(project);
   const bySlot = screenSongs(project).map((slot) => (slot ? (all[slot] ?? all.stage!) : null));
 
   // the data, little-endian, at SOUND_DATA_ADDR

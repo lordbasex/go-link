@@ -38,7 +38,7 @@ export const menusPt: MenusMessages = {
   color: "Cor",
   music: "Música",
   musicSlots: { none: "Nenhuma", title: "Tema do título", select: "Tema da seleção", stage: "Tema da fase", boss: "Tema do chefe", continue: "Vinheta de continuar", "game-over": "Vinheta de fim de jogo", "high-scores": "Tema dos recordes" },
-  musicNote: "A ROM toca este tema com o chip QSound da placa, em estéreo (o modo de jogo ainda não tem som).",
+  musicNote: "A ROM toca este tema com o chip QSound da placa, em estéreo, e o modo de jogo também. As músicas próprias do jogo são feitas em Jogo › Som.",
   credits: "Créditos",
   showCredits: "Mostrar a linha de créditos nesta tela",
   creditsLine: "Linha de créditos (todas as telas)",

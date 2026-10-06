@@ -87,6 +87,8 @@ export interface ProjectLevelLike {
   parallax?: ParallaxBand[];
   walk?: { y0: number; y1: number };
   camera?: { forwardOnly: boolean; backtrack: number };
+  /** The editor's layer groups: objects of a hidden group are not in the game. */
+  groups?: { id: string; base?: string; visible?: boolean }[];
   layers?: {
     id?: string;
     kind?: string;
@@ -99,6 +101,14 @@ export interface ProjectLevelLike {
 }
 
 /** Maps a project's level to the engine's view: the tag layer and the object layer. */
+/** Whether an object is in the game: neither it nor its group (model/zones.ts) is hidden in the editor. */
+export function inGame(level: Pick<ProjectLevelLike, "groups">, o: LevelObject): boolean {
+  if (o.hidden === true) return false;
+  const groups = level.groups ?? [];
+  const g = groups.find((x) => x.id === o.group) ?? groups.find((x) => x.base === "objects");
+  return g?.visible !== false;
+}
+
 export function levelFromProject(level: ProjectLevelLike): LevelView {
   const width = level.size?.w ?? 1024;
   const height = level.size?.h ?? 448;
@@ -112,7 +122,7 @@ export function levelFromProject(level: ProjectLevelLike): LevelView {
     height: rows * CELL,
     tags: decodeCells(tagLayer?.data, cols * rows),
     props: tagLayer?.props,
-    objects: (objLayer?.items ?? []).map((o) => ({ ...o })),
+    objects: (objLayer?.items ?? []).filter((o) => inGame(level, o)).map((o) => ({ ...o })),
     bands: level.size && level.parallax ? parallaxBands({ size: level.size, parallax: level.parallax }) : undefined,
     sections: level.sections,
     ...(level.walk ? { walk: { y0: level.walk.y0, y1: level.walk.y1 } } : {}),

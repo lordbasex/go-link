@@ -1,0 +1,220 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+
+/*
+ * The Characters, Game, Menus and Export workspaces inside the new editor.
+ * Their screens are the classic editor's, written with the site's token
+ * names (surface-2, text-muted, border-strong...) and capsule shapes. Here
+ * those names take the Modernist palette, in light and dark, and the
+ * capsules, inputs and segmented choices take the editor's square look, so
+ * the same screens serve both editors. A classic dialog the editor opens
+ * (the image AI prompts) sits in .studio-classic and gets the same.
+ */
+
+.studio-classic {
+  display: contents;
+}
+
+/* — the site's token names, from the Modernist palette — */
+.mdn {
+  --color-surface-2: var(--color-neutral-200);
+  --color-surface-sunken: var(--color-surface);
+  --color-surface-selected: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-border: color-mix(in srgb, var(--color-text) 16%, transparent);
+  --color-border-input: var(--color-divider);
+  --color-border-strong: var(--color-divider);
+  --color-border-dashed: var(--color-neutral-500);
+  --color-text-2: var(--color-neutral-800);
+  --color-text-muted: var(--color-neutral-700);
+  --color-text-faint: var(--color-neutral-600);
+  --color-text-dim: var(--color-neutral-500);
+  --color-placeholder: var(--color-neutral-600);
+  --color-dots: var(--color-neutral-300);
+  --color-accent-hover: var(--color-accent-600);
+  --color-accent-text: var(--color-accent-700);
+  --color-accent-text-hover: var(--color-accent-800);
+  --color-on-accent: var(--color-bg);
+  --color-danger-bg: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --color-danger-border: var(--color-accent-400);
+  --color-danger-text: var(--color-accent-700);
+  --tint-accent-bg: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --tint-accent-border: var(--color-accent-400);
+  --tint-voice-bg: color-mix(in srgb, var(--color-voice) 12%, transparent);
+  --tint-voice-border: color-mix(in srgb, var(--color-voice) 55%, transparent);
+  --tint-ok-bg: color-mix(in srgb, var(--color-ok) 14%, transparent);
+  --tint-ok-border: color-mix(in srgb, var(--color-ok) 55%, transparent);
+  --shadow-strong: color-mix(in srgb, #2d2b2b 30%, transparent);
+  --backdrop: color-mix(in srgb, var(--color-text) 45%, transparent);
+  --radius-card: 0;
+  --radius-control: 0;
+  --font-text: var(--font-ui);
+  --font-title: var(--font-ui);
+  /* readable on the light background */
+  --color-ok: #1f7a4d;
+  --color-voice: #1c7488;
+}
+:root:not([data-theme="light"]) .mdn {
+  --color-ok: #7ee2a8;
+  --color-voice: #4fc3d9;
+  --shadow-strong: rgba(0, 0, 0, 0.55);
+}
+
+/* — square everywhere (the classic sheets load later and set capsules) — */
+.mdn :is(.studio-workspace, .studio-classic) *,
+.mdn :is(.studio-workspace, .studio-classic) *::before,
+.mdn :is(.studio-workspace, .studio-classic) *::after {
+  border-radius: 0 !important;
+}
+.mdn :is(.studio-workspace, .studio-classic) input[type="checkbox"],
+.mdn :is(.studio-workspace, .studio-classic) input[type="radio"],
+.mdn :is(.studio-workspace, .studio-classic) input[type="range"] {
+  accent-color: var(--color-accent);
+}
+
+/* — cards and section labels — */
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-card, .wms-card) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-h, .wms-h) {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-h.is-accent {
+  color: var(--color-accent-700);
+}
+
+/* — buttons: like .btn-secondary, the main one like .btn-primary — */
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-cap, .wms-cap) {
+  height: 32px;
+  padding: 0 12px;
+  justify-content: flex-start;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  font: 800 13px var(--font-ui);
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-cap, .wms-cap).is-sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-cap, .wms-cap):hover:not(:disabled) {
+  border-color: var(--color-divider);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  color: var(--color-text);
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-cap, .wms-cap).is-on {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-bg);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-cap:is(.is-primary, .is-play) {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+  filter: none;
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-cap:is(.is-primary, .is-play):hover:not(:disabled) {
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
+  color: var(--color-bg);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-cap.is-danger {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent-700);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-icon {
+  width: 32px;
+  height: 32px;
+  border-color: var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-icon.is-on {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* — segmented choices: like .seg — */
+.mdn :is(.studio-workspace, .studio-classic) .wm-seg {
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-seg-btn {
+  height: 28px;
+  padding: 0 10px;
+  font: 800 12px var(--font-ui);
+  color: var(--color-text);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-seg-btn + .wm-seg-btn {
+  border-left: 1px solid var(--color-divider);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-seg-btn:hover:not(.is-on) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-seg-btn.is-on {
+  background: var(--color-text);
+  color: var(--color-bg);
+  box-shadow: none;
+}
+
+/* — chips: like .tag, the lit one like .tag-outline — */
+.mdn :is(.studio-workspace, .studio-classic) .wm-chip {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-color: var(--color-divider);
+  color: var(--color-text);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-chip.is-on {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* — inputs and selects: like .input — */
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-input, .wms-field input, .wms-field select) {
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-divider);
+  background: var(--color-bg);
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  font: 13px var(--font-ui);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-input.is-sm {
+  height: 28px;
+  font-size: 12px;
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-input, .wms-field input, .wms-field select):focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.mdn :is(.studio-workspace, .studio-classic) .wm-input.is-bad {
+  border-color: var(--color-accent);
+}
+
+/* — list rows on a card take the page's background — */
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-checks li, .wm-game-actions td, .wm-game-slot, .wm-game-binds li, .wms-anim) {
+  background: var(--color-bg);
+}
+.mdn :is(.studio-workspace, .studio-classic) :is(.wm-game-binds li, .wms-anim).is-on,
+.mdn :is(.studio-workspace, .studio-classic) .wm-game-binds li.is-lit {
+  background: var(--tint-accent-bg);
+  border-color: var(--color-accent);
+}
+
+/* — text on the game's black stays light; text blocks move to the page — */
+.mdn :is(.studio-workspace, .studio-classic) .wm-tree-pre,
+.mdn :is(.studio-workspace, .studio-classic) .wm-anim-none {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}

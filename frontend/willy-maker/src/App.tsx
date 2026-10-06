@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { BridgeClient, useBridgeDevice } from "./bridge";
 import { importGames } from "./importGames";
 import { CORE, messagesFor, type Lang } from "./maker/i18n";
-import { LANGS, PLAY_URL, setLang, setTheme, SITE_URL, useLang, useTheme } from "./site";
+import { editorChoice, LANGS, PLAY_URL, setLang, setTheme, SITE_URL, useLang, useTheme } from "./site";
 
 // The module is its own chunk: the header shows while it loads.
 const WillyMakerApp = lazy(() => import("./maker").then((m) => ({ default: m.WillyMakerApp })));
@@ -105,6 +105,8 @@ export function App() {
   const client = useMemo(() => new BridgeClient(PLAY_URL), []);
   useEffect(() => client.start(), [client]);
   const device = useBridgeDevice(client);
+  const theme = useTheme();
+  const [editor] = useState(() => editorChoice(search));
   const t = messagesFor(CORE, lang).site;
   return (
     <>
@@ -112,7 +114,16 @@ export function App() {
       {search.get("import") === "1" && <ImportBanner lang={lang} onDone={() => setSearch({})} />}
       <main className="maker-main">
         <Suspense fallback={<p className="maker-loading">{t.loading}</p>}>
-          <WillyMakerApp lang={lang} device={device} projectId={gameId ?? null} onProjectId={(id) => navigate(id ? `/${id}` : "/")} />
+          <WillyMakerApp
+            lang={lang}
+            theme={theme}
+            onLang={setLang}
+            onTheme={setTheme}
+            editor={editor}
+            device={device}
+            projectId={gameId ?? null}
+            onProjectId={(id) => navigate(id ? `/${id}` : "/")}
+          />
         </Suspense>
       </main>
     </>

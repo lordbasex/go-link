@@ -116,8 +116,12 @@ export class EditorStore {
     return this.project.levels.find((l) => l.id === id);
   }
 
-  /** Changes a level with `fn`; undo restores the level as it was. */
-  editLevel(label: string, levelId: string, fn: (level: Level) => void): void {
+  /**
+   * Changes a level with `fn`; undo restores the level as it was. Edits with
+   * the same `merge` key in quick succession (the letters typed in one field)
+   * are one undo step.
+   */
+  editLevel(label: string, levelId: string, fn: (level: Level) => void, merge?: string): void {
     const index = this.project.levels.findIndex((l) => l.id === levelId);
     if (index < 0) return;
     const before = cloneProject(this.project.levels[index]!);
@@ -128,7 +132,7 @@ export class EditorStore {
       const i = p.levels.findIndex((x) => x.id === levelId);
       if (i >= 0) p.levels[i] = cloneProject(l);
     };
-    this.run({ label, apply: (p) => put(p, after), revert: (p) => put(p, before) }, true);
+    this.run({ label, merge, apply: (p) => put(p, after), revert: (p) => put(p, before) }, true);
   }
 
   /**
@@ -144,8 +148,8 @@ export class EditorStore {
     this.run({ label, merge, apply: (p) => void (p.settings = cloneProject(after)), revert: (p) => void (p.settings = cloneProject(before)) }, true);
   }
 
-  /** Changes anything in the project with `fn`; undo restores the whole project. */
-  editProject(label: string, fn: (p: Project) => void): void {
+  /** Changes anything in the project with `fn`; undo restores the whole project (edits with the same `merge` key in quick succession are one step). */
+  editProject(label: string, fn: (p: Project) => void, merge?: string): void {
     const before = cloneProject(this.project);
     fn(this.project);
     const after = cloneProject(this.project);
@@ -154,7 +158,7 @@ export class EditorStore {
       for (const k of Object.keys(p)) delete (p as Record<string, unknown>)[k];
       Object.assign(p, cloneProject(from));
     };
-    this.run({ label, apply: (p) => put(p, after), revert: (p) => put(p, before) }, true);
+    this.run({ label, merge, apply: (p) => put(p, after), revert: (p) => put(p, before) }, true);
   }
 }
 

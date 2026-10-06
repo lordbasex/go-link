@@ -18,6 +18,7 @@ import { measureJump } from "../../engine/jump";
 import { levelFromProject } from "../../engine/level";
 import { clampPivots, clearTilesOutOfRange, programChecks, spriteChecks, tileGridChecks } from "./art";
 import { supportChecks } from "./support";
+import { songProblem, SOUND_DATA_MAX, soundDataBytes } from "../../rom/sound";
 import type { ExportMessages } from "../../i18n/export.en";
 
 export type Severity = "ok" | "info" | "warning" | "error";
@@ -472,6 +473,20 @@ function animChecks(p: Project): Check[] {
   return out;
 }
 
+/** The game's own sound (settings.sound): every own song can be read and the music fits the sound chip's memory. */
+function soundChecks(p: Project): Check[] {
+  const out: Check[] = [];
+  const target: Target = { tab: "game" };
+  for (const song of p.settings.sound?.songs ?? []) {
+    const problem = songProblem(song);
+    if (problem) out.push({ id: "sound.song", severity: "error", msg: "sound.song", params: { name: song.name, problem }, target });
+  }
+  const bytes = soundDataBytes(p);
+  if (bytes > SOUND_DATA_MAX) out.push({ id: "sound.size", severity: "error", msg: "sound.size", params: { kb: Math.ceil(bytes / 1024), max: SOUND_DATA_MAX / 1024 }, target });
+  else if (p.settings.sound) out.push({ id: "sound.size", severity: "ok", msg: "sound.ok", params: { kb: Math.ceil(bytes / 1024), max: SOUND_DATA_MAX / 1024 } });
+  return out;
+}
+
 const RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2, ok: 3 };
 
 /**
@@ -480,7 +495,7 @@ const RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2, ok: 3 };
  */
 export function reviewProject(p: Project, opts: { board?: BoardProfile; extra?: Rule[] } = {}): Review {
   const board = opts.board ?? boardOf(p);
-  const checks = [...levelChecks(p, board), ...nameChecks(p), ...gameChecks(p, board), ...animChecks(p), ...graphicsChecks(p, board), ...safely(() => tileGridChecks(p, board)), ...safely(() => spriteChecks(p, board)), ...safely(() => programChecks(p, board)), ...safely(() => supportChecks(p))];
+  const checks = [...levelChecks(p, board), ...nameChecks(p), ...gameChecks(p, board), ...animChecks(p), ...graphicsChecks(p, board), ...safely(() => tileGridChecks(p, board)), ...safely(() => spriteChecks(p, board)), ...safely(() => programChecks(p, board)), ...safely(() => supportChecks(p)), ...safely(() => soundChecks(p))];
   for (const rule of opts.extra ?? []) {
     try {
       checks.push(...rule(p, board));
