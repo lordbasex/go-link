@@ -81,7 +81,7 @@ export function ConsoleDrawer(props: ConsoleDrawerProps) {
   const { open, onClose, tab, onTab, unread, model, actions } = props;
   const tabRefs = useRef<Partial<Record<DrawerTab, HTMLButtonElement | null>>>({});
   const logRef = useRef<HTMLDivElement>(null);
-  useStickToBottom(logRef, [model.chat.length, actions.typing?.length, tab, open]);
+  useStickToBottom(logRef, [tab, open]);
   // Turning the phone changes the height: keep the newest line in view.
   useEffect(() => {
     const keep = () => {

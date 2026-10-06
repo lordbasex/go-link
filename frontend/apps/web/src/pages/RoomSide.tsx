@@ -81,15 +81,49 @@ export function useUnreadChat(
   return unread;
 }
 
-/** Keeps a scrolling list at its bottom when something new arrives. */
+/**
+ * Keeps a scrolling list at its bottom: when a line arrives (even once the
+ * chat is at its line limit, where the count stops changing) and when the
+ * list's height changes, as long as the reader was at the bottom. Scrolling
+ * up to read older lines stops it; coming back to the bottom starts it again.
+ * A change in `deps` (another tab, the drawer opened) always goes to the end.
+ */
 export function useStickToBottom(
   ref: RefObject<HTMLElement | null>,
   deps: unknown[],
 ): void {
+  const atBottom = useRef(true);
   useEffect(() => {
     const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-    // the caller lists what adds lines
+    if (!el) return;
+    // A list that changes height scrolls by itself before the resize is
+    // reported: that scroll is not the reader's, so it must not unstick.
+    let height = el.clientHeight;
+    const toEnd = () => {
+      height = el.clientHeight;
+      if (atBottom.current) el.scrollTop = el.scrollHeight;
+    };
+    const onScroll = () => {
+      if (el.clientHeight !== height) return;
+      atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const lines = new MutationObserver(toEnd);
+    lines.observe(el, { childList: true, subtree: true, characterData: true });
+    const size = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(toEnd);
+    size?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      lines.disconnect();
+      size?.disconnect();
+    };
+  });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    atBottom.current = true;
+    el.scrollTop = el.scrollHeight;
+    // the caller lists what moves the reader to the end
   }, deps);
 }
 
@@ -383,7 +417,7 @@ export function SidePanel({
 }) {
   const [tab, setTab] = useState<Tab>("chat");
   const listRef = useRef<HTMLDivElement>(null);
-  useStickToBottom(listRef, [model.chat.length, actions.typing?.length, tab]);
+  useStickToBottom(listRef, [tab]);
   const tabs: { id: Tab; count: number | null }[] = [
     { id: "chat", count: null },
     { id: "queue", count: model.queue.length },
