@@ -94,6 +94,16 @@ export const studioEn = {
   zoneName: (kind: string, n: number) => `${kind} ${n}`,
   roles: { hero: "Hero", enemy: "Enemy", object: "Object" },
   player: (n: number, hero: string) => `Player ${n} · ${hero}`,
+  addScene: {
+    add: "Add scene",
+    hint: "Another picture after the level's end, so the background goes on (or drop one here)",
+    repeat: "Repeat",
+    repeatHint: "The same background again after the level's end (no new tiles)",
+  },
+  timeline: {
+    label: "Timeline: click or drag to move the view",
+    size: (w: number, h: number, screens: number) => `${w}×${h} px · ${screens} ${screens === 1 ? "screen" : "screens"}`,
+  },
   frameLabel: "Screen 384×224",
   empty: {
     kicker: "Empty canvas · step 1",
@@ -125,6 +135,7 @@ export const studioEn = {
     canvas: "Canvas menu",
   },
   toast: {
+    sceneReady: (w: number) => `Scene added: the level is ${w} px wide now.`,
     drawHint: (kind: string) => `Drag on the canvas to mark: ${kind}.`,
     notImage: "That is not an image.",
     fitting: "Fitting the picture to the board…",
@@ -152,6 +163,7 @@ export const studioEn = {
   },
   backgroundName: "Background",
   undoLabels: {
+    addScene: "Add scene",
     drawZone: "Draw zone",
     move: "Move",
     resize: "Resize",

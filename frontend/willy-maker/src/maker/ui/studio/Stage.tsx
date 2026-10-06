@@ -7,10 +7,12 @@
 // (and resize zones by their handle), draw a zone, erase, and the hand (or
 // Space held) to pan. ⌘ / Ctrl / Alt + wheel zooms around the pointer, a
 // right click opens the context menu and a picture dropped on it becomes
-// the background.
+// the background. Past the level's right end, Add scene puts another
+// picture (or the same art again) after it, and the timeline under the
+// canvas (StageTimeline) follows and moves what the view shows.
 
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
-import { Upload } from "lucide-react";
+import { Plus, Repeat, Upload } from "lucide-react";
 import { objectLayer, objectVisible, zoneVisible, type Level, type Zone } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { addZone, findObject, findZone, LiveEdit, removeItem, sameRef, targetGroup, type ItemRef } from "../../editor/zoneOps";
@@ -26,6 +28,9 @@ const MARGIN = 48;
 const CELL = 16;
 const SCREEN_W = 384;
 const SCREEN_H = 224;
+/** Add scene's slot after the level's end: its gap and width (screen px). */
+const SLOT_GAP = 12;
+const SLOT_W = 132;
 
 export interface StageApi {
   /** Multiplies the zoom, keeping the level point under (clientX, clientY), or the view's centre, in place. */
@@ -38,6 +43,10 @@ export interface StageApi {
   center(): { x: number; y: number };
   /** Where a level point is on the page (client px). */
   toClient(x: number, y: number): { x: number; y: number };
+  /** The part of the level the view shows (level px). */
+  view(): { x: number; y: number; w: number; h: number };
+  /** Scrolls so the view is centred on a level point. */
+  goTo(x: number, y: number): void;
 }
 
 export interface StageProps {
@@ -54,6 +63,12 @@ export interface StageProps {
   onInsertBackground: () => void;
   onExample: () => void;
   onDemo: () => void;
+  /** Add scene: a picture file after the level's end, or null to choose one. */
+  onAddScene: (file: File | null) => void;
+  /** Add scene with the level's own art again. */
+  onRepeatScene: () => void;
+  /** The view moved or changed size (the timeline follows it). */
+  onView?: () => void;
 }
 
 type Drag =
@@ -64,7 +79,7 @@ type Drag =
 
 const snapTo = (v: number, g: number) => Math.round(v / g) * g;
 
-export function Stage({ store, level, version, images, apiRef, onCursor, zoneLabel, objectLabel, onFile, onInsertBackground, onExample, onDemo }: StageProps) {
+export function Stage({ store, level, version, images, apiRef, onCursor, zoneLabel, objectLabel, onFile, onInsertBackground, onExample, onDemo, onAddScene, onRepeatScene, onView }: StageProps) {
   const t = useStudioText();
   const ui = useStudioUi();
   const s = useUiState();
@@ -116,6 +131,21 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
       if (!el) return { x: level.size.w / 2, y: level.size.h / 2 };
       const off = offsets(el, level, z);
       return { x: Math.round((el.scrollLeft + el.clientWidth / 2 - off.x) / z), y: Math.round((el.scrollTop + el.clientHeight / 2 - off.y) / z) };
+    },
+    view() {
+      const el = scroller.current;
+      if (!el) return { x: 0, y: 0, w: level.size.w, h: level.size.h };
+      const off = offsets(el, level, z);
+      const x = Math.max(0, (el.scrollLeft - off.x) / z);
+      const y = Math.max(0, (el.scrollTop - off.y) / z);
+      return { x, y, w: Math.min(level.size.w - x, el.clientWidth / z), h: Math.min(level.size.h - y, el.clientHeight / z) };
+    },
+    goTo(x, y) {
+      const el = scroller.current;
+      if (!el) return;
+      const off = offsets(el, level, z);
+      el.scrollLeft = x * z + off.x - el.clientWidth / 2;
+      el.scrollTop = y * z + off.y - el.clientHeight / 2;
     },
   }));
 
@@ -188,8 +218,13 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
   const raf = useRef(0);
   const onScroll = () => {
     cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(paint);
+    raf.current = requestAnimationFrame(() => {
+      paint();
+      onView?.();
+    });
   };
+  // a zoom, a new size or a resized view moves what the timeline shows
+  useEffect(() => onView?.(), [z, level.size.w, level.size.h, onView]);
 
   const world = (e: { clientX: number; clientY: number }) => {
     const r = board.current!.getBoundingClientRect();
@@ -365,7 +400,31 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
-      <div className="studio-stage-pad" style={{ padding: MARGIN }}>
+      <div className="studio-stage-pad" style={{ padding: MARGIN, paddingRight: MARGIN + slotRoom(level) }}>
+        {hasArt && (
+          // Add scene: after the level's end, a new picture (chosen, or dropped here) or the same art again
+          <div
+            className="studio-add-scene"
+            style={{ left: MARGIN + level.size.w * z + SLOT_GAP, top: MARGIN, width: SLOT_W, height: level.size.h * z }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const f = e.dataTransfer.files[0];
+              if (f) onAddScene(f);
+            }}
+          >
+            <button type="button" className="studio-add-scene-main" title={t.addScene.hint} onClick={() => onAddScene(null)}>
+              <Plus size={36} aria-hidden="true" />
+              <span>{t.addScene.add}</span>
+            </button>
+            <button type="button" className="btn btn-ghost studio-add-scene-repeat" title={t.addScene.repeatHint} onClick={onRepeatScene}>
+              <Repeat size={14} aria-hidden="true" />
+              {t.addScene.repeat}
+            </button>
+          </div>
+        )}
         <div ref={board} className={`studio-level${hasArt ? " has-art" : ""}`} style={{ width: level.size.w * z, height: level.size.h * z }}>
           <canvas ref={art} className={`studio-art${bgSelected ? " is-selected" : ""}`} aria-hidden="true" />
           {bgSelected && <div className="studio-bg-outline" />}
@@ -418,9 +477,12 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
   );
 }
 
+/** The room Add scene's slot takes after the level (none until the level has a background). */
+const slotRoom = (level: Level) => (hasBackgroundArt(level) ? SLOT_GAP + SLOT_W : 0);
+
 /** Where the level's top left sits inside the scrolled content (it is centred when smaller than the view). */
 function offsets(el: HTMLElement, level: Level, z: number): { x: number; y: number } {
-  const cw = level.size.w * z + 2 * MARGIN;
+  const cw = level.size.w * z + 2 * MARGIN + slotRoom(level);
   const ch = level.size.h * z + 2 * MARGIN;
   return { x: Math.max(0, (el.clientWidth - cw) / 2) + MARGIN, y: Math.max(0, (el.clientHeight - ch) / 2) + MARGIN };
 }

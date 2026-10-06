@@ -152,9 +152,20 @@ describe("the editor", () => {
     expect(screen.getByText("Tools")).toBeInTheDocument();
     expect(screen.getByText("Properties")).toBeInTheDocument();
     // never while typing
-    const opacity = screen.getByRole("slider");
+    const opacity = screen.getByRole("slider", { name: "Zone opacity" });
     fireEvent.keyDown(opacity, { key: "F6" });
     expect(screen.queryByText("Tools")).not.toBeInTheDocument();
+  });
+
+  it("shows the timeline under the canvas, its screens and the box on what the view shows", () => {
+    open();
+    const strip = screen.getByRole("slider", { name: "Timeline: click or drag to move the view" });
+    expect(strip).toBeInTheDocument();
+    // the level's size and its screens of 384 px, numbered on the strip
+    const size = screen.getByText(/^\d+×\d+ px · \d+ screens?$/).textContent!;
+    const [w, n] = [Number(/^(\d+)×/.exec(size)![1]), Number(/· (\d+) screen/.exec(size)![1])];
+    expect(n).toBe(Math.ceil(w / 384));
+    expect(within(strip).getByText(String(n))).toBeInTheDocument();
   });
 
   it("shrinks the tools panel to the rail, whose zone button opens the kinds", () => {

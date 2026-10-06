@@ -95,6 +95,16 @@ export const studioPt: StudioMessages = {
   zoneName: (kind, n) => `${kind} ${n}`,
   roles: { hero: "Herói", enemy: "Inimigo", object: "Objeto" },
   player: (n, hero) => `Jogador ${n} · ${hero}`,
+  addScene: {
+    add: "Adicionar cenário",
+    hint: "Outra imagem depois do fim do nível, para o fundo continuar (ou solte uma aqui)",
+    repeat: "Repetir",
+    repeatHint: "O mesmo fundo de novo depois do fim do nível (sem tiles novos)",
+  },
+  timeline: {
+    label: "Linha do tempo: clique ou arraste para mover a vista",
+    size: (w: number, h: number, screens: number) => `${w}×${h} px · ${screens} ${screens === 1 ? "tela" : "telas"}`,
+  },
   frameLabel: "Tela 384×224",
   empty: {
     kicker: "Tela vazia · passo 1",
@@ -126,6 +136,7 @@ export const studioPt: StudioMessages = {
     canvas: "Menu da tela",
   },
   toast: {
+    sceneReady: (w: number) => `Cenário adicionado: o nível agora tem ${w} px de largura.`,
     drawHint: (kind) => `Arraste na tela para marcar: ${kind}.`,
     notImage: "Isso não é uma imagem.",
     fitting: "Ajustando a imagem à placa…",
@@ -153,6 +164,7 @@ export const studioPt: StudioMessages = {
   },
   backgroundName: "Fundo",
   undoLabels: {
+    addScene: "Adicionar cenário",
     drawZone: "Desenhar zona",
     move: "Mover",
     resize: "Redimensionar",
