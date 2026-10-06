@@ -6,7 +6,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCore } from "../../i18n";
-import { BUILTIN_HERO, cloneProject, findLevel, layerGrid, type Level, type LevelObject, type Project, type TileLayer, type ValidationIssue } from "../../model";
+import { BUILTIN_HERO, cloneProject, findLevel, type LevelObject, type Project, type ValidationIssue } from "../../model";
 import type { LevelView } from "../../engine";
 import { layoutOf } from "../../board/cps1";
 import { EditorStore } from "../../editor/store";
@@ -18,7 +18,7 @@ import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
 import type { MenuScreenId } from "../../game/menus";
 import { menuText } from "../../game/menus";
-import { screenSongs } from "../../rom/sound";
+import { effects, projectSongs, screenSongs } from "../../rom/sound";
 import { heroHeights, levelHeroes, playerSlots, runTapMs, setPlayers } from "../../game/settings";
 import { BoardUsageChip } from "./BoardUsage";
 import { PictureDialog } from "./PictureDialog";
@@ -27,8 +27,8 @@ import type { PromptKind } from "../../prompts/imagePrompt";
 import { issueText, useGameText, useMenusText } from "../../game/texts";
 import { autosaver, saveProject } from "../../io/storage";
 import { useProjectImages } from "../useTileImages";
-import type { TileImage, View } from "../render";
-import type { ArtLayer } from "../../play/renderer";
+import { levelArt } from "../levelArt";
+import type { View } from "../render";
 import { Capsule, IconButton, Logo } from "../atoms";
 import { IconBack, IconX, IconEraser, IconFill, IconHand, IconPencil, IconPlay, IconRedo, IconSelect, IconUndo, IconZoomIn, IconZoomOut } from "../icons";
 import { TagChip } from "../molecules";
@@ -78,24 +78,13 @@ type Sheet = "parts" | "layers" | "inspector" | "project" | "checks";
 const TERRAIN_TAGS = ["solid", "oneway", "ladder", "crate", "breakable", "hazard", "water"] as const;
 
 /** The level's far and play tile layers with their tileset pictures, for play mode (T-28). */
-function levelArt(level: Level, images: Map<string, TileImage>): ArtLayer[] {
-  const out: ArtLayer[] = [];
-  for (const id of ["far", "play"] as const) {
-    const layer = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === id);
-    const image = layer?.tileset ? images.get(layer.tileset) : undefined;
-    if (!layer || layer.visible === false || !image) continue;
-    const g = layerGrid(level, layer);
-    if (!g.cells.some((n) => n)) continue;
-    out.push({ layer: id, tile: layer.grid, cols: g.cols, rows: g.rows, cells: g.cells, image: image.img, columns: image.columns });
-  }
-  return out;
-}
-
 export function Ide({ project, onHome }: { project: Project; onHome: () => void }) {
   const t = useCore();
   const store = useMemo(() => new EditorStore(project), [project]);
   const version = useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion);
   const p = store.project;
+  // the game's own effects and tunes for play mode, made again only when the game changes
+  const playSound = useMemo(() => ({ effects: effects(p), songs: projectSongs(p) }), [p]);
   const [tab, setTab] = useState<Tab>("build");
   const [menuScreen, setMenuScreen] = useState<MenuScreenId>("title");
   const [menuFocus, setMenuFocus] = useState<string | null>(null);
@@ -582,6 +571,7 @@ export function Ide({ project, onHome }: { project: Project; onHome: () => void 
               art={levelArt(level, images)}
               characters={p.characters}
               music={screenSongs(p)}
+              sound={playSound}
               texts={{
                 start: menuText(p, "hud", "join"),
                 ammo: menuText(p, "hud", "ammo"),

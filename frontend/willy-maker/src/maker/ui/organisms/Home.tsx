@@ -27,7 +27,8 @@ export function agoText(t: CoreMessages, iso: string, now = Date.now()): string 
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-function Thumb({ id }: { id: string }) {
+/** The first screen of a saved game, drawn from its level. */
+export function Thumb({ id, className = "wm-thumb" }: { id: string; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [project] = useState(() => loadProject(id));
   const images = useProjectImages(project ?? EMPTY);
@@ -51,7 +52,7 @@ function Thumb({ id }: { id: string }) {
       ledgeText: () => "",
     });
   }, [project, images]);
-  return <canvas ref={ref} className="wm-thumb" width={224} height={130} aria-hidden="true" />;
+  return <canvas ref={ref} className={className} width={224} height={130} aria-hidden="true" />;
 }
 
 const EMPTY = newProject({ title: "" });
@@ -135,15 +136,12 @@ function ProjectRow({ s, onOpen, onChanged }: { s: ProjectSummary; onOpen: (id: 
 /** A project .zip bigger than this is refused before it is read (the zip reader's own limit is 256 MB). */
 const MAX_ZIP_BYTES = 256 * 1024 * 1024;
 
-export function Home({ onOpen, storageOk }: { onOpen: (id: string) => void; storageOk: boolean }) {
+/** Opening a project .zip: reads it, asks when a game with its id is already here, saves it and opens it. */
+export function useZipImport(onOpen: (id: string) => void, refresh: () => void) {
   const t = useCore();
-  const [list, setList] = useState<ProjectSummary[]>(() => listProjects());
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ImportedProject | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const wizardRef = useRef<HTMLDivElement>(null);
-  const refresh = () => setList(listProjects());
 
   const finishImport = async (imp: ImportedProject, project: Project) => {
     for (const a of imp.assets) await putAsset(a.bytes, a.type);
@@ -173,6 +171,17 @@ export function Home({ onOpen, storageOk }: { onOpen: (id: string) => void; stor
       setError(t.importZip.error(inputErrorText(t.inputErrors, e)));
     }
   };
+
+  return { importing, error, setError, conflict, setConflict, finishImport, onZip };
+}
+
+export function Home({ onOpen, storageOk }: { onOpen: (id: string) => void; storageOk: boolean }) {
+  const t = useCore();
+  const [list, setList] = useState<ProjectSummary[]>(() => listProjects());
+  const fileRef = useRef<HTMLInputElement>(null);
+  const wizardRef = useRef<HTMLDivElement>(null);
+  const refresh = () => setList(listProjects());
+  const { importing, error, setError, conflict, setConflict, finishImport, onZip } = useZipImport(onOpen, refresh);
 
   return (
     <div className="wm-home">

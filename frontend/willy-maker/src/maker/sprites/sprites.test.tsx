@@ -206,6 +206,12 @@ describe("convert", () => {
     expect(scaled[0]).toMatchObject({ w: 12, h: 48, px: 6, py: 47 });
     const half = scaleFrames(applyMask(img, mask), frames, 0.5);
     expect(half[0]).toMatchObject({ w: 6, h: 24 });
+    // an image AI's sheet shrinks by an odd factor: the feet point stays on the last row, never below it
+    for (const k of [44 / 48, 0.44, 0.7, 0.37]) {
+      const f = scaleFrames(applyMask(img, mask), frames, k)[0]!;
+      expect(f.py).toBeLessThan(f.h);
+      expect(f.px).toBeLessThan(f.w);
+    }
   });
 
   it("splits zones by 16 px rows from the feet and snaps to board colors", () => {

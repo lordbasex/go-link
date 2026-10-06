@@ -13,6 +13,9 @@ import { corePt } from "./core.pt";
 import { exportEn, type ExportMessages } from "./export.en";
 import { exportEs } from "./export.es";
 import { exportPt } from "./export.pt";
+import { studioEn, type StudioMessages } from "./studio.en";
+import { studioEs } from "./studio.es";
+import { studioPt } from "./studio.pt";
 
 export type Lang = "en" | "es" | "pt";
 
@@ -51,4 +54,11 @@ export function useExportMessages(): ExportMessages {
   return useMessages(EXPORT);
 }
 
-export type { CoreMessages, ExportMessages };
+export const STUDIO = { en: studioEn, es: studioEs, pt: studioPt };
+
+/** The new editor's texts (ui/studio). */
+export function useStudioText(): StudioMessages {
+  return useMessages(STUDIO);
+}
+
+export type { CoreMessages, ExportMessages, StudioMessages };

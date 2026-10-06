@@ -35,7 +35,8 @@ test("a Willy Maker game plays in its own room on the linked go-link", async ({ 
   await expect(page.getByText("Linked · live")).toBeVisible();
 
   // a game from the Buenos Aires template, on Willy Maker's site
-  await page.goto(`${MAKER_URL}/`);
+  // the classic editor (the new one is the default; this checks the classic flow end to end)
+  await page.goto(`${MAKER_URL}/?editor=classic`);
   await page.getByRole("button", { name: /Next: the board/ }).click();
   await page.getByRole("radio", { name: /Buenos Aires template/ }).click();
   await page.getByRole("button", { name: /Next: name and players/ }).click();

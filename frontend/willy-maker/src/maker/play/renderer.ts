@@ -606,7 +606,14 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     if (game.rules.maze && e.state === "down") return;
     const fleeing = game.rules.maze && game.frightT > 0 ? (game.frightT < 90 && (game.frightT >> 3) & 1 ? 1 : 0.45) : 1;
     const blink = e.state === "down" && e.t > 60 && (e.t >> 2) & 1 ? 0.3 : fleeing;
-    if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
+    // an enemy of the game's own (its kind is an enemy character's id) is drawn from its picture, at board scale
+    const own = !e.boss ? pickupLooks?.[e.kind] : undefined;
+    if (own) {
+      const name = anim === "defeated" ? "death" : anim;
+      const pick = own.anims[name]?.frames.length ? name : own.anims.walk?.frames.length ? "walk" : own.anims.idle ? "idle" : (Object.keys(own.anims)[0] ?? "idle");
+      const ref = own.frames[own.anims.idle?.frames[0] ?? own.anims[pick]?.frames[0] ?? ""];
+      sheetDraw(ctx, own, pick, own.anims.idle ? "idle" : pick, e.t, e.x, e.fy, ref?.py ?? HEIGHTS.enemy, e.flip, blink);
+    } else if (en) sheetDraw(ctx, en, anim, "idle", e.state === "walk" ? e.t : e.t, e.x, e.fy, HEIGHTS.enemy, e.flip, blink);
     else box(ctx, e.x, e.fy, 18, HEIGHTS.enemy, ART.hazard);
   } });
   for (const p of game.players) actors.push({ fy: p.y >> 4, draw: () => {

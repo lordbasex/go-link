@@ -10,6 +10,12 @@
 import { SCREEN_W, type GameEvent } from "../engine";
 import { builtInSongs, effects, instruments, notePitch, QS_RATE, type Sample, type SfxId, type Song } from "../rom/sound";
 
+/** A game's own effects and tunes (rom/sound.ts effects(project), projectSongs(project)). */
+export interface GameSoundSet {
+  effects: Record<SfxId, Sample>;
+  songs: Record<string, Song>;
+}
+
 /** Which effect an engine event plays. */
 const EVENT_SFX: Partial<Record<GameEvent["kind"], SfxId>> = {
   jump: "jump",
@@ -42,6 +48,7 @@ export class PlayAudio {
   private sfx = new Map<SfxId, { buf: AudioBuffer; s: Sample }>();
   private inst: { buf: AudioBuffer; s: Sample }[] = [];
   private songs = builtInSongs();
+  private fx: Record<SfxId, Sample> = effects();
   private song: Song | null = null;
   private row = 0;
   private nextAt = 0;
@@ -62,10 +69,26 @@ export class PlayAudio {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 1;
     this.master.connect(this.ctx.destination);
-    const fx = effects();
-    for (const id of Object.keys(fx) as SfxId[]) this.sfx.set(id, { buf: this.buffer(fx[id].data), s: fx[id] });
+    this.loadEffects();
     this.inst = instruments().map((s) => ({ buf: this.buffer(s.data), s }));
     if (this.wanted) this.music(this.wanted);
+  }
+
+  /** Plays this game's own effects and tunes from now on (its tune starts again when it changed). */
+  setSound(set: GameSoundSet): void {
+    this.fx = set.effects;
+    this.songs = set.songs;
+    if (this.ctx) this.loadEffects();
+    if (this.wanted) {
+      const w = this.wanted;
+      this.music(null);
+      this.music(w);
+    }
+  }
+
+  private loadEffects(): void {
+    this.sfx.clear();
+    for (const id of Object.keys(this.fx) as SfxId[]) this.sfx.set(id, { buf: this.buffer(this.fx[id].data), s: this.fx[id] });
   }
 
   private buffer(data: Int8Array): AudioBuffer {
@@ -117,6 +140,12 @@ export class PlayAudio {
       const x = "x" in e && typeof e.x === "number" ? e.x : "player" in e ? playerX(e.player) : camX + SCREEN_W / 2;
       this.voice(entry, 0x1000, Math.round(((x - camX) * 32) / SCREEN_W));
     }
+  }
+
+  /** Plays one effect at the centre (the Sound card's preview). */
+  effect(id: SfxId): void {
+    const entry = this.sfx.get(id);
+    if (entry && !this.muted) this.voice(entry, 0x1000, 16);
   }
 
   /** Plays a tune by music slot ("stage", "clear", ...), or stops with null. */

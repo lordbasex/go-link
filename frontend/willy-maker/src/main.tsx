@@ -3,6 +3,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 // Fonts are served by the site itself (never a third-party font service).
+import "@fontsource/archivo/400.css";
+import "@fontsource/archivo/600.css";
+import "@fontsource/archivo/800.css";
 import "@fontsource/chakra-petch/600.css";
 import "@fontsource/chakra-petch/700.css";
 import "@fontsource/ibm-plex-sans/400.css";

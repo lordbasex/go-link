@@ -81,3 +81,16 @@ export function setTheme(theme: Theme): void {
 export function useTheme(): Theme {
   return useSyncExternalStore(subscribe, currentTheme, () => "dark" as Theme);
 }
+
+export type EditorChoice = "classic" | "next";
+const EDITOR_KEY = "go-link.wm.editor";
+
+/**
+ * Which editor the site shows: the new one by default; ?editor=classic
+ * switches this browser to the classic one, ?editor=next back.
+ */
+export function editorChoice(search: URLSearchParams): EditorChoice {
+  const asked = search.get("editor");
+  if (asked === "next" || asked === "classic") write(EDITOR_KEY, asked);
+  return (asked ?? read(EDITOR_KEY)) === "classic" ? "classic" : "next";
+}

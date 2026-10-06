@@ -1,0 +1,277 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+
+/*
+ * The editor's design system (Modernist): tokens for light and dark, and the
+ * few component classes the editor builds on. Scoped to .mdn, the editor's
+ * root, so nothing leaks into the rest of the site. Light is the system's
+ * base; dark overrides it whenever the site is not in its light theme
+ * (public/theme.js sets <html data-theme="light">).
+ */
+
+.mdn {
+  --color-bg: #f3f2f2;
+  --color-surface: #eae9e9;
+  --color-text: #201e1d;
+  --color-accent: #ec3013;
+  --color-divider: color-mix(in srgb, var(--color-text) 40%, transparent);
+
+  --color-neutral-100: #f8f4f4;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
+  --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
+  --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
+  --color-neutral-900: #2d2b2b;
+
+  --color-accent-100: #fff2ef;
+  --color-accent-200: #ffe0d9;
+  --color-accent-300: #ffc4b8;
+  --color-accent-400: #ff9783;
+  --color-accent-500: #ff563c;
+  --color-accent-600: #dd2b0f;
+  --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+  --color-accent-900: #4d170e;
+
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+
+  --font-ui: "Archivo", system-ui, sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  color-scheme: light;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+:root:not([data-theme="light"]) .mdn {
+  --color-bg: #181716;
+  --color-surface: #242221;
+  --color-text: #f3f2f2;
+  --color-divider: color-mix(in srgb, #f3f2f2 32%, transparent);
+
+  --color-neutral-100: #2d2b2b;
+  --color-neutral-200: #383535;
+  --color-neutral-300: #444141;
+  --color-neutral-400: #605d5d;
+  --color-neutral-500: #7d7979;
+  --color-neutral-600: #9b9797;
+  --color-neutral-700: #bab6b6;
+  --color-neutral-800: #d7d3d3;
+  --color-neutral-900: #eae7e7;
+
+  --color-accent-100: #4d170e;
+  --color-accent-200: #7c1405;
+  --color-accent-300: #ae1800;
+  --color-accent-400: #dd2b0f;
+  --color-accent-600: #ff563c;
+  --color-accent-700: #ff9783;
+  --color-accent-800: #ffc4b8;
+  --color-accent-900: #ffe0d9;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.65);
+
+  color-scheme: dark;
+}
+
+.mdn *,
+.mdn *::before,
+.mdn *::after {
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+.mdn :focus {
+  outline: none;
+}
+
+.mdn :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.mdn ::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.mdn .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section labels: 11px, 800, uppercase. */
+.mdn .mdn-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* — buttons: labels always start at the left — */
+.mdn .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.mdn .btn svg {
+  display: block;
+  flex: none;
+}
+.mdn .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.mdn .btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.mdn .btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-600);
+}
+.mdn .btn-primary:active:not(:disabled) {
+  background: var(--color-accent-700);
+}
+.mdn .btn-secondary {
+  border-color: var(--color-divider);
+}
+.mdn .btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.mdn .btn-secondary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+.mdn .btn-ghost {
+  color: var(--color-accent-700);
+  padding-inline: var(--space-1);
+}
+.mdn .btn-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.mdn .btn-icon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+.mdn .btn-icon.is-on {
+  background: var(--color-neutral-300);
+}
+
+/* — segmented choice — */
+.mdn .seg {
+  display: inline-flex;
+  border: 1px solid var(--color-divider);
+}
+.mdn .seg > button {
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.mdn .seg > button + button {
+  border-left: 1px solid var(--color-divider);
+}
+.mdn .seg > button:hover:not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.mdn .seg > button[aria-pressed="true"] {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* — tags — */
+.mdn .tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mdn .tag-outline {
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* — inputs — */
+.mdn .input {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+}
+.mdn .input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+
+/* — dialogs — */
+.mdn-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.mdn-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: calc(100vh - 32px);
+  padding: var(--space-6);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+  overflow: auto;
+}
+
+/* — keycaps (the shortcuts list) — */
+.mdn .keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-bottom-width: 2px;
+}

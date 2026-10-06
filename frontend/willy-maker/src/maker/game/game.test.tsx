@@ -418,7 +418,7 @@ describe("Game and Menus tabs", () => {
     const p = newProject({ title: "Linked", players: 2 });
     p.settings.playerSlots![0] = { character: "gone", variant: 0 };
     saveProject(p);
-    render(<WillyMakerApp lang="en" projectId={p.id} />);
+    render(<WillyMakerApp editor="classic" lang="en" projectId={p.id} />);
     const row = (await screen.findByText("Player 1 has no character.")).closest("li")!;
     fireEvent.click(within(row).getByRole("button", { name: "Go" }));
     expect(await screen.findByRole("heading", { name: "Players and buttons" })).toBeInTheDocument();

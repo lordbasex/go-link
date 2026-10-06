@@ -7,6 +7,8 @@
 import { decodeCells, encodeCells } from "./rle";
 import { cleanBands } from "./parallax";
 import { InputError } from "./inputError";
+import { cleanGroups, cleanZones } from "./zones";
+import { cleanSound } from "./sound";
 import {
   BUILTIN_HERO,
   PROJECT_FORMAT,
@@ -39,6 +41,8 @@ export * from "./types";
 export * from "./genres";
 export * from "./parallax";
 export * from "./inputError";
+export * from "./sound";
+export * from "./zones";
 export { decodeCells, encodeCells } from "./rle";
 
 /** The collision grid, in pixels. */
@@ -222,6 +226,7 @@ export function migrateProject(raw: unknown): Project {
       dip: { ...base.dip, ...(s.dip ?? {}) },
       menus: migrateMenus(base.menus, s.menus),
       levels: Array.isArray(s.levels) ? s.levels : p.levels.map((l) => (l as Level).id),
+      sound: cleanSound(s.sound),
       imagePrompts: isRecord(s.imagePrompts) ? (Object.fromEntries(Object.entries(s.imagePrompts).filter(([, v]) => isRecord(v))) as GameSettings["imagePrompts"]) : undefined,
     },
     palettes: (Array.isArray(p.palettes) ? p.palettes : []).filter(isPalette).map((x) => ({ ...x, colors: x.colors.filter((c) => typeof c === "string") })),
@@ -338,7 +343,7 @@ function normalizeLevel(raw: Level): Level {
   // Every level needs a collision layer and an objects layer.
   if (!layers.some((l) => l.kind === "tags")) layers.push(defaultLayers(w, h)[3]!);
   if (!layers.some((l) => l.kind === "objects")) layers.push(defaultLayers(w, h)[4]!);
-  return {
+  const level: Level = {
     ...raw,
     name: typeof raw.name === "string" ? raw.name : raw.id,
     size: { w, h },
@@ -348,6 +353,12 @@ function normalizeLevel(raw: Level): Level {
     ...(Array.isArray(raw.parallax) ? { parallax: cleanBands({ size: { w, h }, parallax: raw.parallax.filter(isRecord) as unknown as ParallaxBand[] }) } : {}),
     ...(isRecord(raw.walk) ? { walk: cleanWalk(raw.walk, h) } : {}),
   };
+  // Zones and groups (format 4) are only checked here; they are drawn into the collision layer on edit.
+  if (raw.zones !== undefined || raw.groups !== undefined) {
+    level.groups = cleanGroups(raw.groups);
+    level.zones = cleanZones(level, raw.zones);
+  }
+  return level;
 }
 
 /** A layer with the fields every reader expects; null for one that is not a layer at all. */

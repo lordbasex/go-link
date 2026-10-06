@@ -22,7 +22,7 @@ import { characterSheet, loadPlaySprites, type PlaySprites, type Sheet } from ".
 import { assetUrl } from "../io/assets";
 import type { Character } from "../model";
 import { IconBack, IconDots, IconPause, IconPencil, IconPlay, IconSound, IconSoundOff } from "../ui/icons";
-import { PlayAudio } from "./audio";
+import { PlayAudio, type GameSoundSet } from "./audio";
 import { StatusBadge } from "../ui/molecules";
 import { partSupport } from "../editor/support";
 import "./play.css";
@@ -64,6 +64,8 @@ export interface PlayViewProps {
   heroes?: (Character | null)[];
   /** The music slot of each engine screen (rom/sound.ts screenSongs): title, playing, clear, continue, game over. */
   music?: (string | null)[];
+  /** The game's own effects and tunes (the built-in ones when missing). */
+  sound?: GameSoundSet;
   /** The game's characters a pickup may be drawn with (a pickup's `look`). */
   characters?: Character[];
   /** The level's far and play tile art, drawn as the board does (T-28). */
@@ -76,6 +78,19 @@ export interface PlayViewProps {
   onEdit?: (edit: PlayEdit) => void;
   /** Back to building; `at` is where player 1 was (world px, feet). */
   onBack?: (at?: { x: number; y: number }) => void;
+  /**
+   * Inside the new editor: only the screen is shown (no bar, pad or side
+   * cards), and the editor drives the overlays and slow motion and reads
+   * the game's state.
+   */
+  embedded?: EmbeddedPlay;
+}
+
+export interface EmbeddedPlay {
+  overlays: Overlays;
+  slow: boolean;
+  /** The game's state, a few times a second. */
+  onSnapshot?: (s: GameSnapshot) => void;
 }
 
 /** The built-in tunes when the game names none (as Create ROM's defaults). */
@@ -121,7 +136,7 @@ function connectedPads(): (GamepadLike | null)[] {
   }
 }
 
-export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, characters, art, music = DEFAULT_MUSIC, touchPad, spriteBase, onEdit, onBack }: PlayViewProps) {
+export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives, rules, difficulty, heights, runTapMs, combo = false, texts, variants, heroes, characters, art, music = DEFAULT_MUSIC, sound: gameSound, touchPad, spriteBase, onEdit, onBack, embedded }: PlayViewProps) {
   const t = useMessages<PlayMessages>(PLAY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -151,9 +166,15 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heroKey]);
-  // the pickups' own pictures, by character id
+  // the game's own pictures, by character id: a pickup's look, and an enemy or civilian whose kind is a character of that role (as the ROM draws them)
   const [pickupLooks, setPickupLooks] = useState<Record<string, Sheet | null>>({});
-  const lookIds = [...new Set(level.objects.filter((o) => o.type === "pickup" && typeof o.look === "string" && o.look).map((o) => String(o.look)))];
+  const ownActor = (o: { type: string; kind?: unknown }) => (o.type === "enemy" || o.type === "civilian") && typeof o.kind === "string" && !!characters?.some((c) => c.id === o.kind && c.role === o.type);
+  const lookIds = [
+    ...new Set([
+      ...level.objects.filter((o) => o.type === "pickup" && typeof o.look === "string" && o.look).map((o) => String(o.look)),
+      ...level.objects.filter(ownActor).map((o) => String(o.kind)),
+    ]),
+  ];
   const lookKey = lookIds.map((id) => {
     const c = characters?.find((ch) => ch.id === id);
     return c ? `${c.id}:${c.sheet ?? ""}:${c.frames.length}` : id;
@@ -177,6 +198,9 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
   const [slow, setSlow] = useState(false);
   // sound: the ROM's effects and tunes (play/audio.ts), on until turned off (kept in this browser)
   const audio = useMemo(() => new PlayAudio(), []);
+  useEffect(() => {
+    if (gameSound) audio.setSound(gameSound);
+  }, [audio, gameSound]);
   const [sound, setSound] = useState(loadSound);
   const toggleSound = () => {
     const on = !sound;
@@ -247,8 +271,10 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
         pref = "auto";
       }
     }
-    setTouch(pref === "on" || (pref === "auto" && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches));
+    setTouch(!embedded && (pref === "on" || (pref === "auto" && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches)));
     return () => controls.dispose();
+    // the editor's embedded screen never takes the on-screen pad
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controls, touchPad]);
   controls.combo = combo;
 
@@ -268,8 +294,8 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
   // the loop: fixed steps, drawn every animation frame
   const words = useMemo(() => ({ ...t.hud, ...texts }), [t.hud, texts]);
   const drawScale = viaGpu ? 1 : scale;
-  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music });
-  state.current = { paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music };
+  const state = useRef({ paused, slow, overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music, onSnapshot: embedded?.onSnapshot });
+  state.current = { paused, slow: embedded ? embedded.slow : slow, overlays: embedded ? embedded.overlays : overlays, ghost, scale: drawScale, sprites, words, variants, ownHeroes, pickupLooks, art, music, onSnapshot: embedded?.onSnapshot };
   useEffect(() => {
     const canvas = canvasRef.current;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -323,7 +349,9 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
         drawGame(ctx, g, st.sprites, { scale: st.scale, overlays: st.overlays, colors, ghost: st.ghost, fps, words: st.words, variants: st.variants, ownHeroes: st.ownHeroes, pickupLooks: st.pickupLooks, art: st.art });
       }
       if (++ui % 6 === 0) {
-        setSnap(g.snapshot());
+        const shot = g.snapshot();
+        setSnap(shot);
+        st.onSnapshot?.(shot);
         setSeats((old) => (sameSeats(old, reading.seats) ? old : reading.seats));
         setHeld(reading.inputs.reduce((a, b) => a | b, 0));
       }
@@ -428,6 +456,13 @@ export function PlayView({ level, questions, players = 1, maxPlayers = 4, lives,
       ))}
     </div>
   );
+
+  if (embedded)
+    return (
+      <div className="wm-play is-embedded" ref={rootRef}>
+        {stage}
+      </div>
+    );
 
   // phones and tablets with the on-screen pad: a handheld console that fills
   // the screen (the picture on top and the pad below when upright, the pad's

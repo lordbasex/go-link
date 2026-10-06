@@ -229,7 +229,7 @@ export function planLooks(
     const name = ch.name || ch.id;
     const pic = ch.sheet ? pictures(ch.id) : null;
     if (!pic) {
-      note("heroPicture", { name });
+      note(role === "hero" ? "heroPicture" : "lookPicture", { name });
       return null;
     }
     // the hero's palettes: every zone its frames use, in first use order

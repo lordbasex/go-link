@@ -57,7 +57,11 @@ export function scaleFrames(keyed: { w: number; h: number; rgba: Uint8Array }, f
   // art drawn at a whole size (1x, 2x, 3x…) keeps each pixel's own color; anything else (an image AI's) is
   // sampled smooth, as the most present color turns its fine detail into noise
   const whole = Math.abs(1 / s - Math.round(1 / s)) < 0.01;
-  return frames.map((f) => (whole ? downscaleDominant(keyed, f, s) : downscaleRepresentative(keyed, f, s)));
+  // the feet point stays on the frame's last row (file-format.md): rounding a big sheet down can put it one row below
+  return frames.map((f) => {
+    const r = whole ? downscaleDominant(keyed, f, s) : downscaleRepresentative(keyed, f, s);
+    return { ...r, px: Math.max(0, Math.min(r.w - 1, r.px)), py: Math.max(0, Math.min(r.h - 1, r.py)) };
+  });
 }
 
 export type ZoneLevel = "ok" | "warn" | "over";

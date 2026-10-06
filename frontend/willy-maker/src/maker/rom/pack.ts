@@ -10,7 +10,7 @@
 // out as the set's. Pure: pictures come in decoded, nothing touches the DOM.
 
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
-import { CELL, layerGrid, objectLayer, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
+import { CELL, layerGrid, objectLayer, objectVisible, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
 import { packSound, type SoundPack } from "./sound";
 import { BOSS_HP, GUNSHIP_HP, QUIZ_MAX, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
@@ -356,7 +356,8 @@ export function packGame(
   const tagGrid = layerGrid(level, tagLayer(level));
   for (let i = 0; i < tags.length; i++) tags[i] = tagGrid.cells[i] ?? 0;
   if (tags.some((t) => t === TAG_NUMBER.water)) note("water");
-  const objects = objectLayer(level).items;
+  // objects hidden in the editor (or in a hidden group) are not in the game
+  const objects = objectLayer(level).items.filter((o) => objectVisible(level, o));
   for (const o of objects)
     if (o.type === "crate") {
       const n = Number(o.size ?? 32) >= 32 ? 2 : 1;

@@ -251,6 +251,28 @@ export function drawLevel(ctx: CanvasRenderingContext2D, level: Level, o: DrawOp
   ctx.restore();
 }
 
+/**
+ * Draws only a level's art (its far, mid and play tile layers that are
+ * visible) for the part of it in `view`, on a transparent canvas: the new
+ * editor draws zones and objects over it itself.
+ */
+export function drawArt(ctx: CanvasRenderingContext2D, level: Level, view: View, dpr: number, images: Map<string, TileImage>): void {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, view.w, view.h);
+  ctx.imageSmoothingEnabled = false;
+  const z = view.zoom;
+  ctx.save();
+  ctx.setTransform(dpr * z, 0, 0, dpr * z, -view.x * z * dpr, -view.y * z * dpr);
+  const vx1 = Math.min(level.size.w, view.x + view.w / z);
+  const vy1 = Math.min(level.size.h, view.y + view.h / z);
+  for (const layer of level.layers) {
+    if (layer.kind !== "tiles" || layer.visible === false || !["far", "mid", "play"].includes(layer.id)) continue;
+    ctx.globalAlpha = layer.opacity ?? 1;
+    drawTiles(ctx, level, layer, images.get(layer.tileset ?? ""), Math.max(0, view.x), Math.max(0, view.y), vx1, vy1);
+  }
+  ctx.restore();
+}
+
 function drawTiles(ctx: CanvasRenderingContext2D, level: Level, layer: TileLayer, img: TileImage | undefined, vx0: number, vy0: number, vx1: number, vy1: number) {
   if (!img) return;
   const g = layer.grid;

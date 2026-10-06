@@ -34,3 +34,6 @@ deploy/local/
 
 # Built by frontend/wasm/mp4 (make web-build)
 /frontend/apps/web/public/mp4/
+
+# Willy Maker editor design handoff (local reference only, Spanish prototype)
+frontend/willy-maker/design_handoff_willy_maker_editor/
