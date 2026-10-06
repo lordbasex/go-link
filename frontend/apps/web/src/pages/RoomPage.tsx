@@ -1230,8 +1230,10 @@ export function RoomPage() {
           <GamepadIcon size={32} />
         </HeroTile>
       }
+      // In the header only the title and the players count: the game and host
+      // are the title's tooltip, and Leave goes back to the rooms.
       eyebrow={
-        <>
+        inHeader ? undefined : <>
           <Link to="/rooms" className="back-link">
             <ChevronLeftIcon size={14} />
             {t.nav.backShort}
@@ -1241,16 +1243,16 @@ export function RoomPage() {
           {isPrivate ? t.room.private : t.room.public}
         </>
       }
-      title={<span className="room-title">{title}</span>}
+      title={<span className="room-title" title={inHeader ? subtitle || undefined : undefined}>{title}</span>}
       chips={
         <>
-          {subtitle && <Chip>{subtitle}</Chip>}
+          {subtitle && !inHeader && <Chip>{subtitle}</Chip>}
           {!demo && live.room && (
             <Chip className="chip-keep">
               {t.room.playersChip(seatedCount, live.room.maxPlayers)}
             </Chip>
           )}
-          {ownsRoom && <Chip mono>{t.room.roomShort(roomId)}</Chip>}
+          {ownsRoom && !inHeader && <Chip mono>{t.room.roomShort(roomId)}</Chip>}
           {guest && (
             <Chip className="chip-guest chip-keep" title={t.guest.badgeHint}>
               {t.guest.badge}
