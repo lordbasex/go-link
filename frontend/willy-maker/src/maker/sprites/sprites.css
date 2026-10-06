@@ -599,3 +599,145 @@
   align-items: flex-end;
   margin-bottom: 8px;
 }
+
+/* the pixel editor (ui/PixelEditor.tsx), laid out like Scratch's costume editor */
+.wms-pe-back {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--backdrop, rgba(0, 0, 0, 0.6));
+}
+.wms-pe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 32px);
+  padding: 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 60px var(--shadow-strong);
+  outline: none;
+}
+.wms-pe-top,
+.wms-pe-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.wms-pe-title {
+  font-size: 15px;
+}
+.wms-pe-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 240px;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+.wms-pe-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wms-pe-tool {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+.wms-pe-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  max-width: 80px;
+}
+.wms-pe-opt input[type="range"] {
+  width: 76px;
+}
+.wms-pe-stage {
+  min-height: 300px;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  /* a checkerboard shows the transparent pixels */
+  background-color: var(--color-surface);
+  background-image: linear-gradient(45deg, var(--color-surface-2) 25%, transparent 25%), linear-gradient(-45deg, var(--color-surface-2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--color-surface-2) 75%), linear-gradient(-45deg, transparent 75%, var(--color-surface-2) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.wms-pe-canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+.wms-pe-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  overflow-y: auto;
+}
+.wms-pe-color input[type="color"] {
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  background: none;
+}
+.wms-pe-palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+}
+.wms-pe-swatch {
+  display: block;
+  aspect-ratio: 1;
+  min-width: 18px;
+  border: 1px solid var(--color-border-strong);
+  cursor: pointer;
+  padding: 0;
+}
+.wms-pe-swatch.is-big {
+  width: 28px;
+  height: 28px;
+}
+.wms-pe-swatch.is-on {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.wms-pe-zones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.wms-pe-zones li.is-over {
+  color: var(--color-danger-text);
+}
+.wms-pe-hint {
+  max-width: 420px;
+}
+.wms-edit {
+  right: auto;
+  left: -6px;
+}
+@media (max-width: 900px) {
+  .wms-pe-body {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .wms-pe-side {
+    grid-column: 1 / -1;
+  }
+}

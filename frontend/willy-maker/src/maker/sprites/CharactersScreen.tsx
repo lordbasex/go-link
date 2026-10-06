@@ -19,6 +19,7 @@ import { ANIMS, DEFAULT_HEIGHT, HEIGHTS } from "./presets";
 import { fmt, useSpritesText } from "./text";
 import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
+import { PixelEditor } from "./ui/PixelEditor";
 import { BoardPanel } from "./ui/BoardPanel";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
@@ -79,6 +80,9 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const appendInput = useRef<HTMLInputElement>(null);
   const [appended, setAppended] = useState("");
   const sourceBytes = useRef<{ bytes: Uint8Array; type: string } | null>(null);
+  // frames drawn by hand in the pixel editor (by frame id), at their size on the board; saved as the frame's `edit`
+  const [edits, setEdits] = useState<ReadonlyMap<string, ScaledFrame>>(new Map());
+  const [editing, setEditing] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -123,6 +127,34 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       live = false;
     };
   }, [draft.sheet, draft.tolerance, sheet, loadSheet]);
+
+  // reopening a saved character: the frames edited by hand come from storage too
+  const editRefs = draft.frames.flatMap((f) => (f.edit && !edits.has(f.id) ? [[f.id, f.edit] as const] : []));
+  const editKey = editRefs.map(([id, e]) => `${id}:${e.ref}`).join("|");
+  useEffect(() => {
+    if (!editRefs.length) return;
+    let live = true;
+    void Promise.all(
+      editRefs.map(async ([id, e]) => {
+        const asset = await getAsset(e.ref).catch(() => null);
+        if (!asset) return null;
+        const img = await decodeImage(asset.bytes, asset.type).catch(() => null);
+        return img ? ([id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }] as const) : null;
+      }),
+    ).then((pairs) => {
+      if (!live) return;
+      setEdits((cur) => {
+        const next = new Map(cur);
+        for (const p of pairs) if (p) next.set(p[0], p[1]);
+        return next;
+      });
+    });
+    return () => {
+      live = false;
+    };
+    // the refs to load, not the array, decide
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editKey]);
 
   const sheetUrl = sheet?.url;
   useEffect(
@@ -242,7 +274,9 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const deferred = useDeferredValue(draft);
   const scale = useMemo(() => scaleFor(deferred.frames, deferred.anims, deferred.height), [deferred.frames, deferred.anims, deferred.height]);
   const scaled = useMemo(() => (keyed ? scaleFrames(keyed, deferred.frames, scale) : []), [keyed, deferred.frames, scale]);
-  const zones = useMemo(() => (scaled.length ? analyzeZones(scaled) : null), [scaled]);
+  // a frame drawn by hand takes the place of its box's picture
+  const withEdits = useMemo(() => scaled.map((f, i) => edits.get(deferred.frames[i]?.id ?? "") ?? f), [scaled, edits, deferred.frames]);
+  const zones = useMemo(() => (withEdits.length ? analyzeZones(withEdits) : null), [withEdits]);
   const shown = useMemo(() => {
     const m = new Map<string, ScaledFrame>();
     if (zones) deferred.frames.forEach((f, i) => zones.frames[i] && m.set(f.id, zones.frames[i]!));
@@ -310,6 +344,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   };
 
   const newCharacter = () => {
+    setEdits(new Map());
+    setEditing(null);
     setOpenId(null);
     setDraft(emptyDraft());
     setSheet(null);
@@ -322,6 +358,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const openCharacter = (id: string) => {
     const ch = project.characters.find((c) => c.id === id) as ImportedCharacter | undefined;
     if (!ch) return;
+    setEdits(new Map());
+    setEditing(null);
     setOpenId(id);
     setSheet(null);
     sourceBytes.current = null;
@@ -339,7 +377,18 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       const atlas = packAtlas(zones.frames, deferred.frames.map((f) => f.id));
       const png = await encodePng(atlas.w, atlas.h, atlas.rgba);
       const ref = await putAsset(png, "image/png");
-      const { project: next, character } = saveCharacter(project, { draft, atlas: ref, rects: atlas.rects, zones: zones.zones });
+      // the frames drawn by hand keep their pixels with the character, to edit them again
+      const frames = await Promise.all(
+        draft.frames.map(async (f) => {
+          const e = edits.get(f.id);
+          if (!e) return f;
+          const pic = await putAsset(await encodePng(e.w, e.h, e.rgba), "image/png");
+          return { ...f, edit: { ref: pic, w: e.w, h: e.h, px: e.px, py: e.py } };
+        }),
+      );
+      const saved = { ...draft, frames };
+      const { project: next, character } = saveCharacter(project, { draft: saved, atlas: ref, rects: atlas.rects, zones: zones.zones });
+      setDraft((d) => ({ ...d, frames: d.frames.map((f) => frames.find((x) => x.id === f.id) ?? f) }));
       onChange(next);
       setDraft((d) => ({ ...d, id: character.id }));
       setOpenId(character.id);
@@ -636,6 +685,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             thumbs={shown}
             numberOf={numberOf}
             onActive={setActive}
+            onEditFrame={(id) => shown.has(id) && setEditing(id)}
+            edited={new Set(edits.keys())}
             onChange={(anims) => edit((d) => ({ ...d, anims }))}
             onAddSelected={addSelected}
             hidden={draft.hidden}
@@ -679,7 +730,22 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           />
         </div>
       </div>
+      {editing && shown.get(editing) && (
+        <PixelEditor
+          t={t.pixel}
+          name={labels.get(editing)?.text ?? fmt(t.frameLabel, { n: numberOf(editing) })}
+          frame={shown.get(editing)!}
+          palette={zones ? [...new Set(zones.zones.flatMap((z) => z.palette))] : []}
+          onCancel={() => setEditing(null)}
+          onApply={(p) => {
+            const f = shown.get(editing)!;
+            setEdits((cur) => new Map(cur).set(editing, { w: p.w, h: p.h, rgba: p.rgba, px: f.px, py: f.py }));
+            setEditing(null);
+            setDirty(true);
+            setStatus("");
+          }}
+        />
+      )}
     </div>
   );
 }
-

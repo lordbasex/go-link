@@ -18,6 +18,17 @@ export interface SourceFrame extends Box {
   id: string;
   px: number;
   py: number;
+  /** Pixels drawn by hand in the pixel editor, at the frame's size on the board: they replace the box's picture. */
+  edit?: FrameEdit;
+}
+
+/** A frame's own pixels (a PNG in the asset store) and its feet point in them. */
+export interface FrameEdit {
+  ref: string;
+  w: number;
+  h: number;
+  px: number;
+  py: number;
 }
 
 export interface DraftAnim {

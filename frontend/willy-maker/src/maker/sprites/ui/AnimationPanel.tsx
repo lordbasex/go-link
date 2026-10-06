@@ -33,6 +33,10 @@ export interface AnimationPanelProps {
   /** The animations of each picture of the image AI prompt, to give a pasted sheet's rows their animations. */
   plan?: { name: string }[][];
   onRows?(sheet: number): string;
+  /** Opens a frame in the pixel editor. */
+  onEditFrame?(id: string): void;
+  /** The frames whose pixels were edited by hand. */
+  edited?: ReadonlySet<string>;
 }
 
 /** A name compared loosely: no accents, no case, no spaces or underscores. */
@@ -66,7 +70,7 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows, onEditFrame, edited }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
   const [sheet, setSheet] = useState(0);
   const [rowsNote, setRowsNote] = useState("");
@@ -195,9 +199,17 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
           </div>
           <ol className="wms-frames">
             {(current?.frames ?? []).map((id, i) => (
-              <li key={`${id}-${i}`} className="wms-frame-chip">
+              <li key={`${id}-${i}`} className="wms-frame-chip" onDoubleClick={() => onEditFrame?.(id)}>
                 <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
-                <span className="wms-frame-n">{numberOf(id)}</span>
+                <span className="wms-frame-n">
+                  {numberOf(id)}
+                  {edited?.has(id) ? ` · ${t.pixel.edited}` : ""}
+                </span>
+                {onEditFrame && (
+                  <button type="button" className="wms-x wms-edit" aria-label={fmt(t.pixel.edit, { n: numberOf(id) })} data-tip={fmt(t.pixel.edit, { n: numberOf(id) })} onClick={() => onEditFrame(id)} onDoubleClick={(e) => e.stopPropagation()}>
+                    ✎
+                  </button>
+                )}
                 <button
                   type="button"
                   className="wms-x"

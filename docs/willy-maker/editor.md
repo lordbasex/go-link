@@ -100,6 +100,18 @@ Water, a collision tag the engine keeps but the ROM does not use yet, is a seven
 
 The site's home (`ui/studio/GamesHome.tsx`) in the same look: the brand, New game (the new game wizard), Open .zip (a project file, asking when a game with its id is already here) and Watch demo, then the games saved in this browser as cards with their first screen, board, levels and last change. A card opens its game; its … menu duplicates it, downloads its .zip or deletes it after asking. Watch demo runs on a game that is never saved (the editor's `scratch` mode): Exit or Esc goes back to My games, Create my game opens the wizard and Keep editing saves it as a new game. The editor's My games button comes back here, and each game saves itself a moment after each change ("● saved in this browser" in the footer).
 
+## Pixel editor
+
+Characters › an animation's frame › ✎ (or a double click on the frame) opens the frame in the pixel editor (`sprites/ui/PixelEditor.tsx`, the drawing in `sprites/pixels.ts`), laid out like Scratch's costume editor and made for the board:
+
+- **Top**: the frame's name and size on the board, undo and redo (⌘Z, ⇧⌘Z; 100 steps), flip left to right and upside down, clear.
+- **Tools** (left): pencil B, eraser E, bucket G (the area of one color, side by side), pick a color I (or Alt with any tool), line L, rectangle R and ellipse O (outlined or filled); a brush of 1 to 4 pixels for the pencil, the eraser and the line.
+- **Canvas**: the frame at its size on the board, zoomed (fit, + and −) over a checkerboard for the transparent pixels, with a pixel grid, the 16 px zones counted from the feet (dashed) and the feet point.
+- **Colors** (right): the current color, any color snapped to the board's nearest (the CPS-1 shows 4096), the character's colors to pick from, and each zone's count of the 15 colors the board gives it (over 15, the board merges the closest).
+- **Use this frame** puts the pixels in the character in place of the box's picture; the frame shows "edited" and Save character keeps them with it (`source.frames[].edit`, [file-format.md](file-format.md)), so they come back when it opens again. The animations, zones, atlas, play mode and the ROM read it like any other frame.
+
+The next steps of the editor: frames and animation (a strip of frames per animation, onion skin, drawing a character from nothing), layers per frame, a vector mode with Convert to bitmap, and more tools (symmetry, selection, replace a color, an automatic outline).
+
 ## Workspaces
 
 Characters, Game, Menus and Export are the classic editor's own screens, so both editors share one set of features. Inside the new editor they take its look from one stylesheet (`ui/studio/workspaces.css`): the site's token names those screens use (surface-2, text-muted, border-strong, accent-text, ok, danger…) are mapped to the Modernist palette in light and dark, and their capsules, round icon buttons, inputs, segmented choices and chips become square buttons, inputs, `.seg` and tags. The classic editor keeps its own look.

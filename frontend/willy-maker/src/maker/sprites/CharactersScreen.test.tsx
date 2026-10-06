@@ -144,6 +144,33 @@ describe("CharactersScreen", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Saved");
   });
 
+  it("edits a frame's pixels by hand, keeps them with the character and marks the frame", async () => {
+    const { onChange } = setup();
+    await drop();
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: /Add the selected frames/ }));
+    await screen.findByText("Head");
+    fireEvent.click(screen.getByRole("button", { name: "Edit frame 1" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit frame · Standing 1" });
+    // the frame at its size on the board: 44 px tall
+    expect(dialog).toHaveTextContent(/\d+ × 44 px/);
+    fireEvent.click(screen.getByRole("button", { name: "Flip left to right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use this frame" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("1 · edited")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save character" }));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    // the source sheet, the atlas and the edited frame's own pixels
+    expect(putAsset).toHaveBeenCalledTimes(3);
+    const ch = onChange.mock.calls[0]![0].characters[0] as unknown as { source: { frames: { id: string; edit?: { ref: string; w: number; h: number; px: number; py: number } }[] } };
+    const f1 = ch.source.frames.find((f) => f.id === "f1")!;
+    expect(f1.edit).toMatchObject({ ref: expect.stringMatching(/^sha256:/), h: 44 });
+    expect(ch.source.frames.find((f) => f.id === "f2")!.edit).toBeUndefined();
+  });
+
   it("edits boxes: delete with the keyboard, add one, move the pivot", async () => {
     setup();
     await drop();

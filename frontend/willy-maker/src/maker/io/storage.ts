@@ -93,8 +93,11 @@ export function assetRefs(p: Project): Set<string> {
   for (const c of p.characters) {
     if (c.sheet) refs.add(c.sheet);
     // the character importer keeps the original sheet for editing again
-    const source = (c as { source?: { sheet?: unknown } }).source;
+    const source = (c as { source?: { sheet?: unknown; frames?: unknown } }).source;
     if (typeof source?.sheet === "string" && source.sheet.startsWith("sha256:")) refs.add(source.sheet);
+    // and the frames drawn by hand in the pixel editor
+    if (Array.isArray(source?.frames))
+      for (const f of source.frames as { edit?: { ref?: unknown } }[]) if (typeof f?.edit?.ref === "string" && f.edit.ref.startsWith("sha256:")) refs.add(f.edit.ref);
   }
   for (const t of p.tilesets) if (t.image) refs.add(t.image);
   // the image AI prompt helper's reference pictures
