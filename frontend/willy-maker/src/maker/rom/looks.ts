@@ -10,32 +10,12 @@
 
 import { type GfxRegion, type Pens, toCps1 } from "@go-link/cps1";
 import { bodyFor, type Body } from "../engine/rules";
+import { heroLook, LOOK_ANIMS, type LookAnimId } from "../engine/anims";
 import { BUILTIN_HERO, type Character, type Frame, type PlayerSlot, type Project } from "../model";
 import type { Picture } from "./pack";
 
-/** The engine's animations of a player, in wm_look's order: the six it began with, then the moves (docs/willy-maker/moves.md). */
-export const LOOK_ANIMS = ["idle", "run", "jump", "knife", "gun", "bazooka", "crouch", "crawl", "land", "turn", "kick", "thumbs", "victory", "yawn", "double_jump", "jetpack"] as const;
-export type LookAnimId = (typeof LOOK_ANIMS)[number];
-
-/** Where each engine animation comes from: the first of the hero's own that has frames (the moves by the doc's names and fallbacks). */
-export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
-  idle: ["idle"],
-  run: ["run", "walk", "idle"],
-  jump: ["jump", "idle"],
-  knife: ["knife", "melee", "shoot", "fire", "idle"],
-  gun: ["shoot", "fire", "machine_gun", "idle"],
-  bazooka: ["bazooka", "special", "shoot", "fire", "idle"],
-  crouch: ["crouch", "idle"],
-  crawl: ["crawl", "crouch", "walk"],
-  land: ["land", "idle"],
-  turn: ["turn", "run"],
-  kick: ["jump_kick", "knife", "jump"],
-  thumbs: ["thumbs_up", "idle"],
-  victory: ["victory", "thumbs_up", "idle"],
-  yawn: ["yawn", "bored", "idle"],
-  double_jump: ["double_jump", "jump"],
-  jetpack: ["jetpack", "jump"],
-};
+// which animation each engine animation is, for heroes, lives with play mode's in engine/anims.ts
+export { LOOK_ANIMS, LOOK_SOURCES, type LookAnimId } from "../engine/anims";
 
 /**
  * The game's own enemies and civilians (T-30) use a look too, its slots
@@ -44,14 +24,12 @@ export const LOOK_SOURCES: Record<LookAnimId, string[]> = {
  * worried (land) and thanks the player (thumbs). Every other slot is idle.
  */
 export const ACTOR_SOURCES: Record<"enemy" | "civilian" | "pickup", Partial<Record<LookAnimId, string[]>>> = {
-  enemy: { idle: ["idle", "walk"], run: ["walk", "run", "idle"], gun: ["shoot", "fire", "attack", "idle"], knife: ["melee", "attack", "shoot", "idle"], land: ["hit", "hurt", "idle"], victory: ["death", "die", "hit", "idle"] },
-  civilian: { idle: ["idle"], run: ["follow", "walk", "idle"], land: ["worried", "idle"], thumbs: ["thanks", "happy", "idle"], victory: ["thanks", "idle"] },
+  enemy: { idle: ["idle", "walk"], run: ["walk", "run", "idle"], walk: ["walk", "run", "idle"], gun: ["shoot", "fire", "attack", "idle"], knife: ["melee", "attack", "shoot", "idle"], land: ["hit", "hurt", "idle"], victory: ["death", "die", "hit", "idle"] },
+  civilian: { idle: ["idle"], run: ["follow", "walk", "idle"], walk: ["follow", "walk", "idle"], land: ["worried", "idle"], thumbs: ["thanks", "happy", "idle"], victory: ["thanks", "idle"] },
   // a pickup is drawn with its idle (a coin spinning, a weapon glowing): any character's first animation otherwise
   pickup: {},
 };
 
-/** A move whose names all miss takes the engine animation it stands in for (crawl the crouch's, turn the run's, ...). */
-const LOOK_FALLBACK: Partial<Record<LookAnimId, LookAnimId>> = { crawl: "crouch", turn: "run", kick: "jump", double_jump: "jump", jetpack: "jump" };
 
 /** At most this many 16 x 16 tiles in one frame (the engine draws up to 248 sprite entries; T-26: 64, a 128 px hero, was 32). */
 export const MAX_FRAME_TILES = 64;
@@ -85,6 +63,10 @@ export interface Look {
   name: string;
   /** The hero's animation each engine animation uses. */
   anims: Record<LookAnimId, string>;
+  /** Walking's and running's speed in halves, and the timed moves that fit their frames (engine/anims.ts HeroLook). */
+  walkRate: number;
+  runRate: number;
+  fit: number;
   /** Those animations, cut, by the hero's animation name. */
   cut: Map<string, LookAnim>;
   /** The first sprite palette (0-31) its palettes are loaded into. */
@@ -266,18 +248,28 @@ export function planLooks(
       cut.set(animName, anim);
       return anim;
     };
-    const anims = {} as Record<LookAnimId, string>;
+    let anims = {} as Record<LookAnimId, string>;
+    let rates = { walkRate: 2, runRate: 2, fit: 0 };
     try {
-      for (const id of LOOK_ANIMS) {
-        const chain = role !== "hero" ? (ACTOR_SOURCES[role][id] ?? ["idle", ...Object.keys(ch.anims)]) : id === "idle" ? ["idle", "walk", "run", ...Object.keys(ch.anims)] : LOOK_SOURCES[id];
-        const fallback = role === "hero" ? LOOK_FALLBACK[id] : undefined;
-        const src = chain.find((n) => tryAnim(n)) ?? (fallback ? anims[fallback] : undefined) ?? anims.idle;
-        if (!src) {
+      if (role === "hero") {
+        // the same choices play mode makes (engine/anims.ts)
+        const hero = heroLook((n) => !!tryAnim(n), Object.keys(ch.anims));
+        if (!hero) {
           note("heroFrames", { name });
           return null;
         }
-        anims[id] = src;
-      }
+        anims = hero.anims;
+        rates = { walkRate: hero.walkRate, runRate: hero.runRate, fit: hero.fit };
+      } else
+        for (const id of LOOK_ANIMS) {
+          const chain = ACTOR_SOURCES[role][id] ?? ["idle", ...Object.keys(ch.anims)];
+          const src = chain.find((n) => tryAnim(n)) ?? anims.idle;
+          if (!src) {
+            note("heroFrames", { name });
+            return null;
+          }
+          anims[id] = src;
+        }
     } catch (reason) {
       if (reason === "big") note("heroBig", { name, max: MAX_FRAME_TILES });
       else note("heroZones", { name });
@@ -321,7 +313,7 @@ export function planLooks(
       return words;
     });
     if (!palettes.length) palettes.push(new Array<number>(16).fill(0));
-    return { character: ch.id, name, anims, cut, pal, palettes, body: bodyFor(ch.height) };
+    return { character: ch.id, name, anims, ...rates, cut, pal, palettes, body: bodyFor(ch.height) };
   };
 
   const shirts = new Set<string>();

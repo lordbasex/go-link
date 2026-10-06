@@ -26,6 +26,7 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ### Fixed
 
+- **Every frame of your characters' animations, in play mode and in the ROM** ([engine.md](../../docs/willy-maker/engine.md#the-players-looks), `wm_data` version 28): walking used the run's animation at half speed, so a character with only a walk (nine frames at 12 fps) walked at 6 fps and seemed to slide, and some moves cut their animations short (Willy's turn showed 2 of its 6 frames). Now walking plays the walk at its own speed and running the run (or the walk twice as fast), a timed move (knife, land, turn, jump kick, thumbs up) shows all its own frames within the move, and the jump spreads its frames over rising and falling, whatever number of frames each animation has. Play mode and the ROM share the rules (`engine/anims.ts`); a nine frame walk matches the real core at tolerance 0 (`rom/tools/lab/runs/hero-walk.json`).
 - **The ROM showed the own enemies, civilians and pickups in a recruit's shirt colors**: the engine loaded only the players' looks' palettes; it loads every own look's now (checked on the real core at tolerance 0, and the lab's runs still start on frame 163).
 - The Menus tab's music note no longer says play mode is silent (it plays the music since T-26).
 - **Create ROM drew the own enemies, civilians and pickup pictures as the engine's**: it loaded only the pictures of the players' heroes; it loads every character the game draws now.

@@ -70,7 +70,7 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 27;
+const WM_VERSION = 28;
 const HEADER = 0xbe;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
@@ -643,9 +643,13 @@ export function packGame(
       }
       lookAt.push(out.addr);
       for (const id of LOOK_ANIMS) out.u32(animAt.get(look.cut.get(look.anims[id])!)!);
+      // walking's and running's speed in halves, the timed moves that fit their frames (wm_data 28, engine/anims.ts)
+      out.u16(look.walkRate);
+      out.u16(look.runRate);
+      out.u16(look.fit);
       out.u16(look.pal);
       out.u16(look.palettes.length);
-      // the body (wm_look 0x44-0x58, T-26): heights, half width, jump speeds, reaches, shot heights
+      // the body (wm_look 0x4e-0x62, T-26): heights, half width, jump speeds, reaches, shot heights
       const b = look.body;
       for (const v of [b.h, b.crouchH, b.halfW, b.jumpVy, b.doubleVy, b.knifeReach, b.kickReach, b.knifeY, b.shotY, b.crouchShotY, b.rocketY]) out.u16(v & 0xffff);
       for (const pal of look.palettes) for (const w of pal) out.u16(w);

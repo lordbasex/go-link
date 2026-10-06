@@ -62,7 +62,9 @@ static void wait_vblank(void)
 static const struct wm_look willy_look = {
 	&anim_willy_idle, &anim_willy_run, &anim_willy_jump, &anim_willy_knife, &anim_willy_machine_gun, &anim_willy_bazooka,
 	&anim_willy_crouch, &anim_willy_crawl, &anim_willy_idle, &anim_willy_turn, &anim_willy_jump_kick,
-	&anim_willy_thumbs_up, &anim_willy_thumbs_up, &anim_willy_yawn, &anim_willy_jump, &anim_willy_jump, 0, 0,
+	&anim_willy_thumbs_up, &anim_willy_thumbs_up, &anim_willy_yawn, &anim_willy_jump, &anim_willy_jump,
+	&anim_willy_run, 1, 2, 0xe08, /* he walks with his run at half speed; knife, turn, kick and thumbs up fit their moves (engine/anims.ts heroLook) */
+	0, 0,
 	40, 24, 5, -112, -96, 18, 24, 20, 27, 12, 30, /* his body: the prototype's numbers (BODY_H, CROUCH_H, HALF_W, JUMP_VY…) */
 };
 
@@ -5326,6 +5328,26 @@ static void draw_once(const Anim *a, u32 t, int x, int y, int pal, int flip)
 	draw_frame(&a->frames[i < a->count ? i : a->count - 1u], x, y, pal, flip);
 }
 
+/* a move of `d` frames, `t` in: at its fps, or, when it is the look's own animation for the move (`fit`) and longer
+   than the move at that speed, its frames spread over the move so every one shows (frontend engine/anims.ts moveFrame) */
+static u32 move_frame(const Anim *a, u32 t, u32 d, int fit)
+{
+	u32 i = fit && (u32)a->count * 60 > (u32)a->fps * d ? t * a->count / d : t * a->fps / 60;
+	return i < a->count ? i : a->count - 1u;
+}
+
+static void draw_move(const Anim *a, u32 t, u32 d, int fit, int x, int y, int pal, int flip)
+{
+	draw_frame(&a->frames[move_frame(a, t, d, fit)], x, y, pal, flip);
+}
+
+/* bit k of wm_look's fit: the k-th Anim pointer of the look (wm_data.h order) */
+#define FIT_KNIFE (1 << 3)
+#define FIT_LAND (1 << 8)
+#define FIT_TURN (1 << 9)
+#define FIT_KICK (1 << 10)
+#define FIT_THUMBS (1 << 11)
+
 static int victory; /* the section is cleared: every player shows its victory */
 
 static void draw_player(struct player *p)
@@ -5344,26 +5366,33 @@ static void draw_player(struct player *p)
 	if (victory)
 		draw_anim(l->victory, p->t, sx, sy, p->pal, p->flip);
 	else if (!p->on_ground) {
-		/* the jump's frames by vertical speed, as Willy's sheet has them */
-		int i = p->vy < -60 ? 1 : p->vy < 0 ? 2 : p->vy < 60 ? 3 : 4;
+		/* the jump's frames by vertical speed: rising fast, rising, falling, falling fast over the frames after the
+		   take-off, however many it has (Willy's five: 1 to 4; frontend engine/anims.ts airFrame) */
+		int phase = p->vy < -60 ? 0 : p->vy < 0 ? 1 : p->vy < 60 ? 2 : 3;
 		const Anim *a = p->jetting ? l->jetpack : p->air_jumps && p->vy < 0 ? l->double_jump : l->jump;
 		if (p->kick_t)
-			draw_once(l->kick, (u32)(KICK_FRAMES - p->kick_t), sx, sy, p->pal, p->flip);
+			draw_move(l->kick, (u32)(KICK_FRAMES - p->kick_t), KICK_FRAMES, l->fit & FIT_KICK, sx, sy, p->pal, p->flip);
 		else
-			draw_frame(&a->frames[i % a->count], sx, sy, p->pal, p->flip);
+			draw_frame(&a->frames[a->count > 1 ? 1 + phase * (a->count - 1) / 4 : 0], sx, sy, p->pal, p->flip);
 	} else if (p->grabbed) {
 		/* holding an enemy: the guard pose */
 		draw_frame(&l->knife->frames[0], sx, sy, p->pal, p->flip);
 	} else if (p->punch_t) {
 		/* the beat 'em up's punches, and the combo's kick */
 		if (p->combo == 3)
-			draw_once(l->kick, (u32)(COMBO_KICK_FRAMES - p->punch_t), sx, sy, p->pal, p->flip);
+			draw_move(l->kick, (u32)(COMBO_KICK_FRAMES - p->punch_t), COMBO_KICK_FRAMES, l->fit & FIT_KICK, sx, sy, p->pal, p->flip);
 		else {
 			/* Willy has a punch of his own (art.mjs withPunch); an own hero punches with its knife;
 			   versus fighting's specials hold the punch's reaching frame */
-			const Anim *a = l == &willy_look ? &anim_willy_punch : l->knife;
-			int f = p->combo >= 4 ? 2 : (PUNCH_FRAMES - p->punch_t) / 4;
-			draw_frame(&a->frames[f % a->count], sx, sy, p->pal, p->flip);
+			if (l == &willy_look) {
+				int f = p->combo >= 4 ? 2 : (PUNCH_FRAMES - p->punch_t) / 4;
+				draw_frame(&anim_willy_punch.frames[f % anim_willy_punch.count], sx, sy, p->pal, p->flip);
+			} else {
+				/* its knife's frames over the punch, however many; the held special shows the middle one */
+				const Anim *a = l->knife;
+				u32 f = p->combo >= 4 ? a->count / 2u : move_frame(a, (u32)(PUNCH_FRAMES - p->punch_t), PUNCH_FRAMES, l->fit & FIT_KNIFE);
+				draw_frame(&a->frames[f], sx, sy, p->pal, p->flip);
+			}
 		}
 	} else if (p->crouch) {
 		if (moving)
@@ -5371,19 +5400,20 @@ static void draw_player(struct player *p)
 		else
 			draw_once(l->crouch, (u32)p->crouch_t, sx, sy, p->pal, p->flip);
 	} else if (p->knife_t)
-		draw_frame(&l->knife->frames[(KNIFE_FRAMES - p->knife_t) / 4 % l->knife->count], sx, sy, p->pal, p->flip);
+		draw_move(l->knife, (u32)(KNIFE_FRAMES - p->knife_t), KNIFE_FRAMES, l->fit & FIT_KNIFE, sx, sy, p->pal, p->flip);
 	else if (p->bazooka_t)
 		draw_anim(l->bazooka, p->t, sx, sy, p->pal, p->flip);
 	else if (p->firing)
 		draw_anim(l->gun, p->t, sx, sy, p->pal, p->flip);
 	else if (p->land_t)
-		draw_once(l->land, (u32)(LAND_FRAMES - p->land_t), sx, sy, p->pal, p->flip);
+		draw_move(l->land, (u32)(LAND_FRAMES - p->land_t), LAND_FRAMES, l->fit & FIT_LAND, sx, sy, p->pal, p->flip);
 	else if (p->turn_t && moving)
-		draw_once(l->turn, (u32)(TURN_FRAMES - p->turn_t), sx, sy, p->pal, p->flip);
+		draw_move(l->turn, (u32)(TURN_FRAMES - p->turn_t), TURN_FRAMES, l->fit & FIT_TURN, sx, sy, p->pal, p->flip);
 	else if (moving)
-		draw_anim(l->run, p->running ? p->t : p->t / 2, sx, sy, p->pal, p->flip);
+		/* walking and running each with their own animation and speed (wm_look walk_rate, run_rate) */
+		draw_anim(p->running ? l->run : l->walk, (u32)p->t * (p->running ? l->run_rate : l->walk_rate) / 2, sx, sy, p->pal, p->flip);
 	else if (p->thumbs_t)
-		draw_once(l->thumbs, (u32)(THUMBS_FRAMES - p->thumbs_t), sx, sy, p->pal, p->flip);
+		draw_move(l->thumbs, (u32)(THUMBS_FRAMES - p->thumbs_t), THUMBS_FRAMES, l->fit & FIT_THUMBS, sx, sy, p->pal, p->flip);
 	else if (p->idle_t >= YAWN_AFTER)
 		draw_anim(l->yawn, (u32)(p->idle_t - YAWN_AFTER), sx, sy, p->pal, p->flip);
 	else

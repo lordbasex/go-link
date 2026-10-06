@@ -1,6 +1,6 @@
 # Willy Maker: the moves
 
-The moves a hero makes, the same in play mode (`engine/game.ts`) and in the ROM engine (`rom/engine/engine.c`), task T-25 of [experiment 1's verdict](../experiments/verdict.md). A full sprite sheet (idle, walk and run, turn, jump, jump kick, crouch, crawl, machine gun, knife, bazooka, a yawn, a thumbs up) has an animation for each; a hero without one falls back as listed. Numbers are in pixels and frames (60 per second); vertical speeds in 1/16 px per frame, as in [rules.ts](../../frontend/apps/web/src/willy-maker/engine/rules.ts).
+The moves a hero makes, the same in play mode (`engine/game.ts`) and in the ROM engine (`rom/engine/engine.c`), task T-25 of [experiment 1's verdict](../experiments/verdict.md). A full sprite sheet (idle, walk and run, turn, jump, jump kick, crouch, crawl, machine gun, knife, bazooka, a yawn, a thumbs up) has an animation for each; a hero without one falls back as listed. Walking plays the hero's `walk` at its own speed (a `run` standing in plays at half), running its `run` (a `walk` standing in plays twice as fast), and every move shows every frame its animation has ([engine.md](engine.md#the-players-looks), `engine/anims.ts`). Numbers are in pixels and frames (60 per second); vertical speeds in 1/16 px per frame, as in [rules.ts](../../frontend/apps/web/src/willy-maker/engine/rules.ts).
 
 ## Moves everyone has
 
