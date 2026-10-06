@@ -589,7 +589,13 @@ describe("the new game wizard", () => {
     expect(within(dialog).getAllByRole("radio").filter((r) => !(r as HTMLButtonElement).disabled)).toHaveLength(13);
     fireEvent.click(within(dialog).getByRole("radio", { name: /Maze/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next: Board →" }));
+    // the board's spec sheet: the 1992 QSound board, the 68000 as the emulator runs it, the controls of the layout picked
+    const sheet = screen.getByRole("region", { name: "The CPS-1 in your game" });
+    expect(within(sheet).getByText("QSound board (1992) · set slammast")).toBeInTheDocument();
+    expect(within(sheet).getByText("68000 at 10 MHz in the emulator (mame2003-plus); 12 MHz on the real board")).toBeInTheDocument();
+    expect(within(sheet).getByText("Up to 4 players, 3 buttons each")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /2 buttons/ }));
+    expect(within(sheet).getByText("Up to 4 players, 2 buttons each")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Next: Name and players →" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Game title" }), { target: { value: "Maze Run" } });
     fireEvent.click(screen.getByRole("radio", { name: "3 players" }));

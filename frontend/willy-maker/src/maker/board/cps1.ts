@@ -76,6 +76,25 @@ export interface BoardProfile {
   levels: { maxW: number; maxH: number; cell: number };
   /** The 8 × 8 font's characters (lowercase is folded to uppercase). */
   font: string;
+  /**
+   * The board as the player knows it (the New game wizard's spec sheet,
+   * docs/rom/hardware.md "Which CPS-1"): which of the family's boards the ROM
+   * is laid out for, its chips and clocks as the emulator runs them (`mhz`)
+   * and as the real board did (`realMhz`).
+   */
+  hardware: {
+    year: number;
+    set: string;
+    core: string;
+    cpu: { chip: string; mhz: number; realMhz: number };
+    soundCpu: { chip: string; mhz: number };
+    sound: { chip: string; channels: number };
+    colors: { onScreen: number; total: number };
+    spritesPerScreen: number;
+    /** Sprite entries the engine draws a frame (of `spritesPerScreen`). */
+    engineSprites: number;
+    workRamKB: number;
+  };
   /** Bytes one tile of that size takes in the graphics ROM (4 bits per pixel). */
   tileBytes(size: number): number;
   meters(project: Project): Meter[];
@@ -118,6 +137,19 @@ export const CPS1: BoardProfile = {
   colors: { bits: 12, perPalette: 15, snap: snapColor, isBoardColor },
   palettes: { sprite: 32, play: 32, far: 32, text: 32 },
   rom: { graphicsBytes: 6 * 1024 * 1024, programBytes: 2 * 1024 * 1024, soundBytes: 4 * 1024 * 1024 },
+  // the QSound board (the slammast set; mame2003-plus cps1.c: machine qsound, a 68000 at 10 MHz, its Z80 at 6 MHz)
+  hardware: {
+    year: 1992,
+    set: "slammast",
+    core: "mame2003-plus",
+    cpu: { chip: "68000", mhz: 10, realMhz: 12 },
+    soundCpu: { chip: "Z80", mhz: 6 },
+    sound: { chip: "QSound", channels: 16 },
+    colors: { onScreen: 4096, total: 65536 },
+    spritesPerScreen: 256,
+    engineSprites: 248,
+    workRamKB: 64,
+  },
   sprites: { perScreen: 256, tile: 16, margin: 64, wrap: 512 },
   heights: { hero: [40, 48], enemy: [16, 64], civilian: [20, 44], boss: [64, 160] },
   levels: { maxW: 16384, maxH: 2048, cell: 16 },
