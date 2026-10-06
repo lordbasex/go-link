@@ -2,26 +2,28 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * A place in the main header that a page can fill with its own buttons
- * (the room puts its actions there). The header is rendered once, outside
- * the routes, so the page reaches it through a portal into this element.
+ * Places in the main header that a page can fill with its own content (the
+ * room puts its title on the left and its actions on the right). The header
+ * is rendered once, outside the routes, so the page reaches them through a
+ * portal into these elements.
  */
-let slot: HTMLElement | null = null;
+export type HeaderSlotName = "info" | "actions";
+const slots: Record<HeaderSlotName, HTMLElement | null> = { info: null, actions: null };
 const listeners = new Set<() => void>();
 
-export function setHeaderSlot(el: HTMLElement | null) {
-  if (slot === el) return;
-  slot = el;
+export function setHeaderSlot(name: HeaderSlotName, el: HTMLElement | null) {
+  if (slots[name] === el) return;
+  slots[name] = el;
   listeners.forEach((l) => l());
 }
 
-export function useHeaderSlot(): HTMLElement | null {
+export function useHeaderSlot(name: HeaderSlotName): HTMLElement | null {
   return useSyncExternalStore(
     (l) => {
       listeners.add(l);
       return () => listeners.delete(l);
     },
-    () => slot,
+    () => slots[name],
     () => null,
   );
 }

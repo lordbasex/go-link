@@ -6,7 +6,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (website)
 
-- **A cleaner room header:** in a room, the top bar keeps only the logo, the room's own buttons (chat, How to play, Invite, Close game, Leave), your device, the language and a "…" with the signaling server, the theme and GitHub. The section tabs are gone there, and the room's buttons no longer take a row of their own under the title.
+- **A cleaner room header:** in a room, the top bar is one row: the logo, the room (its picture, title and details), the room's own buttons (chat, How to play, Invite, Close game, Leave), your device, the language and a "…" with the signaling server, the theme and GitHub. The section tabs are gone there, and the room's title and buttons no longer take rows of their own, so the video gets more height.
 - **Language is one button:** the three EN/ES/PT bubbles became one button with the current language and a menu to pick another, on every page.
 
 ### Docs

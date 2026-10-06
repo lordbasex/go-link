@@ -1025,7 +1025,8 @@ export function RoomPage() {
   };
 
   // Where the room's actions go (read before any early return: hooks).
-  const headerSlot = useHeaderSlot();
+  const headerInfo = useHeaderSlot("info");
+  const headerActions = useHeaderSlot("actions");
   const wide = useMediaQuery("(min-width: 701px)");
 
   if (!demo) {
@@ -1152,9 +1153,9 @@ export function RoomPage() {
       return next;
     });
 
-  // On wide screens the room's actions sit in the main header, next to the
-  // logo, instead of a row of their own under it.
-  const inHeader = wide && headerSlot !== null;
+  // On wide screens the room's title and actions sit in the main header, one
+  // row next to the logo, so the video gets the height.
+  const inHeader = wide && headerInfo !== null && headerActions !== null;
   const roomActions = (
     <>
       {!demo && (
@@ -1218,49 +1219,59 @@ export function RoomPage() {
     </>
   );
 
+  const hero = (
+    <PageHero
+      className={`room-hero room-bar${inHeader ? " is-in-header" : ""}`}
+      tile={
+        <HeroTile
+          art={meta?.art ?? info?.art}
+          status={streaming ? "live" : live.state === "failed" ? "failed" : "idle"}
+        >
+          <GamepadIcon size={32} />
+        </HeroTile>
+      }
+      eyebrow={
+        <>
+          <Link to="/rooms" className="back-link">
+            <ChevronLeftIcon size={14} />
+            {t.nav.backShort}
+          </Link>
+          <span aria-hidden="true">·</span>
+          {isPrivate && <LockIcon size={12} />}
+          {isPrivate ? t.room.private : t.room.public}
+        </>
+      }
+      title={<span className="room-title">{title}</span>}
+      chips={
+        <>
+          {subtitle && <Chip>{subtitle}</Chip>}
+          {!demo && live.room && (
+            <Chip className="chip-keep">
+              {t.room.playersChip(seatedCount, live.room.maxPlayers)}
+            </Chip>
+          )}
+          {ownsRoom && <Chip mono>{t.room.roomShort(roomId)}</Chip>}
+          {guest && (
+            <Chip className="chip-guest chip-keep" title={t.guest.badgeHint}>
+              {t.guest.badge}
+            </Chip>
+          )}
+        </>
+      }
+      actions={inHeader ? undefined : roomActions}
+    />
+  );
+
   return (
     <div className={`page room-page${consoleMode ? " is-console-mode" : ""}`}>
-      <PageHero
-        className="room-hero room-bar"
-        tile={
-          <HeroTile
-            art={meta?.art ?? info?.art}
-            status={streaming ? "live" : live.state === "failed" ? "failed" : "idle"}
-          >
-            <GamepadIcon size={32} />
-          </HeroTile>
-        }
-        eyebrow={
-          <>
-            <Link to="/rooms" className="back-link">
-              <ChevronLeftIcon size={14} />
-              {t.nav.backShort}
-            </Link>
-            <span aria-hidden="true">·</span>
-            {isPrivate && <LockIcon size={12} />}
-            {isPrivate ? t.room.private : t.room.public}
-          </>
-        }
-        title={<span className="room-title">{title}</span>}
-        chips={
-          <>
-            {subtitle && <Chip>{subtitle}</Chip>}
-            {!demo && live.room && (
-              <Chip className="chip-keep">
-                {t.room.playersChip(seatedCount, live.room.maxPlayers)}
-              </Chip>
-            )}
-            {ownsRoom && <Chip mono>{t.room.roomShort(roomId)}</Chip>}
-            {guest && (
-              <Chip className="chip-guest chip-keep" title={t.guest.badgeHint}>
-                {t.guest.badge}
-              </Chip>
-            )}
-          </>
-        }
-        actions={inHeader ? undefined : roomActions}
-      />
-      {inHeader && headerSlot && createPortal(roomActions, headerSlot)}
+      {inHeader ? (
+        <>
+          {createPortal(hero, headerInfo!)}
+          {createPortal(roomActions, headerActions!)}
+        </>
+      ) : (
+        hero
+      )}
 
       <div className="page-body room-layout">
         <div className="room-main">

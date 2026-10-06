@@ -1902,7 +1902,21 @@ body .video-stage.has-touchpad.is-console .swap-toast { top: calc(var(--sy) + 48
    and the "…" with the other tools, on every screen size. */
 .header-slot { display: flex; align-items: center; gap: 8px; padding-right: 14px; margin-right: 2px; border-right: 1px solid var(--color-divider); }
 .header-slot:empty { display: none; }
-@media (min-width: 701px) { .app-header-main.is-room { height: 64px; } }
+@media (min-width: 701px) { .app-header-main.is-room { height: auto; min-height: 64px; padding-block: 10px; } }
+.app-header-main.is-room .header-left { flex: 1; gap: 24px; }
+.header-info-slot { flex: 1; min-width: 0; display: flex; }
+.header-info-slot:empty { display: none; }
+/* The room's title in the header: one compact block, never wrapping. */
+.room-hero.is-in-header { padding: 0; margin: 0; flex-wrap: nowrap; min-width: 0; flex: 1; }
+.room-hero.is-in-header .dash-hero-id { gap: 12px; min-width: 0; }
+.room-hero.is-in-header .hero-tile { width: 44px; height: 44px; flex-shrink: 0; }
+.room-hero.is-in-header .hero-text { min-width: 0; gap: 2px; }
+.room-hero.is-in-header .hero-eyebrow { font-size: 11px; }
+.room-hero.is-in-header .dash-title { font-size: 20px; line-height: 1.2; }
+.room-hero.is-in-header .room-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-hero.is-in-header .dash-chips { flex-wrap: nowrap; overflow: hidden; font-size: 12px; gap: 6px; }
+.room-hero.is-in-header .dash-chip { white-space: nowrap; padding-block: 2px; }
+.room-hero.is-in-header .dash-chip:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .app-header-main.is-room .header-right { position: relative; gap: 10px; }
 .app-header-main.is-room .header-more { display: inline-flex; }
 .app-header-main.is-room .header-more.is-on { border-color: var(--color-accent); color: var(--color-accent-text); }

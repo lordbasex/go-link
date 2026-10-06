@@ -151,6 +151,10 @@ export function LangMenu() {
   );
 }
 
+// Stable callbacks, so a header render never empties the slots for a moment.
+const infoSlotRef = (el: HTMLDivElement | null) => setHeaderSlot("info", el);
+const actionsSlotRef = (el: HTMLDivElement | null) => setHeaderSlot("actions", el);
+
 export function MainHeader() {
   const { panel } = useSignal();
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -181,6 +185,7 @@ export function MainHeader() {
     <header className={`app-header app-header-main${inRoom ? " is-room" : ""}`}>
       <div className="header-left">
         <Brand />
+        {inRoom && <div className="header-info-slot" ref={infoSlotRef} />}
         {!inRoom && <nav aria-label={t.nav.label} className="main-nav">
           {/* The device's own panel is for managing it: no landing page. */}
           {!panel &&
@@ -214,7 +219,7 @@ export function MainHeader() {
         </nav>}
       </div>
       <div className="header-right" ref={toolsRef}>
-        {inRoom && <div className="header-slot" ref={setHeaderSlot} />}
+        {inRoom && <div className="header-slot" ref={actionsSlotRef} />}
         {/* The landing keeps no link to a device and never connects. */}
         {ROLE !== "site" && <DeviceBadge />}
         {/* Always in sight (not folded into the tools on phones): it wants to be found. */}
