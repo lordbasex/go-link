@@ -1981,3 +1981,19 @@
     font-size: 34px;
   }
 }
+
+/* the game's own characters drawn with their standing frame (ownSprites.tsx) */
+.studio-object-body.has-sprite {
+  background: transparent;
+  border: 0;
+}
+.studio-own-sprite {
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.studio-pick-own {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

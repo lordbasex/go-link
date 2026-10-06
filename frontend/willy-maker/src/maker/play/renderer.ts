@@ -12,7 +12,9 @@ import { CLEAR_FRAMES, FLY_MID, TOP_MID, RACE_CALL_ROW, RACE_COUNT, RACE_LAPS, S
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
-import { HEIGHTS, drawFrame, frameOf, heroAnim, type PlaySprites, type Sheet } from "./sprites";
+import { HEIGHTS, drawFrame, frameOf, type PlaySprites, type Sheet } from "./sprites";
+import { airFrame, heroLook, LOOK_ANIMS, loopFrame, moveFrame, type HeroLook, type LookAnimId } from "../engine/anims";
+import { COMBO_KICK_FRAMES, Input, KICK_FRAMES, KNIFE_FRAMES, LAND_FRAMES, PUNCH_FRAMES, THUMBS_FRAMES, TURN_FRAMES } from "../engine/rules";
 import { TEXT_INKS, boardTextWidth, drawBoardText } from "../game/boardText";
 
 export interface Overlays {
@@ -641,59 +643,24 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
     }
     const fy = (p.y >> 4) + (p.hop >> 4);
     const moving = (p.pad & 3) !== 0;
-    let anim = "idle";
-    let t = p.t;
-    // the moves of docs/willy-maker/moves.md, most specific first
-    if (p.climbing) {
-      anim = "jump";
-      t = (p.y >> 7) & 1 ? 12 : 6;
-    } else if (!p.onGround) {
-      if (p.kickT) {
-        anim = "jump_kick";
-        t = 20 - p.kickT;
-      } else if (p.jetting) anim = "jetpack";
-      else if (p.airJumps && p.vy < 0) {
-        anim = "double_jump";
-        t = p.vy < -60 ? 6 : 12;
-      } else {
-        anim = "jump";
-        t = p.vy < -60 ? 6 : p.vy < 0 ? 12 : p.vy < 60 ? 18 : 24;
-      }
-    } else if (p.grabbed) {
-      // holding an enemy: the guard pose
-      anim = "knife";
-      t = 0;
-    } else if (p.punchT) {
-      // the beat 'em up's punches, and the combo's kick
-      anim = p.combo === 3 ? "jump_kick" : "punch";
-      // versus fighting's specials hold the punch's reaching frame
-      t = p.combo >= 4 ? 8 : (p.combo === 3 ? 20 : 16) - p.punchT;
-    } else if (p.crouching) anim = moving ? "crawl" : "crouch";
-    else if (p.knifeT) {
-      anim = "knife";
-      t = 16 - p.knifeT;
-    } else if (p.bazookaT) anim = "bazooka";
-    else if (p.firing) anim = "machine_gun";
-    else if (p.landT) anim = "land";
-    else if (p.turnT && moving) anim = "turn";
-    else if (moving) {
-      anim = "run";
-      t = p.running ? p.t : p.t / 2;
-    } else if (game.outcome === "cleared") anim = "victory";
-    else if (p.thumbsT) anim = "thumbs_up";
-    else if (p.idleT >= YAWN_AFTER) anim = "yawn";
     const own = ownHeroes?.[p.index];
+    const drawn = own ?? sheet;
     if (game.rules.topdown) {
       // the top-down run and gun (phase 3): seen from above, a soldier facing its aim, or its jeep
       const way = topWay(p.aimX, p.aimY);
       if (p.jeep) drawPens(ctx, p.x - 8, fy - TOP_MID - 8, 16, 16, (x, y) => carPen(x, y, way * 2), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffffff", "#000000"]);
       else drawPens(ctx, p.x - 8, fy - TOP_MID - 8, 16, 16, (x, y) => soldierPen(x, y, way), ["", CROSS_COLORS[p.index] ?? "#ffffff", "#ffcc22", "#ffffff", "#000000"]);
-    } else if (own) {
+    } else if (drawn) {
+      // the move's animation and frame, as the ROM picks them (engine/anims.ts, engine.c draw_player): any hero, any number of frames
+      const look = lookOf(drawn);
+      const pick = heroFrame(p, look, drawn, moving, game.outcome === "cleared", !own);
+      const def = drawn.anims[pick.anim];
+      const id = def?.frames[Math.min(pick.index, def.frames.length - 1)];
+      const f = id ? drawn.frames[id] : undefined;
       // an own hero is saved at board scale: its idle frame's feet give its height
-      const ref = own.frames[own.anims.idle?.frames[0] ?? ""];
-      sheetDraw(ctx, own, heroAnim(own, anim), "idle", t, p.x, fy, ref?.py ?? HEIGHTS.hero, p.flip, 1);
-    } else if (sheet) sheetDraw(ctx, sheet, heroAnim(sheet, anim), "idle", t, p.x, fy, HEIGHTS.hero, p.flip, 1);
-    else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
+      const ref = drawn.frames[drawn.anims.idle?.frames[0] ?? ""];
+      if (f) drawFrame(ctx, drawn, f, ref, p.x, fy, own ? (ref?.py ?? HEIGHTS.hero) : HEIGHTS.hero, pick.flip ?? p.flip, 1);
+    } else box(ctx, p.x, fy, 14, HEIGHTS.hero, DEFAULT_COLORS.players[p.index] ?? ART.window);
     ctx.fillStyle = ART.shot;
     // versus fighting's fireball is a glowing ball (the ROM uses the shot's flash tile)
     if (game.rules.versus)
@@ -728,6 +695,64 @@ function drawObjects(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySpr
   for (const a of actors) a.draw();
   ctx.fillStyle = ART.enemyShot;
   for (const s of game.enemyShots) ctx.fillRect(s.x - 2, s.y - 1, 4, 3);
+}
+
+const looks = new WeakMap<Sheet, HeroLook | null>();
+/** A sheet's engine animations (engine/anims.ts heroLook), worked out once. */
+function lookOf(sheet: Sheet): HeroLook | null {
+  if (!looks.has(sheet)) looks.set(sheet, heroLook((n) => !!sheet.anims[n]?.frames.length, Object.keys(sheet.anims)));
+  return looks.get(sheet)!;
+}
+
+type HeroState = Game["players"][number];
+
+/**
+ * The hero's animation and frame this game frame, in engine.c draw_player's
+ * order. Willy (`willy`: the engine's own sheet) keeps his own punch.
+ */
+export function heroFrame(p: HeroState, look: HeroLook | null, sheet: Sheet, moving: boolean, cleared: boolean, willy = false): { anim: string; index: number; flip?: boolean } {
+  const anim = (id: LookAnimId) => look?.anims[id] ?? "idle";
+  const count = (name: string) => Math.max(1, sheet.anims[name]?.frames.length ?? 1);
+  const fps = (name: string) => sheet.anims[name]?.fps ?? 1;
+  const fits = (id: LookAnimId) => !!look && (look.fit & (1 << LOOK_ANIMS.indexOf(id))) !== 0;
+  const loop = (id: LookAnimId, t: number) => ({ anim: anim(id), index: loopFrame(count(anim(id)), fps(anim(id)), t) });
+  const move = (id: LookAnimId, t: number, d: number) => ({ anim: anim(id), index: moveFrame(count(anim(id)), fps(anim(id)), t, d, fits(id)) });
+  if (p.climbing) {
+    // the jump's second frame, turned each half cell as it climbs
+    const flip = (p.pad & (Input.Up | Input.Down)) !== 0 ? ((p.y >> 7) & 1) === 1 : false;
+    return { anim: anim("jump"), index: count(anim("jump")) > 1 ? 1 : 0, flip };
+  }
+  if (!p.onGround) {
+    if (p.kickT) return move("kick", KICK_FRAMES - p.kickT, KICK_FRAMES);
+    const id: LookAnimId = p.jetting ? "jetpack" : p.airJumps && p.vy < 0 ? "double_jump" : "jump";
+    return { anim: anim(id), index: airFrame(count(anim(id)), p.vy) };
+  }
+  if (p.grabbed) return { anim: anim("knife"), index: 0 };
+  if (p.punchT) {
+    if (p.combo === 3) return move("kick", COMBO_KICK_FRAMES - p.punchT, COMBO_KICK_FRAMES);
+    if (willy && sheet.anims.punch?.frames.length) {
+      // Willy's own punch (art.mjs withPunch)
+      const k = sheet.anims.punch.frames.length;
+      return { anim: "punch", index: (p.combo >= 4 ? 2 : Math.floor((PUNCH_FRAMES - p.punchT) / 4)) % k };
+    }
+    const k = anim("knife");
+    return { anim: k, index: p.combo >= 4 ? count(k) >> 1 : moveFrame(count(k), fps(k), PUNCH_FRAMES - p.punchT, PUNCH_FRAMES, fits("knife")) };
+  }
+  if (p.crouching) return moving ? loop("crawl", p.t) : { anim: anim("crouch"), index: 0 };
+  if (p.knifeT) return move("knife", KNIFE_FRAMES - p.knifeT, KNIFE_FRAMES);
+  if (p.bazookaT) return loop("bazooka", p.t);
+  if (p.firing) return loop("gun", p.t);
+  if (p.landT) return move("land", LAND_FRAMES - p.landT, LAND_FRAMES);
+  if (p.turnT && moving) return move("turn", TURN_FRAMES - p.turnT, TURN_FRAMES);
+  if (moving) {
+    // walking and running each with their own animation and speed (wm_look walk_rate, run_rate)
+    const rate = p.running ? (look?.runRate ?? 2) : (look?.walkRate ?? 2);
+    return loop(p.running ? "run" : "walk", Math.floor((p.t * rate) / 2));
+  }
+  if (cleared) return loop("victory", p.t);
+  if (p.thumbsT) return move("thumbs", THUMBS_FRAMES - p.thumbsT, THUMBS_FRAMES);
+  if (p.idleT >= YAWN_AFTER) return loop("yawn", p.idleT - YAWN_AFTER);
+  return loop("idle", p.t);
 }
 
 function sheetDraw(ctx: CanvasRenderingContext2D, sheet: Sheet, anim: string, refAnim: string, t: number, x: number, y: number, h: number, flip: boolean, alpha: number): void {

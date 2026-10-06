@@ -98,6 +98,7 @@ export const promptEn = {
     attack: "The boss's attack.",
   } as Record<string, string>,
   animExample: "Willy as an example",
+  animOwn: "Your character, with the frames you gave it",
   animShownWith: (name: string) => `shown with “${name}”: Willy has no own one`,
   animNoExample: "No example drawn yet",
   animFrames: (n: number) => `${n} ${n === 1 ? "frame" : "frames"}`,

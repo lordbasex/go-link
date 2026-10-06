@@ -10,6 +10,8 @@ import { playEs } from "../i18n/play.es";
 import { playPt } from "../i18n/play.pt";
 import { PlayControls, PlayView, applyEdit, planPiece, toInput } from "./index";
 import { characterSheet, heroAnim, type Sheet } from "./sprites";
+import { heroFrame } from "./renderer";
+import { heroLook } from "../engine/anims";
 
 function shape(v: unknown): unknown {
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shape(x)]));
@@ -138,6 +140,20 @@ describe("own heroes in play mode (T-24)", () => {
     expect(heroAnim(sheet(["idle", "fire"]), "machine_gun")).toBe("fire");
     expect(heroAnim(sheet(["idle", "fire"]), "bazooka")).toBe("fire");
     expect(heroAnim(sheet(["idle"]), "jump")).toBe("idle");
+  });
+
+  it("walks through every frame of the hero's walk at its speed, and runs with it twice as fast (as the ROM)", () => {
+    const frames = Object.fromEntries([...Array(9)].map((_, i) => [`w${i}`, { x: 0, y: 0, w: 32, h: 48, px: 16, py: 46 }]));
+    const walker: Sheet = { image: {} as CanvasImageSource, frames, anims: { idle: { frames: ["w0"], fps: 4, loop: true }, walk: { frames: Object.keys(frames), fps: 12, loop: true } } };
+    const look = heroLook((n) => !!walker.anims[n]?.frames.length, Object.keys(walker.anims));
+    const at = (t: number, running: boolean) => {
+      const p = { climbing: false, onGround: true, grabbed: false, punchT: 0, crouching: false, knifeT: 0, bazookaT: 0, firing: false, landT: 0, turnT: 0, thumbsT: 0, idleT: 0, kickT: 0, jetting: false, airJumps: 0, vy: 0, y: 0, combo: 0, pad: 2, t, running } as unknown as Parameters<typeof heroFrame>[0];
+      return heroFrame(p, look, walker, true, false);
+    };
+    const walking = [...Array(45)].map((_, t) => at(t, false));
+    expect(new Set(walking.map((f) => f.anim))).toEqual(new Set(["walk"]));
+    expect(walking.map((f) => f.index)).toEqual([...Array(45)].map((_, t) => Math.floor(t / 5) % 9));
+    expect([...Array(10)].map((_, t) => at(t, true).index)).toEqual([0, 0, 0, 1, 1, 2, 2, 2, 3, 3]);
   });
 
   it("gives no sheet for a character without a picture or frames", async () => {

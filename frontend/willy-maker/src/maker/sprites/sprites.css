@@ -427,13 +427,16 @@
   white-space: nowrap;
 }
 
+/* an animation's dot: green once it has frames, grey while it has none */
 .wms-dot {
-  --c: var(--color-border-strong);
   width: 8px;
   height: 8px;
   flex: none;
   border-radius: 50%;
-  background: var(--c);
+  background: var(--color-border-strong);
+}
+.wms-dot.is-on {
+  background: var(--color-ok);
 }
 
 .wms-anim-edit {
@@ -454,9 +457,9 @@
 .wms-frames {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 12px;
   margin: 0;
-  padding: 0;
+  padding: 6px 0 0;
   list-style: none;
 }
 
@@ -595,4 +598,379 @@
 .wms-byrows {
   align-items: flex-end;
   margin-bottom: 8px;
+}
+
+/* the pixel editor (ui/PixelEditor.tsx), laid out like Scratch's costume editor */
+.wms-pe-back {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--backdrop, rgba(0, 0, 0, 0.6));
+}
+.wms-pe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 32px);
+  padding: 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 60px var(--shadow-strong);
+  outline: none;
+}
+.wms-pe-top,
+.wms-pe-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.wms-pe-title {
+  font-size: 15px;
+}
+.wms-pe-body {
+  display: grid;
+  grid-template-columns: 96px auto minmax(0, 1fr) 240px;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+.wms-pe-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wms-pe-tool {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+.wms-pe-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  max-width: 80px;
+}
+.wms-pe-opt input[type="range"] {
+  width: 76px;
+}
+.wms-pe-stage {
+  min-height: 300px;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  /* a checkerboard shows the transparent pixels */
+  background-color: var(--color-surface);
+  background-image: linear-gradient(45deg, var(--color-surface-2) 25%, transparent 25%), linear-gradient(-45deg, var(--color-surface-2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--color-surface-2) 75%), linear-gradient(-45deg, transparent 75%, var(--color-surface-2) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.wms-pe-canvas {
+  display: block;
+  image-rendering: pixelated;
+  touch-action: none;
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+.wms-pe-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100vh - 200px);
+  min-width: 0;
+  overflow-y: auto;
+}
+.wms-pe-color input[type="color"] {
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  background: none;
+}
+.wms-pe-palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+}
+.wms-pe-swatch {
+  display: block;
+  aspect-ratio: 1;
+  min-width: 18px;
+  border: 1px solid var(--color-border-strong);
+  cursor: pointer;
+  padding: 0;
+}
+.wms-pe-swatch.is-big {
+  width: 28px;
+  height: 28px;
+}
+.wms-pe-swatch.is-on {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.wms-pe-zones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.wms-pe-zones li.is-over {
+  color: var(--color-danger-text);
+}
+.wms-pe-hint {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 380px;
+  font-size: 11px;
+}
+/* a frame's picture opens the pixel editor */
+.wms-frame-open {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.wms-frame-open:hover,
+.wms-frame-open:focus-visible {
+  border-color: var(--color-accent);
+}
+.wms-frame-pen {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+}
+.wms-frame-hover {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 18px;
+}
+.wms-frame-open:hover .wms-frame-hover,
+.wms-frame-open:focus-visible .wms-frame-hover {
+  display: grid;
+}
+/* the animation's frames, like Scratch's list of costumes */
+.wms-pe-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+.wms-pe-frames {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: calc(100vh - 330px);
+}
+.wms-pe-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 72px;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+.wms-pe-frame.is-on {
+  border: 2px solid var(--color-accent);
+}
+.wms-pe-thumb {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+}
+.wms-pe-frame-n {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.wms-pe-strip-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.wms-pe-strip-actions .wms-cap {
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+}
+.wms-pe-preview {
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+@media (max-width: 900px) {
+  .wms-pe-body {
+    grid-template-columns: 80px auto minmax(0, 1fr);
+  }
+  .wms-pe-side {
+    grid-column: 1 / -1;
+  }
+}
+
+/* the pixel editor's layers (top first) */
+.wms-pe-layers {
+  /* the side column scrolls; the list keeps its height */
+  flex: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.wms-pe-layer {
+  display: grid;
+  grid-template-columns: 22px 22px 22px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid transparent;
+  background: var(--color-surface);
+}
+.wms-pe-layer.is-on {
+  border-color: var(--color-accent);
+}
+.wms-pe-icon,
+.wms-pe-pick {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.wms-pe-icon.is-on {
+  color: var(--color-accent);
+}
+.wms-pe-pick {
+  height: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.wms-pe-pick canvas {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+}
+.wms-pe-layer-name {
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+}
+.wms-pe-layer-name:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: var(--color-bg);
+}
+.wms-pe-layer-actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+}
+.wms-pe-layer-actions .wms-cap {
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* a vector layer's controls */
+.wms-pe-vops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+.wms-pe-vstyle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+}
+.wms-pe-vstyle input[type="color"] {
+  width: 36px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  background: none;
+}
+.wms-pe-pick {
+  position: relative;
+}
+.wms-pe-vbadge {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  color: var(--color-accent);
+}
+
+/* the canvas size form, under the top bar */
+.wms-pe-sizing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+}
+.wms-pe-sizing label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wms-pe-sizing input {
+  width: 64px;
+}
+.wms-pe-sizing .wms-note {
+  flex: 1 1 200px;
 }

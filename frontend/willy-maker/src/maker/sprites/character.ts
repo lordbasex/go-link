@@ -12,7 +12,8 @@ export type DetectMode = "figures" | "grid";
 
 /** What the importer needs to reopen a character (stored in the project as `source`). */
 export interface CharacterSource {
-  sheet: AssetRef;
+  /** The dropped sheet; null for a character drawn only in the pixel editor. */
+  sheet: AssetRef | null;
   /** The sheet's file name, for the screen. */
   file: string;
   mode: DetectMode;
@@ -59,7 +60,7 @@ export function draftOf(ch: ImportedCharacter): Draft | null {
     role: ch.role,
     height: ch.height,
     file: src.file,
-    sheet: src.sheet,
+    sheet: src.sheet ?? null,
     mode: src.mode,
     tolerance: src.tolerance,
     grid: { ...src.grid },
@@ -122,7 +123,8 @@ export function saveCharacter(project: Project, { draft, atlas, rects, zones }: 
     frames,
     anims,
     swapColors: draft.swapColors.filter((c) => zones.some((z) => z.palette.includes(c))),
-    source: draft.sheet
+    // the sheet and its boxes, and the frames drawn by hand, to open it again
+    source: draft.sheet || draft.frames.some((f) => f.drawn)
       ? { sheet: draft.sheet, file: draft.file, mode: draft.mode, tolerance: draft.tolerance, grid: { ...draft.grid }, frames: draft.frames.map((f) => ({ ...f })), ...(draft.hidden.length ? { hiddenAnims: [...draft.hidden] } : {}) }
       : undefined,
   };

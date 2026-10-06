@@ -24,7 +24,6 @@ export interface AnimationPanelProps {
   thumbs: ReadonlyMap<string, ScaledFrame>;
   /** The frame's number on the sheet. */
   numberOf(id: string): number;
-  colorOf(anim: string): number;
   onActive(name: string): void;
   onChange(anims: Record<string, DraftAnim>): void;
   onAddSelected(name: string): void;
@@ -34,6 +33,12 @@ export interface AnimationPanelProps {
   /** The animations of each picture of the image AI prompt, to give a pasted sheet's rows their animations. */
   plan?: { name: string }[][];
   onRows?(sheet: number): string;
+  /** Opens a frame in the pixel editor. */
+  onEditFrame?(id: string): void;
+  /** Opens an animation in the pixel editor to draw its frames (one with none yet). */
+  onDrawFrames?(name: string): void;
+  /** The frames whose pixels were edited by hand. */
+  edited?: ReadonlySet<string>;
 }
 
 /** A name compared loosely: no accents, no case, no spaces or underscores. */
@@ -53,6 +58,12 @@ export function animList(role: CharacterRole, anims: Record<string, DraftAnim>, 
   return [...presets, ...extra];
 }
 
+/** An animation's frames as the character shows them on the board, when it has any. */
+function ownFrames(a: DraftAnim | undefined, thumbs: ReadonlyMap<string, ScaledFrame>) {
+  const frames = (a?.frames ?? []).map((id) => thumbs.get(id)).filter((f): f is ScaledFrame => !!f);
+  return frames.length ? { frames, fps: a!.fps, loop: a!.loop } : null;
+}
+
 function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -61,7 +72,7 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows, onEditFrame, onDrawFrames, edited }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
   const [sheet, setSheet] = useState(0);
   const [rowsNote, setRowsNote] = useState("");
@@ -147,7 +158,7 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
               onFocus={() => setPeek(p.name)}
               onBlur={() => setPeek((x) => (x === p.name ? null : x))}
             >
-              <span className="wms-dot" data-c={n ? colorOf(p.name) : -1} aria-hidden="true" />
+              <span className={`wms-dot${n ? " is-on" : ""}`} aria-hidden="true" />
               <span className="wms-anim-name">
                 {label(p.name)}
                 {label(p.name) !== p.name && <span className="wms-anim-id">{p.name}</span>}
@@ -162,7 +173,8 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
                     name={p.name}
                     frames={p.frames || n}
                     text={[tp.animDesc[p.name], fmt(t.internalName, { id: p.name })].filter(Boolean).join(" ")}
-                    labels={{ example: tp.animExample, shownWith: tp.animShownWith, none: tp.animNoExample, frames: tp.animFrames }}
+                    labels={{ example: tp.animExample, shownWith: tp.animShownWith, none: tp.animNoExample, frames: tp.animFrames, own: tp.animOwn }}
+                    own={ownFrames(a, thumbs)}
                   />
                 </span>
               )}
@@ -190,8 +202,24 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
           <ol className="wms-frames">
             {(current?.frames ?? []).map((id, i) => (
               <li key={`${id}-${i}`} className="wms-frame-chip">
-                <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
-                <span className="wms-frame-n">{numberOf(id)}</span>
+                {onEditFrame ? (
+                  // the picture is the button that opens the pixel editor (a pencil on it, a bigger one over it on hover; the tooltip says it)
+                  <button type="button" className="wms-frame-open" aria-label={fmt(t.pixel.edit, { n: numberOf(id) })} data-tip={fmt(t.pixel.edit, { n: numberOf(id) })} onClick={() => onEditFrame(id)}>
+                    <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
+                    <span className="wms-frame-pen" aria-hidden="true">
+                      ✎
+                    </span>
+                    <span className="wms-frame-hover" aria-hidden="true">
+                      ✎
+                    </span>
+                  </button>
+                ) : (
+                  <Thumb frame={thumbs.get(id)} label={fmt(t.frameLabel, { n: numberOf(id) })} />
+                )}
+                <span className="wms-frame-n">
+                  {numberOf(id)}
+                  {edited?.has(id) ? ` · ${t.pixel.edited}` : ""}
+                </span>
                 <button
                   type="button"
                   className="wms-x"
@@ -205,6 +233,11 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
             ))}
           </ol>
           <div className="wms-row">
+            {onDrawFrames && (
+              <button type="button" className="wms-cap" onClick={() => onDrawFrames(active)}>
+                {current?.frames.length ? t.pixel.editFrames : t.pixel.drawFrames}
+              </button>
+            )}
             <button type="button" className="wms-cap is-on" disabled={!selectedCount} onClick={() => onAddSelected(active)}>
               + {t.addSelected}
               {selectedCount ? ` (${selectedCount})` : ""}

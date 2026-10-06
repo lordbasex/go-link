@@ -44,6 +44,7 @@ import { EXAMPLE_FILE, EXAMPLE_URL, exampleLevel } from "./example";
 import { fitBackground, putBackground } from "./background";
 import type { GameSnapshot } from "../../engine";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { OwnSpritesProvider } from "./ownSprites";
 import { drawableKinds, gridColumns, MOD_PREFIX, StudioUi, UiProvider, useUiState, type PickerTab, type StudioTool, type Workspace } from "./state";
 import "../modernist.css";
 import "./studio.css";
@@ -654,6 +655,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
 
   const loading = <p className="studio-loading">{core.home.loading}</p>;
   return (
+    <OwnSpritesProvider project={p}>
     <div className="mdn studio" onContextMenu={(e) => e.target === e.currentTarget && e.preventDefault()}>
       <Header
         project={p}
@@ -822,6 +824,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
         />
       )}
     </div>
+    </OwnSpritesProvider>
   );
 }
 

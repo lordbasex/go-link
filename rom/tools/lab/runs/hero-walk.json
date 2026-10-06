@@ -1,0 +1,81 @@
+{
+ "name": "hero-walk",
+ "description": "An own hero's walk and run (WM_ROM_OUT/herowalk of rom.test.tsx: the hero fixture with a nine frame walk at 12 fps and no run, wm_data 28): player 1 walks right, every frame of the walk at its speed (a new frame each five game frames), stops, then double-taps right and runs with the walk twice as fast. The checkpoints follow the walk frame by frame once the start's blinking is over (222-237) and the run (300-303).",
+ "frames": 340,
+ "checkpoints": [
+  222,
+  223,
+  224,
+  225,
+  226,
+  227,
+  228,
+  229,
+  230,
+  231,
+  232,
+  233,
+  234,
+  235,
+  236,
+  237,
+  300,
+  301,
+  302,
+  303
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 240,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 270,
+   "to": 273,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 278,
+   "to": 330,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ],
+ "expect": [
+  {
+   "frame": 230,
+   "path": "players.0.running",
+   "equals": false
+  },
+  {
+   "frame": 300,
+   "path": "players.0.running",
+   "equals": true
+  }
+ ]
+}

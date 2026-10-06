@@ -59,7 +59,7 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(27);
+    expect(u16(d, 4)).toBe(28);
     expect(u16(d, 6)).toBe(0xbe);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
@@ -511,13 +511,16 @@ describe("Create ROM with the game's own hero", () => {
     expect(turn).toBe(run);
     expect([kick, doubleJump, jetpack]).toEqual([jump, jump, jump]);
     // the palettes: the smallest free run that fits (recruit 1 is worn; after the engine's art, the boss's red and the crosshairs, only two are left, so recruit 2's four)
-    expect(u16(d, l + 0x40)).toBe(8);
-    expect(u16(d, l + 0x42)).toBe(3);
+    // walking: no walk of its own, so its run at half speed; running at its speed; no timed move of its own (wm_data 28)
+    expect(u32(d, l + 0x40)).toBe(run);
+    expect([u16(d, l + 0x44), u16(d, l + 0x46), u16(d, l + 0x48)]).toEqual([1, 2, 0]);
+    expect(u16(d, l + 0x4a)).toBe(8);
+    expect(u16(d, l + 0x4c)).toBe(3);
     // the body, scaled to the hero's height (T-26), then the palette words
     const b = bodyFor(heroCharacter().height);
     const s16 = (a: number) => (u16(d, a) << 16) >> 16;
-    expect([0x44, 0x46, 0x48, 0x4a, 0x4c, 0x4e, 0x50, 0x52, 0x54, 0x56, 0x58].map((o) => s16(l + o))).toEqual([b.h, b.crouchH, b.halfW, b.jumpVy, b.doubleVy, b.knifeReach, b.kickReach, b.knifeY, b.shotY, b.crouchShotY, b.rocketY]);
-    const words = [...Array(48)].map((_, i) => u16(d, l + 0x5a + i * 2));
+    expect([0x4e, 0x50, 0x52, 0x54, 0x56, 0x58, 0x5a, 0x5c, 0x5e, 0x60, 0x62].map((o) => s16(l + o))).toEqual([b.h, b.crouchH, b.halfW, b.jumpVy, b.doubleVy, b.knifeReach, b.kickReach, b.knifeY, b.shotY, b.crouchShotY, b.rocketY]);
+    const words = [...Array(48)].map((_, i) => u16(d, l + 0x64 + i * 2));
     HERO_PALETTES.forEach((p, k) => p.colors.forEach((c, i) => expect(words[k * 16 + i]).toBe(toCps1([parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]).word)));
     expect(words[15]).toBe(0);
     // Anim { frames, count, fps }: idle skips its empty frame
@@ -590,7 +593,9 @@ describe("Create ROM with the game's own hero", () => {
     // the records: Anim { frames, count, fps }
     expect([u16(d, jetpack! - WM_DATA_ADDR + 4), u16(d, jetpack! - WM_DATA_ADDR + 6)]).toEqual([2, 10]);
     expect([u16(d, kick! - WM_DATA_ADDR + 4), u16(d, kick! - WM_DATA_ADDR + 6)]).toEqual([1, 14]);
-    expect(u16(d, l + 0x40)).toBe(8);
+    // its own jump kick and thumbs up fit their moves (bits 10 and 11); the land is the idle, the turn the run: they keep their speed
+    expect(u16(d, l + 0x48)).toBe((1 << 10) | (1 << 11));
+    expect(u16(d, l + 0x4a)).toBe(8);
   });
 
   it("notes a hero it cannot draw and keeps that player Willy", () => {
@@ -636,6 +641,17 @@ describe("Create ROM with the game's own hero", () => {
       mkdirSync(tallDir, { recursive: true });
       writeFileSync(resolve(tallDir, "slammast.zip"), await zipSet(packGame(tall, engine, (id) => pictures.get(id) ?? null, heroPics).files));
       writeFileSync(resolve(tallDir, "slammast.symbols.json"), romSymbols(engine));
+      // a hero with a nine frame walk at 12 fps and no run, like an image AI's sheet (rom/tools/lab/runs/hero-walk.json):
+      // it walks with every frame at its speed and runs with the walk twice as fast (wm_data 28)
+      const walker = heroProject();
+      const ch = walker.characters[0]!;
+      ch.anims = { idle: ch.anims.idle!, walk: { frames: ["idle_0", "run_0", "run_1", "idle_0", "run_0", "run_1", "idle_0", "run_0", "run_1"], fps: 12, loop: true }, jump: ch.anims.jump! };
+      const walkDir = resolve(out, "herowalk");
+      mkdirSync(walkDir, { recursive: true });
+      const packed = packGame(walker, engine, (id) => pictures.get(id) ?? null, heroPics);
+      expect(packed.notes).toEqual([]);
+      writeFileSync(resolve(walkDir, "slammast.zip"), await zipSet(packed.files));
+      writeFileSync(resolve(walkDir, "symbols.json"), romSymbols(engine));
     }
     const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
     for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);

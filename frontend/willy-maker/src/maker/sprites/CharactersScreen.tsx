@@ -19,7 +19,13 @@ import { ANIMS, DEFAULT_HEIGHT, HEIGHTS } from "./presets";
 import { fmt, useSpritesText } from "./text";
 import { SheetView, type BoxLabel } from "./ui/SheetView";
 import { AnimationPanel, animList } from "./ui/AnimationPanel";
+import { editorBoard, PixelEditor, type EditorFrame, type EditorLayer } from "./ui/PixelEditor";
+import { boardOf } from "../board/cps1";
+import { colorsOf } from "./pixels";
+import { cleanShapes } from "./vector";
 import { BoardPanel } from "./ui/BoardPanel";
+import { drawArt } from "../ui/render";
+import { useProjectImages } from "../ui/useTileImages";
 import "./sprites.css";
 import { characterSheetPlan } from "../prompts/imagePrompt";
 import { rowsOf } from "./rows";
@@ -45,6 +51,13 @@ const ZOOMS = [1, 2, 4];
 /** Frames from boxes: ids f1, f2… after the highest id so far, pivots on the feet. */
 function framesFrom(boxes: Box[], mask: Uint8Array, w: number, start = 1): SourceFrame[] {
   return boxes.map((b, i) => ({ id: `f${start + i}`, ...b, ...feetPivot(mask, w, b) }));
+}
+
+/** Found frames numbered after the drawn ones, so no two share an id. */
+function renumber(found: SourceFrame[], drawn: SourceFrame[]): SourceFrame[] {
+  if (!drawn.length) return found;
+  const start = nextNumber(drawn);
+  return found.map((f, i) => ({ ...f, id: `f${start + i}` }));
 }
 
 const nextNumber = (frames: SourceFrame[]) => frames.reduce((m, f) => Math.max(m, Number(f.id.slice(1)) || 0), 0) + 1;
@@ -79,6 +92,12 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const appendInput = useRef<HTMLInputElement>(null);
   const [appended, setAppended] = useState("");
   const sourceBytes = useRef<{ bytes: Uint8Array; type: string } | null>(null);
+  // frames drawn by hand in the pixel editor (by frame id), at their size on the board; saved as the frame's `edit`
+  const [edits, setEdits] = useState<ReadonlyMap<string, ScaledFrame>>(new Map());
+  // and the layers they were drawn in (by frame id), when they have more than one or a shirt
+  const [layerEdits, setLayerEdits] = useState<ReadonlyMap<string, EditorLayer[]>>(new Map());
+  // the animation open in the pixel editor, and the frame it opened on
+  const [editing, setEditing] = useState<{ anim: string; start: number } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -124,6 +143,49 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     };
   }, [draft.sheet, draft.tolerance, sheet, loadSheet]);
 
+  // reopening a saved character: the frames edited by hand come from storage too
+  const editRefs = draft.frames.flatMap((f) => (f.edit && !edits.has(f.id) ? [[f.id, f.edit] as const] : []));
+  const editKey = editRefs.map(([id, e]) => `${id}:${e.ref}`).join("|");
+  useEffect(() => {
+    if (!editRefs.length) return;
+    let live = true;
+    void Promise.all(
+      editRefs.map(async ([id, e]) => {
+        const asset = await getAsset(e.ref).catch(() => null);
+        if (!asset) return null;
+        const img = await decodeImage(asset.bytes, asset.type).catch(() => null);
+        if (!img) return null;
+        // its layers, when it was drawn in more than one
+        const layers: EditorLayer[] = [];
+        for (const l of e.layers ?? []) {
+          const a = await getAsset(l.ref).catch(() => null);
+          const pic = a ? await decodeImage(a.bytes, a.type).catch(() => null) : null;
+          if (!pic) return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, null] as const;
+          // a vector layer's shapes come back with it
+          layers.push({ name: l.name, pic: { w: pic.w, h: pic.h, rgba: new Uint8Array(pic.data) }, visible: l.visible, locked: l.locked, shirt: !!l.shirt, ...(Array.isArray(l.shapes) ? { shapes: cleanShapes(l.shapes) } : {}) });
+        }
+        return [id, { w: img.w, h: img.h, rgba: new Uint8Array(img.data), px: e.px, py: e.py }, layers.length ? layers : null] as const;
+      }),
+    ).then((pairs) => {
+      if (!live) return;
+      setEdits((cur) => {
+        const next = new Map(cur);
+        for (const p of pairs) if (p) next.set(p[0], p[1]);
+        return next;
+      });
+      setLayerEdits((cur) => {
+        const next = new Map(cur);
+        for (const p of pairs) if (p?.[2]) next.set(p[0], p[2]);
+        return next;
+      });
+    });
+    return () => {
+      live = false;
+    };
+    // the refs to load, not the array, decide
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editKey]);
+
   const sheetUrl = sheet?.url;
   useEffect(
     () => () => {
@@ -158,15 +220,17 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       setSheet(s);
       const frames = detect(s, draft);
       const sheetRef = await putAsset(bytes, type);
+      // the frames drawn in the pixel editor stay with their animations; the sheet's are found again
+      const drawn = new Set(draft.frames.filter((f) => f.drawn).map((f) => f.id));
       // a full or blocked IndexedDB keeps the picture only for this page: say so
       assetsPersistent().then(setPersistent);
       edit((d) => ({
         ...d,
         sheet: sheetRef,
         file: file.name,
-        frames,
+        frames: [...renumber(frames, d.frames.filter((f) => f.drawn)), ...d.frames.filter((f) => f.drawn)],
         name: d.name || file.name.replace(/\.[a-z0-9]+$/i, "").replace(/^\d+[_-]?/, "").replace(/[_-]+/g, " "),
-        anims: Object.fromEntries(Object.entries(d.anims).map(([k, a]) => [k, { ...a, frames: [] }])),
+        anims: Object.fromEntries(Object.entries(d.anims).map(([k, a]) => [k, { ...a, frames: a.frames.filter((id) => drawn.has(id)) }])),
       }));
       setSelected(new Set());
     } catch (e) {
@@ -231,8 +295,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     edit((d) => ({
       ...d,
       ...patch,
-      frames: s ? detect(s, next) : d.frames,
-      anims: s ? Object.fromEntries(Object.entries(d.anims).map(([k, a]) => [k, { ...a, frames: [] }])) : d.anims,
+      frames: s ? [...renumber(detect(s, next), d.frames.filter((f) => f.drawn)), ...d.frames.filter((f) => f.drawn)] : d.frames,
+      anims: s ? Object.fromEntries(Object.entries(d.anims).map(([k, a]) => [k, { ...a, frames: a.frames.filter((id) => d.frames.some((f) => f.id === id && f.drawn)) }])) : d.anims,
     }));
     setSelected(new Set());
   };
@@ -240,9 +304,16 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   // ---- derived: board pictures, zones (deferred so dragging stays smooth)
   const keyed = useMemo(() => (sheet ? applyMask(sheet.img, sheet.key.mask) : null), [sheet]);
   const deferred = useDeferredValue(draft);
-  const scale = useMemo(() => scaleFor(deferred.frames, deferred.anims, deferred.height), [deferred.frames, deferred.anims, deferred.height]);
-  const scaled = useMemo(() => (keyed ? scaleFrames(keyed, deferred.frames, scale) : []), [keyed, deferred.frames, scale]);
-  const zones = useMemo(() => (scaled.length ? analyzeZones(scaled) : null), [scaled]);
+  const sheetFrames = useMemo(() => deferred.frames.filter((f) => !f.drawn), [deferred.frames]);
+  const scale = useMemo(() => scaleFor(sheetFrames, deferred.anims, deferred.height), [sheetFrames, deferred.anims, deferred.height]);
+  const scaled = useMemo(() => (keyed ? scaleFrames(keyed, sheetFrames, scale) : null), [keyed, sheetFrames, scale]);
+  // every frame on the board: a frame drawn by hand takes the place of its box's picture, a drawn one is only its pixels;
+  // until the sheet (or a drawn frame's pixels) has loaded there is nothing to show
+  const withEdits = useMemo(() => {
+    const out = deferred.frames.map((f) => edits.get(f.id) ?? (f.drawn ? undefined : scaled?.[sheetFrames.indexOf(f)]));
+    return out.every((f): f is ScaledFrame => !!f) ? out : [];
+  }, [scaled, edits, deferred.frames, sheetFrames]);
+  const zones = useMemo(() => (withEdits.length ? analyzeZones(withEdits) : null), [withEdits]);
   const shown = useMemo(() => {
     const m = new Map<string, ScaledFrame>();
     if (zones) deferred.frames.forEach((f, i) => zones.frames[i] && m.set(f.id, zones.frames[i]!));
@@ -269,7 +340,8 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     });
   };
 
-  const setFrames = (frames: SourceFrame[]) => edit((d) => ({ ...d, frames }));
+  // the sheet view changes the sheet's boxes; the drawn frames stay as they are
+  const setFrames = (frames: SourceFrame[]) => edit((d) => ({ ...d, frames: [...frames, ...d.frames.filter((f) => f.drawn)] }));
 
   const deleteSelected = () => {
     edit((d) => ({
@@ -310,6 +382,9 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   };
 
   const newCharacter = () => {
+    setEdits(new Map());
+    setLayerEdits(new Map());
+    setEditing(null);
     setOpenId(null);
     setDraft(emptyDraft());
     setSheet(null);
@@ -322,6 +397,9 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
   const openCharacter = (id: string) => {
     const ch = project.characters.find((c) => c.id === id) as ImportedCharacter | undefined;
     if (!ch) return;
+    setEdits(new Map());
+    setLayerEdits(new Map());
+    setEditing(null);
     setOpenId(id);
     setSheet(null);
     sourceBytes.current = null;
@@ -329,6 +407,53 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     setDirty(false);
     setStatus("");
     setDraft(draftOf(ch) ?? { ...emptyDraft(), id: ch.id, name: ch.name, role: ch.role, height: ch.height });
+  };
+
+  /** A new frame's size: the character's own (its first frame on the board), else its height and three quarters of it wide. */
+  const newFrameSize = () => {
+    const first = [...shown.values()][0];
+    return first ? { w: first.w, h: first.h } : { w: Math.max(8, Math.round(draft.height * 0.75)), h: draft.height };
+  };
+
+  /** The pixel editor's animation back in the draft: its frames in order, new ones as drawn frames, drawn-on ones as edits. */
+  const applyEditor = (anim: string, result: EditorFrame[]) => {
+    let n = nextNumber(draft.frames);
+    const ids = result.map((f) => f.id ?? `f${n++}`);
+    const added: SourceFrame[] = result.flatMap((f, i) => (f.id ? [] : [{ id: ids[i]!, x: 0, y: 0, w: f.pic.w, h: f.pic.h, px: f.pic.px, py: f.pic.py, drawn: true }]));
+    setEdits((cur) => {
+      const next = new Map(cur);
+      result.forEach((f, i) => f.changed && next.set(ids[i]!, { w: f.pic.w, h: f.pic.h, rgba: f.pic.rgba, px: f.pic.px, py: f.pic.py }));
+      return next;
+    });
+    // the layers are kept when there is more than one, or a shirt
+    setLayerEdits((cur) => {
+      const next = new Map(cur);
+      result.forEach((f, i) => {
+        if (!f.changed) return;
+        if (f.layers.length > 1 || f.layers.some((l) => l.shirt || l.shapes)) next.set(ids[i]!, f.layers);
+        else next.delete(ids[i]!);
+      });
+      return next;
+    });
+    // a shirt layer's colors are the ones recolored for players 2 to 4
+    const shirt = [...new Set(result.flatMap((f) => f.layers.filter((l) => l.shirt && l.visible).flatMap((l) => colorsOf(l.pic))))].map((c) => c.toUpperCase());
+    const preset = list.find((p) => p.name === anim) ?? ANIMS[draft.role].find((p) => p.name === anim);
+    edit((d) => ({
+      ...d,
+      frames: [...d.frames, ...added],
+      anims: { ...d.anims, [anim]: { fps: d.anims[anim]?.fps ?? preset?.fps ?? 8, loop: d.anims[anim]?.loop ?? preset?.loop ?? true, frames: ids } },
+      hidden: d.hidden.filter((h) => h !== anim),
+      swapColors: [...new Set([...d.swapColors, ...shirt])],
+    }));
+    setActive(anim);
+    setEditing(null);
+  };
+
+  /** A character drawn from nothing: its standing animation opens in the pixel editor with one blank frame. */
+  const drawFromScratch = () => {
+    newCharacter();
+    setActive("idle");
+    setEditing({ anim: "idle", start: 0 });
   };
 
   const save = async () => {
@@ -339,7 +464,31 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
       const atlas = packAtlas(zones.frames, deferred.frames.map((f) => f.id));
       const png = await encodePng(atlas.w, atlas.h, atlas.rgba);
       const ref = await putAsset(png, "image/png");
-      const { project: next, character } = saveCharacter(project, { draft, atlas: ref, rects: atlas.rects, zones: zones.zones });
+      // the frames drawn by hand keep their pixels with the character, to edit them again
+      const frames = await Promise.all(
+        draft.frames.map(async (f) => {
+          const e = edits.get(f.id);
+          if (!e) return f;
+          const pic = await putAsset(await encodePng(e.w, e.h, e.rgba), "image/png");
+          const ls = layerEdits.get(f.id);
+          const layers = ls
+            ? await Promise.all(
+                ls.map(async (l) => ({
+                  name: l.name,
+                  ref: await putAsset(await encodePng(l.pic.w, l.pic.h, l.pic.rgba), "image/png"),
+                  visible: l.visible,
+                  locked: l.locked,
+                  ...(l.shirt ? { shirt: true } : {}),
+                  ...(l.shapes ? { shapes: l.shapes } : {}),
+                })),
+              )
+            : undefined;
+          return { ...f, edit: { ref: pic, w: e.w, h: e.h, px: e.px, py: e.py, ...(layers ? { layers } : {}) } };
+        }),
+      );
+      const saved = { ...draft, frames };
+      const { project: next, character } = saveCharacter(project, { draft: saved, atlas: ref, rects: atlas.rects, zones: zones.zones });
+      setDraft((d) => ({ ...d, frames: d.frames.map((f) => frames.find((x) => x.id === f.id) ?? f) }));
       onChange(next);
       setDraft((d) => ({ ...d, id: character.id }));
       setOpenId(character.id);
@@ -358,9 +507,10 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
     newCharacter();
   };
 
-  // a picture pasted anywhere on the tab (copied from an image AI's chat), unless a text field takes the paste
+  // a picture pasted anywhere on the tab (copied from an image AI's chat), unless a text field or the pixel editor takes the paste
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (editing) return;
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable)) return;
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
@@ -397,6 +547,23 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
         e.target.value = "";
       }}
     />
+  );
+
+  // the editor's preview "In the level": the first level's art at the frame's scale, its player start under the feet
+  const images = useProjectImages(project);
+  const level = project.levels?.[0];
+  const startAt = level?.layers.flatMap((l) => (l.kind === "objects" ? l.items : [])).find((o) => o.type === "player_start");
+  const backdrop = useMemo(
+    () =>
+      level
+        ? (ctx: CanvasRenderingContext2D, w: number, h: number, zoom: number, feetX: number, feetY: number) => {
+            const fx = startAt ? startAt.x : 48;
+            const fy = startAt ? startAt.y : level.size.h - 32;
+            drawArt(ctx, level, { x: fx - feetX / zoom, y: fy - feetY / zoom, zoom, w, h }, 1, images);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+          }
+        : undefined,
+    [level, startAt, images],
   );
 
   return (
@@ -460,7 +627,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
                 url={sheet.url}
                 w={sheet.img.w}
                 h={sheet.img.h}
-                frames={draft.frames}
+                frames={draft.frames.filter((f) => !f.drawn)}
                 selected={selected}
                 labels={labels}
                 zoom={zoom}
@@ -544,12 +711,20 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
                 <p className="wms-title">{t.drop.loading}</p>
               ) : (
                 <>
-                  {opened && !draft.sheet ? <p className="wms-note">{fmt(t.notImported, { name: opened.name })}</p> : null}
+                  {opened && !draft.sheet && !draft.frames.length ? <p className="wms-note">{fmt(t.notImported, { name: opened.name })}</p> : null}
                   <p className="wms-title">{t.drop.title}</p>
                   <button type="button" className="wms-cap is-on" onClick={() => fileInput.current?.click()}>
                     ⇪ {t.drop.pick}
                   </button>
                   <p className="wms-note">{t.drop.hint}</p>
+                  {!draft.frames.length && (
+                    <>
+                      <p className="wms-note">{t.pixel.drawScratchHint}</p>
+                      <button type="button" className="wms-cap" onClick={drawFromScratch}>
+                        {t.pixel.drawScratch}
+                      </button>
+                    </>
+                  )}
                 </>
               )}
               {status === "loadError" ? (
@@ -613,7 +788,7 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
               </label>
             </div>
             <div className="wms-row wms-wrap">
-              <button type="button" className="wms-cap is-on wms-save" disabled={busy === "saving" || !sheet} onClick={() => void save()}>
+              <button type="button" className="wms-cap is-on wms-save" disabled={busy === "saving" || (!sheet && !withEdits.length)} onClick={() => void save()}>
                 {busy === "saving" ? t.saving : t.save}
               </button>
               {draft.id ? (
@@ -635,8 +810,10 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             selectedCount={selected.size}
             thumbs={shown}
             numberOf={numberOf}
-            colorOf={colorOf}
             onActive={setActive}
+            onEditFrame={(id) => active && setEditing({ anim: active, start: Math.max(0, draft.anims[active]?.frames.indexOf(id) ?? 0) })}
+            onDrawFrames={(name) => setEditing({ anim: name, start: 0 })}
+            edited={new Set(edits.keys())}
             onChange={(anims) => edit((d) => ({ ...d, anims }))}
             onAddSelected={addSelected}
             hidden={draft.hidden}
@@ -680,7 +857,21 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
           />
         </div>
       </div>
+      {editing && (
+        <PixelEditor
+          t={t.pixel}
+          anim={t.animNames[editing.anim] ?? editing.anim}
+          fps={draft.anims[editing.anim]?.fps ?? list.find((p) => p.name === editing.anim)?.fps ?? 8}
+          frames={(draft.anims[editing.anim]?.frames ?? []).flatMap((id) => (shown.get(id) ? [{ id, pic: shown.get(id)!, layers: layerEdits.get(id) }] : []))}
+          start={editing.start}
+          size={newFrameSize()}
+          palette={zones ? [...new Set(zones.zones.flatMap((z) => z.palette))] : []}
+          board={editorBoard(boardOf(project))}
+          backdrop={backdrop}
+          onCancel={() => setEditing(null)}
+          onApply={(result) => applyEditor(editing.anim, result)}
+        />
+      )}
     </div>
   );
 }
-

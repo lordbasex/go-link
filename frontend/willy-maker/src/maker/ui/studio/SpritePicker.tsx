@@ -12,8 +12,21 @@ import { Upload } from "lucide-react";
 import { useStudioText } from "../../i18n";
 import type { CatalogItem } from "./catalog";
 import type { PickerState, PickerTab } from "./state";
+import { OwnSprite, useOwnSheet } from "./ownSprites";
 
 const TABS: readonly PickerTab[] = ["heroes", "enemies", "objects"];
+
+/** A card's picture: the game's own character when one draws it, else a box of the part's size. */
+function PickSprite({ it, scale }: { it: CatalogItem; scale: number }) {
+  const sheet = useOwnSheet(it.part.kind === "object" ? { type: it.part.type, ...it.part.props } : null);
+  if (sheet)
+    return (
+      <span className="studio-pick-own">
+        <OwnSprite sheet={sheet} />
+      </span>
+    );
+  return <span className={`studio-pick-sprite is-${it.role}`} style={{ width: it.w * scale, height: it.h * scale }} />;
+}
 
 export function SpritePicker({ picker, items, onTab, onChoose, onConfirm, onCancel, onUpload }: { picker: PickerState; items: CatalogItem[]; onTab: (tab: PickerTab) => void; onChoose: (id: string) => void; onConfirm: (id?: string) => void; onCancel: () => void; onUpload: () => void }) {
   const t = useStudioText();
@@ -66,7 +79,7 @@ export function SpritePicker({ picker, items, onTab, onChoose, onConfirm, onCanc
                 onDoubleClick={() => onConfirm(it.id)}
               >
                 <span className="studio-pick-thumb">
-                  <span className={`studio-pick-sprite is-${it.role}`} style={{ width: it.w * scale, height: it.h * scale }} />
+                  <PickSprite it={it} scale={scale} />
                 </span>
                 <span className="studio-pick-name">{it.name}</span>
                 <span className="studio-pick-meta">

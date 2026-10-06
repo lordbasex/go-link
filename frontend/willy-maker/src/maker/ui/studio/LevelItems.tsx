@@ -10,6 +10,7 @@
 import type { CSSProperties } from "react";
 import type { LevelObject, Zone, ZoneKind } from "../../model";
 import { roleOf } from "./catalog";
+import { OwnSprite, useOwnSheet } from "./ownSprites";
 
 const INK = "var(--color-text)";
 const RED = "var(--color-accent)";
@@ -54,10 +55,12 @@ export function ObjectBox({ o, box, z, label, selected, showLabel }: { o: LevelO
   const role = roleOf(o);
   const helper = o.type === "camera_lock" || o.type === "checkpoint" || o.type === "exit" || o.type === "platform";
   const left = o.facing === "left";
+  // the game's own character draws it, as in play mode and the ROM
+  const sheet = useOwnSheet(o);
   return (
     <div className={`studio-object${selected ? " is-selected" : ""}`} data-object={o.name} style={{ left: box.x * z, top: box.y * z, width: box.w * z, height: box.h * z }}>
-      <div className={`studio-object-body is-${helper ? "helper" : role}`} style={{ transform: left ? "scaleX(-1)" : undefined }}>
-        {!helper && <div className="studio-object-eye" style={{ top: box.h * z * 0.18, right: box.w * z * 0.18, width: 3 * z, height: 3 * z }} />}
+      <div className={`studio-object-body is-${helper ? "helper" : role}${sheet ? " has-sprite" : ""}`} style={{ transform: left ? "scaleX(-1)" : undefined }}>
+        {sheet ? <OwnSprite sheet={sheet} board={{ z, w: box.w, h: box.h }} /> : !helper && <div className="studio-object-eye" style={{ top: box.h * z * 0.18, right: box.w * z * 0.18, width: 3 * z, height: 3 * z }} />}
       </div>
       {showLabel && <span className="studio-object-label">{label}</span>}
     </div>

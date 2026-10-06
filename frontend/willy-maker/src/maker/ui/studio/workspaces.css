@@ -64,6 +64,10 @@
 .mdn :is(.studio-workspace, .studio-classic) *::after {
   border-radius: 0 !important;
 }
+/* round on purpose: an animation's status dot */
+.mdn :is(.studio-workspace, .studio-classic) .wms-dot {
+  border-radius: 50% !important;
+}
 .mdn :is(.studio-workspace, .studio-classic) input[type="checkbox"],
 .mdn :is(.studio-workspace, .studio-classic) input[type="radio"],
 .mdn :is(.studio-workspace, .studio-classic) input[type="range"] {
