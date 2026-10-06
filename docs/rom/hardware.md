@@ -7,6 +7,28 @@ What go-link's own ROM relies on, read from the driver of the core the device ru
 - `kabuki.c` = [src/machine/kabuki.c](https://github.com/libretro/mame2003-plus-libretro/blob/0d9a325c96aa96460be7b2fe4310a7096981ff75/src/machine/kabuki.c) (the Z80 encryption of the QSound boards)
 - `common.c` = [src/common.c](https://github.com/libretro/mame2003-plus-libretro/blob/0d9a325c96aa96460be7b2fe4310a7096981ff75/src/common.c) (the ROM loader)
 
+## Which CPS-1
+
+Capcom made the CPS-1 (CP System) as several boards between 1988 and 1994: the first A/B boards (1988), later B boards with other CPS-B chips (1989, 1990), the QSound board in its grey case, also called CPS Dash (1992), the last B-21 boards (1992), and the CPS Changer, a home console (1994). They share the 68000, the video chips (384 × 224 at 60 Hz, 4096 colors on screen out of 65536, 16 × 16 sprites, three scroll layers) and the graphics format; they differ in the CPS-B chip, the sound (YM2151 and OKI 6295 on the plain boards, QSound on the QSound board) and the 68000's clock.
+
+**Willy Maker builds for the 1992 QSound board, as the `slammast` set** (Saturday Night Slam Masters, which with its sibling `mbombrd` is the only one with 4 players and 3 buttons). Create ROM always lays the game out as `slammast`; a game with 2 buttons only changes its controls. What that board has, as the core runs it:
+
+| | Real board | The core (mame2003-plus) | Willy Maker |
+|---|---|---|---|
+| Main CPU | 68000 at 12 MHz | **68000 at 10 MHz** (`cps1.c` machine `qsound` imports `cps1`'s `M68000, 10000000`) | the engine's frame budget is measured at 10 MHz |
+| Sound CPU | Z80 | **Z80 at 6 MHz** (`Z80, 6000000`), 250 Hz IRQ | `rom/engine/sound.z80` |
+| Sound chip | QSound | QSound, 16 channels, stereo, 4 MB of samples | the effects and music of [A game's own sound](../willy-maker/engine.md#a-games-own-sound) |
+| Video | 384 × 224, 60 Hz | same | same |
+| Colors | 4096 on screen of 65536 | same (12-bit words) | every color snapped to the board's (`board/cps1.ts` `snapColor`) |
+| Sprites | 256 per screen, 16 × 16 tiles | same | up to 248 entries a frame |
+| Palettes | 32 for sprites, 32 per scroll layer, 15 colors + transparent | same | `board/cps1.ts` `palettes` |
+| ROM | 6 MB graphics, 2 MB program, 4 MB samples | same | the meters in the editor |
+| Work RAM | 64 KB | same | `lab_state` at 0xff0000 |
+
+**The clock.** In this core only Pang! 3 gets a 12 MHz 68000 (`MDRV_CPU_REPLACE("main", M68000, 12000000)`); every other CPS-1 set, `slammast` included, runs at 10 MHz. A ROM made for 10 MHz has, on a real 12 MHz board, a fifth more time each frame than it needs, so it runs the same. Going to 12 MHz would mean another set (Pang! 3: 2 players, 2 buttons) or a newer MAME on the device; the engine does not need it today (every lab run fits its frames at 10 MHz).
+
+The New game wizard shows this as the board's spec sheet (`ui/studio/NewGameWizard.tsx` `BoardSpec`, from `board/cps1.ts` `hardware`), so another board's profile brings its own.
+
 ## The sets we lay our files out as
 
 The prototype builds two layouts (`node rom/tools/build.mjs [slammast|captcomm]`):

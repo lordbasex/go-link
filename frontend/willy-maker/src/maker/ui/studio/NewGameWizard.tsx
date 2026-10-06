@@ -13,6 +13,7 @@ import { useGameText } from "../../game/texts";
 import { createGame, type NewBackground } from "./newGame";
 import { EXAMPLE_URL } from "./example";
 import { isImageFile } from "./background";
+import { boardOf } from "../../board/cps1";
 
 const LANGS: readonly Lang[] = ["es", "en", "pt"];
 
@@ -175,6 +176,7 @@ export function NewGameWizard({ lang, onLang, onCancel, onCreated, onDemo }: New
                     );
                   })}
                 </div>
+                <BoardSpec spec={w.spec} layout={layout} />
               </>
             )}
 
@@ -329,5 +331,41 @@ export function NewGameWizard({ lang, onLang, onCancel, onCreated, onDemo }: New
         </div>
       </div>
     </div>
+  );
+}
+
+/** The chosen board's spec sheet: which of the family's boards a game is built for, and what it has (board/cps1.ts `hardware`). */
+function BoardSpec({ spec, layout }: { spec: ReturnType<typeof useStudioText>["wizard"]["spec"]; layout: LayoutId }) {
+  const b = boardOf();
+  const h = b.hardware;
+  const MB = 1024 * 1024;
+  const seat = b.layouts.find((l) => l.id === layout) ?? b.layouts[0]!;
+  const rows: [string, string][] = [
+    [spec.labels.board, spec.board(h.year, h.set)],
+    [spec.labels.cpu, spec.cpu(h.cpu.chip, h.cpu.mhz, h.core, h.cpu.realMhz)],
+    [spec.labels.sound, spec.sound(h.soundCpu.chip, h.soundCpu.mhz, h.sound.chip, h.sound.channels, b.rom.soundBytes / MB)],
+    [spec.labels.screen, spec.screen(b.screen.w, b.screen.h, b.screen.fps)],
+    [spec.labels.colors, spec.colors(h.colors.onScreen, h.colors.total)],
+    [spec.labels.sprites, spec.sprites(b.sprites.tile, h.spritesPerScreen, h.engineSprites)],
+    [spec.labels.layers, spec.layers(b.layers.map((l) => l.tile).join(" · "))],
+    [spec.labels.palettes, spec.palettes(b.palettes.sprite, b.colors.perPalette)],
+    [spec.labels.memory, spec.memory(b.rom.graphicsBytes / MB, b.rom.programBytes / MB, b.rom.soundBytes / MB, h.workRamKB)],
+    [spec.labels.controls, spec.controls(seat.players, seat.buttons)],
+    [spec.labels.bios, spec.bios],
+  ];
+  return (
+    <section className="studio-wiz-spec" aria-label={spec.title(b.name)}>
+      <span className="mdn-kicker">{spec.title(b.name)}</span>
+      <p>{spec.lead(h.year, h.set)}</p>
+      <dl>
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="studio-wiz-spec-note">{spec.note(h.cpu.mhz, h.cpu.realMhz)}</p>
+    </section>
   );
 }

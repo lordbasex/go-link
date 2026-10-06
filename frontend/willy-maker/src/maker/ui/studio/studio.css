@@ -1684,6 +1684,40 @@
   font-size: 13px;
   line-height: 1.4;
 }
+/* the board's spec sheet (step 2) */
+.studio-wiz-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+}
+.studio-wiz-spec p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.studio-wiz-spec dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+.studio-wiz-spec dl > div {
+  display: contents;
+}
+.studio-wiz-spec dt {
+  font-weight: 600;
+}
+.studio-wiz-spec dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.studio-wiz-spec-note {
+  color: var(--color-text-muted);
+}
 .studio-wiz-needs {
   display: flex;
   flex-direction: column;
