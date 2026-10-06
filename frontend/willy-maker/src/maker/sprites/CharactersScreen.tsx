@@ -635,7 +635,6 @@ export function CharactersScreen({ project, onChange, characterId = null }: Char
             selectedCount={selected.size}
             thumbs={shown}
             numberOf={numberOf}
-            colorOf={colorOf}
             onActive={setActive}
             onChange={(anims) => edit((d) => ({ ...d, anims }))}
             onAddSelected={addSelected}

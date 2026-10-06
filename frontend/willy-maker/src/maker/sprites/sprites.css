@@ -427,13 +427,16 @@
   white-space: nowrap;
 }
 
+/* an animation's dot: green once it has frames, grey while it has none */
 .wms-dot {
-  --c: var(--color-border-strong);
   width: 8px;
   height: 8px;
   flex: none;
   border-radius: 50%;
-  background: var(--c);
+  background: var(--color-border-strong);
+}
+.wms-dot.is-on {
+  background: var(--color-ok);
 }
 
 .wms-anim-edit {

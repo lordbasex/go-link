@@ -13,6 +13,7 @@ import { firstSteps } from "./steps";
 import { hitAt } from "./select";
 import { exampleLevel } from "./example";
 import { onLevelGrid } from "./background";
+import { characterOf } from "./ownSprites";
 import { SHORTCUTS, shortcutFor } from "./keys";
 import { BOT_FIRE, BOT_JUMPS } from "./demo";
 import { createGame, firstLevel } from "./newGame";
@@ -621,6 +622,23 @@ describe("the demo", () => {
       g.step([bits]);
     }
     expect(g.outcome).toBe("cleared");
+  });
+});
+
+describe("the game's own characters on the canvas", () => {
+  it("draws a start with its player's character, an own enemy or civilian by its kind, and a pickup by its picture", () => {
+    const p = newProject({ title: "x", players: 2 });
+    p.characters.push({ id: "courier", role: "hero" } as never, { id: "sentinel", role: "enemy" } as never, { id: "kid", role: "civilian" } as never, { id: "battery", role: "boss" } as never);
+    p.settings.playerSlots = [{ character: "courier", variant: 0 }, { character: "builtin:willy", variant: 1 }];
+    expect(characterOf(p, { type: "player_start", player: 1 })).toBe("courier");
+    expect(characterOf(p, { type: "player_start", player: 2 })).toBeNull();
+    expect(characterOf(p, { type: "enemy", kind: "sentinel" })).toBe("sentinel");
+    expect(characterOf(p, { type: "enemy", kind: "trooper" })).toBeNull();
+    // a kind naming a character of another role is the engine's own, as in the ROM
+    expect(characterOf(p, { type: "enemy", kind: "kid" })).toBeNull();
+    expect(characterOf(p, { type: "civilian", kind: "kid" })).toBe("kid");
+    expect(characterOf(p, { type: "pickup", item: "health", look: "battery" } as never)).toBe("battery");
+    expect(characterOf(p, { type: "pickup" })).toBeNull();
   });
 });
 

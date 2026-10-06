@@ -4,6 +4,10 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ## [Unreleased]
 
+### Changed
+
+- **Your characters instead of Willy**: in Characters, hovering an animation that already has frames plays your character's own frames (Willy stays the example for the ones without), and the editor draws your own hero, enemies, civilians and pickups with their sprite on the canvas, in the sprite picker and in Properties, where it showed boxes. Each animation's dot is green once it has frames and grey while it has none (it was always grey).
+
 ### Added
 
 - **A game's own sound** ([engine.md](../../docs/willy-maker/engine.md#a-games-own-sound)): the Game tab's new **Sound** card gives each effect (shot, enemy down, rescue…) a recipe of its own from a library, the music of each screen (title, level, level clear, continue, game over), and the game's own songs in the tracker form the QSound chip plays, each heard right there. Four tango instruments (bandoneon, violin, pizzicato, piano) join the arcade ones. A tune in **ABC notation** becomes a song in one click, arranged as a tango (bass on the 3-3-2, piano stabs, a violin pad, the bass's drag and a "chan-chan" ending). The **tango pack** puts it all in at once: La Cumparsita (1916, public domain, the tune only) on the title, a milonga on the level and effects to match. Play mode and the ROM play the same; the review stops Create ROM on a song that cannot play or music that does not fit the chip's 16 KB.

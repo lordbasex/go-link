@@ -97,6 +97,7 @@ export const promptEs: PromptMessages = {
     attack: "El ataque del jefe.",
   } as Record<string, string>,
   animExample: "Willy como ejemplo",
+  animOwn: "Tu personaje, con los cuadros que le diste",
   animShownWith: (name: string) => `se muestra con “${name}”: Willy no tiene una propia`,
   animNoExample: "Todavía no hay un ejemplo dibujado",
   animFrames: (n: number) => `${n} ${n === 1 ? "cuadro" : "cuadros"}`,

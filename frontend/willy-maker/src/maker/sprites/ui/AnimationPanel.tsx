@@ -24,7 +24,6 @@ export interface AnimationPanelProps {
   thumbs: ReadonlyMap<string, ScaledFrame>;
   /** The frame's number on the sheet. */
   numberOf(id: string): number;
-  colorOf(anim: string): number;
   onActive(name: string): void;
   onChange(anims: Record<string, DraftAnim>): void;
   onAddSelected(name: string): void;
@@ -53,6 +52,12 @@ export function animList(role: CharacterRole, anims: Record<string, DraftAnim>, 
   return [...presets, ...extra];
 }
 
+/** An animation's frames as the character shows them on the board, when it has any. */
+function ownFrames(a: DraftAnim | undefined, thumbs: ReadonlyMap<string, ScaledFrame>) {
+  const frames = (a?.frames ?? []).map((id) => thumbs.get(id)).filter((f): f is ScaledFrame => !!f);
+  return frames.length ? { frames, fps: a!.fps, loop: a!.loop } : null;
+}
+
 function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -61,7 +66,7 @@ function Thumb({ frame, label }: { frame: ScaledFrame | undefined; label: string
   return <canvas ref={ref} className="wms-thumb" role="img" aria-label={label} />;
 }
 
-export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, colorOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows }: AnimationPanelProps) {
+export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, numberOf, onActive, onChange, onAddSelected, hidden = [], onHidden, plan = [], onRows }: AnimationPanelProps) {
   const [newName, setNewName] = useState("");
   const [sheet, setSheet] = useState(0);
   const [rowsNote, setRowsNote] = useState("");
@@ -147,7 +152,7 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
               onFocus={() => setPeek(p.name)}
               onBlur={() => setPeek((x) => (x === p.name ? null : x))}
             >
-              <span className="wms-dot" data-c={n ? colorOf(p.name) : -1} aria-hidden="true" />
+              <span className={`wms-dot${n ? " is-on" : ""}`} aria-hidden="true" />
               <span className="wms-anim-name">
                 {label(p.name)}
                 {label(p.name) !== p.name && <span className="wms-anim-id">{p.name}</span>}
@@ -162,7 +167,8 @@ export function AnimationPanel({ t, role, anims, active, selectedCount, thumbs, 
                     name={p.name}
                     frames={p.frames || n}
                     text={[tp.animDesc[p.name], fmt(t.internalName, { id: p.name })].filter(Boolean).join(" ")}
-                    labels={{ example: tp.animExample, shownWith: tp.animShownWith, none: tp.animNoExample, frames: tp.animFrames }}
+                    labels={{ example: tp.animExample, shownWith: tp.animShownWith, none: tp.animNoExample, frames: tp.animFrames, own: tp.animOwn }}
+                    own={ownFrames(a, thumbs)}
                   />
                 </span>
               )}

@@ -17,6 +17,7 @@ import { LevelThumb } from "./LevelThumb";
 import { boxOf } from "./select";
 import { useUiState } from "./state";
 import type { Role } from "./catalog";
+import { OwnSprite, useOwnSheet } from "./ownSprites";
 
 export interface PropertiesProps {
   store: EditorStore;
@@ -121,13 +122,20 @@ function ObjectProps({ store, level, object, objectInfo, characters, onChangeSpr
   const s = useUiState();
   const info = objectInfo(object);
   const box = boxOf(object);
+  const sheet = useOwnSheet(object);
   const merge = (field: string) => `object:${object.name}:${field}`;
   const scale = Math.min(2, 56 / Math.max(box.w, box.h));
   return (
     <>
       <div className="studio-props-object">
         <div className="studio-props-thumb" aria-hidden="true">
-          <span className={`studio-pick-sprite is-${info.role}`} style={{ width: box.w * scale, height: box.h * scale, transform: object.facing === "left" ? "scaleX(-1)" : undefined }} />
+          {sheet ? (
+            <span className="studio-pick-own">
+              <OwnSprite sheet={sheet} flip={object.facing === "left"} />
+            </span>
+          ) : (
+            <span className={`studio-pick-sprite is-${info.role}`} style={{ width: box.w * scale, height: box.h * scale, transform: object.facing === "left" ? "scaleX(-1)" : undefined }} />
+          )}
         </div>
         <div className="studio-props-object-text">
           <NameField
