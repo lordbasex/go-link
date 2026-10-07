@@ -195,6 +195,10 @@ The device stamps every video packet with the `playout-delay` RTP header extensi
 
 The minimum is always 0. Each change is a `playout_delay` telemetry event with its reason, and peer samples carry `playout_max_ms`. A browser that does not accept the extension keeps its own buffer.
 
+The game's sound uses one Opus encoder for everyone; once a second it is told the worst video loss any player's receiver report shows (`OPUS_SET_PACKET_LOSS_PERC`, up to 30 %, with in-band FEC on above 0). At 96 kbps stereo Opus codes music in CELT frames, which have no FEC of their own but lean less on the previous frame when loss is expected, so a lost packet spoils fewer of the next ones.
+
+For tests, `GOLINK_SIM_LOSS=<percent>` (`internal/services/sim_loss.go`) drops that share of the RTP packets (video and sound) sent to every connection but the first one that got video, closest to the network (the first interceptor, after the NACK buffer), so a clean host and a lossy guest can be compared in one room. It is off unless set.
+
 ## Video scale
 
 Arcade pixel art has one color per pixel, but VP8 (4:2:0) keeps one color sample per 2x2 block, so at the game's own size small colored details bleed. Game rooms therefore send the picture **enlarged 2x with nearest neighbour** (each game pixel becomes a 2x2 block, so it gets its own color sample), and the website averages it back before drawing. The [video quality lab](quality.md) measured about +7 dB RGB PSNR over the old stream.

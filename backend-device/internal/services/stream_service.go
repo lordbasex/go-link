@@ -100,6 +100,10 @@ func NewWebRTCAPI(udpPort int, includeLoopback bool) (*webrtc.API, error) {
 		return nil, err
 	}
 	reg := &interceptor.Registry{}
+	// First, so it sits closest to the network (sim_loss.go; tests only).
+	if pct := simLossFromEnv(); pct > 0 {
+		reg.Add(&simLossFactory{pct: pct})
+	}
 	if err := webrtc.RegisterDefaultInterceptors(me, reg); err != nil {
 		return nil, err
 	}
@@ -191,6 +195,7 @@ type StreamService struct {
 	h264Sent, h264Bytes atomic.Int64
 	opus                *encoder.Opus
 	pcm                 []int16
+	audioFrames         int // sound frames encoded (AudioSamples only)
 	sent                int
 	window              time.Time
 	probe               *encodeProbe
@@ -839,6 +844,11 @@ func (s *StreamService) AudioSamples(pcm []int16) {
 	s.pcm = append(s.pcm, pcm...)
 	const frame = encoder.OpusFrameSamples * 2 // stereo
 	for len(s.pcm) >= frame {
+		// Once a second the encoder hears the worst loss among the
+		// players, to make the sound sturdier where packets go missing.
+		if s.audioFrames++; s.audioFrames%50 == 0 {
+			s.opus.SetPacketLoss(s.worstLossPct())
+		}
 		pkt, err := s.opus.Encode(s.pcm[:frame])
 		s.pcm = append(s.pcm[:0], s.pcm[frame:]...)
 		if err != nil {
@@ -850,6 +860,21 @@ func (s *StreamService) AudioSamples(pcm []int16) {
 		}
 		_ = s.audio.WriteSample(media.Sample{Data: pkt, Duration: 20 * time.Millisecond})
 	}
+}
+
+// worstLossPct is the highest video loss a player's browser reported in
+// its last receiver report, in percent, rounded up and kept under 30 (more
+// would spend the sound's bits on redundancy for little).
+func (s *StreamService) worstLossPct() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	worst := int64(0)
+	for _, v := range s.viewers {
+		if v.kind == KindViewer {
+			worst = max(worst, v.tm.rrLossPerMi.Load())
+		}
+	}
+	return min(int((worst+9)/10), 30)
 }
 
 // SetRecorder starts (rec) or stops (nil) copying the room's media to a

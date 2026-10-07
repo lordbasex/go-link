@@ -15,6 +15,11 @@ static OpusEncoder *opus_new(int rate, int channels, int bitrate, int *err) {
 	}
 	return e;
 }
+
+static void opus_set_loss(OpusEncoder *e, int pct) {
+	opus_encoder_ctl(e, OPUS_SET_PACKET_LOSS_PERC(pct));
+	opus_encoder_ctl(e, OPUS_SET_INBAND_FEC(pct > 0 ? 1 : 0));
+}
 */
 import "C"
 
@@ -35,6 +40,7 @@ type Opus struct {
 	enc      *C.OpusEncoder
 	channels int
 	out      []byte
+	lossPct  int
 }
 
 // NewOpus opens an encoder for 1 or 2 channels at 48 kHz.
@@ -66,6 +72,23 @@ func (o *Opus) Encode(pcm []int16) ([]byte, error) {
 	}
 	return append([]byte(nil), o.out[:n]...), nil
 }
+
+// SetPacketLoss tells the encoder how many packets in a hundred the
+// listeners lose (0-100). Above 0 it turns in-band FEC on (redundancy in
+// SILK frames) and, for music in CELT frames, leans less on the previous
+// frame, so one lost packet hurts fewer of the ones after it. Call it from
+// the goroutine that encodes.
+func (o *Opus) SetPacketLoss(pct int) {
+	pct = max(0, min(100, pct))
+	if o.enc == nil || pct == o.lossPct {
+		return
+	}
+	o.lossPct = pct
+	C.opus_set_loss(o.enc, C.int(pct))
+}
+
+// PacketLoss is the last value given to SetPacketLoss.
+func (o *Opus) PacketLoss() int { return o.lossPct }
 
 // Close releases the encoder.
 func (o *Opus) Close() {

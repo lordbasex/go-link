@@ -4,6 +4,14 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (device)
+
+- **The game's sound holds up better on lossy connections:** once a second the Opus encoder hears the worst packet loss among the players and, when there is any, turns on in-band FEC and leans less on the previous frame, so one lost packet hurts fewer of the ones after it (the browser hides the gap). With no loss nothing changes.
+
+### Added (device)
+
+- **A loss simulator for tests:** `GOLINK_SIM_LOSS=<percent>` makes the device drop that share of the packets it sends to every connection but the first one that gets video (the host, who comes in first), after the retransmission buffer, as a real network would. Never set it on a real device.
+
 ### Added (website)
 
 - **Zoom, enlarge and pictures in the network report:** drag across any chart to zoom every chart into that span (down to 2-second steps; the zoom stays in the address to share it), double-click or **Show everything** to go back. **Enlarge** opens a chart in a dialog with **Save PNG** and **Copy image**, and the picture says what it shows: the chart, the room, the game id, the span and the legend. A new chart shows each player's **video wait** (the playout delay climbing on trouble and coming back down).
