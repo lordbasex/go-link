@@ -1,6 +1,6 @@
 # Legal: terms of use, privacy, copyright and licenses
 
-Version **2026-09-28**. This English text is the reference; the website shows it in English, Spanish and Portuguese, and if a translation differs, this version prevails. The same texts are published at [go-link.org/terms](https://go-link.org/terms) and [go-link.org/privacy](https://go-link.org/privacy).
+Version **2026-10-07**. This English text is the reference; the website shows it in English, Spanish and Portuguese, and if a translation differs, this version prevails. The same texts are published at [go-link.org/terms](https://go-link.org/terms) and [go-link.org/privacy](https://go-link.org/privacy).
 
 This document is not legal advice. It describes how the project works and the conditions under which it is offered.
 

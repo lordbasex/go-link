@@ -5,7 +5,7 @@
  * version asks for acceptance again before linking a device or joining a
  * game.
  */
-export const TERMS_VERSION = "2026-09-28";
+export const TERMS_VERSION = "2026-10-07";
 
 const KEY = "go-link.terms";
 

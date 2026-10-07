@@ -4,9 +4,11 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-07
+
 ### Added (website)
 
-- **Network report** in My device › History (`/device/history/<room>/network`): the freezes with their likely cause, nine charts (latency, lost packets, frozen picture, frames, controls, jitter, the host's CPU and upload, voice) from the room's first start or one game, live while it runs, and the raw event log with Copy log. The history has a **Game ID** column (a click copies it, and the search finds it). Each browser in a room reports what it measured every 2 s. The privacy policy lists the network report among what the host's computer keeps.
+- **Network report** in My device › History (`/device/history/<room>/network`): the freezes with their likely cause, nine charts (latency, lost packets, frozen picture, frames, controls, jitter, the host's CPU and upload, voice) from the room's first start or one game, live while it runs, and the raw event log with Copy log. The history has a **Game ID** column (a click copies it, and the search finds it). Each browser in a room reports what it measured every 2 s. The privacy policy lists the network report among what the host's computer keeps; the terms are now version 2026-10-07 (website, Android and iOS apps), so everyone accepts them again once.
 - **Latency in the controls panel, for everyone:** Network (round trip to the device), Video (jitter buffer plus decoding) and End to end, green, yellow or red. The host's **Controls on the video** switch starts the latency test: each player's browser watches its seat's light on the picture and measures every press and release from the hand to the screen (median of the last 20, the last one and the worst).
 
 ### Added (device)
