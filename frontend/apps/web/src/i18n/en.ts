@@ -503,6 +503,7 @@ export const en = {
     chatOffNote: "The host turned the chat off for this room.",
     tapForSound: "Tap anywhere to turn the sound on",
     chatHide: "Hide the chat",
+    panelLabel: "Room panel",
     panelClose: "Close the panel",
     chatShow: "Show the chat",
     chatSoundOn: "Play a sound for new messages",

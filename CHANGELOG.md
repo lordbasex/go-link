@@ -6,7 +6,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (website)
 
-- **One side panel with tabs in a room:** Chat, Queue, Spectators and, while a game streams, Controls (the keyboard and gamepads), with a close button, the tabs on top and your place and name inside, the same width on every tab. The header's chat button opens it on Chat and the dock's controller button on Controls (pressing again closes it); the separate controls panel is gone. Unread messages are counted on the chat button while another tab shows.
+- **One side panel in a room, two tabs on top: CHAT and CONTROLS** (the latter while a game streams), with a close button and the same width on both. Chat holds everything the side panel had: your place, your name, and the Chat, Queue and Spectators tabs with the message field; Controls holds the keyboard and gamepads. The header's chat button opens it on Chat and the dock's controller button on Controls (pressing again closes it); the separate controls panel is gone. Unread messages are counted on the chat button while another tab shows.
 - **The keys a game uses have an orange border** on the keyboard map: the stick, Coin and Start, the buttons up to the game's count and the players' starts up to its players (from the game's control panel), with a note under the keyboard.
 - **The header's "…" is a menu** (in a room and on phones): the linked device, the language (its three choices open in place), the signaling server, the theme and GitHub, each a line of the list. In a room the device and the language live only there.
 

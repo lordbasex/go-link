@@ -126,10 +126,10 @@ async function switchTheme(p: Page, name: "Light mode" | "Dark mode") {
 async function expectControlsBesideTheVideo(p: Page) {
   const stage = p.locator(".video-stage");
   const before = await stage.boundingBox();
+  const canvas = p.getByRole("tablist", { name: "Room panel" });
   await clickControl(p, "Show controls");
-  const controlsTab = p.getByRole("tab", { name: "Controls" });
-  await expect(controlsTab).toHaveAttribute("aria-selected", "true");
-  const panel = p.getByRole("tabpanel");
+  await expect(canvas.getByRole("tab", { name: "Controls" })).toHaveAttribute("aria-selected", "true");
+  const panel = p.locator("#canvas-controls");
   await expect(panel.getByText("Keyboard").first()).toBeVisible();
   // The keyboard fits the panel: nothing to scroll sideways.
   expect(await panel.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
@@ -137,12 +137,18 @@ async function expectControlsBesideTheVideo(p: Page) {
   const after = await stage.boundingBox();
   expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2);
   await expectAccessible(p, "room controls in the side panel");
-  await p.getByRole("tab", { name: "Chat" }).click();
+  // Chat holds everything else: your place, the chat, the queue and the spectators.
+  await canvas.getByRole("tab", { name: "Chat" }).click();
   await expect(p.getByRole("textbox", { name: "Message" })).toBeVisible();
+  await expect(p.getByRole("tablist", { name: "Room", exact: true }).getByRole("tab", { name: "Queue" })).toBeVisible();
+  const width = (await p.locator(".room-canvas").boundingBox())?.width;
+  await canvas.getByRole("tab", { name: "Controls" }).click();
+  expect((await p.locator(".room-canvas").boundingBox())?.width).toBe(width);
+  await canvas.getByRole("tab", { name: "Chat" }).click();
   await p.getByRole("button", { name: "Close the panel" }).click();
-  await expect(p.getByRole("tab", { name: "Chat" })).toBeHidden();
+  await expect(canvas).toBeHidden();
   await p.getByRole("button", { name: "Show the chat" }).click();
-  await expect(p.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
+  await expect(canvas.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
 }
 
 /** The dock's Picture settings switch the GPU renderer on and off live, without a reload. */

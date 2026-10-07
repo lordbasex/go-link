@@ -508,6 +508,7 @@ export const es: Messages = {
     chatOffNote: "El anfitrión apagó el chat de esta sala.",
     tapForSound: "Toca en cualquier lugar para activar el sonido",
     chatHide: "Esconder el chat",
+    panelLabel: "Panel de la sala",
     panelClose: "Cerrar el panel",
     chatShow: "Mostrar el chat",
     chatSoundOn: "Sonar con los mensajes nuevos",

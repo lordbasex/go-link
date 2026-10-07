@@ -407,8 +407,9 @@ export function SpectatorList({ model }: { model: RoomModel }) {
   );
 }
 
-export type SideTab = "chat" | "queue" | "spectators" | "controls";
-type Tab = SideTab;
+/** The room canvas's tabs (wide screens). */
+export type SideTab = "chat" | "controls";
+type Tab = "chat" | "queue" | "spectators";
 
 /** The desktop room's side panel: your place and name, then the tabs. */
 export function SidePanel({
@@ -421,28 +422,92 @@ export function SidePanel({
 }: {
   model: RoomModel;
   actions: SideActions;
-  /** The tab shown, when the room chooses it (its buttons open a tab). */
-  tab?: Tab;
-  onTab?: (tab: Tab) => void;
-  /** The keyboard and gamepads: given, they are one more tab, "Controls". */
+  /** The canvas tab shown, when the room chooses it (its buttons open a tab). */
+  tab?: SideTab;
+  onTab?: (tab: SideTab) => void;
+  /**
+   * The keyboard and gamepads. Given, the panel is a canvas with two tabs
+   * on top, Chat (everything below: your place, your name, the chat, the
+   * queue and the spectators) and Controls, and a close button.
+   */
   controls?: ReactNode;
-  /** Given, a close button closes the whole panel. */
+  /** Closes the whole canvas. */
   onClose?: () => void;
 }) {
-  const [ownTab, setOwnTab] = useState<Tab>("chat");
-  const tab = shownTab ?? ownTab;
-  const setTab = (id: Tab) => (onTab ? onTab(id) : setOwnTab(id));
+  const [ownTab, setOwnTab] = useState<SideTab>("chat");
+  const canvasTab = controls ? (shownTab ?? ownTab) : "chat";
+  const setCanvasTab = (id: SideTab) => (onTab ? onTab(id) : setOwnTab(id));
+  if (!controls && !onClose) {
+    return (
+      <aside className="room-side">
+        <RoomTalk model={model} actions={actions} />
+      </aside>
+    );
+  }
+  return (
+    <aside className={`room-side room-canvas${canvasTab === "controls" ? " is-controls" : ""}`}>
+      <div className="canvas-head">
+        <div role="tablist" aria-label={t.room.panelLabel} className="tab-list">
+          {(controls ? (["chat", "controls"] as const) : (["chat"] as const)).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`canvas-tab-${id}`}
+              aria-selected={canvasTab === id}
+              aria-controls={`canvas-${id}`}
+              className={`tab${canvasTab === id ? " is-on" : ""}`}
+              onClick={() => setCanvasTab(id)}
+            >
+              {id === "controls" ? t.controls.title : t.room.tabs.chat}
+            </button>
+          ))}
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            className="icon-button icon-button-small"
+            aria-label={t.room.panelClose}
+            title={t.room.panelClose}
+            onClick={onClose}
+          >
+            <CloseIcon size={15} />
+          </button>
+        )}
+      </div>
+      {canvasTab === "controls" && controls ? (
+        <div className="side-controls" role="tabpanel" id="canvas-controls" aria-labelledby="canvas-tab-controls">
+          {controls}
+        </div>
+      ) : (
+        <div className="canvas-body" role="tabpanel" id="canvas-chat" aria-labelledby="canvas-tab-chat">
+          {/* The canvas has its own close button: no "hide the chat" inside. */}
+          <RoomTalk model={model} actions={{ ...actions, onHide: undefined }} />
+        </div>
+      )}
+    </aside>
+  );
+}
+
+/** Your place and name, then the chat, the queue and the spectators. */
+function RoomTalk({ model, actions }: { model: RoomModel; actions: SideActions }) {
+  const [tab, setTab] = useState<Tab>("chat");
   const listRef = useRef<HTMLDivElement>(null);
   useStickToBottom(listRef, [tab]);
   const tabs: { id: Tab; count: number | null }[] = [
     { id: "chat", count: null },
     { id: "queue", count: model.queue.length },
     { id: "spectators", count: model.spectators.length },
-    ...(controls ? [{ id: "controls" as const, count: null }] : []),
   ];
-  const onControls = tab === "controls" && !!controls;
   return (
-    <aside className={`room-side${onControls ? " is-controls" : ""}`}>
+    <>
+      {(model.me.kind !== "unknown" || actions.onName) && (
+        <div className="side-status stack-sm">
+          <MyPlace model={model} action={placeAction(model, actions)} />
+          {actions.onName && <NameForm name={actions.name} onName={actions.onName} />}
+        </div>
+      )}
+
       <div className="tabs">
         {/* The tools sit beside the tab list, not inside it: a tablist holds only tabs. */}
         <div role="tablist" aria-label={t.room.tabsLabel} className="tab-list">
@@ -457,15 +522,13 @@ export function SidePanel({
               className={`tab${tab === id ? " is-on" : ""}`}
               onClick={() => setTab(id)}
             >
-              {id === "controls" ? t.controls.title : t.room.tabs[id]}
-              {count !== null && count > 0 && (
-                <span className="tab-count">{count}</span>
-              )}
+              {t.room.tabs[id]}
+              {count !== null && count > 0 && <span className="tab-count">{count}</span>}
             </button>
           ))}
         </div>
         <span className="side-tools">
-          {actions.onChatSwitch && !onControls && (
+          {actions.onChatSwitch && (
             <button
               type="button"
               className={`icon-button icon-button-small${actions.chatOff ? " is-warning" : ""}`}
@@ -477,7 +540,7 @@ export function SidePanel({
               <ChatIcon size={15} />
             </button>
           )}
-          {actions.onSound && !onControls && (
+          {actions.onSound && (
             <button
               type="button"
               className="icon-button icon-button-small"
@@ -489,47 +552,20 @@ export function SidePanel({
               {actions.sound ? <BellIcon /> : <BellOffIcon />}
             </button>
           )}
-          {onClose ? (
+          {actions.onHide && (
             <button
               type="button"
               className="icon-button icon-button-small"
-              aria-label={t.room.panelClose}
-              title={t.room.panelClose}
-              onClick={onClose}
+              aria-label={t.room.chatHide}
+              title={t.room.chatHide}
+              onClick={actions.onHide}
             >
-              <CloseIcon size={15} />
+              <PanelCloseIcon />
             </button>
-          ) : (
-            actions.onHide && (
-              <button
-                type="button"
-                className="icon-button icon-button-small"
-                aria-label={t.room.chatHide}
-                title={t.room.chatHide}
-                onClick={actions.onHide}
-              >
-                <PanelCloseIcon />
-              </button>
-            )
           )}
         </span>
       </div>
 
-      {/* Under the tabs: your place and name, then the tab's content. */}
-      {!onControls && (model.me.kind !== "unknown" || actions.onName) && (
-        <div className="side-status stack-sm">
-          <MyPlace model={model} action={placeAction(model, actions)} />
-          {actions.onName && (
-            <NameForm name={actions.name} onName={actions.onName} />
-          )}
-        </div>
-      )}
-
-      {onControls ? (
-        <div className="side-controls" role="tabpanel" id="room-tabpanel" aria-labelledby="tab-controls">
-          {controls}
-        </div>
-      ) : (
       <div
         className="tab-panel"
         role="tabpanel"
@@ -543,9 +579,8 @@ export function SidePanel({
         {tab === "queue" && <QueueList model={model} />}
         {tab === "spectators" && <SpectatorList model={model} />}
       </div>
-      )}
 
-      {!actions.chatOff && !onControls && <ChatForm actions={actions} />}
-    </aside>
+      {!actions.chatOff && <ChatForm actions={actions} />}
+    </>
   );
 }

@@ -2936,11 +2936,14 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
    the keyboard fits, and the keyboard or gamepads sit centered in it,
    scrolling on their own. */
 /* One canvas: the same width on every tab, so the video never moves when the tab changes. */
-.room-side.is-controls, .room-page.is-header-hero .room-side { width: min(560px, 44vw); }
+@media (min-width: 1101px) { .room-side.room-canvas { width: min(560px, 44vw); } }
+.canvas-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 12px 0 18px; border-bottom: 1px solid var(--color-divider); flex-shrink: 0; }
+.canvas-head .tab-list { display: flex; gap: 22px; align-self: stretch; }
+.canvas-head .tab { height: 52px; font-size: 15px; letter-spacing: 0.02em; text-transform: uppercase; font-weight: 600; }
+.canvas-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .side-controls { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .side-controls .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; justify-content: safe center; }
 .side-controls .gp-list { justify-content: center; }
-@media (max-width: 1100px) { .room-side.is-controls { width: 100%; } }
 /* There the keyboard fits the panel's width: smaller keys, the arrows under it. */
 .side-controls .kb { min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; }
 .side-controls .kb-main, .side-controls .kb-row { gap: 4px; }

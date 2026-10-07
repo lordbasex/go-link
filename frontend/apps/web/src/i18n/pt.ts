@@ -496,6 +496,7 @@ export const pt: Messages = {
     chatOffNote: "O anfitrião desligou o chat desta sala.",
     tapForSound: "Toque em qualquer lugar para ativar o som",
     chatHide: "Esconder o chat",
+    panelLabel: "Painel da sala",
     panelClose: "Fechar o painel",
     chatShow: "Mostrar o chat",
     chatSoundOn: "Tocar um som nas mensagens novas",
