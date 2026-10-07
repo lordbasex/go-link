@@ -24,6 +24,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
+	"github.com/lordbasex/go-link/backend-device/pkg/inputhud"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
 	"github.com/lordbasex/go-link/backend-device/pkg/testpattern"
 	"github.com/lordbasex/go-link/backend-device/pkg/watermark"
@@ -141,6 +142,10 @@ type StreamService struct {
 	// mark is the go-link icon drawn on the picture while recording (only
 	// the video source's goroutine draws with it).
 	mark atomic.Pointer[recMark]
+	// hud is how many seats' controllers are drawn on the picture (0: off),
+	// the host's latency test; hudBuf is the frame it is drawn on.
+	hud    atomic.Int32
+	hudBuf []byte
 
 	// kbps is the VP8 target bitrate (SetBitrate); scale is how many times
 	// the source enlarges the game's picture (SetVideoScale).
@@ -681,6 +686,17 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.mu.Unlock()
 		s.sent, s.sentBytes, s.window = 0, 0, time.Now()
 	}
+	if n := int(s.hud.Load()); n > 0 {
+		// Drawn before any encoder or tier, on a copy (the source may
+		// reuse its frame).
+		pads := make([]input.Pad, n)
+		for i := range pads {
+			pads[i] = s.PortPad(i + 1)
+		}
+		s.hudBuf = append(s.hudBuf[:0], i420...)
+		inputhud.Draw(s.hudBuf, w, h, pads)
+		i420 = s.hudBuf
+	}
 	kbps := s.Bitrate()
 	if s.tiers != nil {
 		s.tieredFrame(i420, w, h, kbps, dur)
@@ -817,6 +833,15 @@ func (s *StreamService) SetRecorder(rec *Recorder) {
 type recMark struct {
 	stamp *watermark.Stamper
 	start time.Time
+}
+
+// SetInputHUD draws the controllers of seats 1 to seats on the picture
+// (0 turns it off) and tells the viewers where each seat's beacon is.
+func (s *StreamService) SetInputHUD(seats int) {
+	n := int32(min(max(seats, 0), input.MaxLocalPlayers))
+	if s.hud.Swap(n) != n {
+		go s.sendStreamStats()
+	}
 }
 
 // SetAspect records the picture's display aspect ratio for the web.
@@ -1002,12 +1027,18 @@ type streamStats struct {
 	Height int          `json:"height"` // (Video has the game's size)
 	Aspect float64      `json:"aspect"`
 	Video  *StreamVideo `json:"video,omitempty"` // nil before the first frame
+	// HUD is where each seat's beacon is while the controllers are drawn
+	// on the picture (P1 first).
+	HUD []inputhud.Rect `json:"hud,omitempty"`
 }
 
 func (s *StreamService) streamStatsLocked() streamStats {
 	st := streamStats{Type: "stream_stats", FPS: s.sentFPS, Width: s.vp8W, Height: s.vp8H, Aspect: s.aspect}
 	if scale := s.VideoScale(); s.vp8W > 0 && s.vp8H > 0 && s.vp8W%scale == 0 && s.vp8H%scale == 0 {
 		st.Video = &StreamVideo{Scale: scale, Width: s.vp8W / scale, Height: s.vp8H / scale, Quality: s.videoQuality, Fallback: s.videoFallback}
+	}
+	if n := int(s.hud.Load()); n > 0 && s.vp8W > 0 && s.vp8H > 0 {
+		st.HUD = inputhud.Beacons(s.vp8W, s.vp8H, n)
 	}
 	return st
 }

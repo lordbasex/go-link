@@ -133,6 +133,22 @@ async function expectControlsBesideTheVideo(p: Page) {
   await expect(panel.getByText("Keyboard").first()).toBeVisible();
   // The host may seat several controllers; by default they are one player.
   await expect(panel.getByRole("switch", { name: "Several controllers" })).toHaveAttribute("aria-checked", "false");
+  // Latency: everyone sees the network and the video; the host's switch
+  // draws the controllers on the picture and each press is measured on it.
+  await expect(panel.getByText("Network")).toBeVisible();
+  const hud = panel.getByRole("switch", { name: "Controls on the video" });
+  await hud.click();
+  await expect(hud).toHaveAttribute("aria-checked", "true");
+  await expect(panel.getByText(/Press and release any button/)).toBeVisible();
+  await expect(async () => {
+    await p.keyboard.down("KeyX");
+    await p.waitForTimeout(400);
+    await p.keyboard.up("KeyX");
+    await p.waitForTimeout(400);
+    await expect(panel.getByText(/^Last \d+ ms · \d+ press/)).toBeVisible({ timeout: 100 });
+  }).toPass({ timeout: 20_000 });
+  await hud.click();
+  await expect(hud).toHaveAttribute("aria-checked", "false");
   // The keyboard fits the panel: nothing to scroll sideways.
   expect(await panel.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expect(p.getByRole("textbox", { name: "Message" })).toBeHidden();

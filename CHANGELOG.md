@@ -4,6 +4,14 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (website)
+
+- **Latency in the controls panel, for everyone:** Network (round trip to the device), Video (jitter buffer plus decoding) and End to end, green, yellow or red. The host's **Controls on the video** switch starts the latency test: each player's browser watches its seat's light on the picture and measures every press and release from the hand to the screen (median of the last 20, the last one and the worst).
+
+### Added (device)
+
+- **Latency test:** `room_action` `input_hud_on` / `input_hud_off` (game rooms and the test pattern room) draws one cell per seat under the game, before any encoder: a small pad lit with what the device received and a beacon that is white while that seat presses anything (`pkg/inputhud`); `stream_stats.hud` says where each beacon is and `room_state.input_hud` that it is on. Not saved: a diagnostic.
+
 ## [0.2.3] - 2026-10-07
 
 ### Changed (website)

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   DEFAULT_INPUT,
   EMPTY_PAD,
@@ -28,6 +28,8 @@ import {
   type StreamStats,
   type StreamVideo,
   parseStreamVideo,
+  parseHudBeacons,
+  type HudRect,
 } from "@go-link/shared";
 import { useSignal } from "./SignalProvider";
 
@@ -43,7 +45,18 @@ export interface ControllerInfo {
   pad: Pad;
 }
 
+/** When a local player last started or stopped pressing anything. */
+export interface PressEdge {
+  active: boolean;
+  /** performance.now() of the change. */
+  at: number;
+}
+
 export interface HostStreamView {
+  /** Where each seat's beacon is while the host draws the controllers. */
+  hud: HudRect[];
+  /** The last press or release of each local player (latency test). */
+  pressEdges: RefObject<PressEdge[]>;
   /** Keyboard and every gamepad play as one player (InputOptions.multi). */
   single: boolean;
   media: MediaStream | null;
@@ -158,6 +171,10 @@ export function useHostStream(
   const [sentFps, setSentFps] = useState<number | null>(null);
   const [aspect, setAspect] = useState<number | null>(null);
   const [video, setVideo] = useState<StreamVideo | null>(null);
+  const [hud, setHud] = useState<HudRect[]>([]);
+  const pressEdges = useRef<PressEdge[]>(
+    Array.from({ length: MAX_LOCAL_PLAYERS }, () => ({ active: false, at: 0 })),
+  );
   const [controllers, setControllers] = useState<ControllerInfo[]>([]);
   const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(new Set());
   const [room, setRoom] = useState<RoomStateView | null>(null);
@@ -200,6 +217,9 @@ export function useHostStream(
         if (m.type === "stream_stats" && typeof m.fps === "number" && m.fps > 0)
           setSentFps(m.fps);
         if (m.type === "stream_stats") {
+          const beacons = parseHudBeacons(msg);
+          if (beacons)
+            setHud((cur) => (JSON.stringify(cur) === JSON.stringify(beacons) ? cur : beacons));
           const v = parseStreamVideo(msg);
           if (v) setVideo((cur) => (cur && sameVideo(cur, v) ? cur : v));
         }
@@ -237,6 +257,7 @@ export function useHostStream(
       setState("idle");
       setSentFps(null);
       setVideo(null);
+      setHud([]);
       setRoom(null);
       setChat([]);
       setTyping([]);
@@ -309,7 +330,13 @@ export function useHostStream(
       }
       if (suspendRef.current)
         pads.forEach((p) => ((p.buttons = 0), (p.axes = [0, 0, 0, 0])));
+      const now = performance.now();
       pads.forEach((pad, player) => {
+        // Pressing anything (as the device's beacon shows it) starts the
+        // clock of the latency test.
+        const active = pad.buttons !== 0 || pad.axes.some((a) => a >= 64 || a <= -64);
+        const edge = pressEdges.current[player]!;
+        if (edge.active !== active) pressEdges.current[player] = { active, at: now };
         if (!samePad(pad, last[player]!)) {
           last[player] = pad;
           streamRef.current?.setPad(player, pad);
@@ -404,6 +431,8 @@ export function useHostStream(
 
   const send = (msg: unknown) => streamRef.current?.sendControl(msg);
   return {
+    hud,
+    pressEdges,
     single,
     media,
     state,

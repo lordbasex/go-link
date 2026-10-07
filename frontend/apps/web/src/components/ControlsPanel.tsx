@@ -10,6 +10,7 @@ import {
 } from "@go-link/shared";
 import { t } from "../i18n";
 import type { ControllerInfo } from "../signal/useHostStream";
+import type { LatencyReading } from "../signal/useLatencyProbe";
 import type { RemapTarget } from "./RemapDialog";
 import { ControllerArt, familyOf } from "./ControllerArt";
 import { Select } from "./ui/Select";
@@ -263,6 +264,83 @@ export interface ControlsPanelProps {
   single?: boolean;
   /** The host's switch for several controllers; guests get none. */
   onMulti?: (on: boolean) => void;
+  /** The connection's latency, for everyone in the room. */
+  latency?: LatencyView;
+}
+
+export interface LatencyView {
+  /** Round trip to the device (ms). */
+  rttMs: number | null;
+  /** Jitter buffer plus decoding of the video (ms). */
+  videoMs: number | null;
+  /** The host draws the controllers on the video (latency test). */
+  hudOn: boolean;
+  /** This browser holds a seat whose beacon it can watch. */
+  seated: boolean;
+  /** Press to picture, measured on the beacon. */
+  probe: LatencyReading | null;
+  /** The host's switch; guests get none. */
+  onHud?: (on: boolean) => void;
+}
+
+/** Green, yellow or red for a latency, with its own limits. */
+function grade(ms: number | null, good: number, ok: number): string {
+  if (ms === null) return "";
+  return ms <= good ? " is-good" : ms <= ok ? " is-ok" : " is-bad";
+}
+
+/** Latency for everyone; the host's switch draws the controllers on the video. */
+function LatencyCard({ latency: l }: { latency: LatencyView }) {
+  const ms = (v: number | null) => (v === null ? "—" : t.controls.latencyMs(Math.round(v)));
+  return (
+    <div className="latency-card">
+      <div className="latency-head">
+        <span className="strong">{t.controls.latency}</span>
+        {l.onHud && (
+          <span className="latency-switch small muted">
+            <span id="hud-switch-label">{t.controls.hud}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={l.hudOn}
+              aria-labelledby="hud-switch-label"
+              className={`switch${l.hudOn ? " is-on" : ""}`}
+              onClick={() => l.onHud?.(!l.hudOn)}
+            >
+              <span className="switch-knob" />
+            </button>
+          </span>
+        )}
+      </div>
+      <dl className="latency-grid">
+        <div>
+          <dt className="small muted">{t.controls.latencyNetwork}</dt>
+          <dd className={`latency-value${grade(l.rttMs, 40, 100)}`}>{ms(l.rttMs)}</dd>
+        </div>
+        <div>
+          <dt className="small muted">{t.controls.latencyVideo}</dt>
+          <dd className={`latency-value${grade(l.videoMs, 40, 80)}`}>{ms(l.videoMs)}</dd>
+        </div>
+        <div>
+          <dt className="small muted">{t.controls.latencyEnd}</dt>
+          <dd className={`latency-value${grade(l.probe?.median ?? null, 80, 150)}`}>
+            {l.hudOn && l.probe ? ms(l.probe.median) : "—"}
+          </dd>
+        </div>
+      </dl>
+      <p className="small muted latency-note">
+        {!l.hudOn
+          ? l.onHud
+            ? t.controls.hudHostHint
+            : t.controls.hudGuestHint
+          : !l.seated
+            ? t.controls.hudTakeSeat
+            : l.probe
+              ? t.controls.hudReading(l.probe.last, l.probe.count, l.probe.worst)
+              : t.controls.hudPress}
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -280,12 +358,14 @@ export function ControlsPanel({
   game,
   single = false,
   onMulti,
+  latency,
 }: ControlsPanelProps) {
   const [tab, setTab] = useState<"gamepads" | "keyboard">("gamepads");
   const hasPads = controllers.length > 0;
   const view = hasPads ? tab : "keyboard";
   return (
     <section className="controls-panel" aria-label={t.controls.title}>
+      {latency && <LatencyCard latency={latency} />}
       {onMulti && (
         <div className="switch-row controls-multi">
           <div className="stack-xxs">

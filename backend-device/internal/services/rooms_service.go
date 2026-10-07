@@ -571,6 +571,22 @@ func (r *RoomsService) Action(ctx context.Context, id, action, name string) (int
 		if m := r.managerOf(gr); m != nil {
 			m.SetChat(on)
 		}
+	case "input_hud_on", "input_hud_off":
+		// The host's latency test: the controllers drawn on the picture
+		// while the game runs (not saved, a diagnostic).
+		r.mu.Lock()
+		stream, m, seats := gr.stream, gr.manager, gr.seats
+		r.mu.Unlock()
+		if stream == nil || m == nil {
+			return 0, ErrRoomState
+		}
+		on := action == "input_hud_on"
+		if on {
+			stream.SetInputHUD(seatsOrDefault(seats))
+		} else {
+			stream.SetInputHUD(0)
+		}
+		m.SetInputHUD(on)
 	case "new_link":
 		// A new invitation: the old link, QR and code stop working.
 		r.mu.Lock()

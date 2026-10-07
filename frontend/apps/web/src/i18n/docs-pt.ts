@@ -204,6 +204,7 @@ export const docsPt: Docs = {
             "Conecte por USB ou Bluetooth e aperte qualquer botão: os navegadores só mostram um controle depois do primeiro aperto.",
             "O teclado e seus controles são um só jogador: a ficha (5) e o Start funcionam em qualquer um, assim um controle conectado sem querer nunca ocupa outro lugar. O anfitrião pode ligar **Vários controles** em Controles (durante essa sessão do navegador): aí cada controle é um jogador, várias pessoas jogam em um computador, e o teclado joga como o jogador que você escolher. Um convidado sempre joga como um só jogador.",
             "Se um botão fizer algo inesperado, use **Remapear botões** no painel de controles.",
+            "O painel de controles mostra a sua **Latência**: Rede, Vídeo e De ponta a ponta. O anfitrião pode ligar ali **Controles no vídeo**: o dispositivo desenha o controle de cada jogador embaixo do jogo com uma luz por lugar, e o navegador de cada jogador mede cada toque da mão até a tela (verde até 80 ms, amarelo até 150 ms). Todos veem os controles e as gravações os guardam.",
           ],
         },
         { t: "h2", id: "touch", text: "Celulares e tablets" },

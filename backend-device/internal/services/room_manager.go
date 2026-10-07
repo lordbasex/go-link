@@ -138,6 +138,7 @@ type RoomManager struct {
 	nextOrder int
 	voiceOff  bool
 	chatOff   bool // the host turned the room's chat off
+	inputHUD  bool // the host shows the controllers on the video (latency test)
 	picture   *models.RoomPicture
 	info      RoomInfo
 	pausable  bool // a game is running (the test card never pauses)
@@ -293,6 +294,17 @@ func (m *RoomManager) SetChat(on bool) {
 				}
 				m.broadcastTyping()
 			}
+			m.broadcastState()
+		}
+	})
+}
+
+// SetInputHUD tells the room's guests whether the controllers are drawn
+// on the video (room_state input_hud), so each one measures its latency.
+func (m *RoomManager) SetInputHUD(on bool) {
+	m.do(func() {
+		if m.inputHUD != on {
+			m.inputHUD = on
 			m.broadcastState()
 		}
 	})
@@ -971,6 +983,7 @@ type stateOut struct {
 	MaxPlayers int                 `json:"max_players"`
 	Voice      bool                `json:"voice"`
 	Chat       bool                `json:"chat"`
+	InputHUD   bool                `json:"input_hud,omitempty"`
 	Picture    *models.RoomPicture `json:"picture,omitempty"`
 	Info       RoomInfo            `json:"info"`
 	Seats      []*seatOut          `json:"seats"`
@@ -993,7 +1006,7 @@ func (m *RoomManager) broadcastState() {
 		asks = append(asks, pauseAskOut{From: a.peer, Name: a.name, Port: a.port, ExpiresAt: a.expires})
 	}
 	for peer, mem := range m.members {
-		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, Picture: m.picture, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
+		st := stateOut{Type: "room_state", MaxPlayers: m.cfg.MaxPlayers, Voice: !m.voiceOff, Chat: !m.chatOff, InputHUD: m.inputHUD, Picture: m.picture, Info: m.info, Seats: make([]*seatOut, len(m.seats)), Queue: []queueOut{}, Spectators: []personOut{},
 			Pausable: m.pausable, Paused: m.paused, PausedBy: m.pausedBy, Controls: m.controls, Recording: m.recording, HostOnline: online}
 		st.You = youOut{Name: mem.name, Ports: []int{}, QueuePositions: []int{}, Spectator: mem.spectator, SwapOffers: []swapOut{}, SwapAsked: []swapOut{}, Owner: m.owners[peer]}
 		if st.You.Owner {

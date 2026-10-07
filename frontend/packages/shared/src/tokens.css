@@ -30,6 +30,7 @@
   --color-on-accent: #1a1206;
   --color-voice: #4fc3d9;
   --color-ok: #7ee2a8;
+  --color-ok-text: #7ee2a8; /* green text on any surface */
   /* Willy Maker's collision tags that no other color names. */
   --color-hazard: #f2d23a;
   --color-water: #4f8bd9;
@@ -111,6 +112,7 @@
   --color-on-accent: #1a1206;
   --color-voice: #0f6b7f;
   --color-ok: #1f8a4c;
+  --color-ok-text: #176b3a;
   /* Darker player colors, so names and badges read on light surfaces
      (the video keeps the bright ones). */
   --color-p1: #8f5200;

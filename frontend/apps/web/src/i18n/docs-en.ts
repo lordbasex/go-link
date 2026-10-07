@@ -204,6 +204,7 @@ export const docsEn: Docs = {
             "Connect it by USB or Bluetooth and press any button: browsers only show a gamepad after its first press.",
             "The keyboard and your gamepads are one player: Coin (5) and Start work from any of them, so a gamepad plugged in by mistake never takes another seat. The host can turn on **Several controllers** in Controls (for that browser session): then each gamepad is a player, so several people play from one computer, and the keyboard plays as the player you choose. A guest always plays as one player.",
             "If a button does something unexpected, use **Remap buttons** in the controls panel.",
+            "The controls panel shows your **Latency**: Network, Video and End to end. The host can turn on **Controls on the video** there: the device draws everyone's controller under the game with a light per seat, and each player's browser measures every press from the hand to the screen (green up to 80 ms, yellow up to 150 ms). Everyone sees the controllers, and recordings keep them.",
           ],
         },
         { t: "h2", id: "touch", text: "Phones and tablets" },

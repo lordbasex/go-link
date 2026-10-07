@@ -2975,3 +2975,13 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .header-menu-sub { display: flex; flex-direction: column; gap: 2px; padding-left: 36px; }
 .header-menu-sub .header-menu-item { min-height: 40px; }
 .controls-multi { padding: 10px 12px; background: var(--color-bg); }
+.latency-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--color-bg); border: 1px solid var(--color-border); }
+.latency-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.latency-switch { display: inline-flex; align-items: center; gap: 8px; }
+.latency-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.latency-grid dd { margin: 2px 0 0; }
+.latency-value { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.latency-value.is-good { color: var(--color-ok-text); }
+.latency-value.is-ok { color: var(--color-accent-text); }
+.latency-value.is-bad { color: var(--color-danger-text); }
+.latency-note { margin: 0; }

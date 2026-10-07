@@ -19,6 +19,8 @@ export interface RoomStateView {
   voice: boolean;
   /** The room's chat is on (the host can turn it off). */
   chat: boolean;
+  /** The host draws the controllers on the video to measure latency. */
+  inputHud: boolean;
   /** The room's name, game, host and picture, sent to guests after they get in. */
   info: RoomInfoView;
   /** Index 0 is P1; null means a free seat. */
@@ -212,6 +214,7 @@ export function parseRoomState(msg: unknown): RoomStateView | null {
     maxPlayers,
     voice: m.voice !== false,
     chat: m.chat !== false,
+    inputHud: m.input_hud === true,
     info: parseInfo(m.info),
     seats,
     queue: arr(m.queue).slice(0, 64).map((q) => {

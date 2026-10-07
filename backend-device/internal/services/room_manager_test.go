@@ -878,3 +878,17 @@ func TestTwoPlayerGameQueuesTheThird(t *testing.T) {
 		t.Fatalf("summary %+v", last)
 	}
 }
+
+func TestTheHostsLatencyTestReachesTheRoomState(t *testing.T) {
+	m, out, _ := newManager(t)
+	m.Join("guest")
+	m.Sync()
+	if st := out.lastState(t, "guest"); st["input_hud"] != nil {
+		t.Fatalf("input_hud %v before the host turns it on", st["input_hud"])
+	}
+	m.SetInputHUD(true)
+	m.Sync()
+	if st := out.lastState(t, "guest"); st["input_hud"] != true {
+		t.Fatalf("input_hud %v", st["input_hud"])
+	}
+}

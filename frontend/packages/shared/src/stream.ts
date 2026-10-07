@@ -108,6 +108,10 @@ export interface StreamStats {
   path: "direct" | "relay" | null;
   /** The video codec in use ("H.264", "VP8"), from the inbound stream's codec. */
   codec?: string | null;
+  /** How long the frames of the last second waited in the jitter buffer (ms). */
+  videoBufferMs?: number | null;
+  /** How long the browser took to decode each of them (ms). */
+  decodeMs?: number | null;
 }
 
 export type StreamState = "connecting" | "connected" | "failed" | "closed";
@@ -301,6 +305,8 @@ export class HostStream {
     return d;
   }
 
+  private videoTotals: { emitted: number; buffered: number; decoded: number; decoding: number } | null = null;
+
   async stats(): Promise<StreamStats> {
     const result: StreamStats = { fps: null, rttMs: null, path: null, codec: null };
     if (!this.pc) return result;
@@ -310,6 +316,21 @@ export class HostStream {
     let codecId: string | undefined;
     report.forEach((s: Record<string, unknown>) => {
       byId.set(String(s.id), s);
+      if (s.type === "inbound-rtp" && s.kind === "video") {
+        // Averages over the frames since the last call, not the whole call.
+        const n = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : null);
+        const emitted = n("jitterBufferEmittedCount");
+        const buffered = n("jitterBufferDelay");
+        const decoded = n("framesDecoded");
+        const decoding = n("totalDecodeTime");
+        const last = this.videoTotals;
+        if (emitted !== null && buffered !== null && last && emitted > last.emitted)
+          result.videoBufferMs = Math.round(((buffered - last.buffered) / (emitted - last.emitted)) * 1000);
+        if (decoded !== null && decoding !== null && last && decoded > last.decoded)
+          result.decodeMs = Math.round(((decoding - last.decoding) / (decoded - last.decoded)) * 10000) / 10;
+        if (emitted !== null && buffered !== null && decoded !== null && decoding !== null)
+          this.videoTotals = { emitted, buffered, decoded, decoding };
+      }
       if (s.type === "inbound-rtp" && s.kind === "video" && typeof s.framesPerSecond === "number") result.fps = s.framesPerSecond;
       if (s.type === "inbound-rtp" && s.kind === "video" && typeof s.codecId === "string") codecId = s.codecId;
       if (s.type === "candidate-pair" && s.nominated && typeof s.currentRoundTripTime === "number") result.rttMs = Math.round(s.currentRoundTripTime * 1000);

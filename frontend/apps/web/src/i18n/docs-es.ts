@@ -204,6 +204,7 @@ export const docsEs: Docs = {
             "Conéctalo por USB o Bluetooth y presiona cualquier botón: los navegadores solo muestran un mando después de su primera pulsación.",
             "El teclado y tus mandos son un solo jugador: la moneda (5) y Start funcionan desde cualquiera, así un mando conectado sin querer nunca toma otra plaza. El anfitrión puede activar **Varios mandos** en Controles (durante esa sesión del navegador): entonces cada mando es un jugador, así varias personas juegan desde una computadora, y el teclado juega como el jugador que elijas. Un invitado siempre juega como un solo jugador.",
             "Si un botón hace algo inesperado, usa **Reasignar botones** en el panel de controles.",
+            "El panel de controles muestra tu **Latencia**: Red, Video y Punta a punta. El anfitrión puede activar ahí **Controles en el video**: el dispositivo dibuja el mando de cada jugador debajo del juego con una luz por plaza, y el navegador de cada jugador mide cada pulsación desde la mano hasta la pantalla (verde hasta 80 ms, amarillo hasta 150 ms). Todos ven los controles y las grabaciones los guardan.",
           ],
         },
         { t: "h2", id: "touch", text: "Celulares y tablets" },

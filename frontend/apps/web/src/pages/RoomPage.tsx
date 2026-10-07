@@ -31,6 +31,7 @@ import { DEMO_DEVICE_NAME } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
 import { useHeaderSlot, useMediaQuery } from "../components/headerSlot";
 import { useJoinRoom, usePublicRoomMeta } from "../signal/useJoinRoom";
+import { useLatencyProbe } from "../signal/useLatencyProbe";
 import { useHostStream } from "../signal/useHostStream";
 import { AndroidAppCard } from "../components/AndroidAppCard";
 import { forgetRoomPass, roomPass, saveRoomPass } from "../signal/roomPasses";
@@ -618,6 +619,12 @@ export function RoomPage() {
     },
   );
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The latency test: this browser's seat, the local player that holds it
+  // and its beacon while the host draws the controllers on the video.
+  const myPort = live.room?.you.ports[0];
+  const myLocal = myPort ? (live.room?.seats[myPort - 1]?.localPlayer ?? null) : null;
+  const beacon = live.room?.inputHud && myPort ? (live.hud[myPort - 1] ?? null) : null;
+  const probe = useLatencyProbe(videoRef, beacon, myLocal, live.pressEdges);
   const stageRef = useRef<HTMLDivElement>(null);
   // How this browser draws the game (Picture in the dock): the GPU
   // renderer only runs for a style other than the browser's own look.
@@ -1211,6 +1218,26 @@ export function RoomPage() {
       game={live.room?.controls}
       single={live.single}
       onMulti={live.room?.you.owner ? setMultiPads : undefined}
+      latency={{
+        rttMs: live.stats.rttMs,
+        videoMs:
+          live.stats.videoBufferMs != null
+            ? live.stats.videoBufferMs + (live.stats.decodeMs ?? 0)
+            : null,
+        hudOn: live.room?.inputHud ?? false,
+        seated: myPort !== undefined,
+        probe,
+        // The host's switch, in game rooms and in the test pattern room.
+        onHud:
+          ownsRoom || ownTest
+            ? (on) =>
+                sendToDevice({
+                  type: "room_action",
+                  id: ownRoom ? ownRoom.id : "test",
+                  action: on ? "input_hud_on" : "input_hud_off",
+                })
+            : undefined,
+      }}
     />
   );
   const chatShown = !chatHidden && !(inHeader && sideTab !== "chat");

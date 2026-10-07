@@ -31,3 +31,24 @@ describe("Several controllers", () => {
     expect(screen.queryByRole("switch")).toBeNull();
   });
 });
+
+describe("Latency", () => {
+  const latency = { rttMs: 32, videoMs: 41, hudOn: false, seated: true, probe: null };
+  it("shows everyone the network and the video, and only the host the switch", async () => {
+    const onHud = vi.fn();
+    const { unmount } = render(<ControlsPanel {...base} single latency={{ ...latency, onHud }} />);
+    expect(screen.getByText("32 ms")).toBeInTheDocument();
+    expect(screen.getByText("41 ms")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: "Controls on the video" }));
+    expect(onHud).toHaveBeenCalledWith(true);
+    unmount();
+    render(<ControlsPanel {...base} single latency={latency} />);
+    expect(screen.queryByRole("switch", { name: "Controls on the video" })).toBeNull();
+    expect(screen.getByText(/while the host draws the controllers/)).toBeInTheDocument();
+  });
+  it("shows the median measured on the picture while the test is on", () => {
+    render(<ControlsPanel {...base} single latency={{ ...latency, hudOn: true, probe: { last: 70, median: 64, worst: 90, count: 5 } }} />);
+    expect(screen.getByText("64 ms")).toBeInTheDocument();
+    expect(screen.getByText(/Last 70 ms · 5 presses · worst 90 ms/)).toBeInTheDocument();
+  });
+});

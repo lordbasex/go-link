@@ -30,6 +30,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/panel"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
 	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
+	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
 	"github.com/lordbasex/go-link/backend-device/pkg/jsonkeys"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
@@ -588,10 +589,21 @@ func run() error {
 			// The test pattern room ("test"): a new link, and a pause with
 			// --test-room-pause.
 			if msg.ID == services.TestRoomID && room != nil {
-				ok := action == "new_link" || ((action == "pause" || action == "resume") && *testPause)
+				ok := action == "new_link" || ((action == "pause" || action == "resume") && *testPause) || action == "input_hud_on" || action == "input_hud_off"
 				switch action {
 				case "new_link":
 					room.NewInvite()
+				case "input_hud_on", "input_hud_off":
+					// The latency test: the beacons of the 4 seats on the card.
+					on := action == "input_hud_on"
+					if on {
+						stream.SetInputHUD(input.MaxLocalPlayers)
+					} else {
+						stream.SetInputHUD(0)
+					}
+					if testManager != nil {
+						testManager.SetInputHUD(on)
+					}
 				case "pause", "resume":
 					if ok {
 						testManager.Pause(action == "pause", "The host")

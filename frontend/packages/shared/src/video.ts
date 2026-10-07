@@ -49,6 +49,35 @@ export function parseStreamVideo(msg: unknown): StreamVideo | null {
   };
 }
 
+/** A part of the picture in fractions of its size (0 to 1). */
+export interface HudRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Where each seat's beacon is (P1 first) while the host draws the
+ * controllers on the video: stream_stats.hud. Null for any other message;
+ * an empty list when they are not drawn.
+ */
+export function parseHudBeacons(msg: unknown): HudRect[] | null {
+  if (typeof msg !== "object" || msg === null) return null;
+  const m = msg as Record<string, unknown>;
+  if (m.type !== "stream_stats") return null;
+  if (!Array.isArray(m.hud)) return [];
+  const frac = (x: unknown) => (typeof x === "number" && x >= 0 && x <= 1 ? x : -1);
+  const out: HudRect[] = [];
+  for (const r of m.hud.slice(0, 4)) {
+    const o = (typeof r === "object" && r !== null ? r : {}) as Record<string, unknown>;
+    const rect = { x: frac(o.x), y: frac(o.y), w: frac(o.w), h: frac(o.h) };
+    if (rect.x < 0 || rect.y < 0 || rect.w <= 0 || rect.h <= 0 || rect.x + rect.w > 1 || rect.y + rect.h > 1) return [];
+    out.push(rect);
+  }
+  return out;
+}
+
 /** The room's video as the owner sees it in device_status rooms[].video. */
 export interface RoomVideo {
   quality: VideoQuality;
