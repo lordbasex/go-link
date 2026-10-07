@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-07
+
 ### Changed (website)
 
 - **One side panel in a room, two tabs on top: CHAT and CONTROLS** (the latter while a game streams), with a close button and the same width on both. Chat holds everything the side panel had: your place, your name, and the Chat, Queue and Spectators tabs with the message field; Controls holds the keyboard and gamepads. The header's chat button opens it on Chat and the dock's controller button on Controls (pressing again closes it); the separate controls panel is gone. Unread messages are counted on the chat button while another tab shows.
