@@ -5,10 +5,12 @@
 // the zoom; objects are boxes the size of their sprite (heroes ink,
 // enemies accent, the rest outlined), with a small square eye on the side
 // they face. Selected items get an accent outline, and a selected zone a
-// handle to resize it.
+// handle to resize it. Foreground pieces are drawn over everything.
 
-import type { CSSProperties } from "react";
-import type { LevelObject, Zone, ZoneKind } from "../../model";
+import { useEffect, useRef, type CSSProperties } from "react";
+import type { FrontPiece, LevelObject, Zone, ZoneKind } from "../../model";
+import { decodeCells } from "../../model/rle";
+import type { TileImage } from "../render";
 import { roleOf } from "./catalog";
 import { OwnSprite, useOwnSheet } from "./ownSprites";
 
@@ -63,6 +65,34 @@ export function ObjectBox({ o, box, z, label, selected, showLabel }: { o: LevelO
         {sheet ? <OwnSprite sheet={sheet} board={{ z, w: box.w, h: box.h }} /> : !helper && <div className="studio-object-eye" style={{ top: box.h * z * 0.18, right: box.w * z * 0.18, width: 3 * z, height: 3 * z }} />}
       </div>
       {showLabel && <span className="studio-object-label">{label}</span>}
+    </div>
+  );
+}
+
+/**
+ * A foreground piece (model/front.ts): its tiles from the front tileset, at
+ * 1:1 in a canvas scaled by the zoom, over the zones and objects (it is in
+ * front in the game too); selected, an accent outline and its speed.
+ */
+export function FrontBox({ piece, image, z, selected, label }: { piece: FrontPiece; image: TileImage | undefined; z: number; selected: boolean; label: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const w = piece.cols * 16;
+  const h = piece.rows * 16;
+  useEffect(() => {
+    const ctx = ref.current?.getContext("2d");
+    if (!ctx || !image) return;
+    ctx.clearRect(0, 0, w, h);
+    const cells = decodeCells(piece.cells, piece.cols * piece.rows);
+    for (let r = 0; r < piece.rows; r++)
+      for (let c = 0; c < piece.cols; c++) {
+        const n = cells[r * piece.cols + c] ?? 0;
+        if (n) ctx.drawImage(image.img, ((n - 1) % image.columns) * 16, Math.floor((n - 1) / image.columns) * 16, 16, 16, c * 16, r * 16, 16, 16);
+      }
+  }, [piece.cells, piece.cols, piece.rows, image, w, h]);
+  return (
+    <div className={`studio-front${selected ? " is-selected" : ""}`} data-front={piece.id} style={{ left: piece.x * z, top: piece.y * z, width: w * z, height: h * z }}>
+      <canvas ref={ref} width={w} height={h} aria-hidden="true" />
+      {selected && <span className="studio-object-label">{label}</span>}
     </div>
   );
 }

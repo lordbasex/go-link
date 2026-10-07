@@ -1,0 +1,62 @@
+{
+ "name": "front-walk",
+ "description": "The foreground (WM_ROM_OUT/front of rom.test.tsx, rom/frontFixture.ts, wm_data 29): the spec level with three lamp posts in front at 150, 200 and 120 % of the camera's speed. Player 1 runs right so the camera passes all three; every checkpoint shows them where draw_front puts them (screen x = 192 + (x - cam x - 192) * speed / 100), in front of the players and the enemies, in their one sprite palette.",
+ "frames": 720,
+ "checkpoints": [
+  200,
+  225,
+  250,
+  275,
+  300,
+  325,
+  350,
+  375,
+  400,
+  425,
+  450,
+  475,
+  500,
+  525,
+  550,
+  575,
+  600,
+  625,
+  650,
+  675,
+  700
+ ],
+ "steps": [
+  {
+   "from": 120,
+   "to": 125,
+   "port": 1,
+   "buttons": [
+    "coin"
+   ]
+  },
+  {
+   "from": 150,
+   "to": 155,
+   "port": 1,
+   "buttons": [
+    "start"
+   ]
+  },
+  {
+   "from": 170,
+   "to": 173,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  },
+  {
+   "from": 176,
+   "to": 700,
+   "port": 1,
+   "buttons": [
+    "right"
+   ]
+  }
+ ]
+}

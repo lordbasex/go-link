@@ -105,8 +105,8 @@ export async function importBackground(store: EditorStore, levelId: string, file
 }
 
 // the scenes' pictures, decoded once per session
-const sceneSources = new Map<string, Rgba>();
-async function sceneSource(asset: string): Promise<Rgba | null> {
+export const sceneSources = new Map<string, Rgba>();
+export async function sceneSource(asset: string): Promise<Rgba | null> {
   const hit = sceneSources.get(asset);
   if (hit) return hit;
   const stored = await getAsset(asset);

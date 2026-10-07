@@ -36,7 +36,7 @@ export const studioEs: StudioMessages = {
   expand: "Expandir panel",
 
   insertHeading: "Insertar",
-  insert: { background: "Fondo…", replaceBackground: "Reemplazar fondo…", character: "Personaje…", enemy: "Enemigo…", object: "Objeto…", group: "Nuevo grupo de capas", prompt: "Prompts para IA de imágenes…", far: "Fondo lejano (parallax)…" },
+  insert: { background: "Fondo…", replaceBackground: "Reemplazar fondo…", character: "Personaje…", enemy: "Enemigo…", object: "Objeto…", group: "Nuevo grupo de capas", prompt: "Prompts para IA de imágenes…", far: "Fondo lejano (parallax)…", front: "Primer plano (adelante)…" },
   insertNote: "También con clic derecho sobre el lienzo.",
   drawZoneHeading: "Dibujar zona · B",
 
@@ -136,6 +136,9 @@ export const studioEs: StudioMessages = {
     canvas: "Menú del lienzo",
   },
   toast: {
+    frontReady: "Pieza de primer plano puesta: en el juego pasa adelante, más rápido que la cámara.",
+    frontFull: "El primer plano admite 16 imágenes como máximo.",
+    frontEmpty: "Esa imagen no dibuja nada (es toda transparente o magenta).",
     scenesReady: "Escenarios acomodados.",
     farReady: "Fondo lejano listo: se ve donde el fondo es transparente y en el juego se mueve a la mitad de velocidad.",
     sceneReady: (w: number) => `Escenario agregado: el nivel ahora mide ${w} px de ancho.`,
@@ -166,6 +169,9 @@ export const studioEs: StudioMessages = {
   },
   backgroundName: "Fondo",
   undoLabels: {
+    front: "Primer plano",
+    frontMove: "Mover la pieza de primer plano",
+    frontRemove: "Quitar la pieza de primer plano",
     depth: "Bandas de profundidad",
     scenes: "Escenarios",
     lineUp: "Alinear el piso",
@@ -231,6 +237,18 @@ export const studioEs: StudioMessages = {
     delete: "Borrar grupo",
     moveTo: "Mover a grupo",
     group: "Agrupar",
+  },
+  front: {
+    title: "Primer plano",
+    help: "Delante de los jugadores y más rápido que la cámara, como un farol que pasa cerca de la pantalla. Está donde lo ves cuando el centro de la cámara llega a su borde izquierdo. Todas las imágenes del primer plano comparten una paleta de 15 colores (a la placa le quedan pocas paletas de sprites): funcionan mejor las siluetas oscuras con alguna luz.",
+    x: "X",
+    y: "Y",
+    h: "Altura",
+    speed: "Velocidad %",
+    piece: (name: string) => `Primer plano · ${name}`,
+    layer: "Primer plano",
+    remove: "Quitar",
+    duplicate: "Duplicar",
   },
   depth: {
     title: "Profundidad",
