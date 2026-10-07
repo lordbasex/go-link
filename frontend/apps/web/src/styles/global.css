@@ -1160,6 +1160,8 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
 @media (hover: hover) {
   [data-tip]:hover::after, [data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 999px; background: var(--color-text); color: var(--color-bg); font: 600 12px var(--font-text); white-space: nowrap; pointer-events: none; z-index: 20; box-shadow: 0 6px 16px rgb(0 0 0 / 0.35); }
   .tip-below[data-tip]:hover::after, .tip-below[data-tip]:focus-visible::after { bottom: auto; top: calc(100% + 8px); }
+  /* The header's right side ends at the window's edge: its tooltips grow to the left, so the last buttons' text is never cut. */
+  .app-header-main .header-right .tip-below[data-tip]:hover::after, .app-header-main .header-right .tip-below[data-tip]:focus-visible::after { left: auto; right: 0; transform: none; }
 }
 .lcard .groom-icon { width: 36px; height: 36px; }
 
