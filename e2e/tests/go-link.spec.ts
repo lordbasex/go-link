@@ -93,13 +93,14 @@ test("the test pattern room streams video", async () => {
   await expectVideoPlaying(page);
   await expectAccessible(page, "owner's room");
   // The same room in the light theme (the video keeps its dark colors).
-  await page.getByRole("button", { name: "Light mode" }).first().click();
+  await switchTheme(page, "Light mode");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expectAccessible(page, "owner's room (light)");
   await expectOutputList(page, "light");
-  await page.getByRole("button", { name: "Dark mode" }).first().click();
+  await switchTheme(page, "Dark mode");
   await expectOutputList(page, "dark");
   await expectPictureStyles(page);
+  await expectControlsBesideTheVideo(page);
   // The stream figures: the test card is sent at its own size (no 2x).
   await clickControl(page, "Connection details");
   const figures = page.getByRole("dialog", { name: "Connection details" });
@@ -107,6 +108,34 @@ test("the test pattern room streams video", async () => {
   await expect(figures).not.toContainText("2×");
   await page.keyboard.press("Escape");
 });
+
+/** In a room the theme lives in the header's "…" (Settings). */
+async function switchTheme(p: Page, name: "Light mode" | "Dark mode") {
+  const button = p.getByRole("button", { name, exact: true });
+  if (!(await button.isVisible())) await p.getByRole("button", { name: "Settings" }).click();
+  await button.click();
+  await p.keyboard.press("Escape");
+}
+
+/** The dock's controls button opens the keyboard and gamepads in the chat's
+ * place, beside the video, which keeps its height; closing it brings the chat back. */
+async function expectControlsBesideTheVideo(p: Page) {
+  const stage = p.locator(".video-stage");
+  const before = await stage.boundingBox();
+  await clickControl(p, "Show controls");
+  const side = p.getByRole("complementary", { name: "Controls" });
+  await expect(side).toBeVisible();
+  await expect(side.getByText("Keyboard").first()).toBeVisible();
+  // The keyboard fits the panel: nothing to scroll sideways.
+  expect(await side.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await expect(p.getByRole("tab", { name: "Chat" })).toBeHidden();
+  const after = await stage.boundingBox();
+  expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2);
+  await expectAccessible(p, "room controls beside the video");
+  await side.getByRole("button", { name: "Hide controls" }).click();
+  await expect(side).toBeHidden();
+  await expect(p.getByRole("tab", { name: "Chat" })).toBeVisible();
+}
 
 /** The dock's Picture settings switch the GPU renderer on and off live, without a reload. */
 async function expectPictureStyles(p: Page) {

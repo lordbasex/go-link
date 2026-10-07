@@ -16,6 +16,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (website)
 
+- **The controls open beside the video:** on a computer, the dock's controller button opens the keyboard and gamepads in the chat's place, as a side panel (with a close button), and the video keeps its whole height; closing it brings the chat back, with any new messages counted on the chat button meanwhile. The keyboard fits the panel (smaller keys, the arrows under it). Before, the panel opened under the video and made it smaller. The gamepad's Plays as list showed only a huge arrow; fixed.
 - **A cleaner room header:** in a room, the top bar is one row: the logo, the room (its picture, its title and how many are playing), the room's own buttons (chat, How to play, Invite, Close game, Leave), your device, the language and a "…" with the signaling server, the theme and GitHub. The section tabs are gone there, and the room's title and buttons no longer take rows of their own, so the video gets more height: the video and the chat now fill the window side by side, equally tall, with the picture (and its frame, if you chose one) centered in the video.
 - **Language is one button:** the three EN/ES/PT bubbles became one button with the current language and a menu to pick another, on every page.
 

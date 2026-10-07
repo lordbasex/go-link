@@ -373,6 +373,8 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .gp-list { display: flex; flex-wrap: wrap; gap: 16px; }
 .gp { margin: 0; width: 360px; max-width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .gp svg { width: 100%; height: auto; }
+/* Not the svgs of its caption (the Plays as list's chevron grew to the full width). */
+.gp figcaption .select-chevron { width: 14px; height: 14px; }
 .gp-part { fill: var(--color-surface-2); stroke: var(--color-border-strong); stroke-width: 1; }
 .gp-part.is-on { fill: var(--color-accent); stroke: var(--color-accent); }
 .gp-ring { fill: none; stroke: var(--color-border-strong); stroke-width: 1.5; }
@@ -2927,3 +2929,15 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
   }
   .room-page.is-header-hero .room-side { flex: 1 1 0; width: 100%; min-height: 260px; }
 }
+/* The controls in the chat's place (wide screens): a panel beside the video,
+   a little wider than the chat so the keyboard fits, scrolling on its own. */
+.room-controls-side { width: min(560px, 44vw); }
+.room-controls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--color-divider); }
+.room-controls-side .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; }
+@media (max-width: 1100px) { .room-controls-side { width: 100%; } }
+/* There the keyboard fits the panel's width: smaller keys, the arrows under it. */
+.room-controls-side .kb { min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; }
+.room-controls-side .kb-main, .room-controls-side .kb-row { gap: 4px; }
+.room-controls-side .kb-key { height: 34px; font-size: 10px; border-radius: 6px; }
+.room-controls-side .kb-legend { font-size: 8px; left: 4px; }
+.room-controls-side .kb-arrows { width: 150px; align-self: center; gap: 4px; }

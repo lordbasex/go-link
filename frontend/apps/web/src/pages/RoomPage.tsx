@@ -929,11 +929,23 @@ export function RoomPage() {
     }
   }, []);
   const closeDrawer = useCallback(() => setDrawer(false), []);
+  // Where the room's actions go (read before any early return: hooks).
+  const headerInfo = useHeaderSlot("info");
+  const headerActions = useHeaderSlot("actions");
+  const wide = useMediaQuery("(min-width: 701px)");
+  // On wide screens the room's title and actions sit in the main header, one
+  // row next to the logo, so the video gets the height.
+  const inHeader = wide && headerInfo !== null && headerActions !== null;
+  // There the controls (keyboard, gamepads) open in the chat's place, beside
+  // the video, instead of under it: the video keeps its height.
+  const [sideControls, setSideControls] = useState(false);
+  const controlsInSide = inHeader && live.media !== null && !touch && sideControls;
   // New lines count as unread while the chat is out of sight: hidden on a
-  // computer, or behind a closed drawer or another tab on a phone.
+  // computer, replaced by the controls, or behind a closed drawer or another
+  // tab on a phone.
   const chatOutOfSight = consoleMode
     ? !(drawer && drawerTab === "chat")
-    : chatHidden;
+    : chatHidden || controlsInSide;
   // A new message from someone else: a chime, and a count while unseen.
   const unread = useUnreadChat(
     live.chat,
@@ -1024,10 +1036,6 @@ export function RoomPage() {
     setPictureOpen(true);
   };
 
-  // Where the room's actions go (read before any early return: hooks).
-  const headerInfo = useHeaderSlot("info");
-  const headerActions = useHeaderSlot("actions");
-  const wide = useMediaQuery("(min-width: 701px)");
 
   if (!demo) {
     switch (status.kind) {
@@ -1057,7 +1065,7 @@ export function RoomPage() {
   const streaming = live.media !== null;
   const pictureOn = streaming && renderer !== null && (needsRenderer(picture) || compare);
   const touchOn = streaming && touch && touchPad;
-  const controlsOn = touch ? touchPad : showControls;
+  const controlsOn = touch ? touchPad : inHeader ? sideControls : showControls;
   // Demo variants mirror the prototype: ?perspective=spectator&spectatorsHearVoice=true
   const model = demo
     ? demoModel(
@@ -1153,9 +1161,6 @@ export function RoomPage() {
       return next;
     });
 
-  // On wide screens the room's title and actions sit in the main header, one
-  // row next to the logo, so the video gets the height.
-  const inHeader = wide && headerInfo !== null && headerActions !== null;
   const roomActions = (
     <>
       {!demo && (
@@ -1644,10 +1649,12 @@ export function RoomPage() {
                           writeStorage(TOUCH_KEY, String(!v));
                           return !v;
                         })
-                      : setShowControls((v) => {
-                          writeStorage(CONTROLS_KEY, String(!v));
-                          return !v;
-                        })
+                      : inHeader
+                        ? setSideControls((v) => !v)
+                        : setShowControls((v) => {
+                            writeStorage(CONTROLS_KEY, String(!v));
+                            return !v;
+                          })
                   }
                 >
                   <ControllerIcon />
@@ -1751,7 +1758,7 @@ export function RoomPage() {
             </div>
           </div>
 
-          {streaming && !touch && showControls && (
+          {streaming && !touch && showControls && !inHeader && (
             <ControlsPanel
               controllers={live.controllers}
               heldKeys={live.heldKeys}
@@ -1900,7 +1907,36 @@ export function RoomPage() {
             />
           </>
         ) : (
-          !(chatHidden && !demo) && <SidePanel model={model} actions={actions} />
+          controlsInSide ? (
+            <aside className="room-side room-controls-side" aria-label={t.controls.title}>
+              <div className="room-controls-head">
+                <span className="strong">{t.controls.title}</span>
+                <button
+                  type="button"
+                  className="icon-button tip-below"
+                  aria-label={t.controls.hide}
+                  data-tip={t.controls.hide}
+                  onClick={() => setSideControls(false)}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <ControlsPanel
+                controllers={live.controllers}
+                heldKeys={live.heldKeys}
+                keyboardPlayer={keyboardPlayer}
+                onKeyboardPlayer={(player) => {
+                  setKeyboardPlayer(player);
+                  writeStorage(KEYBOARD_PLAYER_KEY, String(player));
+                }}
+                input={inputCfg.input}
+                onRemap={setRemap}
+                onPlayer={inputCfg.setPlayer}
+              />
+            </aside>
+          ) : (
+            !(chatHidden && !demo) && <SidePanel model={model} actions={actions} />
+          )
         )}
       </div>
     </div>
