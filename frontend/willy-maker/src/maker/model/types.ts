@@ -315,6 +315,29 @@ export interface Level {
    */
   zones?: Zone[];
   groups?: LayerGroup[];
+  /**
+   * The background's scenes (Insert background, Add scene): each picture
+   * kept with where it goes, so it can be moved, scaled and lined up later;
+   * the play layer's art is made from them, left to right
+   * (editor/scenes.ts). Missing on a level whose background was made
+   * before scenes existed: its art is the play layer as it is.
+   */
+  scenes?: BackgroundScene[];
+}
+
+/** One picture of the background and where it goes. */
+export interface BackgroundScene {
+  id: string;
+  /** The picture as the user gave it (an asset). */
+  asset: string;
+  /** Its file name. */
+  name: string;
+  /** Its left edge in the level (px). */
+  x: number;
+  /** Moved down (or up, negative) from standing on the level's bottom (px). */
+  dy: number;
+  /** Its height as a share of the level's height (1 = the whole height). */
+  scale: number;
 }
 
 export interface WalkBand {

@@ -222,3 +222,16 @@ Filled in from the project and the review, in English, with these sections:
 9. **Task**: produce `<layout>.zip`, keep within the budgets, test it, and report changes and open decisions.
 
 The Export screen previews its first paragraph and has **Copy prompt**.
+
+## Background scenes
+
+A level whose background was made with Insert background and Add scene keeps its pictures in `scenes` (the play layer's art is laid out from them, left to right; the editor does it again when one changes):
+
+```jsonc
+"scenes": [
+  { "id": "scene-…", "asset": "sha256:…", "name": "01-dock.png", "x": 0,   "dy": 0,  "scale": 1 },
+  { "id": "scene-…", "asset": "sha256:…", "name": "05-bridge.png", "x": 1920, "dy": 22, "scale": 1 }
+]
+```
+
+`asset` is the picture as given (in `assets/`), `x` its left edge in px, `dy` how far it is moved down from standing on the level's bottom (negative: up), `scale` its height as a share of the level's (0.25-4). Each scene is stretched a few pixels so its width is whole 32 px columns.

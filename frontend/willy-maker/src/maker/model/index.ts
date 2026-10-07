@@ -353,6 +353,16 @@ function normalizeLevel(raw: Level): Level {
     ...(Array.isArray(raw.parallax) ? { parallax: cleanBands({ size: { w, h }, parallax: raw.parallax.filter(isRecord) as unknown as ParallaxBand[] }) } : {}),
     ...(isRecord(raw.walk) ? { walk: cleanWalk(raw.walk, h) } : {}),
   };
+  // the background's scenes: each one a picture and where it goes
+  if (Array.isArray(raw.scenes)) {
+    const scenes = (raw.scenes as unknown[]).filter(isRecord).flatMap((s) =>
+      typeof s.id === "string" && typeof s.asset === "string" && s.asset.startsWith("sha256:")
+        ? [{ id: s.id, asset: s.asset, name: typeof s.name === "string" ? s.name : "", x: Math.max(0, Math.round(num(s.x, 0))), dy: Math.round(Math.max(-h, Math.min(h, num(s.dy, 0)))), scale: Math.max(0.25, Math.min(4, num(s.scale, 1))) }]
+        : [],
+    );
+    if (scenes.length) level.scenes = scenes.slice(0, 64);
+    else delete level.scenes;
+  }
   // Zones and groups (format 4) are only checked here; they are drawn into the collision layer on edit.
   if (raw.zones !== undefined || raw.groups !== undefined) {
     level.groups = cleanGroups(raw.groups);

@@ -5,10 +5,14 @@
 // place and the side it faces) or the background (its picture). Typing in a
 // field changes the game at once; the letters or digits typed in one field
 // are one undo step. A pickup can be drawn with one of the game's characters.
+// A background made of scenes lists them: each one's place, height and
+// scale, its order, and Line up the floor (editor/scenes.ts). Depth: the
+// parallax bands, rows of the background that move slower than the camera.
 
 import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useStudioText } from "../../i18n";
-import type { Level, LevelObject, Zone, ZoneKind } from "../../model";
+import { BAND_SPEED, cleanBands, MAX_BANDS, type BackgroundScene, type Level, type LevelObject, type ParallaxBand, type Zone, type ZoneKind } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { findObject, findZone, moveObject, patchItem, patchZone, placeZone, setObjectLook, type ItemRef } from "../../editor/zoneOps";
 import type { TileImage } from "../render";
@@ -36,6 +40,10 @@ export interface PropertiesProps {
   onFlip: (name: string) => void;
   onReplaceBackground: () => void;
   onRemoveBackground: () => void;
+  /** The background's scenes changed (moved, scaled, reordered, removed): lay them out again. */
+  onScenes: (scenes: BackgroundScene[]) => void;
+  /** Line up the floor of every scene with the first one's. */
+  onLineUp: () => void;
 }
 
 export function PropertiesPanel(p: PropertiesProps) {
@@ -70,6 +78,8 @@ export function PropertiesPanel(p: PropertiesProps) {
               {t.props.remove}
             </button>
           </div>
+          {!!p.level.scenes?.length && <ScenesList scenes={p.level.scenes} onScenes={p.onScenes} onLineUp={p.onLineUp} />}
+          <DepthBands store={p.store} level={p.level} />
         </>
       ) : (
         <p className="studio-muted">{t.nothingSelected}</p>
@@ -238,5 +248,125 @@ function NumberField({ label, value, step, min, max, onCommit }: { label: string
         }}
       />
     </label>
+  );
+}
+
+/** The background's scenes, left to right: each one's X, height (down +) and scale, applied when a field is left or Enter is pressed. */
+function ScenesList({ scenes, onScenes, onLineUp }: { scenes: readonly BackgroundScene[]; onScenes: (s: BackgroundScene[]) => void; onLineUp: () => void }) {
+  const t = useStudioText();
+  const set = (i: number, patch: Partial<BackgroundScene>) => onScenes(scenes.map((s, k) => (k === i ? { ...s, ...patch } : { ...s })));
+  const swap = (i: number, j: number) => {
+    if (j < 0 || j >= scenes.length) return;
+    // the two trade places: each takes the other's x
+    const next = scenes.map((s) => ({ ...s }));
+    const [a, b] = [next[i]!, next[j]!];
+    [a.x, b.x] = [b.x, a.x];
+    next[i] = b;
+    next[j] = a;
+    onScenes(next);
+  };
+  return (
+    <div className="studio-scenes">
+      <span className="mdn-kicker">{t.props.scenes}</span>
+      <ol>
+        {scenes.map((s, i) => (
+          <li key={s.id}>
+            <div className="studio-scene-head">
+              <span className="studio-ellipsis" title={s.name}>
+                {i + 1}. {s.name}
+              </span>
+              <button type="button" className="btn btn-icon studio-small" aria-label={`${t.props.sceneUp}: ${s.name}`} title={t.props.sceneUp} disabled={i === 0} onClick={() => swap(i, i - 1)}>
+                <ArrowUp size={14} />
+              </button>
+              <button type="button" className="btn btn-icon studio-small" aria-label={`${t.props.sceneDown}: ${s.name}`} title={t.props.sceneDown} disabled={i === scenes.length - 1} onClick={() => swap(i, i + 1)}>
+                <ArrowDown size={14} />
+              </button>
+              <button type="button" className="btn btn-icon studio-small" aria-label={`${t.props.sceneRemove}: ${s.name}`} title={t.props.sceneRemove} disabled={scenes.length < 2} onClick={() => onScenes(scenes.filter((_, k) => k !== i).map((x) => ({ ...x })))}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="studio-scene-fields">
+              <SceneField label={t.props.sceneX} value={s.x} onSet={(v) => set(i, { x: Math.max(0, v) })} />
+              <SceneField label={t.props.sceneDy} value={s.dy} onSet={(v) => set(i, { dy: v })} />
+              <SceneField label={t.props.sceneScale} value={Math.round(s.scale * 100)} onSet={(v) => set(i, { scale: Math.max(25, Math.min(400, v)) / 100 })} />
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button type="button" className="btn btn-secondary" title={t.props.lineUpHint} disabled={scenes.length < 2} onClick={onLineUp}>
+        {t.props.lineUp}
+      </button>
+      <p className="studio-muted">{t.props.lineUpHint}</p>
+    </div>
+  );
+}
+
+/** A number applied when the field is left or Enter is pressed (laying the scenes out takes a moment). */
+function SceneField({ label, value, onSet }: { label: string; value: number; onSet: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const apply = () => {
+    const v = Math.round(Number(draft));
+    if (Number.isFinite(v) && v !== value) onSet(v);
+    else setDraft(String(value));
+  };
+  return (
+    <label className="studio-scene-field">
+      <span>{label}</span>
+      <input className="input" type="number" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={apply} onKeyDown={(e) => e.key === "Enter" && apply()} />
+    </label>
+  );
+}
+
+/** Depth: the parallax bands (rows of the background that move at their own speed in the game), up to 4. */
+function DepthBands({ store, level }: { store: EditorStore; level: Level }) {
+  const t = useStudioText();
+  const bands = cleanBands(level);
+  const edit = (label: string, fn: (b: ParallaxBand[]) => void) =>
+    store.editLevel(label, level.id, (l) => {
+      const next = cleanBands(l).map((b) => ({ ...b }));
+      fn(next);
+      const kept = cleanBands({ size: l.size, parallax: next });
+      if (kept.length) l.parallax = kept;
+      else delete l.parallax;
+    });
+  return (
+    <div className="studio-scenes">
+      <span className="mdn-kicker">{t.depth.title}</span>
+      <p className="studio-muted">{t.depth.help}</p>
+      <ol>
+        {bands.map((b, i) => (
+          <li key={`${b.y0}-${b.y1}`}>
+            <div className="studio-scene-head">
+              <span>{t.depth.band(i + 1)}</span>
+              <button type="button" className="btn btn-icon studio-small" aria-label={t.depth.remove(i + 1)} title={t.depth.remove(i + 1)} onClick={() => edit(t.undoLabels.depth, (bs) => bs.splice(i, 1))}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="studio-scene-fields">
+              <SceneField label={t.depth.from} value={b.y0} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.y0 = v))} />
+              <SceneField label={t.depth.to} value={b.y1} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.y1 = v))} />
+              <SceneField label={t.depth.speed} value={b.speed} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.speed = Math.max(BAND_SPEED.min, Math.min(BAND_SPEED.max, v))))} />
+            </div>
+          </li>
+        ))}
+      </ol>
+      {bands.length < MAX_BANDS && (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() =>
+            edit(t.undoLabels.depth, (bs) => {
+              // the next rows down, or the top third of the level for the first band
+              const from = bs.length ? bs[bs.length - 1]!.y1 : 0;
+              const to = Math.min(level.size.h, from + (bs.length ? 64 : Math.max(16, Math.floor(level.size.h / 3 / 16) * 16)));
+              bs.push({ y0: from, y1: to, speed: 75 });
+            })
+          }
+        >
+          {t.depth.add}
+        </button>
+      )}
+    </div>
   );
 }

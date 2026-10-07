@@ -2127,3 +2127,68 @@
   box-shadow: 0 0 0 9999px color-mix(in srgb, #000 28%, transparent);
   pointer-events: none;
 }
+
+/* the background's scenes in Properties */
+.studio-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.studio-scenes ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.studio-scene-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.studio-scene-head > span {
+  flex: 1;
+  min-width: 0;
+}
+.studio-scene-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.studio-scene-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+.studio-scene-field .input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* the parallax bands over the selected background */
+.studio-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border-top: 1px dashed var(--color-accent);
+  border-bottom: 1px dashed var(--color-accent);
+  pointer-events: none;
+}
+.studio-band > span {
+  position: sticky;
+  left: 8px;
+  display: inline-block;
+  margin: 4px 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}

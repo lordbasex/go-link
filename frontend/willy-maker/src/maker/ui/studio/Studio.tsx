@@ -19,7 +19,7 @@ import { autosaver, saveProject } from "../../io/storage";
 import { ExportView } from "../organisms/ExportView";
 import { PromptDialog } from "../organisms/PromptDialog";
 import { useProjectImages } from "../useTileImages";
-import { appendBackground, farBackgroundFile, importBackground, importFarBackground } from "./background";
+import { appendBackground, farBackgroundFile, importBackground, importFarBackground, layOutScenes, lineUpScenes } from "./background";
 import { StageTimeline, type TimelineView } from "./StageTimeline";
 import { openExample } from "./example";
 import { catalog, itemOfObject, roleOf } from "./catalog";
@@ -784,6 +784,14 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                 }}
                 onFlip={(name) => flipObject(store, level.id, name, t.undoLabels.flip)}
                 onReplaceBackground={pickBackground}
+                onScenes={(scenes) => {
+                  ui.flash(t.toast.fitting);
+                  void layOutScenes(store, level.id, scenes, t.undoLabels.scenes).then((r) => ui.flash(r === "ok" ? t.toast.scenesReady : t.toast.bgFailed));
+                }}
+                onLineUp={() => {
+                  ui.flash(t.toast.fitting);
+                  void lineUpScenes(store, level.id, t.undoLabels.lineUp).then((r) => ui.flash(r === "ok" ? t.toast.scenesReady : t.toast.bgFailed));
+                }}
                 onRemoveBackground={() => {
                   clearBackground(store, level.id, t.undoLabels.removeBackground);
                   ui.set({ sel: null });
