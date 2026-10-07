@@ -4,9 +4,12 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
@@ -91,5 +94,27 @@ func TestVideoQualityCommand(t *testing.T) {
 	}
 	if len(told) != 1 || told[0] != "saver" {
 		t.Fatalf("listeners told %v", told)
+	}
+}
+
+func TestParseFlagsAnyOrder(t *testing.T) {
+	for _, c := range []struct {
+		args  []string
+		since time.Duration
+		pos   []string
+	}{
+		{[]string{"#f7d0", "--since", "3h"}, 3 * time.Hour, []string{"#f7d0"}},
+		{[]string{"--since", "2h", "room"}, 2 * time.Hour, []string{"room"}},
+		{[]string{"a", "--since=1m", "b"}, time.Minute, []string{"a", "b"}},
+		{[]string{"a", "--", "--since", "1m"}, 0, []string{"a", "--since", "1m"}},
+	} {
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
+		since := fs.Duration("since", 0, "")
+		if err := parseFlags(fs, c.args); err != nil {
+			t.Fatalf("%v: %v", c.args, err)
+		}
+		if *since != c.since || !slices.Equal(fs.Args(), c.pos) {
+			t.Errorf("%v: since %v args %q, want %v %q", c.args, *since, fs.Args(), c.since, c.pos)
+		}
 	}
 }

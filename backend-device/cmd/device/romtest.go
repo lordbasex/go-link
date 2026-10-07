@@ -59,18 +59,10 @@ func cmdRomTest(args []string) error {
 	pngEvery := fs.Int("png-every", 0, "replay: also save every K-th frame")
 	mp4 := fs.String("mp4", "", "replay: record every frame into this MP4 (needs ffmpeg)")
 	wav := fs.String("wav", "", "replay: record the core's stereo sound into this WAV (48 kHz)")
-	// Flags may come before or after the zip.
-	var zips []string
-	for rest := args; ; {
-		if err := fs.Parse(rest); err != nil {
-			return err
-		}
-		if fs.NArg() == 0 {
-			break
-		}
-		zips = append(zips, fs.Arg(0))
-		rest = fs.Args()[1:]
+	if err := parseFlags(fs, args); err != nil {
+		return err
 	}
+	zips := fs.Args()
 	if len(zips) != 1 {
 		return errors.New("usage: device romtest [--frames N] [--json] [--shot FILE] [--core PATH] ZIP\n       device romtest --input FILE [--frames N] [--checkpoints LIST] [--frames-dir DIR] [--png-every K] [--mp4 FILE] [--wav FILE] [--json] ZIP")
 	}

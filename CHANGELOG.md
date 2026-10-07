@@ -10,6 +10,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed (device)
 
+- **The CLI takes flags after its arguments:** `device telemetry export '#f7d0' --since 3h` stopped with the usage message, because Go's flag package stops reading at the first argument; every command now reads flags anywhere (`--` still ends them). `--since` also narrows a game id, not only a room (it used to export the whole run).
 - **A room that comes back paused shows its game**, not a black screen: it is paused as soon as its game is ready, before the first frame, so the device had no picture to repeat. The emulator now runs that one frame first (found in the room telemetry: a paused Street Fighter II room made no frame in an hour and a half).
 - **telemetry.db is private** (0600, with its -wal and -shm), like history.json: it keeps the participants' names and addresses.
 

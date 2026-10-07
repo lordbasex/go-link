@@ -82,7 +82,7 @@ func openRecordings() (*services.RecordingService, *services.HistoryService, str
 func cmdRecList(args []string) error {
 	fs, _ := newFlags("rec list")
 	asJSON := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	recs, _, _, err := openRecordings()
@@ -111,7 +111,7 @@ func cmdRecList(args []string) error {
 func cmdRecRm(args []string) error {
 	fs, _ := newFlags("rec rm")
 	all := fs.Bool("all", false, "delete every recording")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	recs, history, _, err := openRecordings()
@@ -142,7 +142,7 @@ func cmdRecRm(args []string) error {
 func cmdReset(args []string) error {
 	fs, config := newFlags("reset")
 	yes := fs.Bool("yes", false, "really reset: rooms, saved games, history, recordings, linked browsers and settings are deleted")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if !*yes {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
 )
@@ -51,5 +52,24 @@ func TestATelemetryAnswerAlwaysFitsOneMessage(t *testing.T) {
 	}
 	if run := ask(`{"type":"telemetry_find","req":3,"run":"#abc"}`); run["id"] != "room" {
 		t.Fatalf("find %v", run)
+	}
+}
+
+func TestTelemetryTargetSince(t *testing.T) {
+	store, err := telemetry.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	store.Room("room").Start("abc123", "Game")
+	store.Sync()
+	for _, arg := range []string{"room", "#abc"} {
+		_, from, to, err := telemetryTarget(store, arg, time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d := to.Sub(from); d > time.Minute {
+			t.Errorf("%s --since 1m covers %v", arg, d)
+		}
 	}
 }

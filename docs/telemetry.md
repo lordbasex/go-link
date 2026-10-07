@@ -115,7 +115,7 @@ device telemetry incidents ROOM|#GAME [--json]
 device telemetry export ROOM|#GAME [--since 2h]   # everything, as JSON lines
 ```
 
-`#GAME` is a game id from the history (its first characters are enough when they name one game); it covers that run, a room covers every run since its first. `export` writes the runs and participants first, then every sample and event in time order: `{"type":"sample","at":...,"kind":"client","peer":"...","m":{...}}`, `{"type":"event",...}`.
+`#GAME` is a game id from the history (its first characters are enough when they name one game); it covers that run, a room covers every run since its first; `--since` keeps only the last part of either. Flags may go before or after the room or game. `export` writes the runs and participants first, then every sample and event in time order: `{"type":"sample","at":...,"kind":"client","peer":"...","m":{...}}`, `{"type":"event",...}`.
 
 ## Website
 

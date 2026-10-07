@@ -145,6 +145,30 @@ func newFlags(name string) (*flag.FlagSet, *string) {
 	return fs, fs.String("config", "", "path to device.json (default: user config dir)")
 }
 
+// parseFlags parses args with flags before or after the positional
+// arguments (device telemetry export #ID --since 2h), which flag.Parse alone
+// stops reading at the first positional one. Everything after "--" stays
+// positional.
+func parseFlags(fs *flag.FlagSet, args []string) error {
+	var pos []string
+	for rest := args; ; {
+		if err := fs.Parse(rest); err != nil {
+			return err
+		}
+		left := fs.Args()
+		if len(left) == 0 {
+			break
+		}
+		if n := len(rest) - len(left); n > 0 && rest[n-1] == "--" {
+			pos = append(pos, left...)
+			break
+		}
+		pos = append(pos, left[0])
+		rest = left[1:]
+	}
+	return fs.Parse(append([]string{"--"}, pos...))
+}
+
 func openEnv(configPath string) (*cliEnv, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	store, cfg, _, err := loadConfig(configPath)
@@ -164,7 +188,7 @@ func interruptible() (context.Context, context.CancelFunc) {
 
 func cmdCoreDownload(args []string) error {
 	fs, config := newFlags("core download")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -188,7 +212,7 @@ func cmdCoreDownload(args []string) error {
 
 func cmdRomsDir(args []string) error {
 	fs, config := newFlags("roms dir")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -228,7 +252,7 @@ func cmdRomsCheck(args []string) error {
 	fs, config := newFlags("roms check")
 	dirFlag := fs.String("dir", "", "folder to check (default: the ROM folder)")
 	asJSON := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -269,7 +293,7 @@ type saveReport struct {
 func cmdRomsSaves(args []string) error {
 	fs, config := newFlags("roms saves")
 	asJSON := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -401,7 +425,7 @@ type thumbReport struct {
 func cmdThumbnailsCheck(args []string) error {
 	fs, config := newFlags("thumbnails check")
 	asJSON := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -466,7 +490,7 @@ func printThumbReport(w io.Writer, r thumbReport) {
 
 func cmdThumbnailsDir(args []string) error {
 	fs, config := newFlags("thumbnails dir")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -505,7 +529,7 @@ func thumbnailsDir(w io.Writer, settings *services.SettingsService, args []strin
 
 func cmdThumbnailsKind(args []string) error {
 	fs, config := newFlags("thumbnails kind")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -536,7 +560,7 @@ func thumbnailsKind(w io.Writer, settings *services.SettingsService, args []stri
 
 func cmdVideoQuality(args []string) error {
 	fs, config := newFlags("video quality")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	env, err := openEnv(*config)
@@ -569,7 +593,7 @@ func videoQuality(w io.Writer, settings *services.SettingsService, args []string
 func cmdPanelToken(args []string) error {
 	fs, config := newFlags("panel token")
 	renew := fs.Bool("new", false, "replace the token: browsers that know the old one must type the new one")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	store, cfg, _, err := loadConfig(*config)

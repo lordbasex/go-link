@@ -171,13 +171,17 @@ func openTelemetry() (*telemetry.Store, error) {
 
 // telemetryTarget turns ROOM or #GAME (a game id from the history, or its
 // first characters) into a room and a time range: a game covers its own
-// run, a room every run since its first.
+// run, a room every run since its first. since keeps only the last part
+// of either.
 func telemetryTarget(store *telemetry.Store, arg string, since time.Duration) (room string, from, to time.Time, err error) {
 	to = time.Now()
 	if r, run, ferr := store.FindRun(arg); ferr == nil {
 		from = run.Started
 		if !run.Ended.IsZero() {
 			to = run.Ended
+		}
+		if since > 0 && to.Add(-since).After(from) {
+			from = to.Add(-since)
 		}
 		return r, from, to, nil
 	}
@@ -198,7 +202,7 @@ func telemetryTarget(store *telemetry.Store, arg string, since time.Duration) (r
 
 func cmdTelemetryRooms(args []string) error {
 	fs, _ := newFlags("telemetry rooms")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	store, err := openTelemetry()
@@ -224,7 +228,7 @@ func cmdTelemetryRooms(args []string) error {
 
 func cmdTelemetryRuns(args []string) error {
 	fs, _ := newFlags("telemetry runs")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
@@ -258,7 +262,7 @@ func cmdTelemetryRuns(args []string) error {
 func cmdTelemetryExport(args []string) error {
 	fs, _ := newFlags("telemetry export")
 	since := fs.Duration("since", 0, "only the last part of a room's telemetry (e.g. 2h)")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
@@ -280,7 +284,7 @@ func cmdTelemetryEvents(args []string) error {
 	fs, _ := newFlags("telemetry events")
 	since := fs.Duration("since", 0, "only the last part (e.g. 30m)")
 	warn := fs.Bool("warn", false, "only warnings and errors")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
@@ -330,7 +334,7 @@ func cmdTelemetryEvents(args []string) error {
 func cmdTelemetryIncidents(args []string) error {
 	fs, _ := newFlags("telemetry incidents")
 	asJSON := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
