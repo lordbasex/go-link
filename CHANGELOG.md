@@ -6,10 +6,12 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Added (website)
 
+- **Network report** in My device › History (`/device/history/<room>/network`): the freezes with their likely cause, nine charts (latency, lost packets, frozen picture, frames, controls, jitter, the host's CPU and upload, voice) from the room's first start or one game, live while it runs, and the raw event log with Copy log. The history has a **Game ID** column (a click copies it, and the search finds it). Each browser in a room reports what it measured every 2 s. The privacy policy lists the network report among what the host's computer keeps.
 - **Latency in the controls panel, for everyone:** Network (round trip to the device), Video (jitter buffer plus decoding) and End to end, green, yellow or red. The host's **Controls on the video** switch starts the latency test: each player's browser watches its seat's light on the picture and measures every press and release from the hand to the screen (median of the last 20, the last one and the worst).
 
 ### Added (device)
 
+- **Room telemetry** (`internal/telemetry`, `~/go-link/telemetry.db`, SQLite in pure Go): every run of every room with its game id, a sample per second of the room (frames from the game and the longest pause between them, encoding, CPU, the computer's upload) and of each participant (input packets and silences, RTCP loss and jitter, keyframe and retransmission requests, voice packets, round trips), the browsers' `client_report` every 2 s, and a raw event log (connections, seats, names, frame gaps, losses, freezes, signaling). Kept from the room's first start with no age limit, deleted with the room or by a factory reset. Incidents group the freezes and give each a verdict (the host's computer, its internet, or one player). Linked browsers ask with `telemetry_runs`, `telemetry_series`, `telemetry_events`, `telemetry_incidents` and `telemetry_find`; the CLI has `device telemetry rooms|runs|events|incidents|export`. A history entry's id is now its game id.
 - **Latency test:** `room_action` `input_hud_on` / `input_hud_off` (game rooms and the test pattern room) draws one cell per seat under the game, before any encoder: a small pad lit with what the device received and a beacon that is white while that seat presses anything (`pkg/inputhud`); `stream_stats.hud` says where each beacon is and `room_state.input_hud` that it is on. Not saved: a diagnostic.
 
 ## [0.2.3] - 2026-10-07

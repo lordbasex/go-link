@@ -220,6 +220,7 @@ export function App() {
                 <Route path="/device/rooms" element={<Navigate to="/rooms" replace />} />
                 <Route path="/device/roms" element={<DevicePage tab="roms" />} />
                 <Route path="/device/history" element={<DevicePage tab="history" />} />
+                <Route path="/device/history/:roomId/network" element={<DevicePage tab="network" />} />
               </>
             )}
             {/* Both sites: the controller settings are the ones rooms and the

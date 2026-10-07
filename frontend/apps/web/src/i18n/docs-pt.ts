@@ -442,7 +442,8 @@ export const docsPt: Docs = {
         },
         { t: "p", text: "Clique no ícone da barra de menus para ver um pequeno painel com o estado; clique com o botão direito para o menu. **Quit** encerra o go-link." },
         { t: "h2", id: "history", text: "Histórico" },
-        { t: "p", text: "Meu dispositivo › Histórico lista cada jogo que rodou: quando, quais jogadores entraram, seus lugares e sua conexão. Fica no seu computador e só você vê." },
+        { t: "p", text: "Meu dispositivo › Histórico lista cada jogo que rodou: o ID da partida (clique para copiar), quando, quais jogadores entraram, seus lugares e sua conexão. Fica no seu computador e só você vê." },
+        { t: "p", text: "Cada jogo tem um **Relatório de rede** (o botão de pulso): gráficos da latência, dos pacotes perdidos e da imagem congelada de cada jogador, dos quadros do jogo, dos controles, da CPU e do upload do seu computador e da voz, desde que a sala foi ligada pela primeira vez (escolha uma partida ou todas as vezes que esteve ligada). Cada congelamento aparece com a sua causa mais provável: o seu computador, a sua internet ou a conexão de um jogador. Abaixo, o registro de eventos bruto, que **Copiar registro** copia para compartilhar. Os dados ficam guardados até você apagar a sala para sempre." },
       ],
     },
     {

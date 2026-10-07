@@ -47,6 +47,10 @@ type RoomManagerConfig struct {
 	Logger     *slog.Logger
 	// OnSummary runs (on the actor goroutine) after every change.
 	OnSummary func(RoomSummary)
+	// OnLog, when set, gets what happens in the room for its telemetry:
+	// arrivals, departures, seats, names, pauses (on the actor goroutine;
+	// it must not block).
+	OnLog func(kind, peer, text string, data map[string]any)
 }
 
 const (
@@ -229,6 +233,7 @@ func (m *RoomManager) Join(peerID string) {
 		}
 		m.nextOrder++
 		m.members[peerID] = &member{peer: peerID, name: defaultName(peerID), locals: []uint8{0}, order: m.nextOrder}
+		m.teleLog("join", peerID, "joined the room", map[string]any{"name": defaultName(peerID)})
 		m.reconcile()
 	})
 }
@@ -242,6 +247,7 @@ func (m *RoomManager) Leave(peerID string) {
 		}
 		delete(m.members, peerID)
 		delete(m.owners, peerID)
+		m.teleLog("leave", peerID, "left the room", map[string]any{"name": mem.name})
 		m.reconcile()
 		if m.cfg.Now().Before(mem.typingUntil) {
 			m.broadcastTyping() // who left stops "typing"
@@ -669,8 +675,9 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 		}
 		switch msg.Type {
 		case "hello":
-			if name := CleanName(msg.Name); name != "" {
+			if name := CleanName(msg.Name); name != "" && name != mem.name {
 				mem.name = name
+				m.teleLog("name", peerID, "is called "+name, map[string]any{"name": name})
 			}
 			if locals := cleanLocals(msg.LocalPlayers); len(locals) > 0 {
 				mem.locals = locals
@@ -1160,7 +1167,15 @@ func (m *RoomManager) roleOf(mem *member) (string, int) {
 // event posts a system line: the English text, plus its kind and values
 // so the web shows it in the reader's language.
 func (m *RoomManager) event(kind, text string, args chatArgs) {
+	m.teleLog(kind, "", text, map[string]any{"name": args.Name, "port": args.Port})
 	m.publish(chatOut{Type: "chat", System: text, Event: kind, Args: &args, TS: m.cfg.Now().UnixMilli()})
+}
+
+// teleLog hands an event to the room's telemetry.
+func (m *RoomManager) teleLog(kind, peer, text string, data map[string]any) {
+	if m.cfg.OnLog != nil {
+		m.cfg.OnLog(kind, peer, text, data)
+	}
 }
 
 // publish sends a chat line to everyone and keeps it in the history.

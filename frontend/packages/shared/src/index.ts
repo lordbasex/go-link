@@ -18,6 +18,7 @@ export * from "./hmac";
 export * from "./recordings";
 export * from "./picture";
 export * from "./video";
+export * from "./telemetry";
 export * from "./rom-test";
 export * from "./maker-play";
 export * from "./maker-bridge";

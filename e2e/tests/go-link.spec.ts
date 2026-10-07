@@ -240,6 +240,22 @@ test("an invitation lets one person in; the same PIN refuses the next one", asyn
   await late.context.close();
 });
 
+test("the host's network report shows the room's charts, freezes and log", async () => {
+  // A second tab of the host: the room's tab stays for the next tests.
+  const report = await owner.newPage();
+  await report.goto(new URL("/device/history/test/network", page.url()).toString());
+  await expect(report.getByRole("heading", { name: /^Network/ })).toBeVisible({ timeout: 30_000 });
+  // The test room ran with the host (and Zoë) in it: samples and events are there.
+  await expect(report.getByRole("img", { name: "Latency" })).toBeVisible({ timeout: 30_000 });
+  await expect(report.getByRole("img", { name: "Frames per second" })).toBeVisible();
+  const log = report.getByRole("region", { name: "Event log" });
+  await expect(log.getByRole("cell", { name: "run_start" })).toBeVisible();
+  await expect(log.getByRole("cell", { name: "peer_path" }).first()).toBeVisible();
+  await expect(report.getByRole("heading", { name: /^Freezes/ })).toBeVisible();
+  await expectAccessible(report, "network report");
+  await report.close();
+});
+
 test("the host's picture default reaches guests who never chose one; a guest's own choice wins", async ({ browser }) => {
   test.setTimeout(150_000);
   const stage = page.locator(".video-stage");

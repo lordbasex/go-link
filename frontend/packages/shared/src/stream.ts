@@ -112,6 +112,21 @@ export interface StreamStats {
   videoBufferMs?: number | null;
   /** How long the browser took to decode each of them (ms). */
   decodeMs?: number | null;
+  /** Since the last call: video packets lost (%), frozen time and freezes,
+   * frames dropped, jitter, kilobits per second received, and the game's
+   * and players' audio packets lost (%). For the room's telemetry. */
+  window?: StreamWindow;
+}
+
+export interface StreamWindow {
+  videoLossPct: number;
+  freezeMs: number;
+  freezes: number;
+  dropped: number;
+  jitterMs: number;
+  kbps: number;
+  audioLossPct: number;
+  seconds: number;
 }
 
 export type StreamState = "connecting" | "connected" | "failed" | "closed";
@@ -306,6 +321,8 @@ export class HostStream {
   }
 
   private videoTotals: { emitted: number; buffered: number; decoded: number; decoding: number } | null = null;
+  private windowTotals: Record<string, number> | null = null;
+  private windowAt = 0;
 
   async stats(): Promise<StreamStats> {
     const result: StreamStats = { fps: null, rttMs: null, path: null, codec: null };
@@ -343,6 +360,44 @@ export class HostStream {
     if (!selected) report.forEach((s: Record<string, unknown>) => {
       if (s.type === "candidate-pair" && s.nominated && s.state === "succeeded") selected = s;
     });
+    // Totals of the inbound streams, for the window since the last call.
+    const totals: Record<string, number> = { vLost: 0, vRecv: 0, freezes: 0, freezeS: 0, dropped: 0, bytes: 0, aLost: 0, aRecv: 0, jitter: 0 };
+    report.forEach((s: Record<string, unknown>) => {
+      if (s.type !== "inbound-rtp") return;
+      const n = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : 0);
+      if (s.kind === "video") {
+        totals.vLost! += n("packetsLost");
+        totals.vRecv! += n("packetsReceived");
+        totals.freezes! += n("freezeCount");
+        totals.freezeS! += n("totalFreezesDuration");
+        totals.dropped! += n("framesDropped");
+        totals.bytes! += n("bytesReceived");
+        totals.jitter = Math.max(totals.jitter!, n("jitter"));
+      } else if (s.kind === "audio") {
+        totals.aLost! += n("packetsLost");
+        totals.aRecv! += n("packetsReceived");
+        totals.bytes! += n("bytesReceived");
+      }
+    });
+    const now = Date.now();
+    const prev = this.windowTotals;
+    if (prev && this.windowAt > 0 && now > this.windowAt) {
+      const d = (k: string) => Math.max(0, totals[k]! - prev[k]!);
+      const pct = (lost: number, recv: number) => (lost + recv > 0 ? Math.round((lost / (lost + recv)) * 1000) / 10 : 0);
+      const seconds = (now - this.windowAt) / 1000;
+      result.window = {
+        videoLossPct: pct(d("vLost"), d("vRecv")),
+        freezeMs: Math.round(d("freezeS") * 1000),
+        freezes: d("freezes"),
+        dropped: d("dropped"),
+        jitterMs: Math.round(totals.jitter! * 10000) / 10,
+        kbps: Math.round((d("bytes") * 8) / 1000 / seconds),
+        audioLossPct: pct(d("aLost"), d("aRecv")),
+        seconds,
+      };
+    }
+    this.windowTotals = totals;
+    this.windowAt = now;
     const mime = codecId ? byId.get(codecId)?.mimeType : undefined;
     if (typeof mime === "string") result.codec = codecName(mime);
     if (selected) {

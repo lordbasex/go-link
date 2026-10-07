@@ -4,7 +4,8 @@
 |---|---|
 | [Architecture](architecture.md) | Principles, components, repository layout, identifiers and technical decisions |
 | [How it works](flows.md) | Linking a browser, game rooms, invitations and PINs, owner and guest views, playing, voice, the test room |
-| [Device protocol](protocol.md) | WebRTC channels and tracks, negotiation, the PIN gate, the `input`, `control` and `files` channels, the 2x video scale |
+| [Device protocol](protocol.md) | WebRTC channels and tracks, negotiation, the PIN gate, the `input`, `control` and `files` channels, the 2x video scale, the latency test |
+| [Room telemetry](telemetry.md) | What the device records about each room (SQLite), the incidents and their verdicts, the network report and `device telemetry` |
 | [The device](device.md) | Running the host app, flags, CLI, `device.json`, the native window, the local web panel, Docker |
 | [Emulator](emulator.md) | libretro, where ROMs come from, ROM validation, thumbnails, save states, core patches |
 | [Video quality lab](quality.md) | `framelab`: reference frames from the core, the device's encoder path, decoding like a browser, picture metrics |

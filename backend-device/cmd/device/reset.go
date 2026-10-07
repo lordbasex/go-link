@@ -15,6 +15,7 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
+	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
 )
 
@@ -23,6 +24,7 @@ type resetParts struct {
 	games      *services.RoomsService
 	history    *services.HistoryService
 	recordings *services.RecordingService
+	telemetry  *telemetry.Store
 	settings   *services.SettingsService
 	library    *services.LibraryService
 	romsDir    string // the default ROM folder
@@ -42,6 +44,9 @@ func factoryReset(ctx context.Context, p resetParts) error {
 		errs = append(errs, err)
 	}
 	p.recordings.DeleteAll()
+	if err := p.telemetry.DeleteAll(); err != nil {
+		errs = append(errs, err)
+	}
 	if err := p.settings.SetThumbnails(models.ThumbnailSettings{}); err != nil {
 		errs = append(errs, err)
 	}
@@ -160,6 +165,11 @@ func cmdReset(args []string) error {
 	errs = append(errs, history.Clear())
 	recs.DeleteAll()
 	errs = append(errs, os.RemoveAll(filepath.Join(base, "saves")))
+	for _, f := range []string{"telemetry.db", "telemetry.db-wal", "telemetry.db-shm"} {
+		if err := os.Remove(filepath.Join(base, f)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = append(errs, err)
+		}
+	}
 	errs = append(errs, updateConfig(store, &cfg, func(c *models.Config) { *c = c.FactoryDefaults() }))
 	if err := errors.Join(errs...); err != nil {
 		return err

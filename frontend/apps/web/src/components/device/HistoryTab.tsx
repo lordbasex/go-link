@@ -1,11 +1,11 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { formatBytes, parseHistory, parseRecordings, type HistoryItem, type HistoryReason, type RecordingInfo } from "@go-link/shared";
+import { formatBytes, parseHistory, parseRecordings, shortRunId, type HistoryItem, type HistoryReason, type RecordingInfo } from "@go-link/shared";
 import { getLang, t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
-import { DownloadIcon, PlayIcon, TrashIcon } from "../Icons";
+import { DownloadIcon, PlayIcon, PulseIcon, TrashIcon } from "../Icons";
 import { DownloadDialog, trackNames } from "../Recordings";
 import { localName } from "../../pages/roomModel";
 import { SkeletonRows } from "../ui/Skeleton";
@@ -89,12 +89,12 @@ export function HistoryTab() {
 
   const all = useMemo(() => items ?? [], [items]);
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase().replace(/^#/, "");
     return all.filter(
       (h) =>
         (filter === "all" || h.reason === filter) &&
         (!q ||
-          `${h.name} ${h.game} ${h.rom} ${h.people.map((p) => `${p.name} ${p.ip}`).join(" ")}`
+          `${h.id ?? ""} ${h.name} ${h.game} ${h.rom} ${h.people.map((p) => `${p.name} ${p.ip}`).join(" ")}`
             .toLowerCase()
             .includes(q)),
     );
@@ -159,6 +159,7 @@ export function HistoryTab() {
             <thead>
               <tr>
                 <th scope="col">{t.history.cols.game}</th>
+                <th scope="col" className="lrow-col-id">{t.history.cols.id}</th>
                 <th scope="col">{t.history.cols.result}</th>
                 <th scope="col" className="lrow-col-activity">{t.history.cols.started}</th>
                 <th scope="col" className="lrow-col-seats">{t.history.cols.duration}</th>
@@ -268,6 +269,9 @@ function HistoryRow({ item, thumb, onDownload, onDeleteRec, onDelete }: HistoryR
           </div>
         </div>
       </td>
+      <td className="lrow-col-id">
+        {item.id ? <GameId id={item.id} /> : <span className="small faint">–</span>}
+      </td>
       <td>
         <div className="history-result">
           <span className={`groom-pill ${PILL[item.reason]}`}>
@@ -325,6 +329,16 @@ function HistoryRow({ item, thumb, onDownload, onDeleteRec, onDelete }: HistoryR
         >
           <TrashIcon />
         </button>
+        {item.id && (
+          <Link
+            to={`/device/history/${encodeURIComponent(item.roomId)}/network?run=${encodeURIComponent(item.id)}`}
+            className="icon-button"
+            aria-label={t.net.open(shortRunId(item.id))}
+            data-tip={t.net.openShort}
+          >
+            <PulseIcon />
+          </Link>
+        )}
         <Link
           to={`/create?rom=${encodeURIComponent(item.rom)}`}
           className="icon-button"
@@ -337,3 +351,28 @@ function HistoryRow({ item, thumb, onDownload, onDeleteRec, onDelete }: HistoryR
     </tr>
   );
 }
+
+/** A game's id (its first 8 characters); a click copies the whole id. */
+export function GameId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="hist-id mono"
+      aria-label={t.history.copyId(shortRunId(id))}
+      data-tip={copied ? t.history.idCopied : t.history.copyIdShort}
+      onClick={() => {
+        navigator.clipboard?.writeText(`#${id}`).then(
+          () => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          },
+          () => undefined,
+        );
+      }}
+    >
+      #{shortRunId(id)}
+    </button>
+  );
+}
+

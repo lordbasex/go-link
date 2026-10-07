@@ -442,7 +442,8 @@ export const docsEn: Docs = {
         },
         { t: "p", text: "Click the menu bar (tray) icon for a small panel with the status; right click it for the menu. **Quit** stops go-link." },
         { t: "h2", id: "history", text: "History" },
-        { t: "p", text: "My device › History lists every game that ran: when, which players joined, their seats and connection. It stays on your computer and only you see it." },
+        { t: "p", text: "My device › History lists every game that ran: its game ID (click it to copy), when, which players joined, their seats and connection. It stays on your computer and only you see it." },
+        { t: "p", text: "Each game has a **Network report** (the pulse button): charts of every player's latency, lost packets and frozen picture, the game's frames, the controls, your computer's CPU and upload and the voice, from the moment the room first started (pick one game or every time it was on). Each freeze is listed with its most likely cause: your computer, your internet, or one player's connection. Below, the raw event log, which **Copy log** copies to share. The data is kept until you delete the room for good." },
       ],
     },
     {

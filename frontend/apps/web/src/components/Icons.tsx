@@ -361,3 +361,9 @@ export const PictureIcon = ({ size = 18 }: P) => (
     <path d="M7 8.5h1M7 11h1" />
   </svg>
 );
+/** A pulse line: the room's network report. */
+export const PulseIcon = ({ size = 18 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth={2} {...base}>
+    <path d="M3 12h4l2.5-6 4 12 2.5-6H21" />
+  </svg>
+);

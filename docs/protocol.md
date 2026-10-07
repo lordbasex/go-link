@@ -345,6 +345,10 @@ Steps, in order (a failing `zip`, `set` or `core.loaded` ends the test):
 
 The website's helper is `testRomOnDevice` in `frontend/packages/shared/src/rom-test.ts`. The same test runs from the command line: `device romtest ZIP` (see [device.md](device.md#rom-test)).
 
+## Room telemetry
+
+Guests send `client_report` on the control channel every 2 s (what their browser measured), and the host's linked browsers ask for a room's telemetry with `telemetry_runs`, `telemetry_series`, `telemetry_events`, `telemetry_incidents` and `telemetry_find`. Both are described in [telemetry.md](telemetry.md#protocol).
+
 ## Latency test
 
 The host measures how long a press takes to show on the picture, for every player at once.

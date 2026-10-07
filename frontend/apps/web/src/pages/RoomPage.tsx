@@ -606,6 +606,9 @@ export function RoomPage() {
   // "What's your name?" comes up once a typed PIN let this browser in.
   const [askName, setAskName] = useState(false);
   const pinSent = useRef(false);
+  // The latency test's last reading goes into the room's telemetry too
+  // (set below, once the beacon was measured).
+  const [probeSeen, setProbeSeen] = useState<{ median: number; last: number } | null>(null);
   const live = useHostStream(
     joined?.hostPeerId ?? null,
     joined?.takeBacklog,
@@ -616,6 +619,7 @@ export function RoomPage() {
       onPauseButton: () => pauseToggleRef.current(),
       suspended: remap !== null,
       multi: multiPads,
+      probe: probeSeen,
     },
   );
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -625,6 +629,7 @@ export function RoomPage() {
   const myLocal = myPort ? (live.room?.seats[myPort - 1]?.localPlayer ?? null) : null;
   const beacon = live.room?.inputHud && myPort ? (live.hud[myPort - 1] ?? null) : null;
   const probe = useLatencyProbe(videoRef, beacon, myLocal, live.pressEdges);
+  useEffect(() => setProbeSeen(probe ? { median: probe.median, last: probe.last } : null), [probe]);
   const stageRef = useRef<HTMLDivElement>(null);
   // How this browser draws the game (Picture in the dock): the GPU
   // renderer only runs for a style other than the browser's own look.

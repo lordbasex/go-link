@@ -29,7 +29,7 @@ function failureOf(err: unknown): Failure {
 export function DevicePage({
   tab = "overview",
 }: {
-  tab?: "overview" | "roms" | "history";
+  tab?: "overview" | "roms" | "history" | "network";
 }) {
   const {
     linkDevice,

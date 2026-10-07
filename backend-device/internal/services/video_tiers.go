@@ -263,7 +263,11 @@ func (s *StreamService) tierEncode(t *videoTier, level int, i420 []byte, w, h, k
 		}
 		return
 	}
+	start := time.Now()
 	data, _, err := t.vp8.Encode(i420, t.keyframe.Swap(false))
+	if level == 0 {
+		s.noteEncode(time.Since(start), dur)
+	}
 	if err != nil || len(data) == 0 {
 		return
 	}

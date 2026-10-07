@@ -27,6 +27,7 @@ import {
   type StreamState,
   type StreamStats,
   type StreamVideo,
+  type StreamWindow,
   parseStreamVideo,
   parseHudBeacons,
   type HudRect,
@@ -144,6 +145,8 @@ export interface InputOptions {
    * takes a new seat.
    */
   multi?: boolean;
+  /** The latency test's measurement, sent with the telemetry report. */
+  probe?: { median: number; last: number } | null;
 }
 
 export function useHostStream(
@@ -157,6 +160,8 @@ export function useHostStream(
   inputRef.current = opts.input ?? DEFAULT_INPUT;
   const pauseRef = useRef(opts.onPauseButton);
   pauseRef.current = opts.onPauseButton;
+  const probeRef = useRef<InputOptions["probe"]>(null);
+  probeRef.current = opts.probe ?? null;
   const suspendRef = useRef(false);
   suspendRef.current = opts.suspended ?? false;
   const singleRef = useRef(true);
@@ -243,10 +248,44 @@ export function useHostStream(
     });
     streamRef.current = stream;
     stream.start(takeBacklog?.() ?? []);
+    // Every two seconds the room's telemetry gets what this browser saw:
+    // lost packets, freezes, dropped frames, jitter, its round trip and
+    // the latency test's measurement (client_report).
+    let acc: StreamWindow[] = [];
     const timer = setInterval(() => {
       stream
         .stats()
-        .then(setStats)
+        .then((st) => {
+          setStats(st);
+          if (!st.window) return;
+          acc.push(st.window);
+          if (acc.length < 2) return;
+          const w = acc;
+          acc = [];
+          const sum = (k: keyof StreamWindow) => w.reduce((n, x) => n + x[k], 0);
+          const top = (k: keyof StreamWindow) => Math.max(...w.map((x) => x[k]));
+          const probe = probeRef.current;
+          const report: Record<string, unknown> = {
+            type: "client_report",
+            video_loss_pct: top("videoLossPct"),
+            audio_loss_pct: top("audioLossPct"),
+            freeze_ms: sum("freezeMs"),
+            freezes: sum("freezes"),
+            dropped: sum("dropped"),
+            jitter_ms: top("jitterMs"),
+            kbps: Math.round(sum("kbps") / w.length),
+            hidden: document.hidden ? 1 : 0,
+          };
+          if (st.rttMs != null) report.rtt_ms = st.rttMs;
+          if (st.fps != null) report.fps = st.fps;
+          if (st.videoBufferMs != null) report.buffer_ms = st.videoBufferMs;
+          if (st.decodeMs != null) report.decode_ms = st.decodeMs;
+          if (probe) {
+            report.e2e_ms = probe.median;
+            report.e2e_last_ms = probe.last;
+          }
+          stream.sendControl(report);
+        })
         .catch(() => undefined);
     }, 1000);
     return () => {

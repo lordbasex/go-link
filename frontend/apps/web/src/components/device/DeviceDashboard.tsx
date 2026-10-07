@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useParams } from "react-router-dom";
 import { FACTORY_RESET, formatBytes, parseFactoryReset } from "@go-link/shared";
 import { Chip, HeroTile, PageHero } from "../ui/PageHero";
 import { t } from "../../i18n";
@@ -15,6 +15,7 @@ import { HISTORY_SIZE, useHistory } from "./useHistory";
 import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
 import { RomsTab } from "./RomsTab";
 import { HistoryTab } from "./HistoryTab";
+import { NetworkReport } from "./NetworkReport";
 import { SkeletonCards } from "../ui/Skeleton";
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
@@ -37,7 +38,7 @@ const hostOf = (url: string) => {
 export function DeviceDashboard({
   tab = "overview",
 }: {
-  tab?: "overview" | "roms" | "history";
+  tab?: "overview" | "roms" | "history" | "network";
 }) {
   const { linkedDevice, unlinkDevice, hostLink, sendToDevice, onDeviceMessage, panel } = useSignal();
   const { status, rttMs, path, state } = linkedDevice;
@@ -277,6 +278,8 @@ export function DeviceDashboard({
         <RomsTab />
       ) : tab === "history" ? (
         <HistoryTab />
+      ) : tab === "network" ? (
+        <NetworkRoute />
       ) : !status ? (
         state !== "failed" && <SkeletonCards cards={4} label={t.dash.waiting} />
       ) : (
@@ -999,3 +1002,10 @@ function formatPct(pct: number): string {
   if (pct > 0 && pct < 1) return "<1%";
   return `${Math.round(pct)}%`;
 }
+
+/** /device/history/:roomId/network: a room's network report. */
+function NetworkRoute() {
+  const { roomId = "" } = useParams();
+  return <NetworkReport roomId={roomId} />;
+}
+

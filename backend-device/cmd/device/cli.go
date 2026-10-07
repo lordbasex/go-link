@@ -52,6 +52,14 @@ Usage:
   device panel token [--new]             show (or replace) the web panel token
   device rec list [--json]               list the recordings of game rooms (~/go-link/rec)
   device rec rm ID...|--all              delete recordings
+  device telemetry rooms                 list the rooms with telemetry (~/go-link/telemetry.db)
+  device telemetry runs ROOM             the times a room was on, with their game ids
+  device telemetry events ROOM|#GAME [--warn] [--since 30m]
+                                         a room's (or one game's) log of events
+  device telemetry incidents ROOM|#GAME [--json]
+                                         every freeze, and where it most likely came from
+  device telemetry export ROOM|#GAME [--since 2h]
+                                         everything recorded, as JSON lines
   device reset --yes                     factory reset (device stopped): rooms, saved games,
                                          history, recordings, links and settings go;
                                          ROMs, thumbnails and the emulator stay
@@ -90,17 +98,22 @@ func runCommand(args []string) (handled bool, err error) {
 		key += " " + args[1]
 	}
 	cmds := map[string]func([]string) error{
-		"core download":    cmdCoreDownload,
-		"roms dir":         cmdRomsDir,
-		"roms check":       cmdRomsCheck,
-		"roms saves":       cmdRomsSaves,
-		"thumbnails check": cmdThumbnailsCheck,
-		"thumbnails dir":   cmdThumbnailsDir,
-		"thumbnails kind":  cmdThumbnailsKind,
-		"panel token":      cmdPanelToken,
-		"video quality":    cmdVideoQuality,
-		"rec list":         cmdRecList,
-		"rec rm":           cmdRecRm,
+		"core download":       cmdCoreDownload,
+		"roms dir":            cmdRomsDir,
+		"roms check":          cmdRomsCheck,
+		"roms saves":          cmdRomsSaves,
+		"thumbnails check":    cmdThumbnailsCheck,
+		"thumbnails dir":      cmdThumbnailsDir,
+		"thumbnails kind":     cmdThumbnailsKind,
+		"panel token":         cmdPanelToken,
+		"video quality":       cmdVideoQuality,
+		"rec list":            cmdRecList,
+		"rec rm":              cmdRecRm,
+		"telemetry rooms":     cmdTelemetryRooms,
+		"telemetry runs":      cmdTelemetryRuns,
+		"telemetry export":    cmdTelemetryExport,
+		"telemetry events":    cmdTelemetryEvents,
+		"telemetry incidents": cmdTelemetryIncidents,
 	}
 	if args[0] == "reset" {
 		return true, cmdReset(args[1:])

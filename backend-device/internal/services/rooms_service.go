@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
+	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
@@ -143,6 +144,10 @@ type RoomsConfig struct {
 	ProbeSaves func(ctx context.Context, rom string) (bool, error)
 	// History records every finished game (nil: no history).
 	History *HistoryService
+	// Telemetry keeps what happens in each room while it runs (nil:
+	// nothing); Host gives the computer's CPU, memory and network for it.
+	Telemetry *telemetry.Store
+	Host      func() telemetry.Metrics
 	// Recordings keeps the games the host records (nil: no recording).
 	Recordings *RecordingService
 	// OnRecording tells the host's browsers that a recording ended
@@ -216,7 +221,10 @@ type gameRoom struct {
 	code    string          // its 9 digit code
 	rec     *Recorder       // the recording in progress, if any
 	recs    []RecordingInfo // recordings of this session, for the history
-	// The running session, for the history of games.
+	// The running session, for the history of games; runID names it there
+	// and in the telemetry, which tele records.
+	runID          string
+	tele           *telemetry.Recorder
 	startedAt      time.Time
 	peakPlayers    int
 	peakSpectators int
@@ -379,6 +387,7 @@ func (r *RoomsService) OnConnect(env signalclient.Envelope) {
 	for _, gr := range ready {
 		gr.signal.OnConnect(env)
 	}
+	r.teleAll(telemetry.Info, "signal_up", "connected to the signaling server", nil)
 }
 
 // OnMessage hands guests and their WebRTC signaling to their room.
@@ -400,7 +409,29 @@ func (r *RoomsService) OnDisconnect(err error) {
 	for _, gr := range parts {
 		gr.signal.OnDisconnect(err)
 	}
+	reason := ""
+	if err != nil {
+		reason = err.Error()
+	}
+	// Games already playing go on (WebRTC does not need it), but nobody
+	// new gets in until it is back.
+	r.teleAll(telemetry.Warn, "signal_down", "lost the signaling server", map[string]any{"err": reason})
 	r.publish()
+}
+
+// teleAll writes an event to every running room's telemetry.
+func (r *RoomsService) teleAll(level telemetry.Level, kind, msg string, data map[string]any) {
+	r.mu.Lock()
+	var recs []*telemetry.Recorder
+	for _, gr := range r.runningLocked() {
+		if gr.tele != nil {
+			recs = append(recs, gr.tele)
+		}
+	}
+	r.mu.Unlock()
+	for _, rec := range recs {
+		rec.Event(level, kind, "", msg, data)
+	}
 }
 
 // Create starts a new room playing a ROM. reply receives room_created
@@ -789,7 +820,9 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	r.mu.Lock()
 	gr.seats = SeatsFor(controls)
 	r.mu.Unlock()
-	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, MaxPlayers: SeatsFor(controls), OnSummary: func(s RoomSummary) {
+	tele := r.cfg.Telemetry.Room(saved.ID)
+	stream.SetTelemetry(tele, r.cfg.Host)
+	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, MaxPlayers: SeatsFor(controls), OnLog: RoomTeleLog(tele), OnSummary: func(s RoomSummary) {
 		signal.OnSummary(s)
 		r.mu.Lock()
 		gr.summary = s
@@ -832,6 +865,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 				manager.Pause(true, "The host")
 			}
 			manager.SetControls(controls)
+			tele.Event(telemetry.Info, "game_ready", "", "the game is running", map[string]any{"rom": saved.Rom, "paused": wasPaused})
 			r.mu.Lock()
 			gr.ready = true
 			connected := r.connected
@@ -879,6 +913,8 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	gr.cancel, gr.stream, gr.signal, gr.manager, gr.source = cancel, stream, signal, manager, source
 	gr.ready, gr.roomID, gr.summary = false, "", RoomSummary{}
 	gr.startedAt, gr.peakPlayers, gr.peakSpectators = r.cfg.Now(), 0, 0
+	gr.runID, gr.tele = NewRunID(), tele
+	tele.Start(gr.runID, game)
 	gr.people, gr.person = nil, map[string]*HistoryPerson{}
 	gr.rec, gr.recs = nil, nil
 	gr.pauseAsks = nil
@@ -1004,6 +1040,7 @@ func (r *RoomsService) failed(gr *gameRoom, err error) {
 	}
 	r.log.Warn("room game failed", "room", gr.saved.Name, "err", err)
 	r.mu.Lock()
+	gr.tele.Event(telemetry.Error, "game_failed", "", "the game stopped with an error", map[string]any{"err": err.Error()})
 	reply := gr.reply
 	gr.reply = nil
 	id, rom := gr.saved.ID, gr.saved.Rom
@@ -1074,7 +1111,7 @@ func (r *RoomsService) record(gr *gameRoom, reason string) {
 	}
 	r.mu.Lock()
 	e := HistoryEntry{
-		RoomID: gr.saved.ID, Name: gr.saved.Name, Rom: gr.saved.Rom, Game: gr.game,
+		ID: gr.runID, RoomID: gr.saved.ID, Name: gr.saved.Name, Rom: gr.saved.Rom, Game: gr.game,
 		StartedAt: gr.startedAt, EndedAt: r.cfg.Now(),
 		PeakPlayers: gr.peakPlayers, PeakSpectators: gr.peakSpectators, Reason: reason,
 		Recordings: gr.recs,
@@ -1091,10 +1128,13 @@ func (r *RoomsService) record(gr *gameRoom, reason string) {
 		}
 		e.People = append(e.People, p)
 	}
+	tele := gr.tele
+	gr.tele = nil
 	r.mu.Unlock()
 	if !running {
 		return
 	}
+	tele.End(reason)
 	if err := r.cfg.History.Add(e); err != nil {
 		r.log.Warn("cannot save the history of games", "err", err)
 	}
@@ -1262,6 +1302,10 @@ func (r *RoomsService) purge(gr *gameRoom) {
 	// delete, never a path.
 	if r.cfg.SavesDir != "" && validRoomID(gr.saved.ID) {
 		_ = os.RemoveAll(filepath.Join(r.cfg.SavesDir, gr.saved.ID))
+	}
+	// Its telemetry goes with it: every run's samples and events.
+	if err := r.cfg.Telemetry.DeleteRoom(gr.saved.ID); err != nil {
+		r.log.Warn("cannot delete the room's telemetry", "room", gr.saved.ID, "err", err)
 	}
 	r.remove(gr)
 	r.persist()
@@ -1549,6 +1593,20 @@ func (r *RoomsService) managerOf(gr *gameRoom) *RoomManager {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return gr.manager
+}
+
+// RoomTeleLog writes the Room Manager's events to the room's telemetry
+// and remembers the names people use.
+func RoomTeleLog(tele *telemetry.Recorder) func(kind, peer, text string, data map[string]any) {
+	if tele == nil {
+		return nil
+	}
+	return func(kind, peer, text string, data map[string]any) {
+		if name, _ := data["name"].(string); peer != "" && name != "" {
+			tele.Peer(peer, name)
+		}
+		tele.Event(telemetry.Info, kind, peer, text, data)
+	}
 }
 
 // newRoomID makes a stable local id for a room.

@@ -70,6 +70,11 @@ device video quality [high|normal|saver]     # video quality of game rooms
 device panel token [--new]               # show (or replace) the web panel token
 device rec list [--json]                 # list the recordings of game rooms
 device rec rm ID...|--all                # delete recordings
+device telemetry rooms                   # rooms with telemetry (~/go-link/telemetry.db)
+device telemetry runs ROOM               # the times a room was on, with their game ids
+device telemetry events ROOM|#GAME [--warn] [--since 30m]   # a room's log
+device telemetry incidents ROOM|#GAME [--json]             # freezes and their likely cause
+device telemetry export ROOM|#GAME [--since 2h]            # everything, as JSON lines
 device reset --yes                       # factory reset (with the device stopped)
 ```
 

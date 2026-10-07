@@ -113,6 +113,10 @@ func (h *HistoryService) saveLocked() error {
 	return writePrivate(h.path, b)
 }
 
+// NewRunID names a game: the same id in the history and in the room's
+// telemetry.
+func NewRunID() string { return newEntryID() }
+
 func newEntryID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)

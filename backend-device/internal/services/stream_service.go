@@ -22,6 +22,7 @@ import (
 	"github.com/pion/webrtc/v4/pkg/media"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
+	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
 	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/inputhud"
@@ -121,6 +122,9 @@ type viewer struct {
 	remoteSet bool
 	pending   []webrtc.ICECandidateInit
 	input     input.Tracker
+	hidden    bool // the browser says its tab is hidden (client_report)
+
+	tm viewerTele // telemetry counters
 }
 
 // StreamService sends the video to every viewer. There is one encoder and
@@ -146,6 +150,11 @@ type StreamService struct {
 	// the host's latency test; hudBuf is the frame it is drawn on.
 	hud    atomic.Int32
 	hudBuf []byte
+	// tele records the room's telemetry (nil: none); ftele counts its
+	// frames of the last second.
+	tele     atomic.Pointer[telemetry.Recorder]
+	teleHost func() telemetry.Metrics // under mu
+	ftele    frameTele
 
 	// kbps is the VP8 target bitrate (SetBitrate); scale is how many times
 	// the source enlarges the game's picture (SetVideoScale).
@@ -360,6 +369,13 @@ func (s *StreamService) logPath(peerID string, pc *webrtc.PeerConnection) {
 		s.addrs[peerID] = addr
 	}
 	s.mu.Unlock()
+	s.mu.Lock()
+	viewer := s.viewers[peerID] != nil && s.viewers[peerID].kind == KindViewer
+	s.mu.Unlock()
+	if viewer {
+		s.teleEvent(telemetry.Info, "peer_path", peerID, "connected "+path, map[string]any{
+			"path": path, "local": pair.Local.Typ.String(), "remote": pair.Remote.Typ.String(), "remote_addr": addr.IP})
+	}
 	s.log.Info("viewer path", "peer_id", peerID, "path", path,
 		"local", fmt.Sprintf("%s %s:%d", pair.Local.Typ, pair.Local.Address, pair.Local.Port),
 		"remote", fmt.Sprintf("%s %s:%d", pair.Remote.Typ, pair.Remote.Address, pair.Remote.Port))
@@ -636,6 +652,7 @@ func (s *StreamService) Run(ctx context.Context) error {
 			}
 		}
 	}()
+	go s.teleLoop(ctx)
 	for {
 		s.mu.Lock()
 		src := s.source
@@ -647,6 +664,7 @@ func (s *StreamService) Run(ctx context.Context) error {
 		s.mu.Unlock()
 
 		s.SetVideoScale(1) // until a source says its frames are enlarged
+		s.resetFrameClock()
 		err := src.Run(srcCtx, s)
 		replaced := srcCtx.Err() != nil // stopped on purpose (new source or shutdown)
 		stop()
@@ -674,6 +692,7 @@ func (s *StreamService) Run(ctx context.Context) error {
 // size, so games with odd resolutions (e.g. 248x256) are sent natively
 // and the browser scales them.
 func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
+	s.noteFrame(time.Now())
 	rec := s.rec.Load()
 	if s.videoViewerCount() == 0 && rec == nil {
 		s.sent, s.window = 0, time.Now()
@@ -739,7 +758,9 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.log.Error("encode failed", "err", err)
 		return
 	}
-	s.measure(time.Since(start), dur, w, h)
+	took := time.Since(start)
+	s.measure(took, dur, w, h)
+	s.noteEncode(took, dur)
 	if len(data) == 0 {
 		return
 	}
@@ -1080,6 +1101,7 @@ func (s *StreamService) AddPeer(peerID string, kind PeerKind) error {
 		return err
 	}
 	v := &viewer{id: peerID, kind: kind, pc: pc}
+	v.tm.ctlRttMs.Store(-1)
 	fail := func(err error) error {
 		_ = pc.Close()
 		return err
@@ -1181,6 +1203,7 @@ func (s *StreamService) addMedia(v *viewer) error {
 			if err != nil {
 				continue
 			}
+			s.noteRTCP(v, pkts)
 			for _, p := range pkts {
 				switch p.(type) {
 				case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
@@ -1242,10 +1265,16 @@ func (s *StreamService) addMedia(v *viewer) error {
 // decoding, to the other players (SFU style). Audio from a guest without
 // a seat is dropped here, on the device, whatever the web shows.
 func (s *StreamService) forwardVoice(from string, track *webrtc.TrackRemote) {
+	s.mu.Lock()
+	v := s.viewers[from]
+	s.mu.Unlock()
 	for {
 		pkt, _, err := track.ReadRTP()
 		if err != nil {
 			return
+		}
+		if v != nil {
+			v.tm.voiceIn.Add(1)
 		}
 		port := s.seatOf(from)
 		if port == 0 || s.voiceDisabled() {
@@ -1332,6 +1361,13 @@ func (s *StreamService) offer(v *viewer) error {
 	})
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		s.log.Info("viewer connection", "peer_id", peerID, "state", state.String())
+		if v.kind == KindViewer {
+			level := telemetry.Info
+			if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateDisconnected {
+				level = telemetry.Warn
+			}
+			s.teleEvent(level, "peer_state", peerID, "connection "+state.String(), nil)
+		}
 		switch state {
 		case webrtc.PeerConnectionStateConnected:
 			s.keyframe.Store(true)
@@ -1377,6 +1413,10 @@ func (s *StreamService) handleControl(v *viewer, data []byte) {
 	if json.Unmarshal(data, &msg) != nil {
 		return
 	}
+	if msg.Type == "client_report" && v.kind == KindViewer {
+		s.noteClientReport(v, data)
+		return
+	}
 	if msg.Type == "video_want" && v.kind == KindViewer {
 		var want struct {
 			Width  int `json:"width"`
@@ -1408,6 +1448,9 @@ func (s *StreamService) handleControl(v *viewer, data []byte) {
 	delete(s.pings, id)
 	cb := s.onLatency
 	s.mu.Unlock()
+	if ok {
+		v.tm.ctlRttMs.Store(time.Since(sent).Milliseconds())
+	}
 	if ok && cb != nil {
 		cb(v.id, int(time.Since(sent).Milliseconds()))
 	}
@@ -1508,6 +1551,7 @@ func (s *StreamService) HandleSignal(from string, payload json.RawMessage) error
 
 func (s *StreamService) handleInput(v *viewer, packet []byte) {
 	v.mu.Lock()
+	s.noteInput(v, packet, time.Now())
 	pkt, changed, err := v.input.Apply(packet)
 	pads := v.input.Pads()
 	v.mu.Unlock()

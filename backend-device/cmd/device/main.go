@@ -29,6 +29,7 @@ import (
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/panel"
 	"github.com/lordbasex/go-link/backend-device/internal/services"
+	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
 	"github.com/lordbasex/go-link/backend-device/pkg/encoder"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/instancelock"
@@ -215,6 +216,17 @@ func run() error {
 	links.SetTransport(stream.SendControl, stream.RemoveViewer)
 	pairing.SetAuth(links)
 	stream.SetLinkGate(links.Trusted)
+	// Each room's telemetry (~/go-link/telemetry.db): runs, samples and
+	// events, kept until the room is deleted for good.
+	tele, err := telemetry.Open(filepath.Join(base, "telemetry.db"))
+	if err != nil {
+		logger.Warn("telemetry is off", "err", err)
+		tele = nil
+	} else if err := tele.EndOpenRuns(); err != nil {
+		logger.Warn("telemetry: cannot end the last run", "err", err)
+	}
+	defer tele.Close()
+
 	var room *services.TestRoomService
 	var testManager *services.RoomManager
 	if *testRoom {
@@ -229,7 +241,12 @@ func run() error {
 		room.SetTrusted(links.Trusted)
 		room.EnableInvites(nil)
 		room.SetPrivate()
-		manager := services.NewRoomManager(services.RoomManagerConfig{Logger: logger, OnSummary: room.OnSummary}, stream)
+		// The test room's telemetry: one run per device run.
+		testTele := tele.Room(services.TestRoomID)
+		stream.SetTelemetry(testTele, hostTelemetry(status))
+		testTele.Start(services.NewRunID(), "Test pattern")
+		defer testTele.End("device_stopped")
+		manager := services.NewRoomManager(services.RoomManagerConfig{Logger: logger, OnSummary: room.OnSummary, OnLog: services.RoomTeleLog(testTele)}, stream)
 		room.SetManager(manager)
 		room.SetPicture(cfg.TestRoomPicture)
 		testManager = manager
@@ -274,6 +291,8 @@ func run() error {
 		HostName:   hostName(),
 		SavesDir:   filepath.Join(base, "saves"),
 		History:    history,
+		Telemetry:  tele,
+		Host:       hostTelemetry(status),
 		Recordings: recordings,
 		OnRecording: func(ev services.RecordingEvent) {
 			stream.SendToLinks(ev)
@@ -364,6 +383,20 @@ func run() error {
 		}
 		// auth and unlink first; anything else only from trusted browsers.
 		if links.HandleMessage(peerID, data) || !links.Trusted(peerID) {
+			return
+		}
+		// A room's telemetry, only to the owner's linked browsers. Read on
+		// its own: its from and to are numbers, which the message below
+		// (from: a peer id) would refuse.
+		var head struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(data, &head) == nil && strings.HasPrefix(head.Type, "telemetry_") {
+			go func() {
+				if b := answerTelemetry(tele, data); b != nil {
+					stream.SendControl(peerID, b)
+				}
+			}()
 			return
 		}
 		var msg struct {
@@ -518,7 +551,7 @@ func run() error {
 			}
 			go func() {
 				err := factoryReset(ctx, resetParts{
-					games: games, history: history, recordings: recordings,
+					games: games, history: history, recordings: recordings, telemetry: tele,
 					settings: settings, library: library, romsDir: filepath.Join(base, "roms"),
 					config: func(change func(*models.Config)) error { return updateConfig(store, &cfg, change) },
 				})
@@ -865,4 +898,20 @@ func useHDScene(stream *services.StreamService, size, far, play string, kbps int
 	stream.SetSource(&services.HDSceneSource{Width: sz.W, Height: sz.H, FPS: 60, Far: farImg, Play: playImg})
 	log.Info("test room streams the HD scene", "size", size, "kbps", kbps)
 	return nil
+}
+
+// hostTelemetry gives each room sample the computer's own numbers: CPU,
+// the device's memory and the whole machine's network traffic (its upload
+// is what every guest's picture shares).
+func hostTelemetry(status *services.StatusService) func() telemetry.Metrics {
+	return func() telemetry.Metrics {
+		u := status.Snapshot().System.Usage
+		return telemetry.Metrics{
+			"cpu_pct":       u.CPUPercent,
+			"proc_cpu_pct":  u.ProcessCPUPercent,
+			"proc_mem_mb":   float64(u.ProcessRSS) / (1 << 20),
+			"net_up_kbps":   float64(u.NetSentBps) * 8 / 1000,
+			"net_down_kbps": float64(u.NetRecvBps) * 8 / 1000,
+		}
+	}
 }
