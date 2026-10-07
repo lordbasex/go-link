@@ -166,6 +166,7 @@ export const studioPt: StudioMessages = {
   },
   backgroundName: "Fundo",
   undoLabels: {
+    depth: "Faixas de profundidade",
     scenes: "Cenários",
     lineUp: "Alinhar o chão",
     far: "Fundo distante",
@@ -230,6 +231,17 @@ export const studioPt: StudioMessages = {
     delete: "Apagar grupo",
     moveTo: "Mover para grupo",
     group: "Agrupar",
+  },
+  depth: {
+    title: "Profundidade",
+    help: "Linhas do fundo que no jogo se movem mais devagar que a câmera, para parecerem mais longe (o row scroll da placa). O fundo distante vai a 50 %. Não ponha chão, paredes nem objetos numa faixa.",
+    band: (n: number) => `Faixa ${n}`,
+    from: "De (px)",
+    to: "Até (px)",
+    speed: "Velocidade %",
+    add: "+ Faixa de profundidade",
+    remove: (n: number) => `Remover a faixa ${n}`,
+    bandTag: (speed: number) => `velocidade ${speed} %`,
   },
   props: {
     scenes: "Cenários",

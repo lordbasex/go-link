@@ -166,6 +166,7 @@ export const studioEs: StudioMessages = {
   },
   backgroundName: "Fondo",
   undoLabels: {
+    depth: "Bandas de profundidad",
     scenes: "Escenarios",
     lineUp: "Alinear el piso",
     far: "Fondo lejano",
@@ -230,6 +231,17 @@ export const studioEs: StudioMessages = {
     delete: "Borrar grupo",
     moveTo: "Mover a grupo",
     group: "Agrupar",
+  },
+  depth: {
+    title: "Profundidad",
+    help: "Filas del fondo que en el juego se mueven más lento que la cámara, para que se vean más lejos (el row scroll de la placa). El fondo lejano va al 50 %. No pongas pisos, paredes ni objetos en una banda.",
+    band: (n: number) => `Banda ${n}`,
+    from: "Desde (px)",
+    to: "Hasta (px)",
+    speed: "Velocidad %",
+    add: "+ Banda de profundidad",
+    remove: (n: number) => `Quitar la banda ${n}`,
+    bandTag: (speed: number) => `velocidad ${speed} %`,
   },
   props: {
     scenes: "Escenarios",

@@ -6,12 +6,13 @@
 // field changes the game at once; the letters or digits typed in one field
 // are one undo step. A pickup can be drawn with one of the game's characters.
 // A background made of scenes lists them: each one's place, height and
-// scale, its order, and Line up the floor (editor/scenes.ts).
+// scale, its order, and Line up the floor (editor/scenes.ts). Depth: the
+// parallax bands, rows of the background that move slower than the camera.
 
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useStudioText } from "../../i18n";
-import type { BackgroundScene, Level, LevelObject, Zone, ZoneKind } from "../../model";
+import { BAND_SPEED, cleanBands, MAX_BANDS, type BackgroundScene, type Level, type LevelObject, type ParallaxBand, type Zone, type ZoneKind } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { findObject, findZone, moveObject, patchItem, patchZone, placeZone, setObjectLook, type ItemRef } from "../../editor/zoneOps";
 import type { TileImage } from "../render";
@@ -78,6 +79,7 @@ export function PropertiesPanel(p: PropertiesProps) {
             </button>
           </div>
           {!!p.level.scenes?.length && <ScenesList scenes={p.level.scenes} onScenes={p.onScenes} onLineUp={p.onLineUp} />}
+          <DepthBands store={p.store} level={p.level} />
         </>
       ) : (
         <p className="studio-muted">{t.nothingSelected}</p>
@@ -313,5 +315,58 @@ function SceneField({ label, value, onSet }: { label: string; value: number; onS
       <span>{label}</span>
       <input className="input" type="number" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={apply} onKeyDown={(e) => e.key === "Enter" && apply()} />
     </label>
+  );
+}
+
+/** Depth: the parallax bands (rows of the background that move at their own speed in the game), up to 4. */
+function DepthBands({ store, level }: { store: EditorStore; level: Level }) {
+  const t = useStudioText();
+  const bands = cleanBands(level);
+  const edit = (label: string, fn: (b: ParallaxBand[]) => void) =>
+    store.editLevel(label, level.id, (l) => {
+      const next = cleanBands(l).map((b) => ({ ...b }));
+      fn(next);
+      const kept = cleanBands({ size: l.size, parallax: next });
+      if (kept.length) l.parallax = kept;
+      else delete l.parallax;
+    });
+  return (
+    <div className="studio-scenes">
+      <span className="mdn-kicker">{t.depth.title}</span>
+      <p className="studio-muted">{t.depth.help}</p>
+      <ol>
+        {bands.map((b, i) => (
+          <li key={`${b.y0}-${b.y1}`}>
+            <div className="studio-scene-head">
+              <span>{t.depth.band(i + 1)}</span>
+              <button type="button" className="btn btn-icon studio-small" aria-label={t.depth.remove(i + 1)} title={t.depth.remove(i + 1)} onClick={() => edit(t.undoLabels.depth, (bs) => bs.splice(i, 1))}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="studio-scene-fields">
+              <SceneField label={t.depth.from} value={b.y0} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.y0 = v))} />
+              <SceneField label={t.depth.to} value={b.y1} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.y1 = v))} />
+              <SceneField label={t.depth.speed} value={b.speed} onSet={(v) => edit(t.undoLabels.depth, (bs) => (bs[i]!.speed = Math.max(BAND_SPEED.min, Math.min(BAND_SPEED.max, v))))} />
+            </div>
+          </li>
+        ))}
+      </ol>
+      {bands.length < MAX_BANDS && (
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() =>
+            edit(t.undoLabels.depth, (bs) => {
+              // the next rows down, or the top third of the level for the first band
+              const from = bs.length ? bs[bs.length - 1]!.y1 : 0;
+              const to = Math.min(level.size.h, from + (bs.length ? 64 : Math.max(16, Math.floor(level.size.h / 3 / 16) * 16)));
+              bs.push({ y0: from, y1: to, speed: 75 });
+            })
+          }
+        >
+          {t.depth.add}
+        </button>
+      )}
+    </div>
   );
 }

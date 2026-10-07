@@ -319,7 +319,7 @@ export interface Level {
    * The background's scenes (Insert background, Add scene): each picture
    * kept with where it goes, so it can be moved, scaled and lined up later;
    * the play layer's art is made from them, left to right
-   * (ui/studio/scenes.ts). Missing on a level whose background was made
+   * (editor/scenes.ts). Missing on a level whose background was made
    * before scenes existed: its art is the play layer as it is.
    */
   scenes?: BackgroundScene[];

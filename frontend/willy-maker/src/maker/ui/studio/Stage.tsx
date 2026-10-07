@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { Plus, Repeat, Upload } from "lucide-react";
-import { objectLayer, objectVisible, zoneVisible, type Level, type Zone } from "../../model";
+import { cleanBands, objectLayer, objectVisible, zoneVisible, type Level, type Zone } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { addZone, findObject, findZone, LiveEdit, removeItem, sameRef, targetGroup, type ItemRef } from "../../editor/zoneOps";
 import { useStudioText } from "../../i18n";
@@ -428,6 +428,13 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
         <div ref={board} className={`studio-level${hasArt ? " has-art" : ""}`} style={{ width: level.size.w * z, height: level.size.h * z }}>
           <canvas ref={art} className={`studio-art${bgSelected ? " is-selected" : ""}`} aria-hidden="true" />
           {bgSelected && <div className="studio-bg-outline" />}
+          {bgSelected &&
+            // the parallax bands: rows that move at their own speed in the game
+            cleanBands(level).map((b) => (
+              <div key={b.y0} className="studio-band" style={{ top: b.y0 * z, height: (b.y1 - b.y0) * z }}>
+                <span>{t.depth.bandTag(b.speed)}</span>
+              </div>
+            ))}
           {s.showGrid && cell >= 4 && (
             <div
               className="studio-grid"

@@ -165,6 +165,7 @@ export const studioEn = {
   },
   backgroundName: "Background",
   undoLabels: {
+    depth: "Depth bands",
     scenes: "Scenes",
     lineUp: "Line up the floor",
     far: "Far background",
@@ -229,6 +230,17 @@ export const studioEn = {
     delete: "Delete group",
     moveTo: "Move to group",
     group: "Group",
+  },
+  depth: {
+    title: "Depth",
+    help: "Rows of the background that move slower than the camera in the game, so they look farther away (the board's row scroll). The far background moves at 50 %. Keep floors, walls and objects out of a band.",
+    band: (n: number) => `Band ${n}`,
+    from: "From (px)",
+    to: "To (px)",
+    speed: "Speed %",
+    add: "+ Depth band",
+    remove: (n: number) => `Remove band ${n}`,
+    bandTag: (speed: number) => `${speed} % speed`,
   },
   props: {
     scenes: "Scenes",

@@ -743,3 +743,28 @@ describe("my games (the site's home)", () => {
     expect(editorChoice(new URLSearchParams(""))).toBe("next");
   });
 });
+
+describe("depth bands", () => {
+  it("adds a band from the background's properties, marks it on the canvas, and edits and removes it", async () => {
+    const project = projectFromTemplate("buenos-aires", { title: "Depth", layout: "slammast", players: 1 });
+    const level = project.levels[0]!;
+    delete level.parallax;
+    render(
+      <LangProvider value="en">
+        <Studio project={project} lang="en" theme="light" onHome={() => undefined} onCreated={() => undefined} />
+      </LangProvider>,
+    );
+    fireEvent.click(document.querySelector(".studio-bg-row") as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: studioEn.depth.add }));
+    const third = Math.floor(level.size.h / 3 / 16) * 16;
+    expect(level.parallax).toEqual([{ y0: 0, y1: third, speed: 75 }]);
+    expect(document.querySelectorAll(".studio-band")).toHaveLength(1);
+    const speed = screen.getByLabelText(studioEn.depth.speed);
+    fireEvent.change(speed, { target: { value: "40" } });
+    fireEvent.blur(speed);
+    expect(level.parallax![0]!.speed).toBe(40);
+    fireEvent.click(screen.getByRole("button", { name: studioEn.depth.remove(1) }));
+    expect(level.parallax).toBeUndefined();
+    expect(document.querySelectorAll(".studio-band")).toHaveLength(0);
+  });
+});
