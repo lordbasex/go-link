@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (go-link HD)
+
+- **The engine is C99, in its own repository:** go-link HD's core is written in C99 instead of Go, in `golink-hd`, so it can be published to libretro; the device calls it from Go through `pkg/libretro`. Phase 1's core and its demo are done; status and phases updated.
+
 ## [0.2.5] - 2026-10-07
 
 ### Changed (emulator)

@@ -14,7 +14,9 @@ Every item is marked:
 |---|---|---|
 | What it is | A **libretro core of our own** (`golink_hd_libretro`) that runs a game package | The device already runs libretro cores in a worker process per room: rooms, voice, controllers, recordings, invitations, saves and phones keep working unchanged |
 | Look | **Pixel art on a 640 × 360 screen**, scaled ×3 to 1080p (×6 to 4K); real HD art (1920 × 1080) supported too | Pixel art is quicker to draw and to make with an image AI, and fits the arcade look; HD art stays possible for who has it |
-| Language | **Go**, built twice: a native core for the device (`-buildmode=c-shared`) and WebAssembly for Willy Maker's play mode | One engine, two builds: play mode is the same game by construction (Willy Maker's [principle 6](willy-maker/vision.md#principles)). The device is Go already and the repository builds Go to WebAssembly (`frontend/wasm/mp4`) |
+| Language | **C99**, with no dependencies (changed on 2026-10-07; it was Go) | So the core can be published to libretro: its buildbot builds cores with C/C++ toolchains for every platform (desktop, Android, iOS, consoles, web), and RetroArch users can play the games. go-link's device calls it from Go through `pkg/libretro` (cgo), as it does with mame2003-plus, and could later download it from the buildbot like mame2003-plus. The same C builds to WebAssembly for Willy Maker's play mode (clang's wasm32 target) |
+| Repository | Its own public repository, `golink-hd` (next to this one, like signalhub) | libretro takes cores from their own repositories; the core knows nothing about go-link |
+| Compatibility | Versioned save states (`GLHD` header, layout version, checksum, little endian words) and versioned packages | A save state or package of another version is refused cleanly, never misread; a new core keeps reading older packages |
 | First genre | **Platformer** (then the beat 'em up) | Both have engines and level-checked rules on the CPS-1, so the HD version can be compared with them |
 | License | MIT, like go-link | Our own code: no MAME license (non-commercial) limits |
 
@@ -42,7 +44,7 @@ Willy Maker project ──export──► game package (.glhd)
 | Feature | Level | Notes |
 |---|---|---|
 | Fixed step of 60 Hz, independent of the output's frame rate | Base | One `Run()` per libretro frame |
-| **Deterministic**: the same inputs give the same frames on every computer and in the browser | Base | Integer and fixed-point math for positions, speeds and collisions; no `float` in game logic (Go may fuse float operations differently on arm64 and amd64); one seeded random generator in the state |
+| **Deterministic**: the same inputs give the same frames on every computer and in the browser | Base | Integer and fixed-point math for positions, speeds and collisions; no `float` in game logic (compilers may fuse or reorder float operations differently on each CPU); one seeded random generator in the state |
 | Whole state in one serializable struct | Base | Save states are exact by design: no pointers to code, no hidden timers. That avoids the problems [the MAME patches](../cores/mame2003-plus/README.md) fight |
 | Input log replays (start state + inputs) | Base | For bug reports, regression tests, the AI playtester ([row 12](status.md)) and attract-mode demos |
 | Rewind (a ring of recent states) | Idea | Cheap with a small state; useful in Willy Maker's play mode |
@@ -234,15 +236,15 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 - **A store or paid games.**
 - **Running MAME sets.** MAME stays the core for arcade games.
 
-## Phases (when it is built)
+## Phases
 
 | Phase | What | Rough size |
 |---|---|---|
-| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room | 3-4 sessions |
+| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room (in progress since 2026-10-07: the core and its demo are done in the `golink-hd` repository, the room is next) | 3-4 sessions |
 | 2 | Game rooms on the HD path; H.264 recordings | 2 sessions |
 | 3 | Willy Maker's go-link HD board: export, play mode in WebAssembly, validation | 3-4 sessions |
 | 4 | Later items: skeletal animation, lights, post effects, Mode 7, more genres | by parts |
-| 5 | Distribution: the core built in CI for macOS, Linux and Windows, published in the releases | 1-2 sessions |
+| 5 | Distribution: the core submitted to libretro (its GitLab CI templates and the core-info file), so the buildbot builds it for every platform and go-link's device downloads it from there | 1-2 sessions |
 
 ## Open questions
 
