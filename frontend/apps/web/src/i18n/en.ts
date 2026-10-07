@@ -696,6 +696,9 @@ export const en = {
     remapButtons: "Remap buttons",
     remapKeys: "Remap keys",
     keyboardPlaysAs: "Keyboard plays as",
+    multi: "Several controllers",
+    multiDesc: "Each gamepad takes a seat of its own, to play with more people on this computer. Off, the keyboard and every gamepad are one player.",
+    oneSeat: "The keyboard and your gamepads play as one player: coin (5) and Start work from any of them.",
     shared: (player: number) => `The keyboard and a gamepad both control P${player + 1}. Pick another player for the keyboard to play two people on this computer.`,
   },
   romCheck: {
@@ -1228,7 +1231,7 @@ export const en = {
         title: "Gamepad",
         items: [
           "Connect it by USB or Bluetooth and press any button: browsers only show a gamepad after its first press.",
-          "Each gamepad takes the next player; pick another one in the controls panel.",
+          "The keyboard and your gamepads are one player. The host can turn on Several controllers in the controls panel so each gamepad takes the next player.",
           "Use \u201cRemap buttons\u201d when a button does not do what you expect.",
           "Works on computers, iPad and Android (Xbox, PlayStation, Switch Pro and most others).",
         ],

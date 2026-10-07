@@ -332,7 +332,7 @@ func (m *RoomManager) MarkOwner(peerID string) {
 			return
 		}
 		m.owners[peerID] = true
-		m.broadcastState()
+		m.reconcile() // an owner may seat every controller it has
 	})
 }
 
@@ -798,7 +798,7 @@ func (m *RoomManager) swapValid(p pendingSwap) bool {
 func (m *RoomManager) reconcile() {
 	wants := func(k seatKey) bool {
 		mem := m.members[k.peer]
-		return mem != nil && !mem.spectator && slices.Contains(mem.locals, k.local)
+		return mem != nil && !mem.spectator && slices.Contains(m.seatable(mem), k.local)
 	}
 	for i, s := range m.seats {
 		if s != nil && !wants(*s) {
@@ -826,7 +826,7 @@ func (m *RoomManager) reconcile() {
 		if mem.spectator {
 			continue
 		}
-		for _, l := range mem.locals {
+		for _, l := range m.seatable(mem) {
 			k := seatKey{mem.peer, l}
 			if m.portIndex(k) < 0 && !slices.Contains(m.queue, k) {
 				m.queue = append(m.queue, k)
@@ -857,6 +857,16 @@ func (m *RoomManager) reconcile() {
 	if m.cfg.OnSummary != nil {
 		m.cfg.OnSummary(m.summary())
 	}
+}
+
+// seatable is the local players of a member that may take seats: all of
+// them for the host's own browsers, only the first for a guest (one person,
+// one seat, however many controllers that browser has).
+func (m *RoomManager) seatable(mem *member) []uint8 {
+	if m.owners[mem.peer] || len(mem.locals) <= 1 {
+		return mem.locals
+	}
+	return mem.locals[:1]
 }
 
 func (m *RoomManager) portIndex(k seatKey) int {

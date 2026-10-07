@@ -134,6 +134,7 @@ func TestFourPlayAndOneQueues(t *testing.T) {
 func TestLocalPlayersTakeSeveralSeats(t *testing.T) {
 	m, out, _ := newManager(t)
 	m.Join("home")
+	m.MarkOwner("home") // only the host seats several controllers
 	m.HandleControl("home", []byte(`{"type":"hello","name":"Fede","local_players":[0,1,1,7]}`))
 	m.Sync()
 	st := out.lastState(t, "home")
@@ -642,9 +643,29 @@ func TestSwapDeclinedOrToAFreeSeat(t *testing.T) {
 	}
 }
 
+func TestAGuestTakesOneSeatWithSeveralControllers(t *testing.T) {
+	m, out, _ := newManager(t)
+	m.Join("guest")
+	m.HandleControl("guest", []byte(`{"type":"hello","name":"Ana","local_players":[0,1,2]}`))
+	m.Sync()
+	if got := ports(out.lastState(t, "guest")); len(got) != 1 {
+		t.Fatalf("a guest with three controllers has ports %v", got)
+	}
+	if _, ok := m.PortOf("guest", 1); ok {
+		t.Fatal("a guest's second controller took a seat")
+	}
+	// The same browser as the host's seats them all.
+	m.MarkOwner("guest")
+	m.Sync()
+	if got := ports(out.lastState(t, "guest")); len(got) != 3 {
+		t.Fatalf("the host's ports %v", got)
+	}
+}
+
 func TestSwapBetweenPlayersOfOneBrowserIsImmediate(t *testing.T) {
 	m, _, _ := newManager(t)
 	m.Join("a")
+	m.MarkOwner("a")
 	m.HandleControl("a", []byte(`{"type":"hello","local_players":[0,1]}`))
 	m.Sync()
 	m.HandleControl("a", []byte(`{"type":"swap_seat","from":1,"to":2}`))

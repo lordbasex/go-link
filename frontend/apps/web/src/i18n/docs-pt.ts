@@ -202,7 +202,7 @@ export const docsPt: Docs = {
           t: "list",
           items: [
             "Conecte por USB ou Bluetooth e aperte qualquer botão: os navegadores só mostram um controle depois do primeiro aperto.",
-            "Cada controle é um jogador, então várias pessoas podem jogar em um computador. O teclado joga como o jogador que você escolher.",
+            "O teclado e seus controles são um só jogador: a ficha (5) e o Start funcionam em qualquer um, assim um controle conectado sem querer nunca ocupa outro lugar. O anfitrião pode ligar **Vários controles** em Controles (durante essa sessão do navegador): aí cada controle é um jogador, várias pessoas jogam em um computador, e o teclado joga como o jogador que você escolher. Um convidado sempre joga como um só jogador.",
             "Se um botão fizer algo inesperado, use **Remapear botões** no painel de controles.",
           ],
         },

@@ -259,6 +259,10 @@ export interface ControlsPanelProps {
   onPlayer?: (slot: string, player: number | null) => void;
   /** The running game's controls (room_state.controls). */
   game?: GameControls;
+  /** Keyboard and every gamepad play as one player (one seat). */
+  single?: boolean;
+  /** The host's switch for several controllers; guests get none. */
+  onMulti?: (on: boolean) => void;
 }
 
 /**
@@ -274,12 +278,32 @@ export function ControlsPanel({
   onRemap,
   onPlayer,
   game,
+  single = false,
+  onMulti,
 }: ControlsPanelProps) {
   const [tab, setTab] = useState<"gamepads" | "keyboard">("gamepads");
   const hasPads = controllers.length > 0;
   const view = hasPads ? tab : "keyboard";
   return (
     <section className="controls-panel" aria-label={t.controls.title}>
+      {onMulti && (
+        <div className="switch-row controls-multi">
+          <div className="stack-xxs">
+            <span className="strong">{t.controls.multi}</span>
+            <span className="small muted">{t.controls.multiDesc}</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!single}
+            aria-label={t.controls.multi}
+            className={`switch${single ? "" : " is-on"}`}
+            onClick={() => onMulti(single)}
+          >
+            <span className="switch-knob" />
+          </button>
+        </div>
+      )}
       <div className="controls-head">
         {hasPads ? (
           <div
@@ -306,19 +330,21 @@ export function ControlsPanel({
         ) : (
           <span className="strong">{t.controls.keyboardTitle}</span>
         )}
-        <span className="kb-player small muted">
-          <label id="kb-player-label" htmlFor="kb-player">
-            {t.controls.keyboardPlaysAs}
-          </label>
-          <Select
-            id="kb-player"
-            labelId="kb-player-label"
-            className="select-sm"
-            value={String(keyboardPlayer)}
-            onChange={(v) => onKeyboardPlayer(Number(v))}
-            options={PLAYER_OPTIONS}
-          />
-        </span>
+        {!single && (
+          <span className="kb-player small muted">
+            <label id="kb-player-label" htmlFor="kb-player">
+              {t.controls.keyboardPlaysAs}
+            </label>
+            <Select
+              id="kb-player"
+              labelId="kb-player-label"
+              className="select-sm"
+              value={String(keyboardPlayer)}
+              onChange={(v) => onKeyboardPlayer(Number(v))}
+              options={PLAYER_OPTIONS}
+            />
+          </span>
+        )}
       </div>
       {view === "gamepads" ? (
         <div className="gp-list">
@@ -326,7 +352,7 @@ export function ControlsPanel({
             <GamepadView
               key={c.slot}
               controller={c}
-              onPlayer={onPlayer}
+              onPlayer={single ? undefined : onPlayer}
               onRemap={
                 onRemap
                   ? () => onRemap({ kind: "pad", id: c.id, name: c.name })
@@ -355,7 +381,10 @@ export function ControlsPanel({
           </div>
         </>
       )}
-      {hasPads && controllers.some((c) => c.player === keyboardPlayer) && (
+      {hasPads && single && (
+        <p className="small muted">{t.controls.oneSeat}</p>
+      )}
+      {hasPads && !single && controllers.some((c) => c.player === keyboardPlayer) && (
         <p className="small muted">{t.controls.shared(keyboardPlayer)}</p>
       )}
     </section>

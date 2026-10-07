@@ -202,7 +202,7 @@ export const docsEs: Docs = {
           t: "list",
           items: [
             "Conéctalo por USB o Bluetooth y presiona cualquier botón: los navegadores solo muestran un mando después de su primera pulsación.",
-            "Cada mando es un jugador, así que varias personas pueden jugar desde una computadora. El teclado juega como el jugador que elijas.",
+            "El teclado y tus mandos son un solo jugador: la moneda (5) y Start funcionan desde cualquiera, así un mando conectado sin querer nunca toma otra plaza. El anfitrión puede activar **Varios mandos** en Controles (durante esa sesión del navegador): entonces cada mando es un jugador, así varias personas juegan desde una computadora, y el teclado juega como el jugador que elijas. Un invitado siempre juega como un solo jugador.",
             "Si un botón hace algo inesperado, usa **Reasignar botones** en el panel de controles.",
           ],
         },

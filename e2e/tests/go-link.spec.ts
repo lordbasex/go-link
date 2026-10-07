@@ -131,6 +131,8 @@ async function expectControlsBesideTheVideo(p: Page) {
   await expect(canvas.getByRole("tab", { name: "Controls" })).toHaveAttribute("aria-selected", "true");
   const panel = p.locator("#canvas-controls");
   await expect(panel.getByText("Keyboard").first()).toBeVisible();
+  // The host may seat several controllers; by default they are one player.
+  await expect(panel.getByRole("switch", { name: "Several controllers" })).toHaveAttribute("aria-checked", "false");
   // The keyboard fits the panel: nothing to scroll sideways.
   expect(await panel.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expect(p.getByRole("textbox", { name: "Message" })).toBeHidden();
@@ -272,7 +274,9 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   await picky.context.close();
 
   // My device shows the test pattern room's default, and puts back the site's.
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "My device" }).click();
+  // In a room the header has no sections: the device is in the "…" menu.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("menu", { name: "Settings" }).getByRole("menuitem", { name: /Device linked/ }).click();
   await page.getByRole("button", { name: "Picture default" }).click();
   const dialog = page.getByRole("dialog", { name: "Picture default for \u201cTest pattern\u201d" });
   await expect(dialog.getByText("Now: CRT arcade · Black")).toBeVisible();
@@ -413,7 +417,7 @@ test("only the host pauses: a player asks, the host accepts or declines, a guest
   // The host away from the room, on another page of the linked website,
   // still gets the request, naming the room.
   const roomUrl = page.url();
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Rooms" }).click();
+  await page.getByRole("link", { name: "Leave room" }).click(); // the room's header has no sections
   await clickControl(g, "Ask the host for a pause");
   const notice = page.getByRole("alertdialog", { name: "bZoëb wants to pause \u201cTest pattern\u201d" });
   await expect(notice).toBeVisible();

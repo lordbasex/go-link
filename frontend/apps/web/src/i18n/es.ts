@@ -705,6 +705,9 @@ export const es: Messages = {
     remapButtons: "Reasignar botones",
     remapKeys: "Reasignar teclas",
     keyboardPlaysAs: "El teclado juega como",
+    multi: "Varios mandos",
+    multiDesc: "Cada mando toma su propia plaza, para jugar con más personas en esta computadora. Apagado, el teclado y todos los mandos son un solo jugador.",
+    oneSeat: "El teclado y tus mandos juegan como un solo jugador: la moneda (5) y Start funcionan desde cualquiera.",
     shared: (player: number) =>
       `El teclado y un gamepad controlan a P${player + 1}. Elige otro jugador para el teclado y así juegan dos personas en esta computadora.`,
   },
@@ -1237,7 +1240,7 @@ export const es: Messages = {
         title: "Gamepad",
         items: [
           "Conéctalo por USB o Bluetooth y presiona cualquier botón: los navegadores solo muestran un gamepad después de su primera pulsación.",
-          "Cada gamepad toma el siguiente jugador; puedes elegir otro en el panel de controles.",
+          "El teclado y tus gamepads son un solo jugador. El anfitrión puede activar Varios mandos en el panel de controles para que cada gamepad tome el siguiente jugador.",
           "Usa \u201cReasignar botones\u201d si un botón no hace lo que esperas.",
           "Funciona en computadoras, iPad y Android (Xbox, PlayStation, Switch Pro y la mayoría de los demás).",
         ],

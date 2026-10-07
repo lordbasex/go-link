@@ -117,6 +117,16 @@ function readDrawerTab(): DrawerTab {
     return "chat";
   }
 }
+/** The host's "Several controllers" switch, for this browser tab's session. */
+const MULTI_PADS_KEY = "go-link.multi-pads";
+
+function readMultiPads(): boolean {
+  try {
+    return sessionStorage.getItem(MULTI_PADS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 /** How long the controls over the video stay without a movement or tap. */
 const IDLE_MS = 3000;
 
@@ -581,6 +591,15 @@ export function RoomPage() {
   const [micOn, setMicOn] = useState(false);
   const joined = !demo && status.kind === "joined" ? status : null;
   const [keyboardPlayer, setKeyboardPlayer] = useState(readKeyboardPlayer);
+  const [multiPads, setMultiPadsState] = useState(readMultiPads);
+  const setMultiPads = useCallback((on: boolean) => {
+    setMultiPadsState(on);
+    try {
+      sessionStorage.setItem(MULTI_PADS_KEY, String(on));
+    } catch {
+      // storage disabled: the switch holds while the page lives
+    }
+  }, []);
   // The last valid name used in this browser (the device checks it too).
   const [playerName, setPlayerName] = useState(savedPlayerName);
   // "What's your name?" comes up once a typed PIN let this browser in.
@@ -595,6 +614,7 @@ export function RoomPage() {
       input: inputCfg.input,
       onPauseButton: () => pauseToggleRef.current(),
       suspended: remap !== null,
+      multi: multiPads,
     },
   );
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1189,6 +1209,8 @@ export function RoomPage() {
       onRemap={setRemap}
       onPlayer={inputCfg.setPlayer}
       game={live.room?.controls}
+      single={live.single}
+      onMulti={live.room?.you.owner ? setMultiPads : undefined}
     />
   );
   const chatShown = !chatHidden && !(inHeader && sideTab !== "chat");

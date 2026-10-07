@@ -77,7 +77,7 @@ Also inside `signal`, before any offer:
 | 4-7 | Buttons | `uint32` (bits below) |
 | 8-11 | Left stick X, Y and right stick X, Y | `int8` (-127 to 127, 0 = center) |
 
-The **local player** lets two or more people play from the same browser (for example one on the keyboard and one on a gamepad) over the same channel. The device keeps one state per browser and local player and drops packets older than the last one. The browser repeats the state every 100 ms while anything is pressed, because the channel does not retransmit.
+The **local player** lets two or more people play from the same browser (for example one on the keyboard and one on a gamepad) over the same channel. Only the host's own browsers get a seat per local player; a guest's browser gets one seat (its first local player) and the device drops the other local players' input, however many it lists. The website sends one local player unless the host turns on **Several controllers**. The device keeps one state per browser and local player and drops packets older than the last one. The browser repeats the state every 100 ms while anything is pressed, because the channel does not retransmit.
 
 | Bit | Button | Keyboard | Standard gamepad |
 |---|---|---|---|
@@ -99,7 +99,7 @@ The **local player** lets two or more people play from the same browser (for exa
 - Bits 18 to 21 are the **Start row of an arcade panel**: any seated player can press another port's Start. The device merges them into that port's Start (`PortPad`) and ignores them from people without a seat.
 - L2, R2, L3 and R3 never reach the core: in mame2003-plus they toggle things for everyone (L3 turns the game sound off, R2 opens MAME's menu).
 - In the emulator: RetroPad B, A, Y, X, L, R are MAME buttons 1 to 6; Select is Coin.
-- Gamepads are read with the browser's **Gamepad API** (USB and Bluetooth, no permissions or drivers). WebUSB is not used: Chrome blocks it for HID devices. Each gamepad is a local player in connection order. Gamepads without the standard mapping take their first reading as rest, so an idle gamepad never sends buttons, and the website has a remap screen.
+- Gamepads are read with the browser's **Gamepad API** (USB and Bluetooth, no permissions or drivers). WebUSB is not used: Chrome blocks it for HID devices. By default the keyboard and every gamepad are one local player (the keyboard's); with the host's **Several controllers** switch on, each gamepad is a local player in connection order. Gamepads without the standard mapping take their first reading as rest, so an idle gamepad never sends buttons, and the website has a remap screen.
 
 ## `control` channel (JSON)
 

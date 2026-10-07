@@ -104,7 +104,7 @@ The room page depends on **who you are**, not on the URL. The **owner** (a brows
 - **Start buttons 1P-4P:** any seated player can press any port's Start, like the row of Start buttons on an arcade cabinet (to start a two-player game, or let a friend in).
 - **Swap controllers:** a player asks to swap seats. A free seat or one from the same browser swaps at once; someone else's seat asks that person, who has 30 seconds to accept. Crossed requests swap at once.
 - **Pause:** a seated player can pause the game for everyone. The chat says who paused.
-- **Several players in one browser:** each gamepad is a local player, and the keyboard plays as the chosen one.
+- **Several players in one browser (host only):** by default the keyboard and every gamepad drive one player, so a pad plugged in by mistake never takes a new seat. The host's **Several controllers** switch in Controls (kept for the browser tab's session, `go-link.multi-pads` in sessionStorage) makes each gamepad a local player, and the keyboard plays as the chosen one. The device enforces it: a guest's browser takes one seat however many local players it sends (`RoomManager.seatable`).
 
 ### Voice between players
 

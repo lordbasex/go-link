@@ -8,7 +8,12 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 - **One side panel in a room, two tabs on top: CHAT and CONTROLS** (the latter while a game streams), with a close button and the same width on both. Chat holds everything the side panel had: your place, your name, and the Chat, Queue and Spectators tabs with the message field; Controls holds the keyboard and gamepads. The header's chat button opens it on Chat and the dock's controller button on Controls (pressing again closes it); the separate controls panel is gone. Unread messages are counted on the chat button while another tab shows.
 - **The keys a game uses have an orange border** on the keyboard map: the stick, Coin and Start, the buttons up to the game's count and the players' starts up to its players (from the game's control panel), with a note under the keyboard.
+- **One player per browser by default:** the keyboard and every gamepad drive the same player, so Coin (5) and Start work from any of them and a gamepad plugged in by mistake never takes a new seat. The host gets a **Several controllers** switch at the top of Controls (for the browser tab's session) that gives each gamepad its own seat and brings back "Plays as" and "Keyboard plays as".
 - **The header's "…" is a menu** (in a room and on phones): the linked device, the language (its three choices open in place), the signaling server, the theme and GitHub, each a line of the list. In a room the device and the language live only there.
+
+### Changed (device)
+
+- **A guest takes one seat however many controllers that browser has:** only the host's own browsers seat several local players (`RoomManager.seatable`); the rest of a guest's local players never reach the game.
 
 ## [0.2.2] - 2026-10-06
 

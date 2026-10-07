@@ -689,6 +689,9 @@ export const pt: Messages = {
     remapButtons: "Remapear botões",
     remapKeys: "Remapear teclas",
     keyboardPlaysAs: "O teclado joga como",
+    multi: "Vários controles",
+    multiDesc: "Cada controle ocupa seu próprio lugar, para jogar com mais pessoas neste computador. Desligado, o teclado e todos os controles são um só jogador.",
+    oneSeat: "O teclado e seus controles jogam como um só jogador: a ficha (5) e o Start funcionam em qualquer um.",
     shared: (player: number) => `O teclado e um gamepad controlam o P${player + 1}. Escolha outro jogador para o teclado para jogarem duas pessoas neste computador.`,
   },
   romCheck: {
@@ -1218,7 +1221,7 @@ export const pt: Messages = {
         title: "Gamepad",
         items: [
           "Conecte por USB ou Bluetooth e aperte qualquer botão: os navegadores só mostram um gamepad depois do primeiro toque.",
-          "Cada gamepad fica com o próximo jogador; escolha outro no painel de controles.",
+          "O teclado e seus gamepads são um só jogador. O anfitrião pode ligar Vários controles no painel de controles para cada gamepad ficar com o próximo jogador.",
           "Use \u201cRemapear botões\u201d quando um botão não fizer o que você espera.",
           "Funciona em computadores, iPad e Android (Xbox, PlayStation, Switch Pro e a maioria dos outros).",
         ],

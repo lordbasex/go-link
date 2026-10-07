@@ -44,6 +44,8 @@ export interface ControllerInfo {
 }
 
 export interface HostStreamView {
+  /** Keyboard and every gamepad play as one player (InputOptions.multi). */
+  single: boolean;
   media: MediaStream | null;
   state: StreamState | "idle";
   stats: StreamStats;
@@ -122,6 +124,13 @@ export interface InputOptions {
   onPauseButton?: () => void;
   /** While the remap screen listens, nothing is sent to the game. */
   suspended?: boolean;
+  /**
+   * The host wants several controllers to take seats of their own. Without
+   * it (and always for guests, whom the device seats once) every gamepad
+   * drives the keyboard's player, so a pad plugged in by mistake never
+   * takes a new seat.
+   */
+  multi?: boolean;
 }
 
 export function useHostStream(
@@ -137,6 +146,7 @@ export function useHostStream(
   pauseRef.current = opts.onPauseButton;
   const suspendRef = useRef(false);
   suspendRef.current = opts.suspended ?? false;
+  const singleRef = useRef(true);
   const { client } = useSignal();
   const [media, setMedia] = useState<MediaStream | null>(null);
   const [state, setState] = useState<StreamState | "idle">("idle");
@@ -159,6 +169,9 @@ export function useHostStream(
   const [voiceStreams, setVoiceStreams] = useState<Record<number, MediaStream>>(
     {},
   );
+  // Only the device says who the host is (room_state.you.owner).
+  const single = !(opts.multi && room?.you.owner);
+  singleRef.current = single;
   const streamRef = useRef<HostStream | null>(null);
   const touchRef = useRef(0);
   const flushRef = useRef<(() => void) | null>(null);
@@ -269,7 +282,7 @@ export function useHostStream(
         seen.set(gp.id, nth + 1);
         const slot = gamepadSlot(gp.id, nth);
         const chosen = input.players[slot];
-        const player = chosen ?? gp.index;
+        const player = singleRef.current ? kbPlayer : (chosen ?? gp.index);
         if (player >= MAX_LOCAL_PLAYERS) continue;
         const map = padMapFor(input, gp.id);
         const pad = readGamepad(gp, padBits(map));
@@ -280,7 +293,7 @@ export function useHostStream(
         found.push({
           player,
           slot,
-          auto: chosen === undefined,
+          auto: singleRef.current || chosen === undefined,
           name: gamepadName(gp),
           id: gp.id,
           pad,
@@ -370,9 +383,13 @@ export function useHostStream(
   }, [hostPeerId, keyboardPlayer]);
 
   // Tell the Room Manager who we are and which local players want seats:
-  // the keyboard's player plus one per connected gamepad.
+  // the keyboard's player plus one per connected gamepad (only the
+  // keyboard's in single mode, where every pad drives it).
   const localPlayers = [
-    ...new Set([keyboardPlayer, ...controllers.map((c) => c.player)]),
+    ...new Set([
+      keyboardPlayer,
+      ...(single ? [] : controllers.map((c) => c.player)),
+    ]),
   ]
     .sort()
     .join(",");
@@ -387,6 +404,7 @@ export function useHostStream(
 
   const send = (msg: unknown) => streamRef.current?.sendControl(msg);
   return {
+    single,
     media,
     state,
     stats,

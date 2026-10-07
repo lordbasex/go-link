@@ -2974,3 +2974,4 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .header-menu-chevron.is-open { transform: rotate(90deg); }
 .header-menu-sub { display: flex; flex-direction: column; gap: 2px; padding-left: 36px; }
 .header-menu-sub .header-menu-item { min-height: 40px; }
+.controls-multi { padding: 10px 12px; background: var(--color-bg); }
