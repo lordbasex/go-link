@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (device)
 
+- **Each player's video quality adapts to their own connection:** every room now gives each guest their own video track (the tiers go-link HD used), with two more steps under the full picture at half and a quarter of its bitrate. Lost packets (3 % or more) or a freeze in a player's reports step that player down at once; 20 clean seconds step them back up, one step at a time. The others keep their full picture, and a step costs an encoder only while someone is on it. Recordings and the icon drawn while recording come from the full picture. Each step is a `video_quality` telemetry event with its reason, and peer samples carry `video_kbps_target`. With a simulated 8 % loss on one guest, that guest went from 2500 to 1250 and 625 kbps in four seconds while the host stayed at full quality with no loss.
 - **The game's sound holds up better on lossy connections:** once a second the Opus encoder hears the worst packet loss among the players and, when there is any, turns on in-band FEC and leans less on the previous frame, so one lost packet hurts fewer of the ones after it (the browser hides the gap). With no loss nothing changes.
 
 ### Added (device)
@@ -20,6 +21,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 - **The network report reads better:** the three longest freezes first with **Show all**, freezes marked under each chart instead of bands across it, axes in k and M (100k instead of 100000) with more time marks, and two participants with the same name told apart by the time they joined ("Fede" and "Fede (12:58)").
 - **Guests get the same room as the host:** `/g/<invite>` now has the compact header and the CHAT | CONTROLS panel of `/r/` (the header only made room for them on `/r/`).
+
+### Fixed (device)
+
+- **Loss is read from the video's own report:** browsers bundle their RTCP receiver reports on every stream (video, game sound, voices) and the device kept whichever came last, so a player's video loss could read 90 % when it was 8 %. It now keeps the report on that player's video stream (its SSRC), for the latency card, the network report's verdicts and the quality steps.
 
 ### Fixed (website)
 

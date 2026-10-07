@@ -156,7 +156,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger}
+	// Every stream is tiered: each guest gets its own video track, so the
+	// device can send each one the size its screen shows and step one
+	// player's quality down while the others keep theirs (video_tiers.go,
+	// quality_ladder.go).
+	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger, Tiers: true}
 	if *hdCore != "" && *testHD == "auto" {
 		return errors.New("--hd-core plays in the test room with --test-room-hd 720p, 1080p or 2160p, not auto")
 	}
@@ -200,7 +204,6 @@ func run() error {
 	}
 	if *testHD != "" {
 		streamCfg.EncoderThreads = *hdThreads
-		streamCfg.Tiers = true // each guest gets the size its screen shows
 		switch *hdCodec {
 		case "vp8":
 		case "h264":

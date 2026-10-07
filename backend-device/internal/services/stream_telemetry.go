@@ -161,6 +161,11 @@ func (s *StreamService) noteRTCP(v *viewer, pkts []rtcp.Packet) {
 		switch r := p.(type) {
 		case *rtcp.ReceiverReport:
 			for _, rep := range r.Reports {
+				// The browser bundles its reports on every stream (video,
+				// game sound, voices): keep the video's.
+				if ssrc := v.videoSSRC.Load(); ssrc != 0 && rep.SSRC != ssrc {
+					continue
+				}
 				perMille := int64(rep.FractionLost) * 1000 / 256
 				v.tm.rrLossPerMi.Store(perMille)
 				v.tm.rrJitterUs.Store(int64(rep.Jitter) * 1000 / 90) // 90 kHz video clock
@@ -208,6 +213,7 @@ func (s *StreamService) noteClientReport(v *viewer, data []byte) {
 		delete(m, "freezes")
 	}
 	s.movePlayout(v, m)
+	s.moveQuality(v, m)
 	rec := s.tele.Load()
 	if rec == nil {
 		return
@@ -306,6 +312,12 @@ func (s *StreamService) sampleTelemetry(rec *telemetry.Recorder, elapsed float64
 		}
 		if pi := playoutDelays.forPC(v.pc); pi != nil {
 			m["playout_max_ms"] = float64(pi.Max())
+		}
+		if s.tiers != nil {
+			s.mu.Lock()
+			l := s.tierOfLocked(v)
+			m["video_kbps_target"] = float64(stepKbps(s.Bitrate(), l, max(s.tierLevels, 1)))
+			s.mu.Unlock()
 		}
 		if rtt := t.ctlRttMs.Load(); rtt >= 0 {
 			m["ctl_rtt_ms"] = float64(rtt)

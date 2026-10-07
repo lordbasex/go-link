@@ -57,3 +57,17 @@ func TestHalveI420AveragesEachBlock(t *testing.T) {
 		t.Error("tier bitrates")
 	}
 }
+
+// Under the smallest size come two quality steps of the same size at half
+// and a quarter of its bitrate, never under 200 kbps.
+func TestStepKbps(t *testing.T) {
+	for _, c := range []struct{ kbps, l, sizes, want int }{
+		{2500, 0, 1, 2500}, {2500, 1, 1, 1250}, {2500, 2, 1, 625},
+		{25000, 2, 3, 2777}, {25000, 3, 3, 1388}, {25000, 4, 3, 694},
+		{600, 2, 1, 200},
+	} {
+		if got := stepKbps(c.kbps, c.l, c.sizes); got != c.want {
+			t.Errorf("stepKbps(%d, %d, %d) = %d, want %d", c.kbps, c.l, c.sizes, got, c.want)
+		}
+	}
+}

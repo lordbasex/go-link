@@ -136,6 +136,13 @@ type viewer struct {
 	tier         int
 	wantW, wantH int
 	video        *webrtc.TrackLocalStaticSample
+	// drop is how many quality steps this viewer is under its size's
+	// tier, moved by its connection (quality_ladder.go); under s.mu.
+	drop    int
+	quality qualityLadder
+	// videoSSRC is this viewer's video stream, to read its receiver
+	// reports among the others.
+	videoSSRC atomic.Uint32
 
 	mu        sync.Mutex
 	remoteSet bool
@@ -739,6 +746,9 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 	}
 	kbps := s.Bitrate()
 	if s.tiers != nil {
+		if m := s.mark.Load(); s.rec.Load() != nil && m != nil {
+			i420 = m.stamp.Draw(i420, w, h, time.Since(m.start))
+		}
 		s.tieredFrame(i420, w, h, kbps, dur)
 		return
 	}
@@ -888,6 +898,9 @@ func (s *StreamService) SetRecorder(rec *Recorder) {
 	s.rec.Store(rec)
 	if rec != nil {
 		s.keyframe.Store(true)
+		if s.tiers != nil {
+			s.tiers[0].keyframe.Store(true) // recordings take the first tier
+		}
 	}
 }
 
@@ -1056,7 +1069,7 @@ func (s *StreamService) sendStreamStats() {
 			if s.tiers != nil {
 				// each viewer hears of its own tier's picture
 				st := s.streamStatsLocked()
-				l := s.tierOfLocked(v)
+				l := s.sizeOfLocked(s.tierOfLocked(v))
 				st.Width, st.Height = s.vp8W>>l, s.vp8H>>l
 				st.Video = &StreamVideo{Scale: 1, Width: st.Width, Height: st.Height}
 				msg, _ = json.Marshal(st)
@@ -1230,6 +1243,9 @@ func (s *StreamService) addMedia(v *viewer) error {
 	rtpSender, err := pc.AddTrack(track)
 	if err != nil {
 		return err
+	}
+	if enc := rtpSender.GetParameters().Encodings; len(enc) > 0 {
+		v.videoSSRC.Store(uint32(enc[0].SSRC))
 	}
 	// Read RTCP: a Picture Loss Indication means the viewer cannot decode
 	// and needs a keyframe.

@@ -58,6 +58,7 @@ func TestAViewersInputLossAndReportsAreCounted(t *testing.T) {
 	s, store := teleStream(t)
 	v := &viewer{id: "peerA", kind: KindViewer}
 	v.tm.ctlRttMs.Store(-1)
+	v.videoSSRC.Store(1234)
 	s.mu.Lock()
 	s.viewers[v.id] = v
 	s.mu.Unlock()
@@ -73,7 +74,9 @@ func TestAViewersInputLossAndReportsAreCounted(t *testing.T) {
 	send(2, now.Add(100*time.Millisecond))
 	send(5, now.Add(700*time.Millisecond)) // two lost, and 600 ms of silence while held
 	s.noteRTCP(v, []rtcp.Packet{
-		&rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{{FractionLost: 26, TotalLost: 40, Jitter: 900}}},
+		// The browser bundles the reports on every stream: only the
+		// video's counts (another stream's 94 % loss after it is ignored).
+		&rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{{SSRC: 1234, FractionLost: 26, TotalLost: 40, Jitter: 900}, {SSRC: 999, FractionLost: 240, TotalLost: 5000, Jitter: 9000}}},
 		&rtcp.PictureLossIndication{},
 	})
 	s.noteClientReport(v, []byte(`{"type":"client_report","rtt_ms":31,"freeze_ms":900,"video_loss_pct":4,"bogus":5,"fps":-3}`))

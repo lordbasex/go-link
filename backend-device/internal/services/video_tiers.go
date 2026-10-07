@@ -26,8 +26,17 @@ import (
 // browser drop every packet). A tier is encoded only while a viewer
 // watches it; a moved viewer starts at the tier's next keyframe.
 
+// Below its smallest size, every stream has qualitySteps more tiers of that
+// same size at half and a quarter of its bitrate: a player whose connection
+// struggles drops one at a time (quality_ladder.go) without changing what
+// anyone else gets. An arcade game at 2x is too small to halve, so for game
+// rooms these are the only tiers besides the first.
+
 // maxTiers is how many sizes a tiered stream offers.
 const maxTiers = 3
+
+// qualitySteps are the lower-bitrate tiers under the smallest size.
+const qualitySteps = 2
 
 // minTierHeight is the smallest tier: halving stops before going under it.
 const minTierHeight = 360
@@ -84,6 +93,17 @@ func tierKbps(kbps, level int) int {
 	return max(kbps, 300)
 }
 
+// stepKbps is the bitrate of tier l of a stream with sizes size tiers: a
+// size tier's own (tierKbps), halved for each quality step under the
+// smallest size, never under 200 kbps.
+func stepKbps(kbps, l, sizes int) int {
+	last := max(sizes-1, 0)
+	if l <= last {
+		return tierKbps(kbps, l)
+	}
+	return max(tierKbps(kbps, last)>>(l-last), 200)
+}
+
 // halveI420 averages each 2x2 block of a w x h I420 picture into dst (w/2 x h/2).
 func halveI420(dst, src []byte, w, h int) []byte {
 	w2, h2 := w/2, h/2
@@ -110,7 +130,7 @@ func halveI420(dst, src []byte, w, h int) []byte {
 }
 
 func (s *StreamService) newTiers() {
-	s.tiers = make([]*videoTier, maxTiers)
+	s.tiers = make([]*videoTier, maxTiers+qualitySteps)
 	for i := range s.tiers {
 		s.tiers[i] = &videoTier{}
 	}
@@ -138,9 +158,16 @@ func (s *StreamService) writeTier(l int, data []byte, dur time.Duration) {
 	}
 }
 
-// tierOf is a viewer's tier now (callers hold s.mu).
+// tierOf is a viewer's tier now: the size it shows, then as many quality
+// steps down as its connection asked for (callers hold s.mu).
 func (s *StreamService) tierOfLocked(v *viewer) int {
-	return min(v.tier, max(s.tierLevels-1, 0))
+	sizes := max(s.tierLevels, 1)
+	return min(min(v.tier, sizes-1)+v.drop, sizes-1+qualitySteps)
+}
+
+// sizeOfLocked is the size tier a tier shows (callers hold s.mu).
+func (s *StreamService) sizeOfLocked(l int) int {
+	return min(l, max(s.tierLevels-1, 0))
 }
 
 // setVideoWant moves a viewer to the tier that fits the size it shows the
@@ -155,37 +182,43 @@ func (s *StreamService) setVideoWant(v *viewer, w, h int) {
 	if s.vp8W == 0 {
 		l = 0 // no picture yet: chosen again on the first frame
 	}
-	old := v.tier
+	old := s.tierOfLocked(v)
 	v.tier = l
+	now := s.tierOfLocked(v)
 	s.mu.Unlock()
-	if l == old {
+	if now == old {
 		return
 	}
-	s.tiers[l].keyframe.Store(true)
+	s.tiers[now].keyframe.Store(true)
 	s.log.Info("video tier", "viewer", v.id, "want", fmt.Sprintf("%dx%d", w, h), "tier", l)
 	go s.sendStreamStats()
 }
 
-// tieredFrame encodes the tiers viewers watch: the source, then each half.
+// tieredFrame encodes the tiers viewers watch: the source, then each half,
+// then the quality steps of the smallest size.
 func (s *StreamService) tieredFrame(i420 []byte, w, h, kbps int, dur time.Duration) {
-	levels := tierLevels(w, h)
-	var need [maxTiers]bool
+	sizes := tierLevels(w, h)
+	levels := sizes + qualitySteps
+	var need [maxTiers + qualitySteps]bool
 	s.mu.Lock()
 	resized := s.vp8W != w || s.vp8H != h
-	s.vp8W, s.vp8H, s.tierLevels = w, h, levels
+	s.vp8W, s.vp8H, s.tierLevels = w, h, sizes
 	for _, v := range s.viewers {
 		if v.kind != KindViewer {
 			continue
 		}
 		if resized && v.wantW > 0 {
-			if l := tierFor(w, h, v.wantW, v.wantH, levels); l != v.tier {
+			if l := tierFor(w, h, v.wantW, v.wantH, sizes); l != v.tier {
 				v.tier = l
-				s.tiers[l].keyframe.Store(true)
+				s.tiers[s.tierOfLocked(v)].keyframe.Store(true)
 			}
 		}
 		need[s.tierOfLocked(v)] = true
 	}
 	s.mu.Unlock()
+	if s.rec.Load() != nil {
+		need[0] = true // a recording takes the full picture
+	}
 	if resized {
 		go s.sendStreamStats()
 	}
@@ -206,20 +239,22 @@ func (s *StreamService) tieredFrame(i420 []byte, w, h, kbps int, dur time.Durati
 				further = further || need[k]
 			}
 			if !further {
-				for k := l; k < maxTiers; k++ {
+				for k := l; k < len(s.tiers); k++ {
 					s.tierIdle(s.tiers[k])
 				}
 				return
 			}
-			t.buf = halveI420(t.buf, cur, cw, ch)
-			cur, cw, ch = t.buf, cw/2, ch/2
+			if l < sizes {
+				t.buf = halveI420(t.buf, cur, cw, ch)
+				cur, cw, ch = t.buf, cw/2, ch/2
+			}
 		}
 		if !need[l] {
 			s.tierIdle(t)
 			continue
 		}
 		t.idle = 0
-		s.tierEncode(t, l, cur, cw, ch, tierKbps(kbps, l), dur)
+		s.tierEncode(t, l, cur, cw, ch, stepKbps(kbps, l, sizes), dur)
 	}
 }
 
@@ -270,6 +305,9 @@ func (s *StreamService) tierEncode(t *videoTier, level int, i420 []byte, w, h, k
 	}
 	if err != nil || len(data) == 0 {
 		return
+	}
+	if rec := s.rec.Load(); rec != nil && level == 0 {
+		rec.Video(data, w, h)
 	}
 	s.writeTier(level, data, dur)
 	t.bytes.Add(int64(len(data)))
