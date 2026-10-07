@@ -4,9 +4,11 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-07
+
 ### Changed (device)
 
-- **The video no longer gets slower the longer you play:** the device now tells each browser how long it may hold the game's video before showing it (the `playout-delay` RTP extension, as cloud gaming does). Chrome used to size that wait itself and almost never lower it: 8 ms when a room started, 79 ms two hours later, with no freeze. Each participant starts at 0 ms (Chrome shows each frame about 0.5 ms after decoding it); a freeze, lost packets or uneven arrival in their reports raises their own maximum one step (40, 80, 160 ms), and 30 clean seconds bring it back down. Each change is in the room telemetry with its reason.
+- **The video no longer gets slower the longer you play:** the device now tells each browser how long it may hold the game's video before showing it (the `playout-delay` RTP extension, as cloud gaming does). Chrome used to size that wait itself and almost never lower it: 8 ms when a room started, 79 ms two hours later, with no freeze. Each participant starts at 0 ms (Chrome shows each frame about 0.5 ms after decoding it); a freeze, lost packets or uneven arrival in their reports raises their own maximum one step (40, 80, 160 ms), and 30 clean seconds bring it back down. Each change is in the room telemetry with its reason. Measured on the host's Mac: the video buffer stayed at 0.6 ms for 30 minutes (it used to reach 56 ms by then) and the end-to-end latency was 37 ms instead of 98-147 ms; a guest over WiFi whose connection stalled for 10 s climbed to 160 ms and was back at 0 ms 90 s later, while the other player never moved.
 
 ### Fixed (device)
 
