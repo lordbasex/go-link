@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -415,5 +417,38 @@ func TestEveryoneInTheRoomIsToldAboutTheRecording(t *testing.T) {
 	chats = out.chats("a")
 	if st := out.lastState(t, "a"); st["recording"] != false || chats[len(chats)-1]["event"] != EventRecordingStopped {
 		t.Fatalf("state %v, chat %v", st, chats[len(chats)-1])
+	}
+}
+
+// Every room is tiered: a recording takes the first tier's frames, even
+// when nobody watches it.
+func TestATieredRoomRecordsTheFullPicture(t *testing.T) {
+	s, err := NewStreamService(StreamConfig{IncludeLoopback: true, Tiers: true, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}, NewICEStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.CloseAll()
+	path := filepath.Join(t.TempDir(), "tiered.webm")
+	rec, err := NewRecorder(RecorderConfig{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetRecorder(rec)
+	w, h := 384, 224
+	frame := make([]byte, w*h*3/2)
+	for i := range 60 {
+		for p := range frame {
+			frame[p] = byte(p*7 + i*3)
+		}
+		s.VideoFrame(frame, w, h, time.Second/60)
+	}
+	s.SetRecorder(nil)
+	rec.Stop(RecStopped)
+	dur, size, tracks, _, err := rec.Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if size < 1000 || len(tracks) == 0 || dur <= 0 {
+		t.Fatalf("recording of %d bytes, %v, tracks %v", size, dur, tracks)
 	}
 }
