@@ -1,11 +1,35 @@
 {
-  "intro": 2.47,
-  "home": 4.05,
-  "friends": 5.14,
-  "invite": 4.27,
-  "controls": 3.22,
-  "phone": 2.22,
-  "maker": 4.33,
-  "metrics": 3.88,
-  "end": 3.43
+  "en": {
+    "intro": 2.47,
+    "home": 4.05,
+    "friends": 5.14,
+    "invite": 4.27,
+    "controls": 3.22,
+    "phone": 2.22,
+    "maker": 4.33,
+    "metrics": 3.88,
+    "end": 3.43
+  },
+  "es": {
+    "intro": 2.33,
+    "home": 4.65,
+    "friends": 5.08,
+    "invite": 4.14,
+    "controls": 3.2,
+    "phone": 2.45,
+    "maker": 4.16,
+    "metrics": 3.78,
+    "end": 4.12
+  },
+  "pt": {
+    "intro": 2.82,
+    "home": 4.95,
+    "friends": 5.08,
+    "invite": 3.82,
+    "controls": 3.78,
+    "phone": 1.98,
+    "maker": 4.82,
+    "metrics": 4.5,
+    "end": 4.29
+  }
 }

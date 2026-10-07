@@ -6,6 +6,15 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAKER_URL, PORTS } from "../ports";
 import { pairingCode } from "../stack";
+import { en } from "../../frontend/apps/web/src/i18n/en";
+import { es } from "../../frontend/apps/web/src/i18n/es";
+import { pt } from "../../frontend/apps/web/src/i18n/pt";
+import { coreEn } from "../../frontend/willy-maker/src/maker/i18n/core.en";
+import { coreEs } from "../../frontend/willy-maker/src/maker/i18n/core.es";
+import { corePt } from "../../frontend/willy-maker/src/maker/i18n/core.pt";
+import { exportEn } from "../../frontend/willy-maker/src/maker/i18n/export.en";
+import { exportEs } from "../../frontend/willy-maker/src/maker/i18n/export.es";
+import { exportPt } from "../../frontend/willy-maker/src/maker/i18n/export.pt";
 
 // The takes of go-link's trailer and demo video (npm run video): real pages
 // of the test stack, recorded by Playwright, one WebM per take, which the
@@ -15,12 +24,50 @@ import { pairingCode } from "../stack";
 // the test pattern and a game made with Willy Maker (E2E_CORE_DIR, for the
 // emulator core): never a commercial game.
 //
-// Output: video/public/takes/<take>.webm (gitignored).
+// VIDEO_LANG (en, es or pt; English by default) records the website and
+// Willy Maker in that language, for the trailer in that language.
+//
+// Output: video/public/takes/<lang>/<take>.webm (gitignored).
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const RAW = resolve(here, "../test-results/video-takes");
-const OUT = join(root, "video/public/takes");
+const LANG = (["es", "pt"].includes(process.env.VIDEO_LANG ?? "") ? process.env.VIDEO_LANG : "en") as "en" | "es" | "pt";
+const OUT = join(root, "video/public/takes", LANG);
+
+// The page's words in LANG: each English text is found in the English
+// dictionaries and read at the same place in LANG's (the website's, and
+// Willy Maker's core and export parts).
+const DICTS: [unknown, unknown][] = [
+  [en, { en, es, pt }[LANG]],
+  [coreEn, { en: coreEn, es: coreEs, pt: corePt }[LANG]],
+  [exportEn, { en: exportEn, es: exportEs, pt: exportPt }[LANG]],
+];
+function pathOf(o: unknown, text: string, partial: boolean): (string | number)[] | null {
+  if (typeof o === "string") return o === text || (partial && o.includes(text)) ? [] : null;
+  if (o && typeof o === "object") {
+    for (const [k, v] of Object.entries(o)) {
+      const p = pathOf(v, text, partial);
+      if (p) return [Array.isArray(o) ? Number(k) : k, ...p];
+    }
+  }
+  return null;
+}
+function tr(text: string, partial = false): string {
+  if (LANG === "en") return text;
+  for (const [from, to] of DICTS) {
+    const path = pathOf(from, text, partial);
+    if (!path) continue;
+    const value = path.reduce<unknown>((o, k) => (o as Record<string | number, unknown>)?.[k], to);
+    if (typeof value === "string") return partial ? value.trim() : value;
+  }
+  throw new Error(`no ${LANG} text for "${text}"`);
+}
+/** The website's words in LANG, for texts used in several places. */
+const W = { en, es, pt }[LANG];
+
+/** A name that contains the (translated) words. */
+const has = (text: string) => new RegExp(tr(text, true).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 const SIZE = { width: 1920, height: 1080 };
 
 const home = homedir();
@@ -81,6 +128,7 @@ async function take(browser: Browser, name: string, body: (p: Page, ctx: Browser
     ...(opts.linked !== false && linked ? { storageState: linked } : {}),
   });
   await addMask(context);
+  await context.addInitScript((lang) => localStorage.setItem("go-link.lang", lang), LANG);
   context.setDefaultTimeout(30_000);
   const page = await context.newPage();
   try {
@@ -164,12 +212,12 @@ test("link the device and its dashboard", async ({ browser }) => {
       await sleep(140);
     }
     await sleep(400);
-    await point(p, p.getByRole("checkbox", { name: /I have read and accept/ }));
-    await point(p, p.getByRole("button", { name: "Link", exact: true }));
-    await expect(p.getByText("Linked · live")).toBeVisible();
+    await point(p, p.getByRole("checkbox", { name: has("I have read and accept") }));
+    await point(p, p.getByRole("button", { name: W.pairing.submit, exact: true }));
+    await expect(p.getByText(W.dash.live)).toBeVisible();
     linked = await ctx.storageState();
     await sleep(1000);
-    await p.getByRole("button", { name: "1 min", exact: true }).click().catch(() => undefined);
+    await p.getByRole("button", { name: tr("1 min"), exact: true }).click().catch(() => undefined);
     await sleep(9000); // the charts fill
     await point(p, p.locator('a[href="/device/roms"]').first());
     await expect.poll(() => p.locator("main img").count(), { timeout: 30_000 }).toBeGreaterThanOrEqual(6);
@@ -194,17 +242,17 @@ test("the test pattern room: controls, latency test and an invitation", async ({
     await expectVideoPlaying(p);
     await sleep(2500);
     // Controls: the keyboard map lights up with every key.
-    await point(p, p.getByRole("button", { name: "Show controls" }).first());
+    await point(p, p.getByRole("button", { name: W.controls.show }).first());
     await sleep(1200);
     for (const k of ["ArrowRight", "ArrowRight", "KeyZ", "KeyX", "ArrowUp", "KeyC"]) await hold(p, k, 380), await sleep(120);
     // The latency test: the controllers on the video, each press measured.
-    await point(p, p.getByRole("switch", { name: "Controls on the video" }));
+    await point(p, p.getByRole("switch", { name: W.controls.hud }));
     await sleep(800);
     for (let i = 0; i < 8; i++) await hold(p, i % 2 ? "KeyX" : "ArrowLeft", 300), await sleep(350);
     await sleep(2500);
-    await point(p, p.getByRole("switch", { name: "Controls on the video" }));
+    await point(p, p.getByRole("switch", { name: W.controls.hud }));
     // An invitation: a link, a 9-digit code and a one-person PIN.
-    await point(p, p.locator('[data-tip="Invite"]').first());
+    await point(p, p.locator(`[data-tip="${W.invite.button}"]`).first());
     const dialog = p.getByRole("dialog");
     await expect(dialog.locator(".invite-code").nth(1)).toHaveText(/^\d{6}$/);
     code = (await dialog.locator(".invite-code").first().innerText()).replace(/\s/g, "");
@@ -226,16 +274,16 @@ test("a friend joins from the browser", async ({ browser }) => {
     await p.goto("/");
     await noSplash(p);
     await sleep(1500);
-    await point(p, p.getByRole("button", { name: "Join a game" }).first());
-    const join = p.getByRole("dialog", { name: "Join a game" });
+    await point(p, p.getByRole("button", { name: W.landing.joinCta }).first());
+    const join = p.getByRole("dialog", { name: W.landing.joinTitle });
     await join.getByPlaceholder("123 456 789").click();
     await p.keyboard.type(code, { delay: 120 });
     await sleep(300);
     await join.getByPlaceholder("000000").click();
     await p.keyboard.type(pin, { delay: 140 });
-    await point(p, join.getByRole("checkbox", { name: /I have read and accept/ }));
-    await point(p, join.getByRole("button", { name: "Join", exact: true }));
-    const name = p.getByRole("dialog", { name: "What’s your name?" });
+    await point(p, join.getByRole("checkbox", { name: has("I have read and accept") }));
+    await point(p, join.getByRole("button", { name: W.guest.join, exact: true }));
+    const name = p.getByRole("dialog", { name: W.alias.title });
     await expect(name).toBeVisible({ timeout: 60_000 });
     await name.locator("input").first().click();
     await p.keyboard.type("Nico", { delay: 160 });
@@ -244,8 +292,8 @@ test("a friend joins from the browser", async ({ browser }) => {
     await sleep(2000);
     for (let i = 0; i < 6; i++) await hold(p, ["ArrowRight", "KeyZ", "ArrowUp"][i % 3]!, 350), await sleep(300);
     // A line in the chat from the host, seen by the friend.
-    const message = hp.getByRole("textbox", { name: "Message" });
-    if (!(await message.isVisible())) await hp.getByRole("button", { name: "Show the chat" }).click({ timeout: 5000 }).catch(() => undefined);
+    const message = hp.getByRole("textbox", { name: W.room.chatLabel });
+    if (!(await message.isVisible())) await hp.getByRole("button", { name: W.room.chatShow }).click({ timeout: 5000 }).catch(() => undefined);
     await message.fill("Ready? Insert coin!", { timeout: 10_000 }).catch(() => undefined);
     await message.press("Enter", { timeout: 5000 }).catch(() => undefined);
     await sleep(5000);
@@ -260,7 +308,7 @@ test("a phone becomes a console", async ({ browser }) => {
   const hp = await host.newPage();
   await hp.goto(roomHref);
   await expectVideoPlaying(hp);
-  await hp.locator('[data-tip="Invite"]').first().click();
+  await hp.locator(`[data-tip="${W.invite.button}"]`).first().click();
   const dialog = hp.getByRole("dialog");
   await expect(dialog.locator(".invite-code").nth(1)).toHaveText(/^\d{6}$/);
   const pcode = (await dialog.locator(".invite-code").first().innerText()).replace(/\s/g, "");
@@ -268,13 +316,13 @@ test("a phone becomes a console", async ({ browser }) => {
   await take(browser, "phone", async (p) => {
     await p.goto("/");
     await noSplash(p);
-    await p.getByRole("button", { name: "Join a game" }).first().tap();
-    const join = p.getByRole("dialog", { name: "Join a game" });
+    await p.getByRole("button", { name: W.landing.joinCta }).first().tap();
+    const join = p.getByRole("dialog", { name: W.landing.joinTitle });
     await join.getByPlaceholder("123 456 789").fill(pcode);
     await join.getByPlaceholder("000000").fill(ppin);
-    await join.getByRole("checkbox", { name: /I have read and accept/ }).check();
-    await join.getByRole("button", { name: "Join", exact: true }).tap();
-    const name = p.getByRole("dialog", { name: "What’s your name?" });
+    await join.getByRole("checkbox", { name: has("I have read and accept") }).check();
+    await join.getByRole("button", { name: W.guest.join, exact: true }).tap();
+    const name = p.getByRole("dialog", { name: W.alias.title });
     await expect(name).toBeVisible({ timeout: 60_000 });
     await name.locator("input").first().fill("Sol");
     await p.keyboard.press("Enter");
@@ -298,24 +346,24 @@ test("Willy Maker: a game made in the browser plays in a room", async ({ browser
   await take(browser, "maker", async (p, ctx) => {
     await p.goto(`${MAKER_URL}/?editor=classic`);
     await sleep(2000);
-    await point(p, p.getByRole("button", { name: /Next: the board/ }));
+    await point(p, p.getByRole("button", { name: has("Next: the board") }));
     await sleep(800);
-    await point(p, p.getByRole("radio", { name: /Buenos Aires template/ }));
+    await point(p, p.getByRole("radio", { name: has("Buenos Aires template") }));
     await sleep(800);
-    await point(p, p.getByRole("button", { name: /Next: name and players/ }));
-    await p.getByLabel("Game title").click();
+    await point(p, p.getByRole("button", { name: has("Next: name and players") }));
+    await p.getByLabel(tr("Game title")).click();
     await p.keyboard.type("Neon Rescue", { delay: 110 });
-    await point(p, p.getByRole("button", { name: /Next: the first level/ }));
+    await point(p, p.getByRole("button", { name: has("Next: the first level") }));
     await sleep(800);
-    await point(p, p.getByRole("button", { name: "Create the game" }));
-    await expect(p.getByRole("button", { name: "Build" })).toBeVisible();
+    await point(p, p.getByRole("button", { name: tr("Create the game") }));
+    await expect(p.getByRole("button", { name: tr("Build") })).toBeVisible();
     await sleep(4000);
-    await point(p, p.getByRole("button", { name: "Export" }));
-    await point(p, p.getByRole("button", { name: "Create ROM", exact: true }));
-    await expect(p.getByText("It boots", { exact: false }).first()).toBeVisible({ timeout: 180_000 });
+    await point(p, p.getByRole("button", { name: tr("Export") }));
+    await point(p, p.getByRole("button", { name: tr("Create ROM"), exact: true }));
+    await expect(p.getByText(tr("It boots"), { exact: false }).first()).toBeVisible({ timeout: 180_000 });
     await sleep(1500);
-    await point(p, p.getByRole("button", { name: "Play on my go-link" }));
-    const [room] = await Promise.all([ctx.waitForEvent("page"), p.getByRole("button", { name: "Connect my go-link" }).click()]);
+    await point(p, p.getByRole("button", { name: tr("Play on my go-link") }));
+    const [room] = await Promise.all([ctx.waitForEvent("page"), p.getByRole("button", { name: tr("Connect my go-link") }).click()]);
     await expect(room).toHaveURL(/\/r\/[0-9a-f-]{36}$/, { timeout: 120_000 });
     await expectVideoPlaying(room);
     await room.bringToFront();
@@ -337,7 +385,7 @@ test("the network report", async ({ browser }) => {
   await take(browser, "network", async (p) => {
     await p.goto("/device/history/test/network");
     await noSplash(p);
-    await expect(p.getByRole("img", { name: "Latency" })).toBeVisible({ timeout: 60_000 });
+    await expect(p.getByRole("img", { name: W.net.charts.latency })).toBeVisible({ timeout: 60_000 });
     await sleep(2500);
     // The cursor over a chart lists every value.
     const chart = p.locator(".tchart-svg").first();

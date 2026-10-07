@@ -2,15 +2,10 @@
 import { AbsoluteFill, Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop, Chip, inAt, KineticTitle, Mark, outAt, Phone, Screen, Sub, Wordmark } from "./components";
 import { T } from "./takes";
-import { captions, musicVolume, scene, SCENES, TOTAL, VOICE_LEAD } from "./timeline";
+import { COPY, PLATFORMS } from "./copy";
+import { captions, musicVolume, scenes, VOICE_LEAD, type Lang, type SceneId } from "./timeline";
 import { C, D, EASE_IN, F, sec } from "./theme";
 
-export const TRAILER_FRAMES = TOTAL;
-
-const at = (id: Parameters<typeof scene>[0]) => {
-  const sc = scene(id);
-  return { from: sc.from, len: sc.len };
-};
 
 /** A title block on one side and a take on the other, swapping sides scene by scene. */
 function Split({ len, title, sub, chips = [], side = "left", children }: { len: number; title: string; sub?: string; chips?: { text: string; color?: string }[]; side?: "left" | "right"; children: React.ReactNode }) {
@@ -39,7 +34,7 @@ function Split({ len, title, sub, chips = [], side = "left", children }: { len: 
   );
 }
 
-function Intro({ len }: { len: number }) {
+function Intro({ len, tagline }: { len: number; tagline: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   // Anticipation: the mark dips, then pops past full size and settles.
@@ -56,13 +51,13 @@ function Intro({ len }: { len: number }) {
         <Wordmark size={110} />
       </div>
       <Sub start={30} style={{ fontSize: 38 }}>
-        Arcade nights, online.
+        {tagline}
       </Sub>
     </AbsoluteFill>
   );
 }
 
-function End({ len }: { len: number }) {
+function End({ len, title, free }: { len: number; title: string; free: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: frame - 2, fps, config: { damping: 11, stiffness: 150 } });
@@ -73,11 +68,11 @@ function End({ len }: { len: number }) {
         <Mark size={130} />
         <Wordmark size={120} />
       </div>
-      <KineticTitle text="Play together, from *anywhere.*" start={12} size={58} align="center" />
+      <KineticTitle text={title} start={12} size={58} align="center" />
       <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
         <Chip start={26}>go-link.org</Chip>
-        <Chip start={30} color={C.ok}>Free · open source (MIT)</Chip>
-        <Chip start={34} color={C.voice}>macOS · Windows · Linux · Raspberry Pi</Chip>
+        <Chip start={30} color={C.ok}>{free}</Chip>
+        <Chip start={34} color={C.voice}>{PLATFORMS}</Chip>
       </div>
       <Sub start={40} style={{ fontFamily: F.mono, fontSize: 26, color: C.faint }}>
         github.com/lordbasex/go-link
@@ -101,9 +96,9 @@ export const MUSIC = { file: "music/system-awakening.wav", from: 0 };
  * Burned-in subtitles: one phrase at a time, low in the frame on a dark
  * capsule, rising in as the narrator says it.
  */
-function Captions() {
+function Captions({ voice, subs }: { voice: Lang; subs: Lang }) {
   const frame = useCurrentFrame();
-  const c = captions().find((x) => frame >= x.from && frame < x.to);
+  const c = captions(voice, subs).find((x) => frame >= x.from && frame < x.to);
   if (!c) return null;
   const v = Math.min(1, (frame - c.from) / 5, (c.to - frame) / 4);
   return (
@@ -130,74 +125,81 @@ function Captions() {
   );
 }
 
-export function Trailer() {
-  const s = (id: Parameters<typeof scene>[0]) => at(id);
+/**
+ * The trailer narrated in voice (its words on screen, its narrator and its
+ * recordings of the app), with subtitles in subs.
+ */
+export function Trailer({ voice = "en", subs = voice }: { voice?: Lang; subs?: Lang }) {
+  const list = scenes(voice);
+  const s = (id: SceneId) => list.find((x) => x.id === id)!;
+  const t = COPY[voice];
+  const take = (name: string) => `${voice}/${name}`;
   return (
     <AbsoluteFill style={{ background: C.bg }}>
       <Backdrop />
       <Sequence from={s("intro").from} durationInFrames={s("intro").len}>
-        <Intro len={s("intro").len} />
+        <Intro len={s("intro").len} tagline={t.tagline} />
       </Sequence>
       <Sequence from={s("home").from} durationInFrames={s("home").len}>
-        <Split len={s("home").len} title="Your games stay on *your* computer." sub="go-link runs MAME at home and streams it. Your ROMs never leave your disk." side="left">
-          <Screen take="landing" from={T.landing.hero} url="go-link.org" duration={s("home").len} />
+        <Split len={s("home").len} title={t.home.title} sub={t.home.sub} side="left">
+          <Screen take={take("landing")} from={T.landing.hero} url="go-link.org" duration={s("home").len} />
         </Split>
       </Sequence>
       <Sequence from={s("friends").from} durationInFrames={s("friends").len}>
-        <Split len={s("friends").len} title="Friends play from the *browser.*" sub="Nothing to install. A code, a PIN, and you're in." side="right">
-          <Screen take="guest" from={T.guest.join} rate={1.5} duration={s("friends").len} />
+        <Split len={s("friends").len} title={t.friends.title} sub={t.friends.sub} side="right">
+          <Screen take={take("guest")} from={T.guest.join} rate={1.5} duration={s("friends").len} />
         </Split>
       </Sequence>
       <Sequence from={s("invite").from} durationInFrames={s("invite").len}>
-        <Split len={s("invite").len} title="Invite with a link, a code or a *QR.*" chips={[{ text: "one PIN, one person" }, { text: "private rooms", color: C.ok }]} side="left">
-          <Screen take="room" from={T.room.invite} duration={s("invite").len} focus={{ x: 0.5, y: 0.45, zoom: 1.18, at: 20 }} />
+        <Split len={s("invite").len} title={t.invite.title} chips={[{ text: t.invite.chips[0] }, { text: t.invite.chips[1], color: C.ok }]} side="left">
+          <Screen take={take("room")} from={T.room.invite} duration={s("invite").len} focus={{ x: 0.5, y: 0.45, zoom: 1.18, at: 20 }} />
         </Split>
       </Sequence>
       <Sequence from={s("controls").from} durationInFrames={s("controls").len}>
-        <Split len={s("controls").len} title="Real controllers. *Real voice.*" chips={[{ text: "P1 · P2 · P3 · P4" }, { text: "voice chat", color: C.voice }, { text: "keyboard & gamepads", color: C.p4 }]} side="right">
-          <Screen take="room" from={T.room.controls} duration={s("controls").len} focus={{ x: 0.82, y: 0.5, zoom: 1.25, at: 30 }} />
+        <Split len={s("controls").len} title={t.controls.title} chips={[{ text: t.controls.chips[0] }, { text: t.controls.chips[1], color: C.voice }, { text: t.controls.chips[2], color: C.p4 }]} side="right">
+          <Screen take={take("room")} from={T.room.controls} duration={s("controls").len} focus={{ x: 0.82, y: 0.5, zoom: 1.25, at: 30 }} />
         </Split>
       </Sequence>
       <Sequence from={s("phone").from} durationInFrames={s("phone").len}>
-        <Split len={s("phone").len} title="Your phone becomes a *console.*" sub="Held upright it's a handheld; sideways, both hands." side="left">
-          <Phone take="phone" from={T.phone.play} duration={s("phone").len} height={820} />
+        <Split len={s("phone").len} title={t.phone.title} sub={t.phone.sub} side="left">
+          <Phone take={take("phone")} from={T.phone.play} duration={s("phone").len} height={820} />
         </Split>
       </Sequence>
       <Sequence from={s("maker").from} durationInFrames={s("maker").len}>
-        <Split len={s("maker").len} title="Make your own *arcade games.*" sub="Willy Maker builds a real ROM in the browser, and it plays in a room." side="right">
+        <Split len={s("maker").len} title={t.maker.title} sub={t.maker.sub} side="right">
           <Screen
             duration={s("maker").len}
             clips={[
-              { take: "maker", from: T.maker.wizard, rate: 2.4, len: sec(2.6), url: "maker.go-link.org" },
-              { take: "maker-2", from: T.makerRoom.play, len: s("maker").len - sec(2.6), url: "play.go-link.org" },
+              { take: take("maker"), from: T.maker.wizard, rate: 2.4, len: sec(2.6), url: "maker.go-link.org" },
+              { take: take("maker-2"), from: T.makerRoom.play, len: s("maker").len - sec(2.6), url: "play.go-link.org" },
             ]}
           />
         </Split>
       </Sequence>
       <Sequence from={s("metrics").from} durationInFrames={s("metrics").len}>
-        <Split len={s("metrics").len} title="Every millisecond, *measured.*" chips={[{ text: "latency", color: C.ok }, { text: "lost packets", color: C.p3 }, { text: "freezes explained" }]} side="left">
+        <Split len={s("metrics").len} title={t.metrics.title} chips={[{ text: t.metrics.chips[0], color: C.ok }, { text: t.metrics.chips[1], color: C.p3 }, { text: t.metrics.chips[2] }]} side="left">
           <Screen
             duration={s("metrics").len}
             clips={[
-              { take: "room", from: T.room.latency, len: sec(2.4) },
-              { take: "network", from: T.network.charts, len: s("metrics").len - sec(2.4) },
+              { take: take("room"), from: T.room.latency, len: sec(2.4) },
+              { take: take("network"), from: T.network.charts, len: s("metrics").len - sec(2.4) },
             ]}
           />
         </Split>
       </Sequence>
       <Sequence from={s("end").from} durationInFrames={s("end").len}>
-        <End len={s("end").len} />
+        <End len={s("end").len} title={t.end.title} free={t.end.free} />
       </Sequence>
-      {SCENES.slice(1).map((sc) => (
-        <Wipe key={sc.id} at={at(sc.id).from} />
+      {list.slice(1).map((sc) => (
+        <Wipe key={sc.id} at={sc.from} />
       ))}
-      {SCENES.map((sc) => (
-        <Sequence key={`voice-${sc.id}`} from={at(sc.id).from + VOICE_LEAD} durationInFrames={sc.voice + 15}>
-          <Audio src={staticFile(`voice/${sc.id}.wav`)} volume={1} />
+      {list.map((sc) => (
+        <Sequence key={`voice-${sc.id}`} from={sc.from + VOICE_LEAD} durationInFrames={sc.voice + 15}>
+          <Audio src={staticFile(`voice/${voice}/${sc.id}.wav`)} volume={1} />
         </Sequence>
       ))}
-      <Audio src={staticFile(MUSIC.file)} startFrom={MUSIC.from} volume={(f) => musicVolume(f, 0.3, 0.2)} />
-      <Captions />
+      <Audio src={staticFile(MUSIC.file)} startFrom={MUSIC.from} volume={(f) => musicVolume(voice, f)} />
+      <Captions voice={voice} subs={subs} />
     </AbsoluteFill>
   );
 }

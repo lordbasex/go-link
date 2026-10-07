@@ -1,14 +1,88 @@
 {
-  "voice": "af_heart",
+  "voices": {
+    "en": "af_heart",
+    "es": "ef_dora",
+    "pt": "pf_dora"
+  },
+  "kokoroLang": {
+    "en": "en-us",
+    "es": "es",
+    "pt": "pt-br"
+  },
   "lines": {
-    "intro": "This is go-link. Arcade nights, online.",
-    "home": "Your arcade runs on your own computer. Your games never leave your disk.",
-    "friends": "Friends join from the browser. Nothing to install: a code, a PIN, and they're in.",
-    "invite": "Invite them with a link, a code, or a QR. One PIN, one person.",
-    "controls": "Real controllers for up to four players, with voice chat.",
-    "phone": "On a phone, it turns into a console.",
-    "maker": "With Willy Maker, you can even make your own arcade game, and play it in a room.",
-    "metrics": "Every millisecond is measured, so you always know how the game is running.",
-    "end": "go-link. Free and open source. Play together, from anywhere."
+    "en": {
+      "intro": "This is go-link. Arcade nights, online.",
+      "home": "Your arcade runs on your own computer. Your games never leave your disk.",
+      "friends": "Friends join from the browser. Nothing to install: a code, a PIN, and they're in.",
+      "invite": "Invite them with a link, a code, or a QR. One PIN, one person.",
+      "controls": "Real controllers for up to four players, with voice chat.",
+      "phone": "On a phone, it turns into a console.",
+      "maker": "With Willy Maker, you can even make your own arcade game, and play it in a room.",
+      "metrics": "Every millisecond is measured, so you always know how the game is running.",
+      "end": "go-link. Free and open source. Play together, from anywhere."
+    },
+    "es": {
+      "intro": "Esto es go-link. Noches de arcade, online.",
+      "home": "Tu arcade corre en tu propia computadora. Tus juegos nunca salen de tu disco.",
+      "friends": "Tus amigos entran desde el navegador. Sin instalar nada: un código, un PIN, y listo.",
+      "invite": "Invítalos con un enlace, un código o un QR. Un PIN, una persona.",
+      "controls": "Mandos reales para hasta cuatro jugadores, con chat de voz.",
+      "phone": "En un celular, se convierte en una consola.",
+      "maker": "Con Willy Maker puedes crear tu propio juego arcade, y jugarlo en una sala.",
+      "metrics": "Cada milisegundo se mide, así siempre sabes cómo anda el juego.",
+      "end": "go-link. Gratis y de código abierto. Jueguen juntos, desde cualquier lugar."
+    },
+    "pt": {
+      "intro": "Este é o go-link. Noites de fliperama, online.",
+      "home": "Seu fliperama roda no seu próprio computador. Seus jogos nunca saem do seu disco.",
+      "friends": "Seus amigos entram pelo navegador. Sem instalar nada: um código, um PIN, e pronto.",
+      "invite": "Convide com um link, um código ou um QR. Um PIN, uma pessoa.",
+      "controls": "Controles de verdade para até quatro jogadores, com chat de voz.",
+      "phone": "No celular, ele vira um console.",
+      "maker": "Com o Willy Maker, você pode criar seu próprio jogo de fliperama e jogar numa sala.",
+      "metrics": "Cada milissegundo é medido, então você sempre sabe como o jogo está rodando.",
+      "end": "go-link. Grátis e de código aberto. Joguem juntos, de qualquer lugar."
+    }
+  },
+  "subtitles": {
+    "en-voice": {
+      "es": {
+        "intro": [
+          "Esto es go-link.",
+          "Noches de arcade, online."
+        ],
+        "home": [
+          "Tu arcade corre en tu propia computadora.",
+          "Tus juegos nunca salen de tu disco."
+        ],
+        "friends": [
+          "Tus amigos entran desde el navegador.",
+          "Sin instalar nada: un código, un PIN y listo."
+        ],
+        "invite": [
+          "Invítalos con un enlace, un código o un QR.",
+          "Un PIN, una persona."
+        ],
+        "controls": [
+          "Mandos reales para hasta cuatro jugadores,",
+          "con chat de voz."
+        ],
+        "phone": [
+          "En un celular, se convierte en una consola."
+        ],
+        "maker": [
+          "Con Willy Maker puedes crear tu propio juego arcade",
+          "y jugarlo en una sala."
+        ],
+        "metrics": [
+          "Cada milisegundo se mide,",
+          "así siempre sabes cómo anda el juego."
+        ],
+        "end": [
+          "go-link. Gratis y de código abierto.",
+          "Jueguen juntos, desde cualquier lugar."
+        ]
+      }
+    }
   }
 }

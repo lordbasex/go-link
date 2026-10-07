@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "trailer": "remotion render src/index.ts Trailer ../dist/video/go-link-trailer.mp4 --codec=h264 --crf=18 && tsx scripts/srt.ts",
+    "trailer": "remotion render src/index.ts Trailer ../dist/video/go-link-trailer-en.mp4 --codec=h264 --crf=18 && npm run srt",
     "demo": "remotion render src/index.ts Demo ../dist/video/go-link-demo.mp4",
     "typecheck": "tsc --noEmit",
-    "srt": "tsx scripts/srt.ts"
+    "srt": "tsx scripts/srt.ts",
+    "voice": "python3 scripts/voice.py en es pt",
+    "trailer:es": "remotion render src/index.ts TrailerES ../dist/video/go-link-trailer-es.mp4 --codec=h264 --crf=18",
+    "trailer:pt": "remotion render src/index.ts TrailerPT ../dist/video/go-link-trailer-pt.mp4 --codec=h264 --crf=18",
+    "trailer:subs": "remotion render src/index.ts TrailerEN-subsES ../dist/video/go-link-trailer-en-subs-es.mp4 --codec=h264 --crf=18 && remotion render src/index.ts TrailerEN-subsPT ../dist/video/go-link-trailer-en-subs-pt.mp4 --codec=h264 --crf=18",
+    "trailers": "npm run trailer && npm run trailer:es && npm run trailer:pt && npm run trailer:subs"
   },
   "dependencies": {
     "@fontsource/chakra-petch": "5.3.0",
