@@ -443,15 +443,6 @@ export function SidePanel({
   const onControls = tab === "controls" && !!controls;
   return (
     <aside className={`room-side${onControls ? " is-controls" : ""}`}>
-      {!onControls && (model.me.kind !== "unknown" || actions.onName) && (
-        <div className="side-status stack-sm">
-          <MyPlace model={model} action={placeAction(model, actions)} />
-          {actions.onName && (
-            <NameForm name={actions.name} onName={actions.onName} />
-          )}
-        </div>
-      )}
-
       <div className="tabs">
         {/* The tools sit beside the tab list, not inside it: a tablist holds only tabs. */}
         <div role="tablist" aria-label={t.room.tabsLabel} className="tab-list">
@@ -523,6 +514,16 @@ export function SidePanel({
           )}
         </span>
       </div>
+
+      {/* Under the tabs: your place and name, then the tab's content. */}
+      {!onControls && (model.me.kind !== "unknown" || actions.onName) && (
+        <div className="side-status stack-sm">
+          <MyPlace model={model} action={placeAction(model, actions)} />
+          {actions.onName && (
+            <NameForm name={actions.name} onName={actions.onName} />
+          )}
+        </div>
+      )}
 
       {onControls ? (
         <div className="side-controls" role="tabpanel" id="room-tabpanel" aria-labelledby="tab-controls">

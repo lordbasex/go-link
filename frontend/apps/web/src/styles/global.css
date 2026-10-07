@@ -2935,7 +2935,8 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 /* The side panel's Controls tab (wide screens): the panel grows a little so
    the keyboard fits, and the keyboard or gamepads sit centered in it,
    scrolling on their own. */
-.room-side.is-controls { width: min(560px, 44vw); }
+/* One canvas: the same width on every tab, so the video never moves when the tab changes. */
+.room-side.is-controls, .room-page.is-header-hero .room-side { width: min(560px, 44vw); }
 .side-controls { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .side-controls .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; justify-content: safe center; }
 .side-controls .gp-list { justify-content: center; }
