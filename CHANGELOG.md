@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (emulator)
+
+- **The YM2151 fix is upstream:** libretro merged our pull request [#2041](https://github.com/libretro/mame2003-plus-libretro/pull/2041) (2026-10-07), so the official core plays FM instruments right after loading a save. `cores/mame2003-plus` now builds on that commit without `0014`, and `0006` was refreshed against it.
+
 ### Fixed (device)
 
 - **telemetry.db is private** (0600, with its -wal and -shm), like history.json: it keeps the participants' names and addresses.

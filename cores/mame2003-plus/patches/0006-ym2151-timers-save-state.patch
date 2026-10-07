@@ -1,5 +1,5 @@
 diff --git a/src/sound/ym2151.c b/src/sound/ym2151.c
-index a634baf..bae3a69 100644
+index c5403a6..b80f64d 100644
 --- a/src/sound/ym2151.c
 +++ b/src/sound/ym2151.c
 @@ -130,6 +130,8 @@ typedef struct
@@ -47,7 +47,7 @@ index a634baf..bae3a69 100644
  	int i,j;
 @@ -1398,6 +1427,15 @@ static void ym2151_postload_refresh(void)
  		{
- 			set_connect(&YMPSG[i].oper[j*4], YMPSG[i].connect[j], j);
+ 			set_connect(&YMPSG[i].oper[j*4], j, YMPSG[i].connect[j]);
  		}
 +
 +		if (YMPSG[i].timer_A_left >= 0)
