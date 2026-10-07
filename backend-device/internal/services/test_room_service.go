@@ -353,7 +353,7 @@ func (t *TestRoomService) meta(s RoomSummary) json.RawMessage {
 		"game":        game,
 		"host":        t.hostName,
 		"players":     s.Players,
-		"max_players": 4,
+		"max_players": seatsOrDefault(s.MaxPlayers),
 		"queue":       s.Queue,
 		"spectators":  s.Spectators,
 		"mode":        "coop",
@@ -535,7 +535,7 @@ func (t *TestRoomService) setStatusWith(id string, n int, sum RoomSummary) {
 	}
 	t.status.SetRoomDetails(models.RoomStatus{
 		RoomID: id, Viewers: n, Title: title, Game: game, Public: public,
-		Players: sum.Players, MaxPlayers: 4, Queue: sum.Queue, Spectators: sum.Spectators,
+		Players: sum.Players, MaxPlayers: seatsOrDefault(sum.MaxPlayers), Queue: sum.Queue, Spectators: sum.Spectators,
 		Invite: invite, InviteCode: code, OwnerKey: key, Picture: picture,
 	})
 }

@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Fixed (device)
+
+- **A room has the seats its game has.** Every game room had 4 seats, so a two-player game such as Street Fighter II said "1 of 4 playing" and offered P3 and P4, which the game never reads. The room now has as many seats as the game has players (from mame2003-plus's list of games, the same number that already chose the 1P-2P start buttons): two in Street Fighter II, four in Teenage Mutant Ninja Turtles, four when the game does not say. A third person waits in the queue.
+
 ### Fixed (website)
 
 - **A narrow window looked broken in a room:** with the video and the chat stacked (under 1100 px wide), the chat's panel sat over the video. Now it looks like the phone app: the video on top at the full width and its own shape, and the chat under it filling the rest of the window with its own scroll.

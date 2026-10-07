@@ -826,3 +826,34 @@ func TestRoomStateCarriesTheHostsDefaultPicture(t *testing.T) {
 		t.Fatal("cleared, the picture must be left out")
 	}
 }
+
+func TestSeatsForTheGamesPlayers(t *testing.T) {
+	for _, c := range []struct{ players, seats int }{{0, 4}, {1, 1}, {2, 2}, {4, 4}, {6, 4}} {
+		if got := SeatsFor(GameControls{Players: c.players}); got != c.seats {
+			t.Fatalf("SeatsFor(%d players) = %d, want %d", c.players, got, c.seats)
+		}
+	}
+}
+
+func TestTwoPlayerGameQueuesTheThird(t *testing.T) {
+	out := newOutbox()
+	var sums []RoomSummary
+	m := NewRoomManager(RoomManagerConfig{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), MaxPlayers: 2, OnSummary: func(s RoomSummary) { sums = append(sums, s) }}, out)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go m.Run(ctx)
+	for _, p := range []string{"a", "b", "c"} {
+		m.Join(p)
+	}
+	m.Sync()
+	st := out.lastState(t, "c")
+	if st["max_players"] != float64(2) || len(st["seats"].([]any)) != 2 {
+		t.Fatalf("max_players %v, seats %v", st["max_players"], st["seats"])
+	}
+	if _, ok := m.PortOf("c", 0); ok {
+		t.Fatal("the third guest of a two player game has a port")
+	}
+	if last := sums[len(sums)-1]; last.Players != 2 || last.Queue != 1 || last.MaxPlayers != 2 {
+		t.Fatalf("summary %+v", last)
+	}
+}

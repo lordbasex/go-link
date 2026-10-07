@@ -374,6 +374,23 @@ type GameControls struct {
 // TestCardControls is what the test card offers: every button lights up.
 var TestCardControls = GameControls{Players: 4, Buttons: 6, Control: "joy8way"}
 
+// SeatsFor is how many seats a room running a game with these controls has:
+// the game's players, 1 to 4, or 4 when the game does not say.
+func SeatsFor(c GameControls) int {
+	if c.Players < 1 || c.Players > 4 {
+		return 4
+	}
+	return c.Players
+}
+
+// seatsOrDefault is a summary's seat count, 4 before the first summary.
+func seatsOrDefault(n int) int {
+	if n < 1 {
+		return 4
+	}
+	return n
+}
+
 // SetControls tells guests which controls the running game has.
 func (m *RoomManager) SetControls(c GameControls) {
 	m.do(func() {

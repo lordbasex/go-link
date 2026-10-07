@@ -755,7 +755,10 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	}
 	signal.Configure(saved.Name, game, false)
 	signal.SetPrivate()
-	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, OnSummary: func(s RoomSummary) {
+	// The room has as many seats as the game has players (Street Fighter II
+	// two, Teenage Mutant Ninja Turtles four).
+	controls := r.controlsOf(saved.Rom)
+	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, MaxPlayers: SeatsFor(controls), OnSummary: func(s RoomSummary) {
 		signal.OnSummary(s)
 		r.mu.Lock()
 		gr.summary = s
@@ -788,7 +791,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 			manager.SetChat(!saved.ChatOff)
 			manager.SetPicture(saved.Picture)
 			manager.SetPausable(true)
-			manager.SetControls(r.controlsOf(saved.Rom))
+			manager.SetControls(controls)
 			r.mu.Lock()
 			gr.ready = true
 			connected := r.connected
@@ -1300,7 +1303,7 @@ func (r *RoomsService) List() []models.ManagedRoom {
 	for _, gr := range r.rooms {
 		out = append(out, models.ManagedRoom{
 			SavedRoom: gr.saved, Game: gr.game, RoomID: gr.roomID,
-			Players: gr.summary.Players, MaxPlayers: 4, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
+			Players: gr.summary.Players, MaxPlayers: seatsOrDefault(gr.summary.MaxPlayers), Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
 			PauseAsks: slices.Clone(gr.pauseAsks),
 		})

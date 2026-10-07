@@ -94,7 +94,7 @@ The room page depends on **who you are**, not on the URL. The **owner** (a brows
 ### Seats and the arcade queue
 
 - Ports P1 to P4 are fixed seats. Someone who joins takes the first free port.
-- With the 4 seats taken, newcomers wait **in the queue**: they watch, chat and see their position.
+- A room has as many seats as its game has players (2 for Street Fighter II, 4 for Teenage Mutant Ninja Turtles; 4 when the game does not say). With every seat taken, newcomers wait **in the queue**: they watch, chat and see their position.
 - When a player leaves, the **first in the queue takes that same port**.
 - Spectators only watch and chat (`spectate`, and `queue` to get back in line).
 - Only seated players' input reaches the game. The device enforces it.
