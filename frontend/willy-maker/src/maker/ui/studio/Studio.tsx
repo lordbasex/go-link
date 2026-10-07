@@ -20,6 +20,7 @@ import { ExportView } from "../organisms/ExportView";
 import { PromptDialog } from "../organisms/PromptDialog";
 import { useProjectImages } from "../useTileImages";
 import { appendBackground, farBackgroundFile, importBackground, importFarBackground, layOutScenes, lineUpScenes } from "./background";
+import { addFrontPiece, duplicatePiece, patchPiece, removePiece, type FrontResult } from "./front";
 import { StageTimeline, type TimelineView } from "./StageTimeline";
 import { openExample } from "./example";
 import { catalog, itemOfObject, roleOf } from "./catalog";
@@ -222,11 +223,12 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     ui.set({ activeGroup: id, renaming: { kind: "group", id }, menu: null });
   };
   const groupSelected = (ref: ItemRef) => {
+    if (ref.kind === "front" || ref.kind === "bg") return;
     const id = groupItem(store, level.id, ref, t.groupUndo.group);
     ui.set({ activeGroup: id, renaming: { kind: "group", id } });
   };
   const rename = (ref: ItemRef) => {
-    if (ref.kind === "bg") return;
+    if (ref.kind === "bg" || ref.kind === "front") return;
     ui.set({ rightHidden: false, renaming: { kind: ref.kind, id: ref.id } });
   };
 
@@ -251,6 +253,17 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     ui.flash(t.toast.fitting);
     const r = await importFarBackground(store, level.id, file, t.undoLabels.far);
     ui.flash(r === "ok" ? t.toast.farReady : r === "not-image" ? t.toast.notImage : t.toast.bgFailed);
+  };
+  // the foreground: a picture in front of everything, faster than the camera, where the view is
+  const frontInput = useRef<HTMLInputElement>(null);
+  const addFront = async (file: File) => {
+    ui.flash(t.toast.fitting);
+    const at = stage.current?.center() ?? { x: level.size.w / 2, y: 0 };
+    const before = new Set((store.level(level.id)?.front ?? []).map((f) => f.id));
+    const r = await addFrontPiece(store, level.id, file, Math.max(0, at.x - 16), t.undoLabels.front);
+    frontDone(r, t.toast.frontReady);
+    const added = store.level(level.id)?.front?.find((f) => !before.has(f.id));
+    if (added) ui.set({ sel: { kind: "front", id: added.id }, tool: "select" });
   };
   // what the canvas shows, for the timeline
   const [view, setView] = useState<TimelineView | null>(null);
@@ -293,7 +306,12 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     if (it.role === "hero") ui.flash(t.toast.heroPlaced);
   };
 
+  const frontDone = (r: FrontResult, ok: string) => ui.flash(r === "ok" ? ok : r === "full" ? t.toast.frontFull : r === "empty" ? t.toast.frontEmpty : r === "not-image" ? t.toast.notImage : t.toast.bgFailed);
   const duplicate = (ref: ItemRef) => {
+    if (ref.kind === "front") {
+      void duplicatePiece(store, level.id, ref.id, t.undoLabels.duplicate).then((r) => r !== "ok" && frontDone(r, ""));
+      return;
+    }
     const o = ref.kind === "object" ? findObject(level, ref.id) : null;
     if (o && (o.type === "player_start" || o.type === "exit")) {
       ui.flash(t.toast.oneStart);
@@ -303,7 +321,8 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     if (out) ui.set({ sel: out });
   };
   const remove = (ref: ItemRef) => {
-    removeItem(store, level.id, ref, t.undoLabels.delete);
+    if (ref.kind === "front") void removePiece(store, level.id, ref.id, t.undoLabels.frontRemove);
+    else removeItem(store, level.id, ref, t.undoLabels.delete);
     ui.set({ sel: null });
   };
 
@@ -491,7 +510,11 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
         return;
       case "nudge": {
         done();
-        if (sel.kind === "zone") {
+        if (sel.kind === "front") {
+          const f = level.front?.find((x) => x.id === sel.id);
+          const { dx, dy } = nudgeOf(e, st.grid);
+          if (f) patchPiece(store, level.id, f.id, { x: f.x + dx, y: f.y + dy }, t.undoLabels.frontMove);
+        } else if (sel.kind === "zone") {
           const z = findZone(level, sel.id);
           const { dx, dy } = nudgeOf(e, 16);
           if (z) placeZone(store, level.id, z.id, { x: z.x + dx, y: z.y + dy }, t.props.nudge, `nudge:${z.id}`);
@@ -578,6 +601,16 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
       return out;
     }
     const ref = target.ref;
+    if (ref?.kind === "front") {
+      const f = level.front?.find((x) => x.id === ref.id);
+      if (!f) return [];
+      return [
+        { kind: "head", label: t.front.piece(f.name) },
+        { kind: "item", label: t.menu.duplicate, shortcut: `${MOD_PREFIX}D`, onSelect: () => duplicate(ref) },
+        { kind: "sep" },
+        { kind: "item", label: t.menu.delete, shortcut: "Del", danger: true, onSelect: () => remove(ref) },
+      ];
+    }
     if (ref?.kind === "zone") {
       const z = findZone(level, ref.id);
       if (!z) return [];
@@ -695,7 +728,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
       />
       {s.workspace === "level" ? (
         <div className="studio-body" style={{ gridTemplateColumns: gridColumns(s) }}>
-          <LeftPanel steps={steps} hasBackground={steps[0]} onInsertBackground={pickBackground} onInsertFar={() => farInput.current?.click()} onInsert={(tab) => openPicker("place", tab, null)} onPrompt={() => setPrompt(true)} />
+          <LeftPanel steps={steps} hasBackground={steps[0]} onInsertBackground={pickBackground} onInsertFar={() => farInput.current?.click()} onInsertFront={() => frontInput.current?.click()} onInsert={(tab) => openPicker("place", tab, null)} onPrompt={() => setPrompt(true)} />
           <main className="studio-main">
             <OptionsBar kinds={kinds} onZoomBy={(f) => stage.current?.zoomBy(f)} />
             <div className="studio-canvas">
@@ -737,6 +770,18 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                 onGoTo={(x, y) => stage.current?.goTo(x, y)}
               />
             )}
+            <input
+              ref={frontInput}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label={t.insert.front}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void addFront(f);
+              }}
+            />
             <input
               ref={farInput}
               type="file"

@@ -11,6 +11,7 @@ import { bigGlyph, packGame, romSymbols, WM_DATA_ADDR, type Engine, type Picture
 import { zipSet } from "./createRom";
 import { SPEC, specProject } from "./specFixture";
 import { tallProject } from "./tallFixture";
+import { FRONT_POSTS, frontProject } from "./frontFixture";
 import { brawlProject, streetProject, waveProject } from "./streetFixture";
 import { gunProject } from "./gunFixture";
 import { shipProject } from "./shipFixture";
@@ -59,8 +60,8 @@ describe("Create ROM", () => {
     expect(space.subarray(0, prog.length)).toEqual(prog);
     const d = space.subarray(WM_DATA_ADDR);
     expect(u32(d, 0)).toBe(0x574d4431); // "WMD1"
-    expect(u16(d, 4)).toBe(28);
-    expect(u16(d, 6)).toBe(0xbe);
+    expect(u16(d, 4)).toBe(29);
+    expect(u16(d, 6)).toBe(0xc6);
     expect(u16(d, 0x0a) & 0x18).toBe(0); // no double jump, no jet pack (docs/willy-maker/moves.md)
     expect(u32(d, 0x70)).toBe(0); // no own looks: every player is Willy
     // one palette per layer (the starter tilesets have one), every used tile on it
@@ -167,6 +168,45 @@ describe("Create ROM", () => {
     const zip = await zipSet(r.files);
     if (out) {
       const dir = resolve(out, "platforms");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "slammast.zip"), zip);
+      writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));
+    }
+    const result = await powerOnTest(zip, { wasm: readFileSync(WASM) });
+    for (const s of result.steps) expect(s.ok || s.skipped, `${s.name}: ${s.detail ?? s.code}`).toBe(true);
+    expect(result.ok).toBe(true);
+  }, 30000);
+
+  it("packs the foreground's pieces in one free sprite palette and powers it on (wm_data 29)", async () => {
+    const { project, picture } = frontProject();
+    const level = project.levels[0]!;
+    const r = packGame(project, engine, (id) => (id === `ts-front-${level.id}` ? picture : (pictures.get(id) ?? null)));
+    expect(r.notes.filter((n) => n.id.startsWith("front"))).toEqual([]);
+    const space = assembleProgram(SLAMMAST, r.files);
+    const d = space.subarray(WM_DATA_ADDR);
+    const at = u32(d, 0xbe) - WM_DATA_ADDR;
+    expect(u16(d, 0xc2)).toBe(FRONT_POSTS.length);
+    const pal = u16(d, 0xc4);
+    // the third Willy shirt's first palette: the spec level's two players wear the first two
+    expect(pal).toBe(2 * (engine.manifest.spritePalettes?.recruitOffset ?? 4));
+    // the palette's words: the posts' colors, pen 15 transparent
+    const words = Array.from({ length: 16 }, (_, i) => u16(d, at + i * 2));
+    const colors = project.palettes.find((x) => x.id === `pal-front-${level.id}`)!.colors;
+    expect(words.slice(0, colors.length)).toEqual(colors.map((c) => toCps1([parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]).word));
+    FRONT_POSTS.forEach((post, i) => {
+      const rec = at + 32 + i * 12;
+      expect([u16(d, rec), u16(d, rec + 2), u16(d, rec + 4)]).toEqual([post.x, level.front![i]!.y, post.speed]);
+      expect([d[rec + 6], d[rec + 7]]).toEqual([2, 10]);
+      const tiles = u32(d, rec + 8) - WM_DATA_ADDR;
+      const codes = Array.from({ length: 20 }, (_, k) => u16(d, tiles + k * 2));
+      // the same post three times: one set of tile codes, after the engine's own sprites
+      expect(codes.filter((c) => c).every((c) => c >= engine.manifest.sprites.code + Math.ceil(engine.manifest.sprites.size / 128))).toBe(true);
+      if (i) expect(codes).toEqual(Array.from({ length: 20 }, (_, k) => u16(d, u32(d, at + 32 + 8) - WM_DATA_ADDR + k * 2)));
+    });
+    const zip = await zipSet(r.files);
+    const out = process.env.WM_ROM_OUT;
+    if (out) {
+      const dir = resolve(out, "front");
       mkdirSync(dir, { recursive: true });
       writeFileSync(resolve(dir, "slammast.zip"), zip);
       writeFileSync(resolve(dir, "symbols.json"), romSymbols(engine));

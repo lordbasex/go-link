@@ -2192,3 +2192,19 @@
   font-size: 11px;
   font-weight: 600;
 }
+
+/* a foreground piece: over everything, as in the game */
+.studio-front {
+  position: absolute;
+  pointer-events: none;
+}
+.studio-front > canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  display: block;
+}
+.studio-front.is-selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}

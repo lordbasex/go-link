@@ -768,3 +768,31 @@ describe("depth bands", () => {
     expect(document.querySelectorAll(".studio-band")).toHaveLength(0);
   });
 });
+
+describe("the foreground", () => {
+  it("lists its pieces first in Layers, selects one on the canvas and changes its speed and place in Properties", async () => {
+    const { frontProject } = await import("../../rom/frontFixture");
+    const { project } = frontProject();
+    const level = project.levels[0]!;
+    render(
+      <LangProvider value="en">
+        <Studio project={project} lang="en" theme="light" onHome={() => undefined} onCreated={() => undefined} />
+      </LangProvider>,
+    );
+    expect(document.querySelectorAll(".studio-front")).toHaveLength(3);
+    expect(document.querySelector(".studio-group-name")?.textContent).toBe(studioEn.front.layer);
+    // a piece is in front of everything: the canvas picks it first
+    const post = level.front![0]!;
+    expect(hitAt(level, post.x + 14, post.y + 80)).toEqual({ kind: "front", id: post.id });
+    fireEvent.click(screen.getByText("post 1").closest(".studio-bg-row") as HTMLElement);
+    expect(document.querySelector(".studio-front.is-selected")).not.toBeNull();
+    const speed = screen.getByLabelText(studioEn.front.speed);
+    fireEvent.change(speed, { target: { value: "180" } });
+    fireEvent.blur(speed);
+    expect(level.front![0]!.speed).toBe(180);
+    const x = screen.getByLabelText(studioEn.front.x);
+    fireEvent.change(x, { target: { value: "400" } });
+    fireEvent.blur(x);
+    expect(level.front![0]!.x).toBe(400);
+  });
+});

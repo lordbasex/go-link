@@ -13,12 +13,13 @@
 
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { Plus, Repeat, Upload } from "lucide-react";
-import { cleanBands, objectLayer, objectVisible, zoneVisible, type Level, type Zone } from "../../model";
+import { cleanBands, frontTilesetId, objectLayer, objectVisible, zoneVisible, type Level, type Zone } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { addZone, findObject, findZone, LiveEdit, removeItem, sameRef, targetGroup, type ItemRef } from "../../editor/zoneOps";
 import { useStudioText } from "../../i18n";
 import { drawArt, type TileImage } from "../render";
-import { ObjectBox, ZoneBox } from "./LevelItems";
+import { FrontBox, ObjectBox, ZoneBox } from "./LevelItems";
+import { removePiece } from "./front";
 import { boxOf, groupName, hasBackgroundArt, hitAt } from "./select";
 import { MAX_ZOOM, MIN_ZOOM, useStudioUi, useUiState } from "./state";
 
@@ -247,7 +248,10 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
       const handle = (e.target as HTMLElement).getAttribute?.("data-handle");
       const hit = hitAt(level, p.x, p.y);
       if (st.tool === "erase") {
-        if (hit && hit.kind !== "bg") {
+        if (hit?.kind === "front") {
+          void removePiece(store, level.id, hit.id, t.undoLabels.frontRemove);
+          if (sameRef(hit, st.sel)) ui.set({ sel: null });
+        } else if (hit && hit.kind !== "bg") {
           removeItem(store, level.id, hit, t.undoLabels.delete);
           if (sameRef(hit, st.sel)) ui.set({ sel: null });
         }
@@ -273,7 +277,7 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
       } else {
         ui.set({ sel: hit });
         if (hit.kind === "bg") return;
-        const it = hit.kind === "zone" ? findZone(level, hit.id)! : findObject(level, hit.id)!;
+        const it = hit.kind === "zone" ? findZone(level, hit.id)! : hit.kind === "front" ? level.front!.find((f) => f.id === hit.id)! : findObject(level, hit.id)!;
         drag.current = { mode: "move", ref: hit, dx: p.x - it.x, dy: p.y - it.y, edit: new LiveEdit(store, level.id, t.undoLabels.move) };
       }
     }
@@ -317,6 +321,13 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
           if (!zn) return;
           zn.x = Math.max(0, Math.min(lv.size.w - zn.w, snapTo(p.x - d.dx, CELL)));
           zn.y = Math.max(0, Math.min(lv.size.h - zn.h, snapTo(p.y - d.dy, CELL)));
+        } else if (d.ref.kind === "front") {
+          const id = d.ref.id;
+          const f = lv.front?.find((x) => x.id === id);
+          if (!f) return;
+          const g = ui.get().grid;
+          f.x = Math.max(-f.cols * CELL, Math.min(lv.size.w, snapTo(p.x - d.dx, g)));
+          f.y = Math.max(-f.rows * CELL, Math.min(lv.size.h, snapTo(p.y - d.dy, g)));
         } else if (d.ref.kind === "object") {
           const o = findObject(lv, d.ref.id);
           if (!o) return;
@@ -452,6 +463,9 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
               <ObjectBox key={o.name} o={o} box={boxOf(o)} z={z} label={objectLabel(o.name)} selected={sel?.kind === "object" && sel.id === o.name} showLabel={s.showLabels || (sel?.kind === "object" && sel.id === o.name)} />
             ) : null,
           )}
+          {(level.front ?? []).map((f) => (
+            <FrontBox key={f.id} piece={f} image={images.get(frontTilesetId(level.id))} z={z} selected={sel?.kind === "front" && sel.id === f.id} label={t.front.piece(f.name)} />
+          ))}
           {s.debug.frame && (
             <div className="studio-frame" style={{ left: frame.x * z, top: frame.y * z, width: SCREEN_W * z, height: SCREEN_H * z }}>
               <span>{t.frameLabel}</span>

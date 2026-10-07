@@ -235,3 +235,15 @@ A level whose background was made with Insert background and Add scene keeps its
 ```
 
 `asset` is the picture as given (in `assets/`), `x` its left edge in px, `dy` how far it is moved down from standing on the level's bottom (negative: up), `scale` its height as a share of the level's (0.25-4). Each scene is stretched a few pixels so its width is whole 32 px columns.
+
+## The foreground
+
+A level's foreground (Insert › Foreground) keeps its pictures in `front`; their tiles, fitted together to one palette, are the tileset `ts-front-<level id>` with the palette `pal-front-<level id>` (group `sprite`):
+
+```jsonc
+"front": [
+  { "id": "front-…", "asset": "sha256:…", "name": "lamp.png", "x": 640, "y": 64, "h": 208, "speed": 150, "cols": 3, "rows": 13, "cells": "0*2,1,…" }
+]
+```
+
+`asset` is the picture as given (to fit it again when its height changes), `x` and `y` its top left in px where it is seen when the camera's middle reaches its left edge, `h` its height, `speed` its % of the camera's speed (110-250), and `cols`, `rows` and `cells` (run-length, like a tile layer's `data`) its tiles in the front tileset, 0 for an empty cell. At most 16 pieces, each at most 128 px wide.

@@ -6,6 +6,7 @@
 
 import { decodeCells, encodeCells } from "./rle";
 import { cleanBands } from "./parallax";
+import { cleanFront } from "./front";
 import { InputError } from "./inputError";
 import { cleanGroups, cleanZones } from "./zones";
 import { cleanSound } from "./sound";
@@ -40,6 +41,7 @@ import { DEFAULT_GENRE, isGenre, type GenreId } from "./genres";
 export * from "./types";
 export * from "./genres";
 export * from "./parallax";
+export * from "./front";
 export * from "./inputError";
 export * from "./sound";
 export * from "./zones";
@@ -362,6 +364,12 @@ function normalizeLevel(raw: Level): Level {
     );
     if (scenes.length) level.scenes = scenes.slice(0, 64);
     else delete level.scenes;
+  }
+  // the foreground's pieces
+  if (Array.isArray(raw.front)) {
+    const front = cleanFront(level, raw.front as unknown[]);
+    if (front.length) level.front = front;
+    else delete level.front;
   }
   // Zones and groups (format 4) are only checked here; they are drawn into the collision layer on edit.
   if (raw.zones !== undefined || raw.groups !== undefined) {

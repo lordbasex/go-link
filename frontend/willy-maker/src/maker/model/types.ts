@@ -323,6 +323,32 @@ export interface Level {
    * before scenes existed: its art is the play layer as it is.
    */
   scenes?: BackgroundScene[];
+  /**
+   * The foreground (model/front.ts): pictures in front of everything that
+   * move faster than the camera, drawn with sprites in one palette; their
+   * tiles live in the level's front tileset (`ts-front-<level id>`).
+   */
+  front?: FrontPiece[];
+}
+
+/** One foreground picture: where it is when the camera's middle passes it, its size and speed. */
+export interface FrontPiece {
+  id: string;
+  /** The picture as the user gave it (an asset). */
+  asset: string;
+  /** Its file name. */
+  name: string;
+  /** Its top left in the level (px), where it is seen when the camera's middle is at its left edge. */
+  x: number;
+  y: number;
+  /** Its height in the level (px); the width follows the picture (16 px columns). */
+  h: number;
+  /** % of the camera's speed (110-250). */
+  speed: number;
+  /** Its tiles: columns and rows of 16 px, and the front tileset's tile per cell (rle, 0 = empty). */
+  cols: number;
+  rows: number;
+  cells: string;
 }
 
 /** One picture of the background and where it goes. */

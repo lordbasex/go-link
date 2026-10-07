@@ -17,7 +17,7 @@
 
 #define WM_DATA_ADDR 0x100000 /* the data block: after the engine, up to 0x1fffff */
 #define WM_MAGIC 0x574d4431   /* "WMD1" */
-#define WM_VERSION 28
+#define WM_VERSION 29
 
 /* graphics the packer writes (the engine only names the codes) */
 #define WM_FONT_BIG 0x0080   /* 8x8: double-size glyph quadrants, 4 per glyph from '!' */
@@ -142,6 +142,22 @@ struct wm_data {
 	u32 locks;                /* b6 wm_object[n_locks]: the camera locks (a beat 'em up's waves) */
 	u16 n_locks;              /* ba 0-8 */
 	u16 flags2;               /* bc WM_F2_* (wm_data 19) */
+	u32 front;                /* be the foreground (wm_data 29): u16[16] its palette's words, then wm_front[n_front] */
+	u16 n_front;              /* c2 0-16 */
+	u16 front_pal;            /* c4 the sprite palette (0-31) it is loaded into */
+};
+
+/*
+ * A foreground piece (wm_data 29, frontend model/front.ts): in front of
+ * everything, faster than the camera. Seen at screen x = SCREEN_W / 2 +
+ * (x - cam_x - SCREEN_W / 2) * speed / 100 (truncated) and y - cam_y; its
+ * tiles are sprite codes, cols x rows in row order, 0 for an empty cell.
+ */
+struct wm_front {
+	s16 x, y;                 /* 00, 02 its top left, px */
+	u16 speed;                /* 04 % of the camera's speed (110-250) */
+	u8 cols, rows;            /* 06, 07 16 px cells */
+	u32 tiles;                /* 08 u16[cols * rows] */
 };
 #define WM_LAYER_PALETTES 32 /* a layer's palette bank: 32 palettes of 15 colors */
 
@@ -190,7 +206,9 @@ _Static_assert(WM_OFF(platforms) == 0xa6 && WM_OFF(n_platforms) == 0xaa, "wm_dat
 _Static_assert(WM_OFF(pickup_looks) == 0xae, "wm_data pickup looks");
 _Static_assert(WM_OFF(walk_y0) == 0xb2 && WM_OFF(walk_y1) == 0xb4, "wm_data walk band");
 _Static_assert(WM_OFF(locks) == 0xb6 && WM_OFF(n_locks) == 0xba, "wm_data camera locks");
-_Static_assert(sizeof(struct wm_data) == 0xbe, "wm_data size");
+_Static_assert(WM_OFF(flags2) == 0xbc && WM_OFF(front) == 0xbe && WM_OFF(n_front) == 0xc2 && WM_OFF(front_pal) == 0xc4, "wm_data foreground");
+_Static_assert(sizeof(struct wm_data) == 0xc6, "wm_data size");
+_Static_assert(sizeof(struct wm_front) == 12, "wm_front");
 /* the records the packer writes for a look: 68000 alignment (2), big-endian */
 _Static_assert(sizeof(Tile) == 6 && __builtin_offsetof(Tile, dx) == 2 && __builtin_offsetof(Tile, pal) == 4, "Tile");
 _Static_assert(sizeof(Frame) == 10 && __builtin_offsetof(Frame, count) == 4 && __builtin_offsetof(Frame, w) == 5 && __builtin_offsetof(Frame, ax) == 6 && __builtin_offsetof(Frame, ay) == 8, "Frame");

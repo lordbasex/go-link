@@ -29,6 +29,12 @@ export function hasBackgroundArt(level: Level): boolean {
 
 export function hitAt(level: Level, x: number, y: number): ItemRef | null {
   const inside = (r: { x: number; y: number; w: number; h: number }, pad: number) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+  // the foreground is in front of everything
+  const front = level.front ?? [];
+  for (let i = front.length - 1; i >= 0; i--) {
+    const f = front[i]!;
+    if (inside({ x: f.x, y: f.y, w: f.cols * 16, h: f.rows * 16 }, 0)) return { kind: "front", id: f.id };
+  }
   const items = objectLayer(level).items;
   for (let i = items.length - 1; i >= 0; i--) {
     const o = items[i]!;

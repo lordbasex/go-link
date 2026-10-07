@@ -11,6 +11,7 @@ import { GEM_BODY, GEM_SHADE, SHIP_H, SHIP_W, ballPen, carPen, soldierPen, drone
 import { CLEAR_FRAMES, FLY_MID, TOP_MID, RACE_CALL_ROW, RACE_COUNT, RACE_LAPS, SPORTS_CALL_ROW, SPORTS_ROW, VS_BAR, VS_BAR_ROW, VS_CALL_ROW, VS_HP, VS_INTRO, MASH_TIME, MEM_INPUT, MEM_LEN, MEM_LETTER, MEM_LIT, QUIZ_TIME, TIMING_STEP, TIMING_TIME, TIMING_W, WELL_COLS, WELL_ROWS, WELL_X, WELL_Y } from "../engine/rules";
 import { BAR_COL, BAR_ROW, LETTERS, MEM_COL, MEM_ROW, PLAYERS_ROW, PLAYER_COLS, TIME_ROW, kindOf, memorySeq, quizLines, timingCell } from "../engine/quiz";
 import { bandX } from "../model/parallax";
+import { FRONT_MAX, frontX } from "../model/front";
 import { DOOR_H, DOOR_W, doorAt, doorParts } from "../engine/door";
 import { HEIGHTS, drawFrame, frameOf, type PlaySprites, type Sheet } from "./sprites";
 import { airFrame, heroLook, LOOK_ANIMS, loopFrame, moveFrame, type HeroLook, type LookAnimId } from "../engine/anims";
@@ -110,9 +111,12 @@ export interface DrawOptions {
   art?: ArtLayer[];
 }
 
-/** A tile layer play mode draws: its cells and its tileset picture. */
+/** A tile layer play mode draws: its cells and its tileset picture (a foreground piece: where it is and its speed too). */
 export interface ArtLayer {
-  layer: "far" | "play";
+  layer: "far" | "play" | "front";
+  x?: number;
+  y?: number;
+  speed?: number;
   tile: number;
   cols: number;
   rows: number;
@@ -135,6 +139,33 @@ function drawArt(ctx: CanvasRenderingContext2D, a: ArtLayer, ox: number, oy: num
       const sy = Math.floor((n - 1) / a.columns) * a.tile;
       ctx.drawImage(a.image, sx, sy, a.tile, a.tile, c * a.tile - ox, r * a.tile - oy, a.tile, a.tile);
     }
+}
+
+/**
+ * The foreground's pieces at their speed, at most FRONT_MAX.sprites tiles,
+ * counting only those the board's sprite table would keep (put_sprite leaves
+ * out a tile more than 64 px off screen).
+ */
+function drawFront(ctx: CanvasRenderingContext2D, art: readonly ArtLayer[], cx: number, cy: number): void {
+  let n = 0;
+  for (const a of art) {
+    if (a.layer !== "front") continue;
+    const d = (a.x ?? 0) - cx - SCREEN_W / 2;
+    const w = a.cols * a.tile;
+    if (d >= SCREEN_W / 2 || d <= -(SCREEN_W / 2) - w) continue;
+    const sx = frontX(a.x ?? 0, cx, a.speed ?? 100);
+    const sy = (a.y ?? 0) - cy;
+    for (let r = 0; r < a.rows; r++)
+      for (let c = 0; c < a.cols; c++) {
+        const t = a.cells[r * a.cols + c] ?? 0;
+        if (!t) continue;
+        const x = sx + c * a.tile;
+        const y = sy + r * a.tile;
+        if (x < -64 || x > SCREEN_W + 16 || y < -64 || y > SCREEN_H + 16) continue;
+        ctx.drawImage(a.image, ((t - 1) % a.columns) * a.tile, Math.floor((t - 1) / a.columns) * a.tile, a.tile, a.tile, x, y, a.tile, a.tile);
+        if (++n >= FRONT_MAX.sprites) return;
+      }
+  }
 }
 
 export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: PlaySprites | null, o: DrawOptions): void {
@@ -188,6 +219,8 @@ export function drawGame(ctx: CanvasRenderingContext2D, game: Game, sprites: Pla
     ctx.strokeRect(o.ghost.x + 0.5, o.ghost.y + 0.5, o.ghost.w - 1, o.ghost.h - 1);
   }
   ctx.restore();
+  // the foreground, in front of everything but the HUD, where engine.c draw_front puts it
+  if (!game.rules.racing) drawFront(ctx, o.art ?? [], cx, cy);
   if (o.overlays.camera) drawCamera(ctx, game, colors);
   drawHud(ctx, game, colors, o);
   if (game.rules.crosshair) drawCrosshairs(ctx, game);

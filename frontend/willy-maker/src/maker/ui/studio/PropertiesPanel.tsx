@@ -12,14 +12,15 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { useStudioText } from "../../i18n";
-import { BAND_SPEED, cleanBands, MAX_BANDS, type BackgroundScene, type Level, type LevelObject, type ParallaxBand, type Zone, type ZoneKind } from "../../model";
+import { duplicatePiece, patchPiece, removePiece, resizePiece } from "./front";
+import { BAND_SPEED, cleanBands, FRONT_SPEED, MAX_BANDS, type BackgroundScene, type FrontPiece, type Level, type LevelObject, type ParallaxBand, type Zone, type ZoneKind } from "../../model";
 import type { EditorStore } from "../../editor/store";
 import { findObject, findZone, moveObject, patchItem, patchZone, placeZone, setObjectLook, type ItemRef } from "../../editor/zoneOps";
 import type { TileImage } from "../render";
 import { ZONE_SWATCH } from "./kinds";
 import { LevelThumb } from "./LevelThumb";
 import { boxOf } from "./select";
-import { useUiState } from "./state";
+import { useStudioUi, useUiState } from "./state";
 import type { Role } from "./catalog";
 import { OwnSprite, useOwnSheet } from "./ownSprites";
 
@@ -52,7 +53,8 @@ export function PropertiesPanel(p: PropertiesProps) {
   const sel = s.sel;
   const zone = sel?.kind === "zone" ? findZone(p.level, sel.id) : undefined;
   const object = sel?.kind === "object" ? findObject(p.level, sel.id) : undefined;
-  const kind = zone ? t.props.zone : object ? t.roles[p.objectInfo(object).role] : sel?.kind === "bg" ? t.props.background : "";
+  const front = sel?.kind === "front" ? p.level.front?.find((f) => f.id === sel.id) : undefined;
+  const kind = zone ? t.props.zone : object ? t.roles[p.objectInfo(object).role] : front ? t.front.title : sel?.kind === "bg" ? t.props.background : "";
 
   return (
     <section className="studio-props" aria-labelledby="studio-props-title">
@@ -66,6 +68,8 @@ export function PropertiesPanel(p: PropertiesProps) {
         <ZoneProps {...p} zone={zone} />
       ) : object ? (
         <ObjectProps {...p} object={object} />
+      ) : front ? (
+        <FrontProps store={p.store} level={p.level} piece={front} />
       ) : sel?.kind === "bg" ? (
         <>
           <LevelThumb level={p.level} images={p.images} w={Math.max(120, s.rightW - 28)} h={Math.round((Math.max(120, s.rightW - 28) * 9) / 16)} version={p.version} />
@@ -367,6 +371,44 @@ function DepthBands({ store, level }: { store: EditorStore; level: Level }) {
           {t.depth.add}
         </button>
       )}
+    </div>
+  );
+}
+
+/** A foreground piece: its place, height (fitted again) and speed, Duplicate and Remove. */
+function FrontProps({ store, level, piece }: { store: EditorStore; level: Level; piece: FrontPiece }) {
+  const t = useStudioText();
+  const ui = useStudioUi();
+  const failed = (r: string) => r !== "ok" && ui.flash(r === "full" ? t.toast.frontFull : r === "empty" ? t.toast.frontEmpty : t.toast.bgFailed);
+  return (
+    <div className="studio-scenes">
+      <div className="studio-props-title studio-ellipsis" title={piece.name}>
+        {piece.name}
+      </div>
+      <div className="studio-scene-fields">
+        <SceneField label={t.front.x} value={piece.x} onSet={(x) => patchPiece(store, level.id, piece.id, { x }, t.undoLabels.frontMove)} />
+        <SceneField label={t.front.y} value={piece.y} onSet={(y) => patchPiece(store, level.id, piece.id, { y }, t.undoLabels.frontMove)} />
+        <SceneField label={t.front.h} value={piece.h} onSet={(h) => void resizePiece(store, level.id, piece.id, Math.max(16, Math.min(level.size.h, h)), t.undoLabels.front).then(failed)} />
+      </div>
+      <div className="studio-scene-fields">
+        <SceneField label={t.front.speed} value={piece.speed} onSet={(v) => patchPiece(store, level.id, piece.id, { speed: Math.max(FRONT_SPEED.min, Math.min(FRONT_SPEED.max, v)) }, t.undoLabels.front)} />
+      </div>
+      <p className="studio-muted">{t.front.help}</p>
+      <div className="studio-props-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => void duplicatePiece(store, level.id, piece.id, t.undoLabels.front).then(failed)}>
+          {t.front.duplicate}
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary is-danger"
+          onClick={() => {
+            ui.set({ sel: null });
+            void removePiece(store, level.id, piece.id, t.undoLabels.frontRemove);
+          }}
+        >
+          {t.front.remove}
+        </button>
+      </div>
     </div>
   );
 }

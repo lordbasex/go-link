@@ -35,7 +35,7 @@ export const studioEn = {
   expand: "Expand panel",
 
   insertHeading: "Insert",
-  insert: { background: "Background…", replaceBackground: "Replace background…", character: "Character…", enemy: "Enemy…", object: "Object…", group: "New layer group", prompt: "Image AI prompts…", far: "Far background (parallax)…" },
+  insert: { background: "Background…", replaceBackground: "Replace background…", character: "Character…", enemy: "Enemy…", object: "Object…", group: "New layer group", prompt: "Image AI prompts…", far: "Far background (parallax)…", front: "Foreground (in front)…" },
   insertNote: "Also with a right click on the canvas.",
   drawZoneHeading: "Draw zone · B",
 
@@ -135,6 +135,9 @@ export const studioEn = {
     canvas: "Canvas menu",
   },
   toast: {
+    frontReady: "Foreground piece placed: in the game it passes in front, faster than the camera.",
+    frontFull: "The foreground holds 16 pictures at most.",
+    frontEmpty: "That picture draws nothing (it is all transparent or magenta).",
     scenesReady: "Scenes laid out again.",
     farReady: "Far background ready: it shows where the background is see-through and moves at half speed in the game.",
     sceneReady: (w: number) => `Scene added: the level is ${w} px wide now.`,
@@ -165,6 +168,9 @@ export const studioEn = {
   },
   backgroundName: "Background",
   undoLabels: {
+    front: "Foreground",
+    frontMove: "Move the foreground piece",
+    frontRemove: "Remove the foreground piece",
     depth: "Depth bands",
     scenes: "Scenes",
     lineUp: "Line up the floor",
@@ -230,6 +236,18 @@ export const studioEn = {
     delete: "Delete group",
     moveTo: "Move to group",
     group: "Group",
+  },
+  front: {
+    title: "Foreground",
+    help: "In front of the players and moving faster than the camera, like a lamp post passing close to the screen. It is where you see it when the camera's middle reaches its left edge. All the foreground's pictures share one palette of 15 colors (the board has few sprite palettes left): dark shapes with a little light work best.",
+    x: "X",
+    y: "Y",
+    h: "Height",
+    speed: "Speed %",
+    piece: (name: string) => `Foreground · ${name}`,
+    layer: "Foreground",
+    remove: "Remove",
+    duplicate: "Duplicate",
   },
   depth: {
     title: "Depth",

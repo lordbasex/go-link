@@ -12,6 +12,8 @@
 import { GfxRegion, KEYS, SLAMMAST, encodeOpcodes, encodeProgram, z80OpcodeMap, glyphPixels, setFiles, splitProgram, toCps1, unsupportedChars, type Pens } from "@go-link/cps1";
 import { CELL, layerGrid, objectLayer, objectVisible, tagLayer, TAG_NUMBER, type Level, type Project, type TileLayer, type Tileset } from "../model";
 import { parallaxBands } from "../model/parallax";
+import { FRONT_MAX, frontPaletteId, frontTilesetId } from "../model/front";
+import { decodeCells } from "../model/rle";
 import { packSound, type SoundPack } from "./sound";
 import { BOSS_HP, GUNSHIP_HP, QUIZ_MAX, difficultyOf, flyPathOf, chaseOf, rulesWith, secondsToFrames } from "../engine/rules";
 import { QUIZ_KINDS, kindOf, quizLines } from "../engine/quiz";
@@ -20,7 +22,7 @@ import { MAX_PLATFORMS, platformOf, walkBandOf } from "../engine/game";
 import { MENU_FIELDS, menuText, screenLines, type Ink, type MenuScreenId, type TextLine } from "../game/menus";
 import { playerSlots } from "../game/settings";
 import { BUILTIN_HERO } from "../model";
-import { LOOK_ANIMS, planLooks, type LookAnim, type LooksBudget } from "./looks";
+import { LOOK_ANIMS, planLooks, type LookAnim, type LooksBudget, type LooksPlan } from "./looks";
 
 /** The engine as rom/tools/engine.mjs ships it (engine.json). */
 export interface EngineManifest {
@@ -70,8 +72,8 @@ export interface PackResult {
 // rom/engine/wmdata.h
 export const WM_DATA_ADDR = 0x100000;
 const WM_MAGIC = 0x574d4431;
-const WM_VERSION = 28;
-const HEADER = 0xbe;
+const WM_VERSION = 29;
+const HEADER = 0xc6;
 /** A layer's palette bank on the board: 32 palettes of 15 colors (wmdata.h WM_LAYER_PALETTES). */
 export const LAYER_PALETTES = 32;
 const FONT_BIG = 0x0080;
@@ -314,6 +316,71 @@ function textLines(project: Project): { scr: number; line: TextLine; attr: numbe
   return out;
 }
 
+/**
+ * The foreground's pieces (wm_data 29, model/front.ts): their tiles cut from
+ * the level's front tileset in its one palette, written after the looks'
+ * tiles (the same tile met again is written once), and the first sprite
+ * palette the budget and the looks leave free. Null, with a note, when there
+ * is no foreground or it does not fit.
+ */
+function packFront(
+  project: Project,
+  level: Level,
+  gfx: GfxRegion,
+  pictures: (tilesetId: string) => Picture | null,
+  looks: LooksPlan,
+  budget: LooksBudget,
+  note: (id: string, params?: Record<string, string | number>) => void,
+): { pal: number; words: number[]; pieces: { x: number; y: number; speed: number; cols: number; rows: number; codes: number[] }[] } | null {
+  const pieces = (level.front ?? []).slice(0, FRONT_MAX.pieces);
+  if (!pieces.length) return null;
+  const ts = project.tilesets.find((t) => t.id === frontTilesetId(level.id));
+  const pic = ts ? pictures(ts.id) : null;
+  const palette = project.palettes.find((p) => p.id === frontPaletteId(level.id));
+  if (!ts || !pic || !palette) {
+    note("frontArt");
+    return null;
+  }
+  // a free sprite palette: the budget's runs less those the looks took
+  const taken = new Set<number>();
+  for (const l of looks.looks) for (let i = 0; i < Math.max(1, l.palettes.length); i++) taken.add(l.pal + i);
+  let pal = -1;
+  for (const [first, n] of budget.palettes) for (let i = first; i < first + n && pal < 0; i++) if (!taken.has(i)) pal = i;
+  if (pal < 0) {
+    note("frontPalette");
+    return null;
+  }
+  const colors = palette.colors.slice(0, 15).map(hexRgb);
+  const columns = ts.columns ?? Math.max(1, Math.floor(pic.w / CELL));
+  const codeOf = new Map<number, number>();
+  let code = budget.firstCode + looks.tiles;
+  const out: { x: number; y: number; speed: number; cols: number; rows: number; codes: number[] }[] = [];
+  for (const p of pieces) {
+    const codes: number[] = [];
+    for (const n of decodeCells(p.cells, p.cols * p.rows)) {
+      if (!n) {
+        codes.push(0);
+        continue;
+      }
+      let c = codeOf.get(n);
+      if (c === undefined) {
+        if (code >= budget.endCode) {
+          note("frontTiles", { max: budget.endCode - budget.firstCode - looks.tiles });
+          return null;
+        }
+        c = code++;
+        codeOf.set(n, c);
+        gfx.tile16(c, tilePens(pic, columns, CELL, n, colors));
+      }
+      codes.push(c);
+    }
+    out.push({ x: p.x, y: p.y, speed: p.speed, cols: p.cols, rows: p.rows, codes });
+  }
+  const words = colors.map((c) => toCps1(c).word);
+  while (words.length < 16) words.push(0x0000);
+  return { pal, words, pieces: out };
+}
+
 /** The sprite palettes and tiles the players' own looks may use, after the engine's art. */
 export function looksBudget(manifest: EngineManifest, slots: readonly { character: string; variant: number }[], players: number): LooksBudget {
   const sp = manifest.spritePalettes ?? { used: 25, recruitOffset: 4, recruits: 3 };
@@ -534,6 +601,8 @@ export function packGame(
   const slots = slotList.map((s) => (s.character === BUILTIN_HERO ? Math.max(0, Math.min(3, s.variant)) : 0));
   while (slots.length < 4) slots.push(slots.length);
   const looks = planLooks(project, slotList, players, gfx, characterPictures, looksBudget(manifest, slotList, players), note, { enemies: enemyKinds.slice(0, 16), civilians: civKinds.slice(0, 8), pickups: pickupLooks.slice(0, 64) });
+  // the foreground (wm_data 29): its tiles after the looks', in a sprite palette they left free
+  const front = packFront(project, level, gfx, pictures, looks, looksBudget(manifest, slotList, players), note);
   // enemy kinds with no enemy character of their own are the engine's android (T-30)
   const android = [...new Set(enemyKinds.slice(0, 16).filter((_, i) => looks.enemies[i]! < 0))].filter((k) => k && k !== "trooper" && k !== "brawler" && k !== "gunship");
   if (android.length) note("enemyArt", { kinds: android.join(", ") });
@@ -589,6 +658,24 @@ export function packGame(
   for (const row of locks.slice(0, 8)) for (const v of row) out.u16(v & 0xffff);
   const platAt = out.addr;
   for (const row of platforms.slice(0, MAX_PLATFORMS)) for (const v of row) out.u16(v & 0xffff);
+  // the foreground: its palette's words, its pieces, then each piece's tile codes
+  let frontAt = 0;
+  if (front) {
+    frontAt = out.addr;
+    for (const w of front.words) out.u16(w);
+    const recordsAt = out.addr;
+    for (let i = 0; i < front.pieces.length; i++) for (let k = 0; k < 6; k++) out.u16(0);
+    front.pieces.forEach((p, i) => {
+      const tilesAt = out.addr;
+      for (const c of p.codes) out.u16(c);
+      const at = recordsAt + i * 12;
+      out.patch16(at - WM_DATA_ADDR, p.x & 0xffff);
+      out.patch16(at + 2 - WM_DATA_ADDR, p.y & 0xffff);
+      out.patch16(at + 4 - WM_DATA_ADDR, p.speed);
+      out.patch16(at + 6 - WM_DATA_ADDR, (p.cols << 8) | p.rows);
+      out.patch32(at + 8 - WM_DATA_ADDR, tilesAt);
+    });
+  }
   const textAt = out.addr;
   for (const { scr, line, attr } of textLines(project)) {
     const text = [...line.text].map((ch) => (unsupportedChars(ch).length ? " " : ch)).join("").slice(0, 48);
@@ -750,6 +837,10 @@ export function packGame(
   w32(locks.length ? lockAt : 0);
   w16(Math.min(8, locks.length));
   w16((rules.puzzle && rules.puzzleCpu ? F2_PUZZLE_CPU : 0) | (rules.quiz ? F2_QUIZ : 0) | (rules.versus ? F2_VERSUS : 0) | (rules.sports ? F2_SPORTS : 0) | (rules.racing ? F2_RACING : 0) | ((rules.puzzleCpuLevel - 1) << F2_CPU_LEVEL_SHIFT));
+  // the foreground (wm_data 29)
+  w32(frontAt);
+  w16(front ? front.pieces.length : 0);
+  w16(front ? front.pal : 0);
   if (h !== HEADER) throw new Error(`wm_data header is ${h} bytes, expected ${HEADER}`);
   const data = out.bytes();
   if (data.length > 0x100000) throw new Error(`the game's data is ${data.length} bytes: at most 1 MB`);

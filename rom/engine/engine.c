@@ -542,6 +542,9 @@ static void video_init(void)
 	load_look_palettes(D->enemy_looks, D->n_enemies < 16 ? D->n_enemies : 16);
 	load_look_palettes(D->civ_looks, D->n_civs < 8 ? D->n_civs : 8);
 	load_look_palettes(D->pickup_looks, D->n_pickups < 64 ? D->n_pickups : 64);
+	/* the foreground's one palette (wm_data 29) */
+	if (D->n_front && D->front_pal < 32)
+		load_palette(PAL_OBJ + D->front_pal, (const u16 *)D->front);
 	/* text: pen 1 ink, pen 2 shadow */
 	PALETTE[(PAL_SCROLL1 + INK_ACCENT) * 16 + 1] = 0xffa3;
 	PALETTE[(PAL_SCROLL1 + INK_WHITE) * 16 + 1] = 0xfeee;
@@ -598,6 +601,45 @@ static void draw_anim(const Anim *a, u32 t, int x, int y, int pal, int flip)
 {
 	u32 i = (t * a->fps / 60) % a->count;
 	draw_frame(&a->frames[i], x, y, pal, flip);
+}
+
+/*
+ * The foreground (wm_data 29): its pieces first in the sprite table, so the
+ * board draws them in front of everything else, at most FRONT_SPRITES
+ * tiles a frame so the actors always have room. A piece moves faster than
+ * the camera (speed > 100 %): it is off screen whenever its left edge is
+ * SCREEN_W / 2 or more right of the camera's middle, or its width more left,
+ * so the multiply and divide are only done for a piece that may show. Only
+ * tiles put in the table count against FRONT_SPRITES.
+ */
+#define FRONT_SPRITES 64
+static void draw_front(void)
+{
+	const struct wm_front *f;
+	int i, n = 0;
+	if (!D->n_front)
+		return;
+	f = (const struct wm_front *)((const u16 *)D->front + 16);
+	for (i = 0; i < D->n_front && i < 16; i++, f++) {
+		s32 d = (s32)f->x - cam_x - SCREEN_W / 2;
+		int w = f->cols * 16, sx, sy, r, c;
+		const u16 *t = (const u16 *)f->tiles;
+		if (d >= SCREEN_W / 2 || d <= -(SCREEN_W / 2) - w)
+			continue;
+		sx = SCREEN_W / 2 + (int)((s32)(s16)d * (s16)f->speed / 100);
+		sy = f->y - cam_y;
+		for (r = 0; r < f->rows; r++)
+			for (c = 0; c < f->cols; c++, t++) {
+				int before = nobj;
+				if (!*t)
+					continue;
+				put_sprite(sx + c * 16, sy + r * 16, *t, D->front_pal);
+				/* only the tiles that made it into the table count (put_sprite leaves out those off screen) */
+				n += nobj - before;
+				if (n >= FRONT_SPRITES)
+					return;
+			}
+	}
 }
 
 static void flush_sprites(void)
@@ -5606,6 +5648,8 @@ static void draw_world(void)
 		flush_sprites();
 		return;
 	}
+	/* the foreground first: the earlier sprite is drawn in front */
+	draw_front();
 	/* sports: the ball first, so it shows over the athletes (the earlier sprite is drawn in front) */
 	if (sports)
 		put_sprite((int)(ball_x >> 4) - cam_x - 8, (int)(ball_y >> 4) - cam_y - 12, TILE_BALL, PAL_GEMS);

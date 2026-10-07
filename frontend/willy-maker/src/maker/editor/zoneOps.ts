@@ -13,7 +13,7 @@ import { baseName } from "./parts";
 import type { EditorStore } from "./store";
 
 /** What the editor points at: a zone, an object (by its unique name) or the background. */
-export type ItemRef = { kind: "zone"; id: string } | { kind: "object"; id: string } | { kind: "bg" };
+export type ItemRef = { kind: "zone"; id: string } | { kind: "object"; id: string } | { kind: "front"; id: string } | { kind: "bg" };
 
 export function sameRef(a: ItemRef | null, b: ItemRef | null): boolean {
   if (!a || !b || a.kind !== b.kind) return false;
@@ -132,7 +132,8 @@ export function patchZone(store: EditorStore, levelId: string, id: string, patch
 }
 
 export function removeItem(store: EditorStore, levelId: string, ref: ItemRef, label: string): void {
-  if (ref.kind === "bg") return;
+  // the background stays; a foreground piece goes with ui/studio/front.ts (its tiles are fitted again)
+  if (ref.kind === "bg" || ref.kind === "front") return;
   editZones(store, levelId, label, (level) => {
     if (ref.kind === "zone") level.zones = (level.zones ?? []).filter((z) => z.id !== ref.id);
     else {
@@ -155,7 +156,7 @@ export function uniqueObjectName(level: Level, base: string): string {
 
 /** A copy two grid steps to the right (kept inside the level); returns what to select. */
 export function duplicateItem(store: EditorStore, levelId: string, ref: ItemRef, step: number, label: string): ItemRef | null {
-  if (ref.kind === "bg") return null;
+  if (ref.kind === "bg" || ref.kind === "front") return null;
   let out: ItemRef | null = null;
   editZones(store, levelId, label, (level) => {
     if (ref.kind === "zone") {
@@ -380,7 +381,7 @@ export function groupItem(store: EditorStore, levelId: string, ref: ItemRef, lab
 
 /** Hides, locks or renames a zone or an object (an object's `name` is its reference and stays; it gets a `label`). */
 export function patchItem(store: EditorStore, levelId: string, ref: ItemRef, patch: { hidden?: boolean; locked?: boolean; name?: string }, label: string, merge?: string): void {
-  if (ref.kind === "bg") return;
+  if (ref.kind === "bg" || ref.kind === "front") return;
   editZones(store, levelId, label, (level) => {
     const it: Record<string, unknown> | undefined = ref.kind === "zone" ? (findZone(level, ref.id) as unknown as Record<string, unknown>) : findObject(level, ref.id);
     if (!it) return;

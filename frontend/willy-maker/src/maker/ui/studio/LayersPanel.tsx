@@ -8,7 +8,8 @@
 // where new zones and objects go.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, Lock, LockOpen, Mountain, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, LampFloor, Lock, LockOpen, Mountain, X } from "lucide-react";
+import { removePiece } from "./front";
 import { useStudioText } from "../../i18n";
 import { groupOf, objectLayer, type LayerGroup, type Level, type LevelObject, type Zone } from "../../model";
 import type { EditorStore } from "../../editor/store";
@@ -83,6 +84,40 @@ export function LayersPanel({ store, level, version, images, zoneInfo, objectInf
 
   return (
     <div className="studio-layers-list">
+      {/* the foreground: in front of everything in the game, so first */}
+      {!!level.front?.length && (
+        <div className="studio-group">
+          <div className="studio-group-head is-background">
+            <span className="studio-group-name">{t.front.layer}</span>
+          </div>
+          {[...level.front].reverse().map((f) => (
+            <div
+              key={f.id}
+              className={`studio-bg-row is-far${s.sel?.kind === "front" && s.sel.id === f.id ? " is-selected" : ""}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => ui.set({ sel: { kind: "front", id: f.id }, activeGroup: null })}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && ui.set({ sel: { kind: "front", id: f.id }, activeGroup: null })}
+            >
+              <LampFloor size={14} aria-hidden="true" />
+              <span className="studio-ellipsis">{f.name}</span>
+              <button
+                type="button"
+                className="btn btn-icon studio-small"
+                aria-label={`${t.front.remove}: ${f.name}`}
+                title={t.front.remove}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (s.sel?.kind === "front" && s.sel.id === f.id) ui.set({ sel: null });
+                  void removePiece(store, level.id, f.id, t.undoLabels.frontRemove);
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {groups.map((g) => {
         const rows: ReactNode[] = [];
         const objects = objectLayer(level).items.filter((o) => groupOf(level, o, "objects")?.id === g.id).reverse();
