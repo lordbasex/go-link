@@ -140,6 +140,41 @@ func TestToI420DoubleEqualsUpscaleThenConvert(t *testing.T) {
 	}
 }
 
+// upscaleN repeats every pixel of f over an n x n block, in f's own format.
+func upscaleN(f Frame, n int) Frame {
+	bpp := 2
+	if f.Format == FormatXRGB8888 {
+		bpp = 4
+	}
+	pitch := n * f.Width * bpp
+	out := Frame{Data: make([]byte, pitch*n*f.Height), Width: n * f.Width, Height: n * f.Height, Pitch: pitch, Format: f.Format}
+	for y := 0; y < out.Height; y++ {
+		for x := 0; x < out.Width; x++ {
+			src := f.Data[(y/n)*f.Pitch+(x/n)*bpp:]
+			copy(out.Data[y*pitch+x*bpp:], src[:bpp])
+		}
+	}
+	return out
+}
+
+func TestToI420ScaledEqualsUpscaleThenConvert(t *testing.T) {
+	sizes := [][2]int{{1, 1}, {2, 2}, {3, 5}, {7, 4}, {17, 9}, {64, 36}}
+	for _, format := range formats {
+		for n := 1; n <= 6; n++ {
+			for i, sz := range sizes {
+				f := randomFrame(format, sz[0], sz[1], uint32(i+n)*7919)
+				want := make([]byte, FrameSizeI420(n*sz[0], n*sz[1]))
+				ToI420(want, upscaleN(f, n))
+				got := make([]byte, len(want))
+				ToI420Scaled(got, f, n)
+				if string(got) != string(want) {
+					t.Fatalf("format %d %dx%d x%d: the fused conversion differs from upscale then ToI420", format, sz[0], sz[1], n)
+				}
+			}
+		}
+	}
+}
+
 // boxReference is the plain definition of ToI420Box: ToI420's luma, and
 // each chroma sample the rounded mean of its block's per-pixel chroma.
 func boxReference(f Frame) []byte {
@@ -203,6 +238,9 @@ func benchFrame(b *testing.B, convert func([]byte, Frame), scale int) {
 func BenchmarkToI420(b *testing.B)       { benchFrame(b, ToI420, 1) }
 func BenchmarkToI420Box(b *testing.B)    { benchFrame(b, ToI420Box, 1) }
 func BenchmarkToI420Double(b *testing.B) { benchFrame(b, ToI420Double, 2) }
+func BenchmarkToI420Scaled3(b *testing.B) {
+	benchFrame(b, func(dst []byte, f Frame) { ToI420Scaled(dst, f, 3) }, 3)
+}
 
 // BenchmarkUpscaleThenToI420 is the separate path the fused one replaces.
 func BenchmarkUpscaleThenToI420(b *testing.B) {

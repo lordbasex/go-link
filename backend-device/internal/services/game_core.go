@@ -30,6 +30,10 @@ type GameCoreConfig struct {
 	// VideoMode is how frames are converted to I420 (the zero value is the
 	// game's size with top-left chroma); SetVideoMode changes it later.
 	VideoMode emuproc.VideoMode
+	// Upscale, when above 1, enlarges every frame that many times with
+	// nearest neighbour instead of VideoMode: go-link HD's 640 x 360 screen
+	// is streamed x3 at 1080p.
+	Upscale int
 	// RawVideo, when set, also receives the core's own frame before the
 	// I420 conversion (nil Data repeats the previous one). Only the video
 	// quality lab uses it; Data is only valid during the call.
@@ -56,7 +60,8 @@ type GameCore struct {
 	frame    []byte
 	fw, fh   int
 	mode     emuproc.VideoMode // for the next frames
-	scale    int               // of frame: 1, or 2 when enlarged
+	scale    int               // of frame: 1, or 2 when enlarged (Upscale with it)
+	upscale  int
 	frameDur time.Duration
 	resample *libretro.Resampler
 	capture  []string // core log lines, while SavesComplete listens
@@ -105,7 +110,7 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 	if err := os.MkdirAll(cfg.SystemDir, 0o755); err != nil {
 		return nil, err
 	}
-	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1}
+	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1, upscale: cfg.Upscale}
 	log := cfg.Logger
 	// Never run a core someone changed after it was downloaded.
 	if err := cores.Verify(cfg.CorePath); err != nil {
@@ -171,6 +176,15 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 
 // convert turns a core frame into the I420 picture of the current mode.
 func (g *GameCore) convert(f libretro.Frame) {
+	if g.upscale > 1 {
+		w, h := f.Width*g.upscale, f.Height*g.upscale
+		if size := libretro.FrameSizeI420(w, h); len(g.frame) != size {
+			g.frame = make([]byte, size)
+		}
+		libretro.ToI420Scaled(g.frame, f, g.upscale)
+		g.fw, g.fh, g.scale = w, h, g.upscale
+		return
+	}
 	scale := g.mode.Scale()
 	w, h := f.Width*scale, f.Height*scale
 	if size := libretro.FrameSizeI420(w, h); len(g.frame) != size {
@@ -190,7 +204,7 @@ func (g *GameCore) convert(f libretro.Frame) {
 // SetVideoMode changes how the next frames are converted.
 func (g *GameCore) SetVideoMode(m emuproc.VideoMode) { g.mode = m }
 
-// VideoScale is how many times the last picture is enlarged (1 or 2).
+// VideoScale is how many times the last picture is enlarged (1 or 2, or Upscale).
 func (g *GameCore) VideoScale() int { return g.scale }
 
 // Info returns the core's name and version.

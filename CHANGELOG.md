@@ -7,6 +7,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 ### Changed (go-link HD)
 
 - **The engine is C99, in its own repository:** go-link HD's core is written in C99 instead of Go, in `golink-hd`, so it can be published to libretro; the device calls it from Go through `pkg/libretro`. Phase 1's core and its demo are done; status and phases updated.
+- **The device plays go-link HD:** `--test-room-hd 720p|1080p|2160p --hd-core PATH` makes the test room play the core's built-in demo, its 640 × 360 screen enlarged ×2, ×3 or ×6 (`libretro.ToI420Scaled`, bit for bit the same as enlarging first), seated players at its ports; `pkg/libretro` starts a core with no content when given an empty path; a test runs the real core when `GOLINK_HD_CORE` is set.
 
 ## [0.2.5] - 2026-10-07
 

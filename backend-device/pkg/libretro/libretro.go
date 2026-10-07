@@ -159,11 +159,19 @@ func (k *Core) Info() SystemInfo {
 	}
 }
 
-// Load starts a game from its file (a ROM zip for MAME cores).
+// Load starts a game from its file (a ROM zip for MAME cores). An empty
+// path starts the core with no content, for cores that support it (go-link
+// HD plays its built-in demo).
 func (k *Core) Load(path string) (AVInfo, error) {
-	cpath := C.CString(path)
-	k.strings = append(k.strings, cpath) // cores may keep the pointer
+	var cpath *C.char
+	if path != "" {
+		cpath = C.CString(path)
+		k.strings = append(k.strings, cpath) // cores may keep the pointer
+	}
 	if !C.core_load_game(k.c, cpath) {
+		if path == "" {
+			return AVInfo{}, errors.New("libretro: the core could not start with no content")
+		}
 		return AVInfo{}, fmt.Errorf("libretro: the core could not load %s", path)
 	}
 	k.loaded = true
