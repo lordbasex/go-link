@@ -1,5 +1,5 @@
 diff --git a/src/sound/ym2151.c b/src/sound/ym2151.c
-index c5403a6..b80f64d 100644
+index c5403a6..9c2e99b 100644
 --- a/src/sound/ym2151.c
 +++ b/src/sound/ym2151.c
 @@ -130,6 +130,8 @@ typedef struct
@@ -11,7 +11,7 @@ index c5403a6..b80f64d 100644
  #else
  	UINT8		tim_A;					/* timer A enable (0-disabled) */
  	UINT8		tim_B;					/* timer B enable (0-disabled) */
-@@ -1388,6 +1390,33 @@ int YM2151ReadStatus( int n )
+@@ -1388,6 +1390,35 @@ int YM2151ReadStatus( int n )
  /*
  *	state save support for MAME
  */
@@ -19,6 +19,7 @@ index c5403a6..b80f64d 100644
 +   time left to each overflow, and start them again after loading. Without
 +   this a loaded game whose sound CPU waits for a timer flag, or takes its
 +   interrupt from a timer, stays silent. */
++#ifdef USE_MAME_TIMERS
 +static double ym2151_timer_left(void *timer)
 +{
 +	int enabled = timer_enable(timer, 1);
@@ -41,15 +42,17 @@ index c5403a6..b80f64d 100644
 +		YMPSG[i].timer_B_left = ym2151_timer_left(YMPSG[i].timer_B);
 +	}
 +}
++#endif
 +
  static void ym2151_postload_refresh(void)
  {
  	int i,j;
-@@ -1398,6 +1427,15 @@ static void ym2151_postload_refresh(void)
+@@ -1398,6 +1429,17 @@ static void ym2151_postload_refresh(void)
  		{
  			set_connect(&YMPSG[i].oper[j*4], j, YMPSG[i].connect[j]);
  		}
 +
++#ifdef USE_MAME_TIMERS
 +		if (YMPSG[i].timer_A_left >= 0)
 +			timer_adjust(YMPSG[i].timer_A, YMPSG[i].timer_A_left, i, 0);
 +		else
@@ -58,10 +61,11 @@ index c5403a6..b80f64d 100644
 +			timer_adjust(YMPSG[i].timer_B, YMPSG[i].timer_B_left, i, 0);
 +		else
 +			timer_enable(YMPSG[i].timer_B, 0);
++#endif
  	}
  }
  
-@@ -1498,11 +1536,14 @@ static void ym2151_state_save_register( int numchips )
+@@ -1498,11 +1540,16 @@ static void ym2151_state_save_register( int numchips )
  		
  #ifdef USE_MAME_TIMERS
  	    state_save_register_int (buf1, i, "sndindex", &YMPSG[i].irqlinestate);
@@ -72,7 +76,9 @@ index c5403a6..b80f64d 100644
  		state_save_register_UINT8  (buf1, i, "connect" , &YMPSG[i].connect[0], 8);
  	}
  
++#ifdef USE_MAME_TIMERS
 +	state_save_register_func_presave(ym2151_presave);
++#endif
  	state_save_register_func_postload(ym2151_postload_refresh);
  }
  #else
