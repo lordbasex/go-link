@@ -149,6 +149,7 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 
 	ticker := time.NewTicker(game.FrameDuration())
 	defer ticker.Stop()
+	shown := false // a frame went out since the game started
 	for {
 		select {
 		case <-cmds.quit:
@@ -161,9 +162,14 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 			continue
 		case <-ticker.C:
 		}
-		if cmds.paused.Load() {
-			continue // the parent repeats the last picture
+		// The parent repeats the last picture while the game is paused. A
+		// game paused before its first frame (a room saved paused comes back
+		// paused as soon as it is ready) runs that one frame, so it shows
+		// where it stopped instead of a black screen.
+		if cmds.paused.Load() && shown {
+			continue
 		}
+		shown = true
 		game.SetPads(cmds.pads())
 		game.SetVideoMode(emuproc.VideoMode(cmds.video.Load()))
 		game.Run()

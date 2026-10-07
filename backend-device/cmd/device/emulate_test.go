@@ -155,6 +155,31 @@ func TestEmulateWorkerWithRealCore(t *testing.T) {
 	// A new worker starts from the saved state.
 	run(state, func(*services.WorkerSource, *countingSink) {})
 
+	// A room saved paused comes back paused: it is paused as soon as the
+	// game is ready, before its first frame, and still shows the game
+	// where it stopped (one frame, which the device repeats).
+	var paused *services.WorkerSource
+	paused = services.NewWorkerSource(services.WorkerConfig{
+		CorePath: corePath, RomPath: romPath, SystemDir: system, StatePath: state, Logger: logger,
+		OnReady: func(libretro.AVInfo) { paused.SetPaused(true) },
+		Command: emulateWorker,
+	})
+	sink := &countingSink{}
+	pctx, pcancel := context.WithCancel(context.Background())
+	presult := make(chan error, 1)
+	go func() { presult <- paused.Run(pctx, sink) }()
+	deadline := time.Now().Add(15 * time.Second)
+	for frames, _ := sink.counts(); frames < 10; frames, _ = sink.counts() {
+		if time.Now().After(deadline) {
+			t.Fatalf("a game started paused shows no picture: %d frames", frames)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	pcancel()
+	if err := <-presult; err != context.Canceled {
+		t.Fatalf("paused run: %v", err)
+	}
+
 	// A ROM the core cannot load is reported with the worker's reason.
 	bad := filepath.Join(dir, "bogus.zip")
 	if err := os.WriteFile(bad, []byte("not a zip"), 0o644); err != nil {

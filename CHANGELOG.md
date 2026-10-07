@@ -10,6 +10,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed (device)
 
+- **A room that comes back paused shows its game**, not a black screen: it is paused as soon as its game is ready, before the first frame, so the device had no picture to repeat. The emulator now runs that one frame first (found in the room telemetry: a paused Street Fighter II room made no frame in an hour and a half).
 - **telemetry.db is private** (0600, with its -wal and -shm), like history.json: it keeps the participants' names and addresses.
 
 ## [0.2.4] - 2026-10-07
