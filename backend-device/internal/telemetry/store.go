@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -121,6 +122,10 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("telemetry: %w", err)
+	}
+	// Private to the user, like history.json: it keeps names and addresses.
+	for _, f := range []string{path, path + "-wal", path + "-shm"} {
+		_ = os.Chmod(f, 0o600)
 	}
 	s := &Store{db: db, ops: make(chan op, queueSize), stop: make(chan struct{}), now: time.Now}
 	s.wg.Add(1)

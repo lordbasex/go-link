@@ -4,6 +4,7 @@ package telemetry
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -93,6 +94,18 @@ func TestRunsSamplesAndEventsAreKeptPerRoom(t *testing.T) {
 	}
 	if runs, _ := s.Runs("room2"); len(runs) != 1 {
 		t.Fatal("deleting a room took another one's data")
+	}
+}
+
+func TestTheDatabaseIsPrivate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "t.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v %v", fi.Mode(), err)
 	}
 }
 

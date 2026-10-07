@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Fixed (device)
+
+- **telemetry.db is private** (0600, with its -wal and -shm), like history.json: it keeps the participants' names and addresses.
+
 ## [0.2.4] - 2026-10-07
 
 ### Added (website)
