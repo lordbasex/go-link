@@ -2933,7 +2933,8 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
    a little wider than the chat so the keyboard fits, scrolling on its own. */
 .room-controls-side { width: min(560px, 44vw); }
 .room-controls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--color-divider); }
-.room-controls-side .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; }
+.room-controls-side .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; justify-content: safe center; }
+.room-controls-side .gp-list { justify-content: center; }
 @media (max-width: 1100px) { .room-controls-side { width: 100%; } }
 /* There the keyboard fits the panel's width: smaller keys, the arrows under it. */
 .room-controls-side .kb { min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; }
