@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed (website)
 
+- **A narrow window looked broken in a room:** with the video and the chat stacked (under 1100 px wide), the chat's panel sat over the video. Now it looks like the phone app: the video on top at the full width and its own shape, and the chat under it filling the rest of the window with its own scroll.
 - **The chat always shows the newest message.** It followed new lines by counting them, and the chat keeps the last 200 lines (seat changes included): once a long session reached 200, new messages stopped scrolling into view. It also stayed put when the chat changed height. Now it follows every new line and every change of height while you are at the bottom, and leaves you where you are if you scrolled up to read older lines (in the room's side panel and in the phone console's drawer).
 
 ### Changed (website)
