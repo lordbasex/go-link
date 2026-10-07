@@ -181,6 +181,10 @@ Each room in `device_status.rooms`:
 
 `pause_asks` (only while someone asks) lists the pending requests for a pause, so a browser that opens later sees them too. `video` (only while the game runs) is what the room really sends: `quality` in use, `scale` (2 or 1) and `fallback: "cpu"` when it is lower than the host's choice because this computer could not keep up with 2x (see [Video scale](#video-scale)).
 
+## VP8 packets
+
+The device cuts each VP8 frame into RTP packets with its own payloader (`internal/services/vp8_payloader.go`, RFC 7741): every frame carries a 15-bit PictureID, 0 included, wrapping from 32767 to 0, as browsers send it. Pion's payloader leaves the PictureID out of frame 0 and writes IDs under 128 in 7 bits; every 32768 frames (9 min 6 s at 60 fps) the browser met a frame with no PictureID, lost the frame references and dropped the picture until the next keyframe.
+
 ## Video scale
 
 Arcade pixel art has one color per pixel, but VP8 (4:2:0) keeps one color sample per 2x2 block, so at the game's own size small colored details bleed. Game rooms therefore send the picture **enlarged 2x with nearest neighbour** (each game pixel becomes a 2x2 block, so it gets its own color sample), and the website averages it back before drawing. The [video quality lab](quality.md) measured about +7 dB RGB PSNR over the old stream.

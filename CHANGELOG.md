@@ -10,6 +10,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed (device)
 
+- **No more freeze every 9 minutes:** the picture stopped for up to 3 s every 546 s, each time ~130 ms shorter, with no lost packets. Every 32768 frames the VP8 PictureID wrapped to 0 and Pion's payloader left it out of that frame, so the browser dropped the picture until the next keyframe (a keyframe every 180 frames, and 32768 = 182 × 180 + 8, hence the shorter freeze each time). The device now uses its own VP8 payloader with a 15-bit PictureID on every frame. Found in the room telemetry, predicted to the second in a new room (13:32:21, 13:41:27, 13:50:33) and gone with the fix after 39,740 frames.
 - **The CLI takes flags after its arguments:** `device telemetry export '#f7d0' --since 3h` stopped with the usage message, because Go's flag package stops reading at the first argument; every command now reads flags anywhere (`--` still ends them). `--since` also narrows a game id, not only a room (it used to export the whole run).
 - **A room that comes back paused shows its game**, not a black screen: it is paused as soon as its game is ready, before the first frame, so the device had no picture to repeat. The emulator now runs that one frame first (found in the room telemetry: a paused Street Fighter II room made no frame in an hour and a half).
 - **telemetry.db is private** (0600, with its -wal and -shm), like history.json: it keeps the participants' names and addresses.

@@ -459,7 +459,7 @@ func NewStreamService(cfg StreamConfig, ice *ICEStore) (*StreamService, error) {
 	if cfg.H264Encoder != "" {
 		video = webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264, ClockRate: 90000, SDPFmtpLine: h264Fmtp}
 	}
-	track, err := webrtc.NewTrackLocalStaticSample(video, "video", "go-link")
+	track, err := newVideoTrack(video)
 	if err != nil {
 		return nil, err
 	}
@@ -1176,7 +1176,7 @@ func (s *StreamService) addMedia(v *viewer) error {
 	if s.tiers != nil {
 		// a tiered stream gives every viewer its own track, one size down
 		// until the viewer says what it shows (video_tiers.go)
-		own, err := webrtc.NewTrackLocalStaticSample(s.track.Codec(), "video", "go-link")
+		own, err := newVideoTrack(s.track.Codec())
 		if err != nil {
 			return err
 		}
