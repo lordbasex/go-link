@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { execFileSync, spawn } from "node:child_process";
 import { closeSync, cpSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PORTS } from "./ports";
 import { STATE_FILE, type Stack } from "./stack";
@@ -64,6 +64,8 @@ export default async function globalSetup() {
   // E2E_CORE_DIR: a folder with the emulator core (like ~/go-link/cores), copied into the
   // device's throwaway HOME so game rooms can run (tests/maker-room.spec.ts); CI has none.
   if (process.env.E2E_CORE_DIR) cpSync(process.env.E2E_CORE_DIR, join(state, "home", "go-link", "cores"), { recursive: true });
+  // E2E_ROMS: files (comma separated) copied into the device's ROM folder, e.g. a go-link HD package (tests/hd-core.spec.ts)
+  for (const rom of (process.env.E2E_ROMS ?? "").split(",").filter(Boolean)) cpSync(rom, join(state, "home", "go-link", "roms", basename(rom)));
 
   const signalLog = openSync(join(state, "signal.log"), "a");
   const signal = spawn(join(bin, "signal"), [], {

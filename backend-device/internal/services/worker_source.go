@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,7 +29,10 @@ type WorkerConfig struct {
 	CorePath, RomPath, SystemDir string
 	// StatePath is an optional save state loaded right after the game.
 	StatePath string
-	Logger    *slog.Logger
+	// Upscale enlarges the picture that many times (go-link HD's 640x360
+	// screen: 2 for 720p, 3 for 1080p); 0 or 1 keeps the video mode.
+	Upscale int
+	Logger  *slog.Logger
 	// OnReady runs once the game is loaded, before the first frame.
 	OnReady func(libretro.AVInfo)
 	// Command builds the worker process from its arguments; nil runs Exe.
@@ -193,6 +197,9 @@ func (s *WorkerSource) args() []string {
 	}
 	if s.cfg.StatePath != "" {
 		args = append(args, "--state", s.cfg.StatePath)
+	}
+	if s.cfg.Upscale > 1 {
+		args = append(args, "--upscale", strconv.Itoa(s.cfg.Upscale))
 	}
 	return args
 }

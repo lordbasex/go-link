@@ -6,7 +6,7 @@ import { t } from "../i18n";
 import { DEMO_ROMS, DEMO_ROOM_ID } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
 import { romCheckText } from "../components/romCheck";
-import { romPlayable, type DeviceRom } from "@go-link/shared";
+import { romFile, romPlayable, type DeviceRom } from "@go-link/shared";
 import { GamePicker } from "../components/GamePicker";
 import { GamepadIcon, LockIcon } from "../components/Icons";
 import { Chip, HeroTile, PageHero } from "../components/ui/PageHero";
@@ -45,7 +45,7 @@ export function CreateRoomPage() {
         game: r.title || r.name,
         detail:
           [r.year, r.maker, ownControlsText(r)].filter(Boolean).join(" · ") ||
-          `${r.name}.zip`,
+          romFile(r),
         playable: romPlayable(r),
         note: romCheckText(r.check),
       }));
@@ -93,7 +93,8 @@ export function CreateRoomPage() {
   }, [demo, onDeviceMessage, navigate]);
 
   const linked = demo || hostLink !== null;
-  const coreReady = demo || library?.core.installed === true;
+  // a go-link HD package needs go-link HD's core, every other game the MAME core
+  const coreReady = demo || (selected?.rom?.kind === "glhd" ? library?.core.hdInstalled === true : library?.core.installed === true);
   const canCreate =
     linked && coreReady && !!selected && roomName.trim() !== "" && !creating;
   const roomId = demo ? DEMO_ROOM_ID : "";
@@ -234,7 +235,7 @@ export function CreateRoomPage() {
                     {unplayable.map((r) => (
                       <li key={r.id} className="small">
                         <span className="strong">{r.game}</span>{" "}
-                        <span className="mono faint">{r.id}.zip</span>
+                        <span className="mono faint">{r.rom ? romFile(r.rom) : `${r.id}.zip`}</span>
                         <span className="option-note">{r.note}</span>
                       </li>
                     ))}
@@ -355,7 +356,7 @@ function GamePreview({ option }: { option: RomOption | undefined }) {
           {option.rom?.own && <OwnBadge />}
         </span>
         <span className="small muted">{option.detail}</span>
-        <span className="small faint mono">{option.id}.zip</span>
+        <span className="small faint mono">{option.rom ? romFile(option.rom) : `${option.id}.zip`}</span>
       </div>
     </div>
   );

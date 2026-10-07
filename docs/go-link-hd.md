@@ -240,9 +240,9 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 
 | Phase | What | Rough size |
 |---|---|---|
-| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room (in progress since 2026-10-07: the core and its demo are done in the `golink-hd` repository, it reads game packages (`.glhd` format 1: manifest, level and PNG pictures, documented in that repository's README), and the device plays it in the test room with `--test-room-hd 1080p --hd-core PATH`) | 3-4 sessions |
-| 2 | Game rooms on the HD path; H.264 recordings | 2 sessions |
-| 3 | Willy Maker's go-link HD board: export, play mode in WebAssembly, validation | 3-4 sessions |
+| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room (proof of concept done on 2026-10-07: the core and its demo in the `golink-hd` repository, game packages (`.glhd` format 1: manifest, level and optional PNG pictures, documented in that repository's README), and the device plays it in the test room with `--test-room-hd 1080p --hd-core PATH`; `e2e/tests/hd-core.spec.ts` checks it through WebRTC) | 3-4 sessions |
+| 2 | Game rooms on the HD path; H.264 recordings (proof of concept done on 2026-10-07: `.glhd` packages in the ROM folder are listed and start game rooms with go-link HD's core at 720p or 1080p; the tiers, H.264 and recordings for those rooms are next) | 2 sessions |
+| 3 | Willy Maker's go-link HD board: export, play mode in WebAssembly, validation (proof of concept done on 2026-10-07: a platformer's Export tab downloads a `.glhd` with its first level and the city tiles, [file-format.md](willy-maker/file-format.md#the-go-link-hd-package-glhd-beta); the end to end test plays it in a game room) | 3-4 sessions |
 | 4 | Later items: skeletal animation, lights, post effects, Mode 7, more genres | by parts |
 | 5 | Distribution: the core submitted to libretro (its GitLab CI templates and the core-info file), so the buildbot builds it for every platform and go-link's device downloads it from there | 1-2 sessions |
 

@@ -27,6 +27,9 @@ type emulateConfig struct {
 	// Video is how frames are converted (--video: native, box or double);
 	// the parent can change it later with a VideoMode message.
 	Video emuproc.VideoMode
+	// Upscale enlarges every frame that many times instead (--upscale,
+	// go-link HD's 640x360 screen).
+	Upscale int
 }
 
 // runEmulate is the hidden "emulate" subcommand: an emulator worker that
@@ -34,7 +37,7 @@ type emulateConfig struct {
 // media on stdout, with its log on stderr. The device starts one per game
 // (services.WorkerSource), so several games can run at once.
 //
-//	device emulate --core PATH --rom PATH --system DIR [--state PATH] [--video native|box|double]
+//	device emulate --core PATH --rom PATH --system DIR [--state PATH] [--video native|box|double] [--upscale N]
 func runEmulate(args []string) error {
 	fs := flag.NewFlagSet("emulate", flag.ContinueOnError)
 	var cfg emulateConfig
@@ -42,6 +45,7 @@ func runEmulate(args []string) error {
 	fs.StringVar(&cfg.RomPath, "rom", "", "ROM set to run")
 	fs.StringVar(&cfg.SystemDir, "system", "", "system folder: BIOS, samples, NVRAM")
 	fs.StringVar(&cfg.StatePath, "state", "", "save state to load after the game starts")
+	fs.IntVar(&cfg.Upscale, "upscale", 0, "enlarge every frame this many times with nearest neighbour (go-link HD), instead of --video")
 	video := fs.String("video", "native", "how frames are converted: native, box (2x2 averaged color) or double (2x nearest neighbour)")
 	probe := fs.String("probe", "", `test the game's saves instead of streaming it: "save" or "load" (see runProbe)`)
 	probeFile := fs.String("probe-file", "", "the save state the probe writes (save) or reads (load)")
@@ -92,6 +96,7 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 		SystemDir: cfg.SystemDir,
 		Logger:    log,
 		VideoMode: cfg.Video,
+		Upscale:   cfg.Upscale,
 		Video: func(i420 []byte, width, height int, dur time.Duration) {
 			if writeErr == nil && !hidden {
 				writeErr = w.WriteVideo(width, height, game.VideoScale(), dur, i420)

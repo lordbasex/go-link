@@ -8,7 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { formatBytes, romPlayable, type DeviceRom } from "@go-link/shared";
+import { formatBytes, romFile, romPlayable, type DeviceRom } from "@go-link/shared";
 import { t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
 import { romCheckText } from "../romCheck";
@@ -403,7 +403,7 @@ function RomTable({ roms }: { roms: DeviceRom[] }) {
                     </span>
                   </div>
                 </td>
-                <td className="roms-col-set mono small muted">{r.name}.zip</td>
+                <td className="roms-col-set mono small muted">{romFile(r)}</td>
                 <td className="roms-col-year">{r.year || "–"}</td>
                 <td className="roms-col-maker">{r.maker || "–"}</td>
                 <td className="roms-num mono small">{formatBytes(r.size)}</td>

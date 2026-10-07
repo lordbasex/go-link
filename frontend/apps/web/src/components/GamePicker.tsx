@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { DeviceRom } from "@go-link/shared";
+import { romFile, type DeviceRom } from "@go-link/shared";
 import { t } from "../i18n";
 import { MiniArt } from "./device/RomsTab";
 
@@ -112,7 +112,7 @@ export function GamePicker({
             <span className="game-picker-text">
               <span className="strong game-picker-title">{selected.game}</span>
               <span className="small muted">
-                {selected.detail} · <span className="mono">{selected.id}.zip</span>
+                {selected.detail} · <span className="mono">{selected.rom ? romFile(selected.rom) : `${selected.id}.zip`}</span>
               </span>
             </span>
           </>
@@ -179,7 +179,7 @@ export function GamePicker({
                 <span className="game-picker-text">
                   <span className="game-picker-title">{o.game}</span>
                   <span className="small faint">
-                    {o.detail} · <span className="mono">{o.id}.zip</span>
+                    {o.detail} · <span className="mono">{o.rom ? romFile(o.rom) : `${o.id}.zip`}</span>
                   </span>
                   {o.note && <span className="small option-note">{o.note}</span>}
                 </span>

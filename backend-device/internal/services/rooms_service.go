@@ -19,6 +19,7 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
+	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
@@ -442,7 +443,7 @@ func (r *RoomsService) Create(req GameRequest, reply func(GameReply)) error {
 	if !lib.HasRom(req.Rom) {
 		return ErrUnknownRom
 	}
-	if !lib.HasCore() {
+	if !lib.HasCoreFor(req.Rom) {
 		return ErrNoCore
 	}
 	if req.Rom == MakerRom {
@@ -1525,6 +1526,10 @@ func (r *RoomsService) controlsOf(rom string) GameControls {
 		return GameControls{Players: m.Players, Buttons: buttons, Control: "joy8way", Labels: m.Labels}
 	}
 	if r.cfg.Library != nil {
+		// go-link HD's packages: their players, the platformer's buttons
+		if m := r.cfg.Library.HD(rom); m != nil {
+			return GameControls{Players: m.Players, Buttons: len(glhd.Labels), Control: "joy8way", Labels: glhd.Labels}
+		}
 		// go-link's own games name their buttons.
 		if s := r.cfg.Library.Own(rom); s != nil {
 			return GameControls{Players: s.Players, Buttons: s.Buttons, Control: s.Control, Labels: s.Labels}

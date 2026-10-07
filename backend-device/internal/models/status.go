@@ -74,11 +74,21 @@ type CoreStatus struct {
 	// running them. It is downloaded with the core.
 	Catalog bool   `json:"catalog"`
 	Error   string `json:"error,omitempty"`
+	// HDInstalled tells whether go-link HD's core (for .glhd packages) is
+	// on the device.
+	HDInstalled bool `json:"hd_installed,omitempty"`
 }
 
-// RomInfo is one ROM set (a .zip) in the folder.
+// KindHD marks a go-link HD game package (.glhd) in the library.
+const KindHD = "glhd"
+
+// RomInfo is one ROM set (a .zip) or go-link HD game package (.glhd,
+// Kind "glhd") in the folder.
 type RomInfo struct {
-	Name  string `json:"name"`
+	Name string `json:"name"`
+	// Kind is empty for a MAME set and KindHD for a go-link HD package,
+	// whose Title, Description and Controls come from its manifest.
+	Kind  string `json:"kind,omitempty"`
 	Size  int64  `json:"size"`
 	Title string `json:"title,omitempty"`
 	Year  string `json:"year,omitempty"`
