@@ -56,6 +56,8 @@ export interface StudioUiState {
   menu: { x: number; y: number; target: MenuTarget } | null;
   /** What is selected on the canvas. */
   sel: ItemRef | null;
+  /** With the background selected: the scene picked on the canvas (Level.scenes id). */
+  scene: string | null;
   /** The group whose header was clicked last: new zones and objects go into it when it takes them. */
   activeGroup: string | null;
   picker: PickerState | null;
@@ -106,6 +108,7 @@ export function defaultUi(): StudioUiState {
     debug: { frame: true, collision: false, hitboxes: false, camera: false, fps: false, slow: false },
     menu: null,
     sel: null,
+    scene: null,
     activeGroup: null,
     picker: null,
     renaming: null,

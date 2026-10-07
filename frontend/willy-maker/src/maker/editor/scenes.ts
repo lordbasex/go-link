@@ -6,6 +6,9 @@
 // up a scene lays them all out again. Each scene is scaled to its share of
 // the level's height and stretched a few pixels so its width is whole 32 px
 // columns (as one background always was: a growing level ends on that grid).
+// Scenes may overlap (a later one is drawn over an earlier one) and each may
+// have its left and right edges cut off (cropL, cropR), so a seam between two
+// pictures can be hidden under the next one's edge.
 // "Line up the floor" finds, where two scenes meet, each one's floor line
 // (the strongest horizontal edge in the floor band, along that edge of the
 // picture: the sidewalk's edge, the wall's top) and moves each scene up or
@@ -34,12 +37,22 @@ function sceneKeys(level: Level, src: Rgba, scale: number, key: boolean): KeyIma
   return out;
 }
 
-/** Where the next scene goes: right after the last one (0 for the first). */
+/** The part of a scene that shows (level px): its edges less the crop, top and height. */
+export function sceneBox(level: Level, s: BackgroundScene, src: { w: number; h: number }): { x: number; y: number; w: number; h: number; full: number } {
+  const { w, h } = sceneSize(level, src, s.scale);
+  const l = Math.max(0, Math.min(w - 16, s.cropL ?? 0));
+  const r = Math.max(0, Math.min(w - 16 - l, s.cropR ?? 0));
+  return { x: s.x + l, y: level.size.h - h + s.dy, w: w - l - r, h, full: w };
+}
+
+/** Where the next scene goes: right after the last one's visible part (0 for the first). */
 export function nextSceneX(level: Level, scenes: readonly BackgroundScene[], sources: ReadonlyMap<string, Rgba>): number {
   let end = 0;
   for (const s of scenes) {
     const src = sources.get(s.asset);
-    if (src) end = Math.max(end, s.x + sceneSize(level, src, s.scale).w);
+    if (!src) continue;
+    const b = sceneBox(level, s, src);
+    end = Math.max(end, b.x + b.w);
   }
   return end;
 }
@@ -57,8 +70,13 @@ export function composeScenes(level: Level, scenes: readonly BackgroundScene[], 
   for (const s of scenes) {
     const src = sources.get(s.asset);
     if (!src) continue;
+    const b = sceneBox(level, s, src);
     const pic = sceneKeys(level, src, s.scale, keyMagenta(src));
-    place(keys, pic, s.x, h - pic.h + s.dy, false);
+    // only the columns that are not cropped
+    const shown: KeyImage = { w: b.w, h: pic.h, keys: new Int16Array(b.w * pic.h) };
+    const l = b.x - s.x;
+    for (let y = 0; y < pic.h; y++) shown.keys.set(pic.keys.subarray(y * pic.w + l, y * pic.w + l + b.w), y * b.w);
+    place(keys, shown, b.x, b.y, false);
   }
   return { keys, width };
 }
@@ -121,23 +139,34 @@ const EDGE = 0.06;
 /** Where a scene's floor line falls in the level (px) along its left or right edge (or across it), or null when its picture is unknown or has none. */
 export function sceneFloor(level: Level, s: BackgroundScene, sources: ReadonlyMap<string, Rgba>, side: "left" | "right" | "all" = "all"): number | null {
   const src = sources.get(s.asset);
-  const f = src ? (side === "left" ? floorLine(src, 0, EDGE) : side === "right" ? floorLine(src, 1 - EDGE, 1) : floorLine(src)) : null;
-  if (!src || f === null) return null;
+  if (!src) return null;
+  // the visible edges, as shares of the picture's width
+  const b = sceneBox(level, s, src);
+  const l = (b.x - s.x) / b.full;
+  const r = (b.x - s.x + b.w) / b.full;
+  const f = side === "left" ? floorLine(src, l, l + EDGE) : side === "right" ? floorLine(src, r - EDGE, r) : floorLine(src, l, r);
+  if (f === null) return null;
   const { h } = sceneSize(level, src, s.scale);
   return level.size.h - h + s.dy + f * h;
 }
 
 /**
  * Every scene moved up or down so the floor line along its left edge meets
- * the one before it along that one's right edge, in a chain from the first
- * (which stays; a scene whose floor cannot be told stays too).
+ * the one before it along that one's right edge, in a chain from the
+ * leftmost (which stays; a scene whose floor cannot be told stays too).
  */
 export function lineUpFloors(level: Level, scenes: readonly BackgroundScene[], sources: ReadonlyMap<string, Rgba>): BackgroundScene[] {
   const out = scenes.map((s) => ({ ...s }));
-  for (let i = 1; i < out.length; i++) {
-    const before = sceneFloor(level, out[i - 1]!, sources, "right");
-    const here = sceneFloor(level, out[i]!, sources, "left");
-    if (before !== null && here !== null) out[i]!.dy = Math.round(out[i]!.dy + before - here);
+  // left to right by where each one's visible part starts (the list is the drawing order)
+  const left = (s: BackgroundScene) => {
+    const src = sources.get(s.asset);
+    return src ? sceneBox(level, s, src).x : s.x;
+  };
+  const order = [...out].sort((a, b) => left(a) - left(b));
+  for (let i = 1; i < order.length; i++) {
+    const before = sceneFloor(level, order[i - 1]!, sources, "right");
+    const here = sceneFloor(level, order[i]!, sources, "left");
+    if (before !== null && here !== null) order[i]!.dy = Math.round(order[i]!.dy + before - here);
   }
   return out;
 }

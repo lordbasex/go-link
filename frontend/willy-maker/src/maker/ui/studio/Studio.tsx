@@ -9,7 +9,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCore, useStudioText, type Lang } from "../../i18n";
-import { cloneProject, findLevel, newId, newLevel, newProject, objectLayer, reconcileZones, type Level, type LevelObject, type Project, type ValidationIssue, type Zone } from "../../model";
+import { cloneProject, findLevel, newId, newLevel, newProject, objectLayer, reconcileZones, type BackgroundScene, type Level, type LevelObject, type Project, type ValidationIssue, type Zone } from "../../model";
 import { EditorStore } from "../../editor/store";
 import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
@@ -264,6 +264,11 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     frontDone(r, t.toast.frontReady);
     const added = store.level(level.id)?.front?.find((f) => !before.has(f.id));
     if (added) ui.set({ sel: { kind: "front", id: added.id }, tool: "select" });
+  };
+  // the scenes moved, cropped, reordered or removed: the background is laid out again
+  const relayScenes = (scenes: BackgroundScene[]) => {
+    ui.flash(t.toast.fitting);
+    void layOutScenes(store, level.id, scenes, t.undoLabels.scenes).then((r) => ui.flash(r === "ok" ? t.toast.scenesReady : t.toast.bgFailed));
   };
   // what the canvas shows, for the timeline
   const [view, setView] = useState<TimelineView | null>(null);
@@ -750,6 +755,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                   onDemo={startDemo}
                   onAddScene={(f) => (f ? void addScene(f) : sceneInput.current?.click())}
                   onRepeatScene={() => void addScene("repeat")}
+                  onScenes={relayScenes}
                   onView={onView}
                 />
               )}
@@ -829,10 +835,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                 }}
                 onFlip={(name) => flipObject(store, level.id, name, t.undoLabels.flip)}
                 onReplaceBackground={pickBackground}
-                onScenes={(scenes) => {
-                  ui.flash(t.toast.fitting);
-                  void layOutScenes(store, level.id, scenes, t.undoLabels.scenes).then((r) => ui.flash(r === "ok" ? t.toast.scenesReady : t.toast.bgFailed));
-                }}
+                onScenes={relayScenes}
                 onLineUp={() => {
                   ui.flash(t.toast.fitting);
                   void lineUpScenes(store, level.id, t.undoLabels.lineUp).then((r) => ui.flash(r === "ok" ? t.toast.scenesReady : t.toast.bgFailed));

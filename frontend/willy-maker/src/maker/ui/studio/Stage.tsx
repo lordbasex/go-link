@@ -19,6 +19,8 @@ import { addZone, findObject, findZone, LiveEdit, removeItem, sameRef, targetGro
 import { useStudioText } from "../../i18n";
 import { drawArt, type TileImage } from "../render";
 import { FrontBox, ObjectBox, ZoneBox } from "./LevelItems";
+import { SceneBoxes } from "./SceneBoxes";
+import type { BackgroundScene } from "../../model";
 import { removePiece } from "./front";
 import { boxOf, groupName, hasBackgroundArt, hitAt } from "./select";
 import { MAX_ZOOM, MIN_ZOOM, useStudioUi, useUiState } from "./state";
@@ -70,6 +72,8 @@ export interface StageProps {
   onRepeatScene: () => void;
   /** The view moved or changed size (the timeline follows it). */
   onView?: () => void;
+  /** A scene was moved or cropped on the canvas: lay the background out again. */
+  onScenes: (scenes: BackgroundScene[]) => void;
 }
 
 type Drag =
@@ -80,7 +84,7 @@ type Drag =
 
 const snapTo = (v: number, g: number) => Math.round(v / g) * g;
 
-export function Stage({ store, level, version, images, apiRef, onCursor, zoneLabel, objectLabel, onFile, onInsertBackground, onExample, onDemo, onAddScene, onRepeatScene, onView }: StageProps) {
+export function Stage({ store, level, version, images, apiRef, onCursor, zoneLabel, objectLabel, onFile, onInsertBackground, onExample, onDemo, onAddScene, onRepeatScene, onView, onScenes }: StageProps) {
   const t = useStudioText();
   const ui = useStudioUi();
   const s = useUiState();
@@ -463,6 +467,7 @@ export function Stage({ store, level, version, images, apiRef, onCursor, zoneLab
               <ObjectBox key={o.name} o={o} box={boxOf(o)} z={z} label={objectLabel(o.name)} selected={sel?.kind === "object" && sel.id === o.name} showLabel={s.showLabels || (sel?.kind === "object" && sel.id === o.name)} />
             ) : null,
           )}
+          {bgSelected && !!level.scenes?.length && <SceneBoxes level={level} z={z} onChange={onScenes} />}
           {(level.front ?? []).map((f) => (
             <FrontBox key={f.id} piece={f} image={images.get(frontTilesetId(level.id))} z={z} selected={sel?.kind === "front" && sel.id === f.id} label={t.front.piece(f.name)} />
           ))}

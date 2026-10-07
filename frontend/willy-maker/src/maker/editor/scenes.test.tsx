@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { migrateProject, newProject, type BackgroundScene, type Level } from "../model";
 import type { Rgba } from "./picture";
-import { composeScenes, floorLine, lineUpFloors, nextSceneX, sceneFloor, sceneSize } from "./scenes";
+import { composeScenes, floorLine, lineUpFloors, nextSceneX, sceneBox, sceneFloor, sceneSize } from "./scenes";
 
 /** A picture: dark above, a bright floor from `floor` (share of the height) down. */
 function picture(w: number, h: number, floor: number, color = [200, 160, 60]): Rgba {
@@ -38,6 +38,24 @@ describe("the background's scenes", () => {
     expect(keys.keys[8 * width + 600]).toBe(-1);
     expect(keys.keys[20 * width + 600]).not.toBe(-1);
     expect(keys.keys[20 * width + 100]).not.toBe(-1);
+  });
+
+  it("lets a later scene lie over an earlier one, its cut edge showing the one behind", () => {
+    const l = level();
+    const sources = new Map([
+      ["sha256:a", picture(1672, 941, 0.8, [200, 0, 0])],
+      ["sha256:b", picture(1672, 941, 0.8, [0, 0, 200])],
+    ]);
+    // b starts 100 px inside a, its first 40 px cut off: a shows until 420, b from there
+    const b = { ...scene("b", 380), cropL: 40 };
+    expect(sceneBox(l, b, sources.get("sha256:b")!)).toMatchObject({ x: 420, w: 440 });
+    const { keys, width } = composeScenes(l, [scene("a", 0), b], sources, () => false);
+    expect(width).toBe(864);
+    const at = (x: number) => keys.keys[260 * width + x];
+    expect(at(410)).toBe(at(10));
+    expect(at(430)).toBe(at(700));
+    expect(at(410)).not.toBe(at(430));
+    expect(nextSceneX(l, [scene("a", 0), b], sources)).toBe(860);
   });
 
   it("finds a picture's floor line and lines every scene's up with the first one's", () => {
