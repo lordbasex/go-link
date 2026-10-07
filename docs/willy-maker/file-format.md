@@ -234,7 +234,7 @@ A level whose background was made with Insert background and Add scene keeps its
 ]
 ```
 
-`asset` is the picture as given (in `assets/`), `x` its left edge in px, `dy` how far it is moved down from standing on the level's bottom (negative: up), `scale` its height as a share of the level's (0.25-4). Each scene is stretched a few pixels so its width is whole 32 px columns.
+`asset` is the picture as given (in `assets/`), `x` its left edge in px, `dy` how far it is moved down from standing on the level's bottom (negative: up), `scale` its height as a share of the level's (0.25-4), and `cropL` / `cropR` (optional, px) the edges cut off. The list is the drawing order: scenes may overlap, a later one over an earlier one. Each scene is stretched a few pixels so its width is whole 32 px columns.
 
 ## The foreground
 

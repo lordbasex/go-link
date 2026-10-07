@@ -364,6 +364,9 @@ export interface BackgroundScene {
   dy: number;
   /** Its height as a share of the level's height (1 = the whole height). */
   scale: number;
+  /** Cut off its left and right edges (level px): the scene before or after shows there, to hide a seam. */
+  cropL?: number;
+  cropR?: number;
 }
 
 export interface WalkBand {

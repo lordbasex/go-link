@@ -359,7 +359,18 @@ function normalizeLevel(raw: Level): Level {
   if (Array.isArray(raw.scenes)) {
     const scenes = (raw.scenes as unknown[]).filter(isRecord).flatMap((s) =>
       typeof s.id === "string" && typeof s.asset === "string" && s.asset.startsWith("sha256:")
-        ? [{ id: s.id, asset: s.asset, name: typeof s.name === "string" ? s.name : "", x: Math.max(0, Math.round(num(s.x, 0))), dy: Math.round(Math.max(-h, Math.min(h, num(s.dy, 0)))), scale: Math.max(0.25, Math.min(4, num(s.scale, 1))) }]
+        ? [
+            {
+              id: s.id,
+              asset: s.asset,
+              name: typeof s.name === "string" ? s.name : "",
+              x: Math.round(Math.max(-4096, num(s.x, 0))),
+              dy: Math.round(Math.max(-h, Math.min(h, num(s.dy, 0)))),
+              scale: Math.max(0.25, Math.min(4, num(s.scale, 1))),
+              ...(num(s.cropL, 0) > 0 ? { cropL: Math.round(Math.min(4096, num(s.cropL, 0))) } : {}),
+              ...(num(s.cropR, 0) > 0 ? { cropR: Math.round(Math.min(4096, num(s.cropR, 0))) } : {}),
+            },
+          ]
         : [],
     );
     if (scenes.length) level.scenes = scenes.slice(0, 64);

@@ -159,6 +159,20 @@ export async function layOutScenes(store: EditorStore, levelId: string, scenes: 
   }
 }
 
+/** Another picture for one scene: its place, height, size and crop stay. */
+export async function replaceScene(store: EditorStore, levelId: string, sceneId: string, file: File, label: string): Promise<BackgroundResult> {
+  if (!isImageFile(file)) return "not-image";
+  const level = store.level(levelId);
+  if (!level?.scenes?.some((s) => s.id === sceneId)) return "failed";
+  try {
+    const fresh = await newScene(file, 0);
+    if (!fresh) return "failed";
+    return await layOutScenes(store, levelId, level.scenes.map((s) => (s.id === sceneId ? { ...s, asset: fresh.asset, name: fresh.name } : { ...s })), label);
+  } catch {
+    return "failed";
+  }
+}
+
 /** Line up the floor: every scene moved up or down so its floor line meets the first one's, laid out again. */
 export async function lineUpScenes(store: EditorStore, levelId: string, label: string): Promise<BackgroundResult> {
   const level = store.level(levelId);
