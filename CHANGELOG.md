@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-06
+
 ### Fixed (device)
 
 - **A room has the seats its game has.** Every game room had 4 seats, so a two-player game such as Street Fighter II said "1 of 4 playing" and offered P3 and P4, which the game never reads. The room now has as many seats as the game has players (from mame2003-plus's list of games, the same number that already chose the 1P-2P start buttons): two in Street Fighter II, four in Teenage Mutant Ninja Turtles, four when the game does not say. A third person waits in the queue.
