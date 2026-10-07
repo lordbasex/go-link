@@ -10,6 +10,7 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ### Changed
 
+- **Backgrounds closer to the original picture** ([engine.md](../../docs/willy-maker/engine.md#layer-palettes)): when a background's colors do not fit the board's 32 palettes of 15 exactly, the palettes are refined after the first pass (each tile to the palette that shows it best, each palette's colors chosen again from its tiles). On a level of six image AI pictures the patches of the wrong tone are gone and the pixels visibly off went from 54 % to 42 %, with lamps and neon kept sharp. Insert background and Add scene use it; a background already in a game improves when its pictures are inserted again.
 - **Your characters instead of Willy**: in Characters, hovering an animation that already has frames plays your character's own frames (Willy stays the example for the ones without), and the editor draws your own hero, enemies, civilians and pickups with their sprite on the canvas, in the sprite picker and in Properties, where it showed boxes. Each animation's dot is green once it has frames and grey while it has none (it was always grey).
 
 ### Added
