@@ -240,7 +240,7 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 
 | Phase | What | Rough size |
 |---|---|---|
-| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room (in progress since 2026-10-07: the core and its demo are done in the `golink-hd` repository; the device plays it in the test room with `--test-room-hd 1080p --hd-core PATH`) | 3-4 sessions |
+| 1 | The core with the base picture, sound, controls and save states; a platformer demo playable in a room (in progress since 2026-10-07: the core and its demo are done in the `golink-hd` repository, it reads game packages (`.glhd` format 1: manifest, level and PNG pictures, documented in that repository's README), and the device plays it in the test room with `--test-room-hd 1080p --hd-core PATH`) | 3-4 sessions |
 | 2 | Game rooms on the HD path; H.264 recordings | 2 sessions |
 | 3 | Willy Maker's go-link HD board: export, play mode in WebAssembly, validation | 3-4 sessions |
 | 4 | Later items: skeletal animation, lights, post effects, Mode 7, more genres | by parts |
