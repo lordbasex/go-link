@@ -7,8 +7,8 @@
 # One universal app (Intel + Apple silicon). scripts/release.sh rewrites
 # version and sha256 on every release.
 cask "go-link" do
-  version "0.2.4"
-  sha256 "a5277720d4eaf10a8a645679fc3925d4f30615997b4653a1253c06cd74d9f654"
+  version "0.2.5"
+  sha256 "734774567e1e2924a8714ee6d990bffc2ecc61c84b8c83b0a6903145fe2a743a"
 
   url "https://github.com/lordbasex/go-link/releases/download/v#{version}/go-link-v#{version}-macos-universal.dmg"
   name "go-link"
