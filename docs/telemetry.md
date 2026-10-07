@@ -40,6 +40,7 @@ The test pattern room is recorded too (room `test`, one run per device run).
 | `input_pps`, `input_lost` | Input packets received, and the ones missing from their sequence |
 | `input_gap_max_ms` | Longest silence while a control was held (the browser repeats a held control every 100 ms) |
 | `rr_loss_pct`, `rr_jitter_ms`, `rr_lost` | The browser's RTCP receiver reports on the video: fraction lost, jitter, total lost |
+| `playout_max_ms` | The longest wait the device lets this browser add before showing a frame ([playout delay](protocol.md#playout-delay)) |
 | `pli`, `nack` | Keyframe requests and retransmission requests |
 | `voice_in_pps` | Packets of that player's microphone reaching the device |
 | `ctl_rtt_ms` | Round trip of the control channel's ping |
@@ -70,7 +71,8 @@ The test pattern room is recorded too (room `test`, one run per device run).
 | `frame_gap` | warn | The game sent no frame for 250 ms or more (`gap_ms`) |
 | `video_loss` | warn | A receiver report with 5 % or more lost (at most every 5 s per participant) |
 | `input_gap` | warn | A held control went quiet for 400 ms or more |
-| `client_freeze` | warn | A browser reported a frozen picture of 250 ms or more |
+| `client_freeze` | warn | A browser reported a frozen picture of 250 ms or more (never while its tab is hidden: the browser stops drawing it on purpose, so a hidden tab's `freeze_ms` and `freezes` are not kept) |
+| `playout_delay` | info | A participant's playout delay changed, with the reason (`from_ms`, `to_ms`) |
 | `client_hidden` | info | A participant's tab was hidden or shown again |
 | `signal_down`, `signal_up` | warn, info | The device lost (or got back) the signaling server: games already playing go on, nobody new gets in |
 

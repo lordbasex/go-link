@@ -4,6 +4,14 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (device)
+
+- **The video no longer gets slower the longer you play:** the device now tells each browser how long it may hold the game's video before showing it (the `playout-delay` RTP extension, as cloud gaming does). Chrome used to size that wait itself and almost never lower it: 8 ms when a room started, 79 ms two hours later, with no freeze. Each participant starts at 0 ms (Chrome shows each frame about 0.5 ms after decoding it); a freeze, lost packets or uneven arrival in their reports raises their own maximum one step (40, 80, 160 ms), and 30 clean seconds bring it back down. Each change is in the room telemetry with its reason.
+
+### Fixed (device)
+
+- **A hidden tab's freezes are not counted:** the browser stops drawing a tab that is not shown, so those freezes were not real; the network report and its verdicts leave them out.
+
 ### Changed (go-link HD)
 
 - **The engine is C99, in its own repository:** go-link HD's core is written in C99 instead of Go, in `golink-hd`, so it can be published to libretro; the device calls it from Go through `pkg/libretro`. Phase 1's core and its demo are done, and it reads game packages (`.glhd` format 1); status and phases updated.

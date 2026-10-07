@@ -185,6 +185,16 @@ Each room in `device_status.rooms`:
 
 The device cuts each VP8 frame into RTP packets with its own payloader (`internal/services/vp8_payloader.go`, RFC 7741): every frame carries a 15-bit PictureID, 0 included, wrapping from 32767 to 0, as browsers send it. Pion's payloader leaves the PictureID out of frame 0 and writes IDs under 128 in 7 bits; every 32768 frames (9 min 6 s at 60 fps) the browser met a frame with no PictureID, lost the frame references and dropped the picture until the next keyframe.
 
+## Playout delay
+
+The device stamps every video packet with the `playout-delay` RTP header extension (`http://www.webrtc.org/experiments/rtp-hdrext/playout-delay`, registered for video in `NewWebRTCAPI`): the shortest and longest time the browser may hold a frame before showing it. Left alone, Chrome sizes that wait from how unevenly frames arrive and almost never lowers it: in a two-hour room with no freeze it went from 8 ms to 79 ms. Each connection has its own interceptor (`internal/services/playout_delay.go`), so each participant has their own wait:
+
+- It starts at 0 ms: each frame is shown as soon as it is decoded (Chrome holds it about 0.5 ms).
+- Each `client_report` (every 2 s) with a freeze, 2 % or more lost video packets, or 15 ms or more of jitter raises the longest wait one step: 40, 80, then 160 ms.
+- 15 clean reports in a row (30 s) lower it one step. A hidden tab's reports never move it.
+
+The minimum is always 0. Each change is a `playout_delay` telemetry event with its reason, and peer samples carry `playout_max_ms`. A browser that does not accept the extension keeps its own buffer.
+
 ## Video scale
 
 Arcade pixel art has one color per pixel, but VP8 (4:2:0) keeps one color sample per 2x2 block, so at the game's own size small colored details bleed. Game rooms therefore send the picture **enlarged 2x with nearest neighbour** (each game pixel becomes a 2x2 block, so it gets its own color sample), and the website averages it back before drawing. The [video quality lab](quality.md) measured about +7 dB RGB PSNR over the old stream.

@@ -189,12 +189,10 @@ var clientMetrics = map[string]float64{
 }
 
 // noteClientReport stores what a participant's browser measured over its
-// last two seconds and logs its freezes.
+// last two seconds, logs its freezes and moves its playout delay
+// (playout_delay.go). A hidden tab's freezes are left out: the browser
+// stops drawing it on purpose.
 func (s *StreamService) noteClientReport(v *viewer, data []byte) {
-	rec := s.tele.Load()
-	if rec == nil {
-		return
-	}
 	var raw map[string]any
 	if json.Unmarshal(data, &raw) != nil {
 		return
@@ -204,6 +202,15 @@ func (s *StreamService) noteClientReport(v *viewer, data []byte) {
 		if f, ok := raw[k].(float64); ok && !math.IsNaN(f) && f >= 0 && f <= top {
 			m[k] = f
 		}
+	}
+	if m["hidden"] == 1 {
+		delete(m, "freeze_ms")
+		delete(m, "freezes")
+	}
+	s.movePlayout(v, m)
+	rec := s.tele.Load()
+	if rec == nil {
+		return
 	}
 	rec.Sample(v.id, "client", m)
 	if f := m["freeze_ms"]; f >= float64(frameGapEvent.Milliseconds()) {
@@ -297,6 +304,9 @@ func (s *StreamService) sampleTelemetry(rec *telemetry.Recorder, elapsed float64
 			"rr_lost":          float64(t.rrLost.Load()),
 			"voice_in_pps":     float64(t.voiceIn.Swap(0)) / elapsed,
 		}
+		if pi := playoutDelays.forPC(v.pc); pi != nil {
+			m["playout_max_ms"] = float64(pi.Max())
+		}
 		if rtt := t.ctlRttMs.Load(); rtt >= 0 {
 			m["ctl_rtt_ms"] = float64(rtt)
 		}
@@ -320,4 +330,23 @@ func iceRTT(pc *webrtc.PeerConnection) (float64, bool) {
 		}
 	}
 	return 0, false
+}
+
+// movePlayout climbs or lowers a viewer's playout delay from one client
+// report, and logs each change with its reason.
+func (s *StreamService) movePlayout(v *viewer, m telemetry.Metrics) {
+	pi := playoutDelays.forPC(v.pc)
+	if pi == nil {
+		return
+	}
+	v.mu.Lock()
+	from := v.playout.maxMs()
+	changed, why := v.playout.note(m)
+	to := v.playout.maxMs()
+	v.mu.Unlock()
+	if !changed {
+		return
+	}
+	pi.SetMax(to)
+	s.teleEvent(telemetry.Info, "playout_delay", v.id, "the participant's video wait changed after "+why, map[string]any{"from_ms": from, "to_ms": to})
 }

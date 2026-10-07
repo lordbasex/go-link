@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media"
@@ -89,7 +90,21 @@ func NewWebRTCAPI(udpPort int, includeLoopback bool) (*webrtc.API, error) {
 		se.SetICEUDPMux(webrtc.NewICEUDPMux(nil, conn))
 		se.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4})
 	}
-	return webrtc.NewAPI(webrtc.WithSettingEngine(se)), nil
+	// Pion's default codecs and interceptors, plus the playout delay
+	// (playout_delay.go).
+	me := &webrtc.MediaEngine{}
+	if err := me.RegisterDefaultCodecs(); err != nil {
+		return nil, err
+	}
+	if err := me.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: playoutDelayURI}, webrtc.RTPCodecTypeVideo); err != nil {
+		return nil, err
+	}
+	reg := &interceptor.Registry{}
+	if err := webrtc.RegisterDefaultInterceptors(me, reg); err != nil {
+		return nil, err
+	}
+	reg.Add(playoutDelays)
+	return webrtc.NewAPI(webrtc.WithSettingEngine(se), webrtc.WithMediaEngine(me), webrtc.WithInterceptorRegistry(reg)), nil
 }
 
 // PeerKind says what a peer connection carries.
@@ -123,6 +138,7 @@ type viewer struct {
 	pending   []webrtc.ICECandidateInit
 	input     input.Tracker
 	hidden    bool // the browser says its tab is hidden (client_report)
+	playout   playoutLadder
 
 	tm viewerTele // telemetry counters
 }

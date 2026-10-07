@@ -76,7 +76,9 @@ func TestAViewersInputLossAndReportsAreCounted(t *testing.T) {
 		&rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{{FractionLost: 26, TotalLost: 40, Jitter: 900}}},
 		&rtcp.PictureLossIndication{},
 	})
-	s.noteClientReport(v, []byte(`{"type":"client_report","rtt_ms":31,"freeze_ms":900,"video_loss_pct":4,"hidden":1,"bogus":5,"fps":-3}`))
+	s.noteClientReport(v, []byte(`{"type":"client_report","rtt_ms":31,"freeze_ms":900,"video_loss_pct":4,"bogus":5,"fps":-3}`))
+	// A hidden tab's freezes are not counted: the browser stops drawing it.
+	s.noteClientReport(v, []byte(`{"type":"client_report","rtt_ms":31,"freeze_ms":5000,"freezes":1,"hidden":1}`))
 	s.sampleTelemetry(s.Telemetry(), 1, false)
 	store.Sync()
 
