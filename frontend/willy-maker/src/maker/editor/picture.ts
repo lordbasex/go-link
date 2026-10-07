@@ -8,9 +8,9 @@
 // tiles are cut and deduplicated into a tileset. When the colors do not fit
 // exactly, the palettes are then refined: each tile goes to the palette
 // that shows it best and each palette's 15 colors are chosen again from its
-// tiles' pixels, a few rounds (measured on six image AI backgrounds: the
-// pixels visibly off went from 54 % to 39 %). Pure: pixels in, pixels and
-// numbers out.
+// tiles' pixels, the most used and then the farthest ones (so lamps and
+// neon keep their color), a few rounds. Pure: pixels in, pixels and numbers
+// out.
 
 import { toLab } from "@go-link/cps1";
 import { cleanImageAiMagenta } from "../sprites/detect";
@@ -205,10 +205,6 @@ function labTable(): Float32Array {
   }
   return LAB;
 }
-function lab(k: number): [number, number, number] {
-  const t = labTable();
-  return [t[k * 3]!, t[k * 3 + 1]!, t[k * 3 + 2]!];
-}
 const dist = (a: number, b: number) => {
   const t = labTable();
   const x = t[a * 3]! - t[b * 3]!;
@@ -257,10 +253,11 @@ const REFINE_ROUNDS = 8;
 /**
  * Tiles grouped into the given palettes (at most 15 colors each) by
  * alternating: (1) each tile to the palette that shows its pixels best,
- * (2) each palette's 15 colors chosen again from the pixels of its tiles,
- * by weighted k-means in OKLab with each centre snapped to the nearest
- * color those pixels use (so exact colors stay exact). `assign` is updated
- * in place; the palettes come back.
+ * (2) each palette's 15 colors chosen again from the pixels of its tiles as
+ * a tile picks its own (reduceColors: the most used, then the farthest, so a
+ * small bright detail keeps its color; averaging them, k-means washed the
+ * lamps and windows out). `assign` is updated in place; the palettes come
+ * back.
  */
 function refinePalettes(hists: Map<number, number>[], assign: number[], start: number[][], rounds: number): number[][] {
   let pals = start.map((p) => p.slice(0, 15));
@@ -309,37 +306,8 @@ function refinePalettes(hists: Map<number, number>[], assign: number[], start: n
       });
       if (!hist.size) return pal;
       if (hist.size <= 15) return [...hist.keys()];
-      const keys = [...hist.keys()];
-      let cent = [...hist.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k]) => lab(k));
-      for (let it = 0; it < 6; it++) {
-        const sum = cent.map(() => [0, 0, 0, 0]);
-        for (const [k, n] of hist) {
-          const p = lab(k);
-          let bi = 0;
-          let bd = Infinity;
-          cent.forEach((c, ci) => {
-            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
-            if (d < bd) (bd = d), (bi = ci);
-          });
-          const s = sum[bi]!;
-          s[0]! += p[0] * n;
-          s[1]! += p[1] * n;
-          s[2]! += p[2] * n;
-          s[3]! += n;
-        }
-        cent = cent.map((c, ci) => (sum[ci]![3]! ? ([sum[ci]![0]! / sum[ci]![3]!, sum[ci]![1]! / sum[ci]![3]!, sum[ci]![2]! / sum[ci]![3]!] as [number, number, number]) : c));
-      }
-      const snapped = cent.map((c) => {
-        let best = keys[0]!;
-        let bd = Infinity;
-        for (const k of keys) {
-          const p = lab(k);
-          const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
-          if (d < bd) (bd = d), (best = k);
-        }
-        return best;
-      });
-      return [...new Set(snapped)];
+      // the palette's 15 colors as each tile picks its own: the most used, then the farthest ones, so a small bright detail keeps its color
+      return [...new Set(reduceColors(hist, 15).values())];
     });
   }
   return pals;
