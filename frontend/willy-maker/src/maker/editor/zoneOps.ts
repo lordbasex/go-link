@@ -226,6 +226,8 @@ export function flipObject(store: EditorStore, levelId: string, name: string, la
 /** Takes the background picture off the level (its tiles; the tileset stays until another picture replaces it). */
 export function clearBackground(store: EditorStore, levelId: string, label: string): void {
   store.editLevel(label, levelId, (level) => {
+    // its scenes go with it
+    delete level.scenes;
     const l = backgroundLayer(level);
     if (!l) return;
     l.data = encodeCells(new Uint16Array(Math.ceil(level.size.w / l.grid) * Math.ceil(level.size.h / l.grid)));

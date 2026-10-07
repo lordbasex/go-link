@@ -2127,3 +2127,45 @@
   box-shadow: 0 0 0 9999px color-mix(in srgb, #000 28%, transparent);
   pointer-events: none;
 }
+
+/* the background's scenes in Properties */
+.studio-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.studio-scenes ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.studio-scene-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.studio-scene-head > span {
+  flex: 1;
+  min-width: 0;
+}
+.studio-scene-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.studio-scene-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+.studio-scene-field .input {
+  width: 100%;
+  min-width: 0;
+}

@@ -136,6 +136,7 @@ export const studioEs: StudioMessages = {
     canvas: "Menú del lienzo",
   },
   toast: {
+    scenesReady: "Escenarios acomodados.",
     farReady: "Fondo lejano listo: se ve donde el fondo es transparente y en el juego se mueve a la mitad de velocidad.",
     sceneReady: (w: number) => `Escenario agregado: el nivel ahora mide ${w} px de ancho.`,
     drawHint: (kind) => `Arrastra sobre el lienzo para marcar: ${kind}.`,
@@ -165,6 +166,8 @@ export const studioEs: StudioMessages = {
   },
   backgroundName: "Fondo",
   undoLabels: {
+    scenes: "Escenarios",
+    lineUp: "Alinear el piso",
     far: "Fondo lejano",
     removeFar: "Quitar fondo lejano",
     addScene: "Agregar escenario",
@@ -229,6 +232,15 @@ export const studioEs: StudioMessages = {
     group: "Agrupar",
   },
   props: {
+    scenes: "Escenarios",
+    sceneX: "X",
+    sceneDy: "Bajar",
+    sceneScale: "Tamaño %",
+    sceneUp: "Antes",
+    sceneDown: "Después",
+    sceneRemove: "Quitar el escenario",
+    lineUp: "Alinear el piso",
+    lineUpHint: "Sube o baja cada escenario para que la línea de su vereda o muro coincida con la del primero. Después puedes ajustar Bajar a mano.",
     look: "Imagen",
     engineIcon: "El ícono del motor",
     lookHelp: "Dibújalo con uno de tus personajes (su animación de quieto). Lo que hace sigue saliendo de su tipo.",

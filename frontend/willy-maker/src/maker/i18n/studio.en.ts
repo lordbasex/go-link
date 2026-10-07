@@ -135,6 +135,7 @@ export const studioEn = {
     canvas: "Canvas menu",
   },
   toast: {
+    scenesReady: "Scenes laid out again.",
     farReady: "Far background ready: it shows where the background is see-through and moves at half speed in the game.",
     sceneReady: (w: number) => `Scene added: the level is ${w} px wide now.`,
     drawHint: (kind: string) => `Drag on the canvas to mark: ${kind}.`,
@@ -164,6 +165,8 @@ export const studioEn = {
   },
   backgroundName: "Background",
   undoLabels: {
+    scenes: "Scenes",
+    lineUp: "Line up the floor",
     far: "Far background",
     removeFar: "Remove far background",
     addScene: "Add scene",
@@ -228,6 +231,15 @@ export const studioEn = {
     group: "Group",
   },
   props: {
+    scenes: "Scenes",
+    sceneX: "X",
+    sceneDy: "Down",
+    sceneScale: "Size %",
+    sceneUp: "Earlier",
+    sceneDown: "Later",
+    sceneRemove: "Remove the scene",
+    lineUp: "Line up the floor",
+    lineUpHint: "Moves each scene up or down so its sidewalk or wall line meets the first scene's. Then fine-tune Down by hand if needed.",
     look: "Picture",
     engineIcon: "The engine's icon",
     lookHelp: "Draw it with one of your characters (its idle animation). What it does still comes from its kind.",

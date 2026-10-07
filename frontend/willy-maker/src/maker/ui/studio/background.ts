@@ -11,7 +11,9 @@
 // end, so the background goes on: the level grows by its width. A picture
 // with an image AI's magenta sky comes in with that sky see-through, and a
 // far background (a skyline) goes on the far layer behind it, repeated
-// across, scrolling at half speed in the game (parallax).
+// across, scrolling at half speed in the game (parallax). A background
+// made of scenes (Level.scenes, editor/scenes.ts) keeps each picture: they
+// can be moved, scaled and lined up, and the art is laid out again.
 
 import { setPicture, preparePicture, type PreparedPicture } from "../../editor/pictureImport";
 import { isMagenta } from "../../editor/picture";
@@ -24,6 +26,10 @@ import type { Rgba } from "../../sprites/detect";
 import { drawArt, type TileImage } from "../render";
 import type { TileLayer } from "../../model";
 import { decodeCells } from "../../model/rle";
+import { getAsset } from "../../io/assets";
+import { fitLayer } from "../../editor/picture";
+import { composeScenes, lineUpFloors, nextSceneX } from "../../editor/scenes";
+import type { BackgroundScene } from "../../model";
 
 export type BackgroundResult = "ok" | "not-image" | "failed";
 
@@ -86,17 +92,79 @@ export function putBackground(p: Project, fitted: { prepared: PreparedPicture; a
   if (set) (set as unknown as Record<string, unknown>).file = fileName;
 }
 
+/** Insert background: the picture becomes the background's one scene (replacing every other), laid out. */
 export async function importBackground(store: EditorStore, levelId: string, file: File, label: string): Promise<BackgroundResult> {
   if (!isImageFile(file)) return "not-image";
   try {
+    const scene = await newScene(file, 0);
+    if (!scene) return "failed";
+    return await layOutScenes(store, levelId, [scene], label);
+  } catch {
+    return "failed";
+  }
+}
+
+// the scenes' pictures, decoded once per session
+const sceneSources = new Map<string, Rgba>();
+async function sceneSource(asset: string): Promise<Rgba | null> {
+  const hit = sceneSources.get(asset);
+  if (hit) return hit;
+  const stored = await getAsset(asset);
+  if (!stored) return null;
+  const rgba = await decodeImage(stored.bytes, stored.type || "image/png");
+  sceneSources.set(asset, rgba);
+  return rgba;
+}
+async function sourcesOf(scenes: readonly BackgroundScene[]): Promise<Map<string, Rgba>> {
+  const out = new Map<string, Rgba>();
+  for (const s of scenes) {
+    const src = await sceneSource(s.asset);
+    if (src) out.set(s.asset, src);
+  }
+  return out;
+}
+
+/** A new scene from a picture file: the file kept as an asset, standing on the level's bottom at full height. */
+async function newScene(file: File, x: number): Promise<BackgroundScene | null> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = checkSheetFile(bytes, file.type) || file.type || "image/png";
+  const asset = await putAsset(bytes, type);
+  const rgba = await decodeImage(bytes, type);
+  sceneSources.set(asset, rgba);
+  return { id: `scene-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, asset, name: file.name, x, dy: 0, scale: 1 };
+}
+
+/**
+ * Lays the scenes out as the background (the play layer's art, fitted to the
+ * board) and keeps them with the level, as one undo step. Scenes whose
+ * picture cannot be read are kept but left out of the art.
+ */
+export async function layOutScenes(store: EditorStore, levelId: string, scenes: BackgroundScene[], label: string): Promise<BackgroundResult> {
+  try {
     const level = store.level(levelId);
     if (!level) return "failed";
-    const fitted = await fitBackground(level, file, true);
-    store.editProject(label, (p) => putBackground(p, fitted, file.name));
+    const sources = await sourcesOf(scenes);
+    const { keys, width } = composeScenes(level, scenes, sources, hasAiMagenta);
+    const fit = fitLayer(keys, 16);
+    const prepared = { options: { layer: "play" as const, height: level.size.h, x: 0, repeat: false, grow: true }, levelId, width, picture: { w: keys.w, h: keys.h, pixelSize: 1 }, fit, preview: keys } satisfies PreparedPicture;
+    const asset = await putAsset(await encodePng(fit.tileset.w, fit.tileset.h, fit.tileset.data), "image/png");
+    store.editProject(label, (p) => {
+      putBackground(p, { prepared, asset }, scenes.map((s) => s.name).join(" + "));
+      const l = p.levels.find((x) => x.id === levelId);
+      if (l) l.scenes = scenes.map((s) => ({ ...s }));
+    });
     return "ok";
   } catch {
     return "failed";
   }
+}
+
+/** Line up the floor: every scene moved up or down so its floor line meets the first one's, laid out again. */
+export async function lineUpScenes(store: EditorStore, levelId: string, label: string): Promise<BackgroundResult> {
+  const level = store.level(levelId);
+  if (!level?.scenes?.length) return "failed";
+  const sources = await sourcesOf(level.scenes);
+  return layOutScenes(store, levelId, lineUpFloors(level, level.scenes, sources), label);
 }
 
 /** A tileset picture's pixels, from the image the canvas already draws (null when it is not loaded). */
@@ -150,6 +218,14 @@ export async function appendBackground(store: EditorStore, levelId: string, imag
   try {
     const level = store.level(levelId);
     if (!level) return "failed";
+    // a background made of scenes: one more scene after the last
+    if (level.scenes?.length) {
+      const scenes = level.scenes.map((s) => ({ ...s }));
+      const at = nextSceneX(level, scenes, await sourcesOf(scenes));
+      const added = source === "repeat" ? { ...scenes[scenes.length - 1]!, id: `scene-${Date.now().toString(36)}`, x: at } : await newScene(source, at);
+      if (!added) return "failed";
+      return await layOutScenes(store, levelId, [...scenes, added], label);
+    }
     let src: Rgba | null;
     let key = false;
     const end = artEnd(level);

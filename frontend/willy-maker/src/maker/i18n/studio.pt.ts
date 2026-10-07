@@ -136,6 +136,7 @@ export const studioPt: StudioMessages = {
     canvas: "Menu da tela",
   },
   toast: {
+    scenesReady: "Cenários organizados.",
     farReady: "Fundo distante pronto: aparece onde o fundo é transparente e no jogo se move à metade da velocidade.",
     sceneReady: (w: number) => `Cenário adicionado: o nível agora tem ${w} px de largura.`,
     drawHint: (kind) => `Arraste na tela para marcar: ${kind}.`,
@@ -165,6 +166,8 @@ export const studioPt: StudioMessages = {
   },
   backgroundName: "Fundo",
   undoLabels: {
+    scenes: "Cenários",
+    lineUp: "Alinhar o chão",
     far: "Fundo distante",
     removeFar: "Remover fundo distante",
     addScene: "Adicionar cenário",
@@ -229,6 +232,15 @@ export const studioPt: StudioMessages = {
     group: "Agrupar",
   },
   props: {
+    scenes: "Cenários",
+    sceneX: "X",
+    sceneDy: "Descer",
+    sceneScale: "Tamanho %",
+    sceneUp: "Antes",
+    sceneDown: "Depois",
+    sceneRemove: "Remover o cenário",
+    lineUp: "Alinhar o chão",
+    lineUpHint: "Sobe ou desce cada cenário para que a linha da calçada ou do muro coincida com a do primeiro. Depois dá para ajustar Descer à mão.",
     look: "Imagem",
     engineIcon: "O ícone do motor",
     lookHelp: "Desenhe-o com um dos seus personagens (a animação parado). O que ele faz continua vindo do tipo.",

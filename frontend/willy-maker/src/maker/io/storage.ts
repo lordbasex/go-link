@@ -104,6 +104,8 @@ export function assetRefs(p: Project): Set<string> {
       }
   }
   for (const t of p.tilesets) if (t.image) refs.add(t.image);
+  // the background's scenes keep their pictures to be laid out again
+  for (const l of p.levels) for (const s of l.scenes ?? []) if (typeof s.asset === "string" && s.asset.startsWith("sha256:")) refs.add(s.asset);
   // the image AI prompt helper's reference pictures
   for (const c of Object.values(p.settings.imagePrompts ?? {})) {
     const imgs = (c as { refImages?: unknown }).refImages;
