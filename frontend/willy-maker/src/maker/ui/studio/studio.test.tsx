@@ -12,7 +12,8 @@ import { gridColumns, readPrefs, StudioUi } from "./state";
 import { firstSteps } from "./steps";
 import { hitAt } from "./select";
 import { exampleLevel } from "./example";
-import { onLevelGrid } from "./background";
+import { artEnd, hasAiMagenta, onLevelGrid } from "./background";
+import { encodeCells } from "../../model/rle";
 import { characterOf } from "./ownSprites";
 import { SHORTCUTS, shortcutFor } from "./keys";
 import { BOT_FIRE, BOT_JUMPS } from "./demo";
@@ -669,6 +670,32 @@ describe("a background of one's own", () => {
     // already on the grid: untouched
     const exact = { w: 768, h: 224, data: new Uint8ClampedArray(768 * 224 * 4) };
     expect(onLevelGrid(exact, 224)).toBe(exact);
+  });
+
+  it("knows where its art ends, so Add scene goes right after it even on a wider level", () => {
+    const p = newProject({ title: "Wide" });
+    const level = p.levels[0]!;
+    level.size.w = 960;
+    const play = level.layers.find((l) => l.kind === "tiles" && l.id === "play")!;
+    if (play.kind !== "tiles") throw new Error("play");
+    const cols = 960 / play.grid;
+    const rows = Math.ceil(level.size.h / play.grid);
+    const cells = new Uint16Array(cols * rows);
+    expect((play.data = encodeCells(cells), artEnd(level))).toBe(0);
+    // art up to column 29: it ends at 480 px of a 960 px level
+    cells[2 * cols + 29] = 5;
+    play.data = encodeCells(cells);
+    expect(artEnd(level)).toBe(480);
+  });
+
+  it("takes an image AI's magenta sky as see-through, and a picture without it as it is", () => {
+    const pic = (magentaRows: number) => {
+      const data = new Uint8ClampedArray(40 * 40 * 4);
+      for (let i = 0; i < 40 * 40; i++) data.set(i < magentaRows * 40 ? [255, 0, 255, 255] : [20, 40, 120, 255], i * 4);
+      return { w: 40, h: 40, data };
+    };
+    expect(hasAiMagenta(pic(10))).toBe(true);
+    expect(hasAiMagenta(pic(0))).toBe(false);
   });
 });
 

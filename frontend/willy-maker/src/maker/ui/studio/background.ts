@@ -127,9 +127,21 @@ export function levelPicture(level: Level, images: Map<string, TileImage>): Rgba
   return { w: level.size.w, h: level.size.h, data: ctx.getImageData(0, 0, level.size.w, level.size.h).data };
 }
 
+/** Where the background's art ends: the right edge of its last drawn column (0 when it has none). */
+export function artEnd(level: Level): number {
+  const play = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "play");
+  if (!play) return 0;
+  const cols = Math.ceil(level.size.w / play.grid);
+  const rows = Math.ceil(level.size.h / play.grid);
+  const cells = decodeCells(play.data, cols * rows);
+  for (let c = cols - 1; c >= 0; c--) for (let r = 0; r < rows; r++) if (cells[r * cols + c]! > 0) return Math.min(level.size.w, (c + 1) * play.grid);
+  return 0;
+}
+
 /**
- * Add scene: a picture file (or `"repeat"`: the level's own art again) goes
- * after the level's end on the play layer, scaled to the level's height, and
+ * Add scene: a picture file (or `"repeat"`: the background's own art again)
+ * goes after the end of the background's art (not of the level, which may be
+ * wider) on the play layer, scaled to the level's height, and
  * the level grows by its width; the art already there stays, as one undo
  * step. The same art repeated adds no new tiles.
  */
@@ -140,7 +152,12 @@ export async function appendBackground(store: EditorStore, levelId: string, imag
     if (!level) return "failed";
     let src: Rgba | null;
     let key = false;
-    if (source === "repeat") src = levelPicture(level, images);
+    const end = artEnd(level);
+    if (source === "repeat") {
+      // the drawn part only: a wider level's empty end is not repeated
+      const whole = levelPicture(level, images);
+      src = whole && end ? { w: end, h: whole.h, data: cropColumns(whole, end) } : whole;
+    }
     else {
       const bytes = new Uint8Array(await source.arrayBuffer());
       const type = checkSheetFile(bytes, source.type);
@@ -151,7 +168,7 @@ export async function appendBackground(store: EditorStore, levelId: string, imag
     if (!src) return "failed";
     const play = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "play");
     const current = tilesetPixels(images.get(play?.tileset ?? ""));
-    const prepared = preparePicture(level, src, { layer: "play", height: level.size.h, x: level.size.w, repeat: false, grow: true, keyMagenta: key }, current);
+    const prepared = preparePicture(level, src, { layer: "play", height: level.size.h, x: end || level.size.w, repeat: false, grow: true, keyMagenta: key }, current);
     const ts = prepared.fit.tileset;
     const asset = await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png");
     store.editProject(label, (p) => {
@@ -201,4 +218,11 @@ export async function importFarBackground(store: EditorStore, levelId: string, f
   } catch {
     return "failed";
   }
+}
+
+/** The left `w` columns of a picture. */
+function cropColumns(src: Rgba, w: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(w * src.h * 4);
+  for (let y = 0; y < src.h; y++) out.set(src.data.subarray(y * src.w * 4, (y * src.w + w) * 4), y * w * 4);
+  return out;
 }
