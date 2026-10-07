@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   parseTelemetry,
@@ -13,11 +13,12 @@ import {
 } from "@go-link/shared";
 import { getLang, t } from "../../i18n";
 import { useSignal } from "../../signal/SignalProvider";
-import { ChevronLeftIcon, CopyIcon } from "../Icons";
+import { ChevronLeftIcon, CloseIcon, CopyIcon, DownloadIcon, FullscreenIcon, RestoreIcon } from "../Icons";
 import { Select } from "../ui/Select";
 import { SkeletonCards } from "../ui/Skeleton";
 import { formatDuration, GameId } from "./HistoryTab";
-import { TimeChart, type TimeBand, type TimeLine } from "./TimeChart";
+import { chartPng, copyPng, resolveColor, savePng } from "./chartImage";
+import { TimeChart, type TimeBand, type TimeChartHandle, type TimeLine } from "./TimeChart";
 
 /** Line colors: the seats' first, then the other accents. */
 const COLORS = ["var(--color-p1)", "var(--color-p2)", "var(--color-p3)", "var(--color-p4)", "var(--color-ok)", "var(--color-water)", "var(--color-hazard)", "var(--color-accent)"];
@@ -32,6 +33,7 @@ const CHARTS: { id: keyof typeof t.net.charts; unit: string; metrics: Metric[]; 
   { id: "frames", unit: "fps", metrics: [{ m: "room.fps_in", agg: "avg", label: (l) => l.fpsIn }, { m: "room.fps_sent", agg: "avg", label: (l) => l.fpsSent, dashed: true }, { m: "client.fps", agg: "avg" }] },
   { id: "input", unit: "ms", metrics: [{ m: "peer.input_gap_max_ms", agg: "max" }] },
   { id: "jitter", unit: "ms", metrics: [{ m: "client.jitter_ms", agg: "max" }, { m: "client.buffer_ms", agg: "avg", dashed: true, label: (l) => l.buffer }] },
+  { id: "playout", unit: "ms", metrics: [{ m: "peer.playout_max_ms", agg: "max" }] },
   { id: "host", unit: "%", metrics: [{ m: "room.cpu_pct", agg: "avg", label: (l) => l.cpu }, { m: "room.proc_cpu_pct", agg: "avg", label: (l) => l.procCpu, dashed: true }] },
   { id: "upload", unit: "kbps", metrics: [{ m: "room.net_up_kbps", agg: "avg", label: (l) => l.netUp }, { m: "room.kbps", agg: "avg", label: (l) => l.video, dashed: true }] },
   { id: "voice", unit: "pkt/s", metrics: [{ m: "peer.voice_in_pps", agg: "avg" }] },
@@ -39,6 +41,12 @@ const CHARTS: { id: keyof typeof t.net.charts; unit: string; metrics: Metric[]; 
 
 type ChartId = (typeof CHARTS)[number]["id"];
 type ChartData = { from: number; step: number; list: TelemetrySeries[] };
+type Chart = (typeof CHARTS)[number] & { lines: TimeLine[]; data?: ChartData };
+
+/** The shortest bucket asked for: browsers report every 2 s, so shorter ones leave gaps. */
+const MIN_STEP_MS = 2000;
+/** How many freezes show before "Show all". */
+const FEW_INCIDENTS = 3;
 
 const fmtWhen = (ms: number, withDate = true) =>
   new Intl.DateTimeFormat(getLang(), withDate ? { dateStyle: "medium", timeStyle: "medium" } : { timeStyle: "medium" }).format(ms);
@@ -79,6 +87,9 @@ export function NetworkReport({ roomId }: { roomId: string }) {
   const ask = useTelemetry();
   const [params, setParams] = useSearchParams();
   const runParam = params.get("run") ?? "";
+  const zoomFrom = Number(params.get("from")) || 0;
+  const zoomTo = Number(params.get("to")) || 0;
+  const zoomed = zoomFrom > 0 && zoomTo > zoomFrom;
   const ready = linkedDevice.state === "connected" && linkedDevice.status !== null;
   const [runs, setRuns] = useState<TelemetryRun[] | null>(null);
   const [peers, setPeers] = useState<TelemetryPeer[]>([]);
@@ -89,6 +100,8 @@ export function NetworkReport({ roomId }: { roomId: string }) {
   const [moreEvents, setMoreEvents] = useState(false);
   const [warnOnly, setWarnOnly] = useState(false);
   const [tick, setTick] = useState(0);
+  const [allIncidents, setAllIncidents] = useState(false);
+  const [open, setOpen] = useState<ChartId | null>(null);
   const roomName = useMemo(() => linkedDevice.status?.rooms.find((r) => r.id === roomId)?.name, [linkedDevice.status, roomId]);
 
   useEffect(() => {
@@ -111,22 +124,43 @@ export function NetworkReport({ roomId }: { roomId: string }) {
   // The span: one game (run=id) or every time the room was on.
   const run = runs?.find((r) => r.id === runParam) ?? null;
   const running = run ? run.endedAt === null : (runs?.some((r) => r.endedAt === null) ?? false);
-  const from = run ? run.startedAt : (runs?.[0]?.startedAt ?? 0);
-  const to = run ? (run.endedAt ?? 0) : 0; // 0: now
+  const fullFrom = run ? run.startedAt : (runs?.[0]?.startedAt ?? 0);
+  const fullTo = run ? (run.endedAt ?? 0) : 0; // 0: now
+  // A zoom (from/to in the address) narrows the span of every chart.
+  const from = zoomed ? zoomFrom : fullFrom;
+  const to = zoomed ? zoomTo : fullTo;
+  const setSpan = useCallback(
+    (span: { from: number; to: number } | null) =>
+      setParams(
+        (cur) => {
+          const next = new URLSearchParams(cur);
+          if (span) {
+            next.set("from", String(span.from));
+            next.set("to", String(span.to));
+          } else {
+            next.delete("from");
+            next.delete("to");
+          }
+          return next;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
 
-  // Live games refresh every 5 seconds.
+  // Live games refresh every 5 seconds (not while zoomed into the past).
   useEffect(() => {
-    if (!running) return;
+    if (!running || zoomed) return;
     const id = setInterval(() => setTick((n) => n + 1), 5000);
     return () => clearInterval(id);
-  }, [running]);
+  }, [running, zoomed]);
 
   useEffect(() => {
     if (!ready || !runs || runs.length === 0) return;
     let live = true;
     const span = { id: roomId, from, to };
     // One request per chart: each answer has to fit one message.
-    void Promise.all(CHARTS.map((c) => ask({ type: "telemetry_series", ...span, metrics: c.metrics.map((m) => m.m) }))).then((answers) => {
+    void Promise.all(CHARTS.map((c) => ask({ type: "telemetry_series", ...span, step: MIN_STEP_MS, metrics: c.metrics.map((m) => m.m) }))).then((answers) => {
       if (!live) return;
       const next: Partial<Record<ChartId, ChartData>> = {};
       answers.forEach((a, i) => {
@@ -157,18 +191,23 @@ export function NetworkReport({ roomId }: { roomId: string }) {
     });
   };
 
+  // A name two participants share (someone who came back) gets the time
+  // they joined: "Fede" and "Fede (12:58)".
   const nameOf = useCallback(
     (peer: string) => {
       if (!peer) return t.net.device;
       const p = peers.find((x) => x.id === peer);
-      return p?.name || `${t.net.guest} ${peer.slice(0, 4).toUpperCase()}`;
+      const name = p?.name || `${t.net.guest} ${peer.slice(0, 4).toUpperCase()}`;
+      const same = p?.name ? peers.filter((x) => x.name === p.name) : [];
+      if (same.length < 2 || same[0]!.id === peer) return name;
+      return `${name} (${new Intl.DateTimeFormat(getLang(), { hour: "2-digit", minute: "2-digit" }).format(p!.first)})`;
     },
     [peers],
   );
   const colorOf = useCallback((peer: string) => COLORS[Math.max(0, peers.findIndex((x) => x.id === peer)) % COLORS.length]!, [peers]);
 
   const bands: TimeBand[] = useMemo(() => incidents.map((i) => ({ from: i.start, to: i.end })), [incidents]);
-  const charts = useMemo(() => {
+  const charts: Chart[] = useMemo(() => {
     if (!series) return [];
     return CHARTS.map((c) => {
       const lines: TimeLine[] = [];
@@ -192,6 +231,15 @@ export function NetworkReport({ roomId }: { roomId: string }) {
       return { ...c, lines, data };
     });
   }, [series, nameOf, colorOf]);
+
+  // The longest freezes first when they are many, in time order.
+  const shownIncidents = useMemo(() => {
+    if (allIncidents || incidents.length <= FEW_INCIDENTS) return incidents;
+    const worst = [...incidents].sort((a, b) => b.end - b.start - (a.end - a.start)).slice(0, FEW_INCIDENTS);
+    return incidents.filter((i) => worst.includes(i));
+  }, [incidents, allIncidents]);
+
+  const openChart = open ? charts.find((c) => c.id === open) : undefined;
 
   const runOptions = useMemo(
     () => [
@@ -257,16 +305,24 @@ export function NetworkReport({ roomId }: { roomId: string }) {
         </div>
       ) : (
         <>
-          <p className="small muted netreport-span">
-            {t.net.span(fmtWhen(from), to ? fmtWhen(to) : t.net.now, peers.length)}
-          </p>
+          <div className="netreport-spanbar">
+            <p className="small muted netreport-span">{t.net.span(fmtWhen(from), to ? fmtWhen(to) : t.net.now, peers.length)}</p>
+            {zoomed ? (
+              <button type="button" className="button button-secondary button-small" onClick={() => setSpan(null)}>
+                <RestoreIcon size={14} />
+                {t.net.resetZoom}
+              </button>
+            ) : (
+              <span className="small faint">{t.net.zoomHint}</span>
+            )}
+          </div>
           <section className="netreport-incidents" aria-label={t.net.incidents}>
             <h3 className="strong">{t.net.incidentsTitle(incidents.length)}</h3>
             {incidents.length === 0 ? (
               <p className="small muted">{t.net.noIncidents}</p>
             ) : (
               <ul className="net-incidents">
-                {incidents.map((i) => (
+                {shownIncidents.map((i) => (
                   <li key={i.start} className={`net-incident is-${i.verdict}`}>
                     <span className="net-verdict">{t.net.verdicts[i.verdict]}</span>
                     <span className="mono small">
@@ -277,23 +333,48 @@ export function NetworkReport({ roomId }: { roomId: string }) {
                 ))}
               </ul>
             )}
+            {incidents.length > FEW_INCIDENTS && (
+              <button type="button" className="button button-secondary button-small net-incidents-more" onClick={() => setAllIncidents((v) => !v)}>
+                {allIncidents ? t.net.fewerIncidents : t.net.allIncidents(incidents.length)}
+              </button>
+            )}
           </section>
 
           <div className="netreport-charts">
             {charts.map((c) => (
               <section key={c.id} className="netreport-chart">
-                <h3 className="small strong">
-                  {t.net.charts[c.id]} <span className="muted">({c.unit})</span>
-                </h3>
+                <div className="netreport-chart-head">
+                  <h3 className="small strong">
+                    {t.net.charts[c.id]} <span className="muted">({c.unit})</span>
+                  </h3>
+                  {c.lines.length > 0 && c.data && (
+                    <button type="button" className="icon-button icon-button-small" aria-label={t.net.expand(t.net.charts[c.id])} data-tip={t.net.expandShort} onClick={() => setOpen(c.id)}>
+                      <FullscreenIcon size={14} />
+                    </button>
+                  )}
+                </div>
                 {c.lines.length === 0 || !c.data ? (
                   <p className="small faint">{t.net.noData}</p>
                 ) : (
-                  <TimeChart lines={c.lines} from={c.data.from} step={c.data.step} unit={c.unit} bands={bands} label={t.net.charts[c.id]} max={c.max} />
+                  <TimeChart lines={c.lines} from={c.data.from} step={c.data.step} unit={c.unit} bands={bands} label={t.net.charts[c.id]} max={c.max} onZoom={(a, b) => setSpan({ from: a, to: b })} onReset={zoomed ? () => setSpan(null) : undefined} />
                 )}
                 <p className="small faint">{t.net.hints[c.id]}</p>
               </section>
             ))}
           </div>
+
+          {openChart?.data && (
+            <ChartDialog
+              chart={openChart}
+              data={openChart.data}
+              bands={bands}
+              about={[roomName ?? run?.game ?? roomId, run ? `#${run.id}` : t.net.allRuns(runs.length), `${fmtWhen(openChart.data.from)} – ${fmtWhen(openChart.data.from + Math.max(0, ...openChart.lines.map((l) => l.values.length - 1)) * openChart.data.step)}`]}
+              zoomed={zoomed}
+              onZoom={(a, b) => setSpan({ from: a, to: b })}
+              onReset={() => setSpan(null)}
+              onClose={() => setOpen(null)}
+            />
+          )}
 
           <section className="netreport-log" aria-label={t.net.log}>
             <div className="netreport-log-head">
@@ -352,5 +433,99 @@ export function NetworkReport({ roomId }: { roomId: string }) {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * One chart, large: zoom works as on the page, and the chart can be saved
+ * or copied as a picture that says what it shows (chartImage.ts).
+ */
+function ChartDialog({
+  chart,
+  data,
+  bands,
+  about,
+  zoomed,
+  onZoom,
+  onReset,
+  onClose,
+}: {
+  chart: Chart;
+  data: ChartData;
+  bands: TimeBand[];
+  about: string[];
+  zoomed: boolean;
+  onZoom: (from: number, to: number) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const chartRef = useRef<TimeChartHandle>(null);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => (e.key === "Escape" || e.code === "Escape") && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const title = `${t.net.charts[chart.id]} (${chart.unit})`;
+  const picture = async () => {
+    const svg = chartRef.current?.svg();
+    if (!svg) return null;
+    return chartPng(svg, {
+      title,
+      lines: about,
+      legend: chart.lines.map((l) => ({ label: l.label || t.net.charts[chart.id], color: resolveColor(l.color, svg.parentElement ?? document.body), dashed: l.dashed })),
+    });
+  };
+  const fileName = `go-link-${chart.id}-${new Date(data.from).toISOString().slice(0, 16).replace(/[:T]/g, "-")}.png`;
+  return (
+    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog netchart-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div className="netchart-dialog-head">
+          <h2 id={titleId} className="dialog-title">
+            {title}
+          </h2>
+          <button ref={closeRef} type="button" className="icon-button" aria-label={t.net.close} data-tip={t.net.close} onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </div>
+        <p className="small muted">{about.join(" · ")}</p>
+        <TimeChart ref={chartRef} lines={chart.lines} from={data.from} step={data.step} unit={chart.unit} bands={bands} label={t.net.charts[chart.id]} max={chart.max} height={380} onZoom={onZoom} onReset={zoomed ? onReset : undefined} />
+        <p className="small faint">
+          {t.net.hints[chart.id]} {t.net.zoomHint}
+        </p>
+        <div className="dialog-actions">
+          {note && (
+            <span className="small muted" role="status">
+              {note}
+            </span>
+          )}
+          {zoomed && (
+            <button type="button" className="button button-secondary" onClick={onReset}>
+              <RestoreIcon size={16} />
+              {t.net.resetZoom}
+            </button>
+          )}
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() =>
+              void picture().then(async (png) => {
+                if (png) setNote((await copyPng(png)) ? t.net.imageCopied : t.net.imageNoCopy);
+              })
+            }
+          >
+            <CopyIcon size={16} />
+            {t.net.copyImage}
+          </button>
+          <button type="button" className="button button-primary" onClick={() => void picture().then((png) => png && savePng(png, fileName))}>
+            <DownloadIcon size={16} />
+            {t.net.savePng}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -260,7 +260,9 @@ export function MainHeader() {
   const { pathname } = useLocation();
   // A room keeps only the logo, its own actions (RoomPage puts them in the
   // header slot) and the tools that matter while playing.
-  const inRoom = pathname.startsWith("/r/");
+  // A room: its owner's /r/<room_id> or a guest's /g/<invite> (not the
+  // /g join form).
+  const inRoom = /^\/(r|g)\/[^/]+/.test(pathname);
   useEffect(() => setToolsOpen(false), [pathname]);
   useEffect(() => {
     if (!toolsOpen) return;

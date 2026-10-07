@@ -2997,7 +2997,15 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .netreport-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .netreport-range { display: inline-flex; align-items: center; gap: 8px; }
 .netreport-live { color: var(--color-ok-text); }
-.netreport-span { margin: -8px 0 0; }
+.netreport-span { margin: 0; }
+.netreport-spanbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: -8px; }
+.netreport-chart-head { display: flex; align-items: center; gap: 8px; }
+.netreport-chart-head h3 { flex: 1 1 auto; min-width: 0; }
+.net-incidents-more { margin-top: 8px; }
+.netchart-dialog { width: min(1100px, calc(100vw - 32px)); max-width: none; display: flex; flex-direction: column; gap: 10px; }
+.netchart-dialog-head { display: flex; align-items: center; gap: 12px; }
+.netchart-dialog-head .dialog-title { flex: 1 1 auto; margin: 0; }
+.netchart-dialog .dialog-actions { flex-wrap: wrap; align-items: center; }
 .netreport-incidents h3, .netreport-log h3 { margin: 0 0 8px; font-size: 1rem; }
 .net-incidents { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .net-incident { display: grid; grid-template-columns: minmax(150px, auto) auto 1fr; gap: 4px 14px; align-items: baseline; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-surface); }
@@ -3014,7 +3022,10 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .tchart-axis { fill: var(--color-text-faint); font: 11px var(--font-mono, ui-monospace, monospace); }
 .tchart-line { fill: none; stroke-width: 1.8; stroke-linejoin: round; }
 .tchart-line.is-dashed { stroke-dasharray: 5 4; }
-.tchart-band { fill: var(--color-danger-text); opacity: 0.16; }
+.tchart-band { fill: var(--color-danger-text); opacity: 0.07; }
+.tchart-band-mark { fill: var(--color-danger-text); opacity: 0.8; }
+.tchart-svg.can-zoom { cursor: crosshair; user-select: none; }
+.tchart-pick { fill: var(--color-accent); opacity: 0.18; stroke: var(--color-accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .tchart-cursor { stroke: var(--color-text-muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .tchart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--color-text-muted); }
 .tchart-key { display: inline-flex; align-items: center; gap: 6px; }

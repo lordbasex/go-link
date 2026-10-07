@@ -556,6 +556,9 @@ function RoomProblem({
   );
 }
 
+/** The longest an owner's room page waits for its device before joining. */
+const OWN_INVITE_WAIT_MS = 8000;
+
 export function RoomPage() {
   // /r/<room_id>, or /g/<invite> (an invitation link or a typed code).
   const { roomId: routeRoomId = "", invite: routeInvite = "" } = useParams();
@@ -585,7 +588,18 @@ export function RoomPage() {
   const navigate = useNavigate();
   // The gamepad's pause button needs the latest pause state.
   const pauseToggleRef = useRef<() => void>(() => undefined);
-  const status = useJoinRoom(routeRoomId, invite);
+  // A browser linked to a device waits for its status before joining on
+  // /r/: if the room is its own, only its invitation lets it in. At most a
+  // few seconds, in case the device does not answer.
+  const [waitedDevice, setWaitedDevice] = useState(false);
+  const waitDevice =
+    !demo && !routeInvite && (hostLink !== null || savedLink !== null) && linkedDevice.status === null && linkedDevice.state !== "failed" && !waitedDevice;
+  useEffect(() => {
+    if (!waitDevice) return;
+    const id = window.setTimeout(() => setWaitedDevice(true), OWN_INVITE_WAIT_MS);
+    return () => window.clearTimeout(id);
+  }, [waitDevice]);
+  const status = useJoinRoom(routeRoomId, invite, waitDevice);
   // Known from the start on /r, and once joined on /g.
   const roomId = status.kind === "joined" ? status.roomId : routeRoomId;
   const meta = usePublicRoomMeta(roomId);
@@ -1173,6 +1187,10 @@ export function RoomPage() {
   const invitePath = /^\/g\/([^/]+)$/.exec(window.location.pathname);
   const inviteUrl = invitePath?.[1] ? invitationUrl(invitePath[1], panel) : `${window.location.origin}${window.location.pathname}`;
   const joining = !demo && status.kind === "joining";
+  // The PIN form shows only once what this browser already has (the
+  // owner's key, a return token, the join page's PIN) was tried, or for a
+  // PIN the person types: the owner never sees it flash while getting in.
+  const pinForm = live.pin.needed && (typedPin || (!live.pin.busy && autoTry.current.next >= credentials.length));
   const playing = model.me.kind === "player";
   const myPorts = demo ? [] : (live.room?.you.ports ?? []);
   const seatedCount = live.room?.seats.filter(Boolean).length ?? 0;
@@ -1365,7 +1383,7 @@ export function RoomPage() {
         <div className="room-main">
           <div
             ref={stageRef}
-            className={`video-stage${touchOn ? " has-touchpad is-console" : ""}${!streaming && live.pin.needed ? " needs-pin" : ""}${fullscreen.pseudo ? " is-pseudo-fullscreen" : ""}${fullscreen.active ? " is-fullscreen" : ""}${idle && streaming && !paused ? " is-idle" : ""}`}
+            className={`video-stage${touchOn ? " has-touchpad is-console" : ""}${!streaming && pinForm ? " needs-pin" : ""}${fullscreen.pseudo ? " is-pseudo-fullscreen" : ""}${fullscreen.active ? " is-fullscreen" : ""}${idle && streaming && !paused ? " is-idle" : ""}`}
             style={
               { "--ar": String(live.aspect ?? 4 / 3) } as CSSProperties
             }
@@ -1422,7 +1440,7 @@ export function RoomPage() {
                   : t.audio.outGone(audio.notice.name || t.audio.output)}
               </p>
             )}
-            {!streaming && live.pin.needed && (
+            {!streaming && pinForm && (
               <div className="pin-stack">
               <PinPrompt
                 busy={live.pin.busy}
@@ -1437,11 +1455,11 @@ export function RoomPage() {
               {routeInvite && <AndroidAppCard />}
               </div>
             )}
-            {!streaming && !live.pin.needed && (
+            {!streaming && !pinForm && (
               <div className="video-placeholder">
                 <GamepadIcon size={40} />
                 <span className="small-plus">
-                  {joining
+                  {joining || live.pin.needed
                     ? t.room.joining
                     : live.state === "failed"
                       ? t.room.videoFailed

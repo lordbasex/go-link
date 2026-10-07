@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServerError, type Envelope } from "@go-link/shared";
 import { FakeSocket, OFFICIAL, renderApp } from "./test-utils";
@@ -377,7 +377,12 @@ describe("local web panel", () => {
       if (env.type === "join") return { type: "joined", session_id: ROOM, room_id: ROOM, remote: "device" };
       return undefined;
     });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderApp(`/r/${ROOM}`, { panelUrl: PANEL });
+    // A linked browser first waits for its device's status (which says the
+    // invitation of its own rooms); without one it joins after the wait.
+    await act(() => vi.advanceTimersByTimeAsync(8000));
+    vi.useRealTimers();
     await waitFor(() => expect(FakeSocket.allSent().some((e) => e.type === "join" && e.room_id === ROOM)).toBe(true));
     const joinedOn = FakeSocket.sockets.find((s) => s.sent.some((e) => e.type === "join"));
     expect(joinedOn?.url.startsWith("ws://192.168.1.20:7373/ws")).toBe(true);

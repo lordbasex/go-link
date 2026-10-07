@@ -4,6 +4,19 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (website)
+
+- **Zoom, enlarge and pictures in the network report:** drag across any chart to zoom every chart into that span (down to 2-second steps; the zoom stays in the address to share it), double-click or **Show everything** to go back. **Enlarge** opens a chart in a dialog with **Save PNG** and **Copy image**, and the picture says what it shows: the chart, the room, the game id, the span and the legend. A new chart shows each player's **video wait** (the playout delay climbing on trouble and coming back down).
+
+### Changed (website)
+
+- **The network report reads better:** the three longest freezes first with **Show all**, freezes marked under each chart instead of bands across it, axes in k and M (100k instead of 100000) with more time marks, and two participants with the same name told apart by the time they joined ("Fede" and "Fede (12:58)").
+- **Guests get the same room as the host:** `/g/<invite>` now has the compact header and the CHAT | CONTROLS panel of `/r/` (the header only made room for them on `/r/`).
+
+### Fixed (website)
+
+- **The host's room opens cleanly:** it no longer shows "Room not found" and then the PIN form for a moment before the game. The page waited for nothing: it joined by the room id before its device said which invitation opens the room, and showed the PIN form while it answered it with the host's key. It now waits for the device's status (8 s at most) and shows the PIN form only after what the browser already has was tried; a guest without a return token still gets the PIN form at once.
+
 ## [0.2.6] - 2026-10-07
 
 ### Changed (device)

@@ -35,7 +35,13 @@ export type JoinStatus =
  * code). Leaving the page resets the connection, which is how a peer
  * leaves a session on signalhub.
  */
-export function useJoinRoom(roomId: string, invite: InviteTarget | null = null): JoinStatus {
+/**
+ * hold keeps the page "joining" without asking yet: the owner's browser
+ * waits for its device to say which invitation opens its room, or a join by
+ * the room id alone would be refused ("not found") a moment before the
+ * right one gets in.
+ */
+export function useJoinRoom(roomId: string, invite: InviteTarget | null = null, hold = false): JoinStatus {
   const { client, state, demo } = useSignal();
   const valid = invite !== null || isRoomId(roomId);
   // One text for the target, so a new target joins again.
@@ -56,7 +62,7 @@ export function useJoinRoom(roomId: string, invite: InviteTarget | null = null):
   }, [client, target]);
 
   useEffect(() => {
-    if (demo || !valid) return;
+    if (demo || !valid || hold) return;
     if (state !== "open") {
       if (joinedOn.current) setStatus({ kind: "joining" }); // link lost: rejoin when back
       joinedOn.current = "";
@@ -115,7 +121,7 @@ export function useJoinRoom(roomId: string, invite: InviteTarget | null = null):
       buffering?.();
     };
     // roomId and invite are read through target, which names them.
-  }, [client, state, target, valid, demo]);
+  }, [client, state, target, valid, demo, hold]);
 
   // The host leaving ends the session for everyone.
   useEffect(() => {
