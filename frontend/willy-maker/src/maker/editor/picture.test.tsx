@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decodePng, encodePng } from "../io/png";
-import { fitLayer, keysOf, layerKeys, pixelSize, place, scalePicture, type Rgba } from "./picture";
+import { fitLayer, hexOfKey, keysOf, layerKeys, pixelSize, place, scalePicture, type Rgba } from "./picture";
 
 /** A picture drawn at `s` x: blocks of `s` pixels, with `colors` different colors spread over it. */
 function pixelArt(w: number, h: number, s: number, colors: number): Rgba {
@@ -102,5 +102,35 @@ describe("own backgrounds (T-28)", () => {
     });
     if (process.env.WM_PICTURE_OUT) writeFileSync(process.env.WM_PICTURE_OUT, encodePng(img.w, img.h, rgba));
     expect(fit.stats.palettes).toBeLessThanOrEqual(32);
+  });
+});
+
+describe("palette refinement", () => {
+  it("keeps the board's limits when a picture needs more palettes than it has, and brings the colors closer", () => {
+    // 80 tiles of 16 x 16, each its own band of 15 colors: far more than 32 palettes of 15 could hold exactly
+    const w = 16 * 10;
+    const h = 16 * 8;
+    const keys = new Int16Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const t = Math.floor(y / 16) * 10 + Math.floor(x / 16);
+        const r = (t * 7) % 16;
+        const g = (t * 3 + (x % 16)) % 16;
+        const b = (y % 16) % 15;
+        keys[y * w + x] = (r << 8) | (g << 4) | b;
+      }
+    const f = fitLayer({ w, h, keys }, 16);
+    expect(f.palettes.length).toBeLessThanOrEqual(32);
+    for (const p of f.palettes) expect(p.length).toBeLessThanOrEqual(15);
+    // every tile shows only its palette's colors
+    const out = layerKeys(w, h, 16, f.cells, f.tileset, f.tileset.columns);
+    for (let i = 0; i < f.cells.length; i++) {
+      const pal = new Set(f.palettes[f.tilePalettes[f.cells[i]! - 1]!]!);
+      const c = i % 10;
+      const r = Math.floor(i / 10);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) expect(pal.has(hexOfKey(out.keys[(r * 16 + y) * w + c * 16 + x]!))).toBe(true);
+    }
+    expect(f.stats.approximated).toBeGreaterThan(0);
+    expect(f.stats.meanError).toBeLessThan(12);
   });
 });
