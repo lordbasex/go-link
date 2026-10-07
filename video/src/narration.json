@@ -1,0 +1,14 @@
+{
+  "voice": "af_heart",
+  "lines": {
+    "intro": "This is go-link. Arcade nights, online.",
+    "home": "Your arcade runs on your own computer. Your games never leave your disk.",
+    "friends": "Friends join from the browser. Nothing to install: a code, a PIN, and they're in.",
+    "invite": "Invite them with a link, a code, or a QR. One PIN, one person.",
+    "controls": "Real controllers for up to four players, with voice chat.",
+    "phone": "On a phone, it turns into a console.",
+    "maker": "With Willy Maker, you can even make your own arcade game, and play it in a room.",
+    "metrics": "Every millisecond is measured, so you always know how the game is running.",
+    "end": "go-link. Free and open source. Play together, from anywhere."
+  }
+}

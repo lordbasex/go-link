@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "trailer": "remotion render src/index.ts Trailer ../dist/video/go-link-trailer.mp4",
+    "trailer": "remotion render src/index.ts Trailer ../dist/video/go-link-trailer.mp4 --codec=h264 --crf=18 && tsx scripts/srt.ts",
     "demo": "remotion render src/index.ts Demo ../dist/video/go-link-demo.mp4",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "srt": "tsx scripts/srt.ts"
   },
   "dependencies": {
     "@fontsource/chakra-petch": "5.3.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/react": "19.3.0",
+    "tsx": "4.23.15",
     "typescript": "7.0.2"
   }
 }

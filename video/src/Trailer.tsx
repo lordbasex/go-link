@@ -1,31 +1,15 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Backdrop, Chip, inAt, KineticTitle, Mark, outAt, Phone, Screen, Sub, Wordmark } from "./components";
 import { T } from "./takes";
+import { captions, musicVolume, scene, SCENES, TOTAL, VOICE_LEAD } from "./timeline";
 import { C, D, EASE_IN, F, sec } from "./theme";
 
-/** Where each scene starts and how long it lasts (frames at 30 fps). */
-const SCENES = [
-  { id: "intro", len: sec(3.6) },
-  { id: "home", len: sec(5.2) },
-  { id: "friends", len: sec(5.6) },
-  { id: "invite", len: sec(4.6) },
-  { id: "controls", len: sec(5.8) },
-  { id: "phone", len: sec(5.2) },
-  { id: "maker", len: sec(6.4) },
-  { id: "metrics", len: sec(5.4) },
-  { id: "end", len: sec(5.2) },
-] as const;
+export const TRAILER_FRAMES = TOTAL;
 
-export const TRAILER_FRAMES = SCENES.reduce((n, s) => n + s.len, 0);
-
-const at = (id: (typeof SCENES)[number]["id"]) => {
-  let f = 0;
-  for (const s of SCENES) {
-    if (s.id === id) return { from: f, len: s.len };
-    f += s.len;
-  }
-  throw new Error(id);
+const at = (id: Parameters<typeof scene>[0]) => {
+  const sc = scene(id);
+  return { from: sc.from, len: sc.len };
 };
 
 /** A title block on one side and a take on the other, swapping sides scene by scene. */
@@ -110,8 +94,44 @@ function Wipe({ at: start }: { at: number }) {
   return <AbsoluteFill style={{ background: `linear-gradient(100deg, transparent ${x - 12}%, ${C.accent}22 ${x - 4}%, ${C.accent}55 ${x}%, transparent ${x + 3}%)` }} />;
 }
 
+/** The music: "System Awakening", made by the author with ElevenLabs, ducked under the narrator. */
+export const MUSIC = { file: "music/system-awakening.wav", from: 0 };
+
+/**
+ * Burned-in subtitles: one phrase at a time, low in the frame on a dark
+ * capsule, rising in as the narrator says it.
+ */
+function Captions() {
+  const frame = useCurrentFrame();
+  const c = captions().find((x) => frame >= x.from && frame < x.to);
+  if (!c) return null;
+  const v = Math.min(1, (frame - c.from) / 5, (c.to - frame) / 4);
+  return (
+    <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", paddingBottom: 54 }}>
+      <div
+        style={{
+          maxWidth: 1300,
+          padding: "12px 28px",
+          borderRadius: 16,
+          background: "rgba(8, 9, 13, 0.78)",
+          color: C.text,
+          fontFamily: F.text,
+          fontWeight: 600,
+          fontSize: 38,
+          lineHeight: 1.25,
+          textAlign: "center",
+          opacity: v,
+          transform: `translateY(${(1 - v) * 10}px)`,
+        }}
+      >
+        {c.text}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 export function Trailer() {
-  const s = (id: (typeof SCENES)[number]["id"]) => at(id);
+  const s = (id: Parameters<typeof scene>[0]) => at(id);
   return (
     <AbsoluteFill style={{ background: C.bg }}>
       <Backdrop />
@@ -171,6 +191,13 @@ export function Trailer() {
       {SCENES.slice(1).map((sc) => (
         <Wipe key={sc.id} at={at(sc.id).from} />
       ))}
+      {SCENES.map((sc) => (
+        <Sequence key={`voice-${sc.id}`} from={at(sc.id).from + VOICE_LEAD} durationInFrames={sc.voice + 15}>
+          <Audio src={staticFile(`voice/${sc.id}.wav`)} volume={1} />
+        </Sequence>
+      ))}
+      <Audio src={staticFile(MUSIC.file)} startFrom={MUSIC.from} volume={(f) => musicVolume(f, 0.3, 0.2)} />
+      <Captions />
     </AbsoluteFill>
   );
 }
