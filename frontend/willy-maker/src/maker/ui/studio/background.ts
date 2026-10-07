@@ -8,9 +8,13 @@
 // level ends on the 32 px grid, so the picture is stretched (a few pixels at
 // most) to end there too and no strip of the level is left without art.
 // Add scene puts another picture (or the same art again) after the level's
-// end, so the background goes on: the level grows by its width.
+// end, so the background goes on: the level grows by its width. A picture
+// with an image AI's magenta sky comes in with that sky see-through, and a
+// far background (a skyline) goes on the far layer behind it, repeated
+// across, scrolling at half speed in the game (parallax).
 
 import { setPicture, preparePicture, type PreparedPicture } from "../../editor/pictureImport";
+import { isMagenta } from "../../editor/picture";
 import type { EditorStore } from "../../editor/store";
 import { putAsset } from "../../io/assets";
 import type { AssetRef, Level, Project } from "../../model";
@@ -19,8 +23,21 @@ import { decodeImage, encodePng } from "../../sprites/image";
 import type { Rgba } from "../../sprites/detect";
 import { drawArt, type TileImage } from "../render";
 import type { TileLayer } from "../../model";
+import { decodeCells } from "../../model/rle";
 
 export type BackgroundResult = "ok" | "not-image" | "failed";
+
+/** An image AI's flat magenta background or sky: at least 3 % of the picture is magenta (it is then made see-through). */
+export function hasAiMagenta(src: Rgba): boolean {
+  let n = 0;
+  const step = 4 * 7;
+  let seen = 0;
+  for (let i = 0; i < src.data.length; i += step) {
+    seen++;
+    if (src.data[i + 3]! >= 128 && isMagenta(src.data[i]!, src.data[i + 1]!, src.data[i + 2]!)) n++;
+  }
+  return seen > 0 && n / seen >= 0.03;
+}
 
 export function isImageFile(f: File): boolean {
   return f.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
@@ -32,7 +49,7 @@ export async function fitBackground(level: Level, file: File, grow: boolean): Pr
   const type = checkSheetFile(bytes, file.type);
   const decoded = await decodeImage(bytes, type || file.type || "image/png");
   const rgba = grow ? onLevelGrid(decoded, level.size.h) : decoded;
-  const prepared = preparePicture(level, rgba, { layer: "play", height: level.size.h, x: 0, repeat: false, grow, keyMagenta: false }, null);
+  const prepared = preparePicture(level, rgba, { layer: "play", height: level.size.h, x: 0, repeat: false, grow, keyMagenta: hasAiMagenta(decoded) }, null);
   const ts = prepared.fit.tileset;
   const asset = await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png");
   return { prepared, asset };
@@ -110,9 +127,21 @@ export function levelPicture(level: Level, images: Map<string, TileImage>): Rgba
   return { w: level.size.w, h: level.size.h, data: ctx.getImageData(0, 0, level.size.w, level.size.h).data };
 }
 
+/** Where the background's art ends: the right edge of its last drawn column (0 when it has none). */
+export function artEnd(level: Level): number {
+  const play = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "play");
+  if (!play) return 0;
+  const cols = Math.ceil(level.size.w / play.grid);
+  const rows = Math.ceil(level.size.h / play.grid);
+  const cells = decodeCells(play.data, cols * rows);
+  for (let c = cols - 1; c >= 0; c--) for (let r = 0; r < rows; r++) if (cells[r * cols + c]! > 0) return Math.min(level.size.w, (c + 1) * play.grid);
+  return 0;
+}
+
 /**
- * Add scene: a picture file (or `"repeat"`: the level's own art again) goes
- * after the level's end on the play layer, scaled to the level's height, and
+ * Add scene: a picture file (or `"repeat"`: the background's own art again)
+ * goes after the end of the background's art (not of the level, which may be
+ * wider) on the play layer, scaled to the level's height, and
  * the level grows by its width; the art already there stays, as one undo
  * step. The same art repeated adds no new tiles.
  */
@@ -122,16 +151,24 @@ export async function appendBackground(store: EditorStore, levelId: string, imag
     const level = store.level(levelId);
     if (!level) return "failed";
     let src: Rgba | null;
-    if (source === "repeat") src = levelPicture(level, images);
+    let key = false;
+    const end = artEnd(level);
+    if (source === "repeat") {
+      // the drawn part only: a wider level's empty end is not repeated
+      const whole = levelPicture(level, images);
+      src = whole && end ? { w: end, h: whole.h, data: cropColumns(whole, end) } : whole;
+    }
     else {
       const bytes = new Uint8Array(await source.arrayBuffer());
       const type = checkSheetFile(bytes, source.type);
-      src = onLevelGrid(await decodeImage(bytes, type || source.type || "image/png"), level.size.h);
+      const decoded = await decodeImage(bytes, type || source.type || "image/png");
+      key = hasAiMagenta(decoded);
+      src = onLevelGrid(decoded, level.size.h);
     }
     if (!src) return "failed";
     const play = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "play");
     const current = tilesetPixels(images.get(play?.tileset ?? ""));
-    const prepared = preparePicture(level, src, { layer: "play", height: level.size.h, x: level.size.w, repeat: false, grow: true, keyMagenta: false }, current);
+    const prepared = preparePicture(level, src, { layer: "play", height: level.size.h, x: end || level.size.w, repeat: false, grow: true, keyMagenta: key }, current);
     const ts = prepared.fit.tileset;
     const asset = await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png");
     store.editProject(label, (p) => {
@@ -142,4 +179,50 @@ export async function appendBackground(store: EditorStore, levelId: string, imag
   } catch {
     return "failed";
   }
+}
+
+/** The far background's file name, or null when the far layer has no picture. */
+export function farBackgroundFile(p: Project, level: Level): string | null {
+  const id = `ts-pic-${level.id}-far`;
+  const set = p.tilesets.find((t) => t.id === id) as unknown as { file?: string } | undefined;
+  const far = level.layers.find((l): l is TileLayer => l.kind === "tiles" && l.id === "far");
+  if (!set || !far || far.tileset !== id) return null;
+  // removed: the layer keeps its tileset but has no cell drawn
+  const cells = decodeCells(far.data, Math.ceil(level.size.w / far.grid) * Math.ceil(level.size.h / far.grid));
+  return cells.some((v) => v > 0) ? (set.file ?? "") : null;
+}
+
+/**
+ * A far background: a skyline on the far layer (32 px tiles, its own 32
+ * palettes), scaled to the level's height and repeated across it, behind
+ * the background; the game scrolls it at half speed (parallax), so it
+ * needs to be only about half the level's width plus a screen. One undo step.
+ */
+export async function importFarBackground(store: EditorStore, levelId: string, file: File, label: string): Promise<BackgroundResult> {
+  if (!isImageFile(file)) return "not-image";
+  try {
+    const level = store.level(levelId);
+    if (!level) return "failed";
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const type = checkSheetFile(bytes, file.type);
+    const decoded = await decodeImage(bytes, type || file.type || "image/png");
+    const prepared = preparePicture(level, decoded, { layer: "far", height: level.size.h, x: 0, repeat: true, grow: false, keyMagenta: false }, null);
+    const ts = prepared.fit.tileset;
+    const asset = await putAsset(await encodePng(ts.w, ts.h, ts.data), "image/png");
+    store.editProject(label, (p) => {
+      setPicture(p, prepared, asset);
+      const set = p.tilesets.find((t) => t.id === `ts-pic-${levelId}-far`);
+      if (set) (set as unknown as Record<string, unknown>).file = file.name;
+    });
+    return "ok";
+  } catch {
+    return "failed";
+  }
+}
+
+/** The left `w` columns of a picture. */
+function cropColumns(src: Rgba, w: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(w * src.h * 4);
+  for (let y = 0; y < src.h; y++) out.set(src.data.subarray(y * src.w * 4, (y * src.w + w) * 4), y * w * 4);
+  return out;
 }

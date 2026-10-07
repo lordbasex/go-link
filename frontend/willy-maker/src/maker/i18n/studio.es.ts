@@ -36,7 +36,7 @@ export const studioEs: StudioMessages = {
   expand: "Expandir panel",
 
   insertHeading: "Insertar",
-  insert: { background: "Fondo…", replaceBackground: "Reemplazar fondo…", character: "Personaje…", enemy: "Enemigo…", object: "Objeto…", group: "Nuevo grupo de capas", prompt: "Prompts para IA de imágenes…" },
+  insert: { background: "Fondo…", replaceBackground: "Reemplazar fondo…", character: "Personaje…", enemy: "Enemigo…", object: "Objeto…", group: "Nuevo grupo de capas", prompt: "Prompts para IA de imágenes…", far: "Fondo lejano (parallax)…" },
   insertNote: "También con clic derecho sobre el lienzo.",
   drawZoneHeading: "Dibujar zona · B",
 
@@ -136,6 +136,7 @@ export const studioEs: StudioMessages = {
     canvas: "Menú del lienzo",
   },
   toast: {
+    farReady: "Fondo lejano listo: se ve donde el fondo es transparente y en el juego se mueve a la mitad de velocidad.",
     sceneReady: (w: number) => `Escenario agregado: el nivel ahora mide ${w} px de ancho.`,
     drawHint: (kind) => `Arrastra sobre el lienzo para marcar: ${kind}.`,
     notImage: "Eso no es una imagen.",
@@ -164,6 +165,8 @@ export const studioEs: StudioMessages = {
   },
   backgroundName: "Fondo",
   undoLabels: {
+    far: "Fondo lejano",
+    removeFar: "Quitar fondo lejano",
     addScene: "Agregar escenario",
     drawZone: "Dibujar zona",
     move: "Mover",
@@ -182,6 +185,11 @@ export const studioEs: StudioMessages = {
   groupNames: { objects: "Personajes", zones: "Zonas", group: (n) => `Grupo ${n}` },
   exampleGroups: { platforms: "Plataformas y escaleras", hazards: "Peligros", ground: "Suelo y cajas" },
   layersPanel: {
+    far: "Lejano",
+    farUnnamed: "imagen",
+    farTip: "Un horizonte detrás del fondo que en el juego se mueve a la mitad de velocidad (parallax). El cielo magenta del fondo deja verlo.",
+    insertFar: "+ Fondo lejano (parallax)…",
+    removeFar: "Quitar el fondo lejano",
     groupTip: "Doble clic para renombrar · clic derecho para opciones",
     openClose: "Abrir / cerrar",
     groupEye: "Mostrar / ocultar el grupo",

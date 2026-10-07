@@ -232,6 +232,20 @@ export function clearBackground(store: EditorStore, levelId: string, label: stri
   });
 }
 
+/** The far layer: a skyline behind the background that scrolls at half speed (parallax), on the board's scroll3. */
+export function farLayer(level: Level) {
+  return tileLayers(level).find((l) => l.id === "far");
+}
+
+/** Empties the far layer (one undo step). */
+export function clearFarBackground(store: EditorStore, levelId: string, label: string): void {
+  store.editLevel(label, levelId, (level) => {
+    const l = farLayer(level);
+    if (!l) return;
+    l.data = encodeCells(new Uint16Array(Math.ceil(level.size.w / l.grid) * Math.ceil(level.size.h / l.grid)));
+  });
+}
+
 export function setBackgroundFlags(store: EditorStore, levelId: string, flags: { visible?: boolean; locked?: boolean }, label: string): void {
   store.editLevel(label, levelId, (level) => {
     const l = backgroundLayer(level);

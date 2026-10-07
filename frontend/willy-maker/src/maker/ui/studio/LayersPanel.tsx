@@ -8,7 +8,7 @@
 // where new zones and objects go.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, Lock, LockOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, Folder, Lock, LockOpen, Mountain, X } from "lucide-react";
 import { useStudioText } from "../../i18n";
 import { groupOf, objectLayer, type LayerGroup, type Level, type LevelObject, type Zone } from "../../model";
 import type { EditorStore } from "../../editor/store";
@@ -35,11 +35,15 @@ export interface LayersPanelProps {
   zoneInfo: (z: Zone) => LayerRowInfo;
   objectInfo: (o: LevelObject) => LayerRowInfo & { role: keyof typeof ROLE_SWATCH };
   backgroundName: string;
+  /** The far background's file name (a skyline at half speed), or null when there is none. */
+  farName: string | null;
   onPlace: () => void;
   onInsertBackground: () => void;
+  onInsertFar: () => void;
+  onRemoveFar: () => void;
 }
 
-export function LayersPanel({ store, level, version, images, zoneInfo, objectInfo, backgroundName, onPlace, onInsertBackground }: LayersPanelProps) {
+export function LayersPanel({ store, level, version, images, zoneInfo, objectInfo, backgroundName, farName, onPlace, onInsertBackground, onInsertFar, onRemoveFar }: LayersPanelProps) {
   const t = useStudioText();
   const ui = useStudioUi();
   const s = useUiState();
@@ -224,6 +228,22 @@ export function LayersPanel({ store, level, version, images, zoneInfo, objectInf
         ) : (
           <button type="button" className="studio-group-empty is-background" onClick={onInsertBackground}>
             {t.layersPanel.insertBackground}
+          </button>
+        )}
+        {/* the far background: a skyline behind the background, at half speed in the game */}
+        {farName !== null ? (
+          <div className="studio-bg-row is-far" title={t.layersPanel.farTip}>
+            <Mountain size={14} aria-hidden="true" />
+            <span className="studio-ellipsis">
+              {t.layersPanel.far}: {farName || t.layersPanel.farUnnamed}
+            </span>
+            <button type="button" className="btn btn-icon studio-small" aria-label={t.layersPanel.removeFar} title={t.layersPanel.removeFar} onClick={onRemoveFar}>
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="studio-group-empty is-background" title={t.layersPanel.farTip} onClick={onInsertFar}>
+            {t.layersPanel.insertFar}
           </button>
         )}
       </div>

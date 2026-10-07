@@ -4,7 +4,7 @@
 // icon rail, whose zone and insert buttons open a flyout menu. Its right
 // edge is dragged to resize it; dragged narrow, it becomes the rail.
 
-import { Box, Check, ChevronsLeft, ChevronsRight, Eraser, Ghost, Hand, Image, MousePointer2, Sparkles, SquareDashed, SquarePlus, User, type LucideIcon } from "lucide-react";
+import { Box, Check, ChevronsLeft, ChevronsRight, Eraser, Ghost, Hand, Image, Mountain, MousePointer2, Sparkles, SquareDashed, SquarePlus, User, type LucideIcon } from "lucide-react";
 import { useStudioText } from "../../i18n";
 import { RAIL_W, useStudioUi, useUiState, type PickerTab, type StudioTool } from "./state";
 import { ResizeHandle } from "./ResizeHandle";
@@ -21,25 +21,28 @@ export interface LeftPanelProps {
   steps: readonly boolean[];
   hasBackground: boolean;
   onInsertBackground: () => void;
+  /** A far background (a skyline behind, at half speed). */
+  onInsertFar: () => void;
   onInsert: (tab: PickerTab) => void;
   /** The prompts to make art with an image AI (background, characters, objects). */
   onPrompt: () => void;
 }
 
-export function LeftPanel({ steps, hasBackground, onInsertBackground, onInsert, onPrompt }: LeftPanelProps) {
+export function LeftPanel({ steps, hasBackground, onInsertBackground, onInsertFar, onInsert, onPrompt }: LeftPanelProps) {
   const done = steps.filter(Boolean).length;
   const s = useUiState();
   if (s.leftHidden) return null;
-  return s.leftCompact ? <IconRail done={done} total={steps.length} /> : <ToolsPanel steps={steps} hasBackground={hasBackground} onInsertBackground={onInsertBackground} onInsert={onInsert} onPrompt={onPrompt} />;
+  return s.leftCompact ? <IconRail done={done} total={steps.length} /> : <ToolsPanel steps={steps} hasBackground={hasBackground} onInsertBackground={onInsertBackground} onInsertFar={onInsertFar} onInsert={onInsert} onPrompt={onPrompt} />;
 }
 
-function ToolsPanel({ steps, hasBackground, onInsertBackground, onInsert, onPrompt }: LeftPanelProps) {
+function ToolsPanel({ steps, hasBackground, onInsertBackground, onInsertFar, onInsert, onPrompt }: LeftPanelProps) {
   const t = useStudioText();
   const ui = useStudioUi();
   const s = useUiState();
   const current = steps.indexOf(false);
   const inserts: { label: string; icon: LucideIcon; run: () => void }[] = [
     { label: hasBackground ? t.insert.replaceBackground : t.insert.background, icon: Image, run: onInsertBackground },
+    { label: t.insert.far, icon: Mountain, run: onInsertFar },
     { label: t.insert.character, icon: User, run: () => onInsert("heroes") },
     { label: t.insert.enemy, icon: Ghost, run: () => onInsert("enemies") },
     { label: t.insert.object, icon: Box, run: () => onInsert("objects") },

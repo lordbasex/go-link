@@ -35,7 +35,7 @@ export const studioEn = {
   expand: "Expand panel",
 
   insertHeading: "Insert",
-  insert: { background: "Background…", replaceBackground: "Replace background…", character: "Character…", enemy: "Enemy…", object: "Object…", group: "New layer group", prompt: "Image AI prompts…" },
+  insert: { background: "Background…", replaceBackground: "Replace background…", character: "Character…", enemy: "Enemy…", object: "Object…", group: "New layer group", prompt: "Image AI prompts…", far: "Far background (parallax)…" },
   insertNote: "Also with a right click on the canvas.",
   drawZoneHeading: "Draw zone · B",
 
@@ -135,6 +135,7 @@ export const studioEn = {
     canvas: "Canvas menu",
   },
   toast: {
+    farReady: "Far background ready: it shows where the background is see-through and moves at half speed in the game.",
     sceneReady: (w: number) => `Scene added: the level is ${w} px wide now.`,
     drawHint: (kind: string) => `Drag on the canvas to mark: ${kind}.`,
     notImage: "That is not an image.",
@@ -163,6 +164,8 @@ export const studioEn = {
   },
   backgroundName: "Background",
   undoLabels: {
+    far: "Far background",
+    removeFar: "Remove far background",
     addScene: "Add scene",
     drawZone: "Draw zone",
     move: "Move",
@@ -181,6 +184,11 @@ export const studioEn = {
   groupNames: { objects: "Characters", zones: "Zones", group: (n: number) => `Group ${n}` },
   exampleGroups: { platforms: "Platforms and ladders", hazards: "Hazards", ground: "Ground and crates" },
   layersPanel: {
+    far: "Far",
+    farUnnamed: "picture",
+    farTip: "A skyline behind the background that scrolls at half speed in the game (parallax). The background's magenta sky lets it show through.",
+    insertFar: "+ Far background (parallax)…",
+    removeFar: "Remove the far background",
     groupTip: "Double click to rename · right click for options",
     openClose: "Open / close",
     groupEye: "Show / hide the group",
