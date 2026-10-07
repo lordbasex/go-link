@@ -15,7 +15,7 @@
 // made of scenes (Level.scenes, editor/scenes.ts) keeps each picture: they
 // can be moved, scaled and lined up, and the art is laid out again.
 
-import { setPicture, preparePicture, type PreparedPicture } from "../../editor/pictureImport";
+import { setLevelWidth, setPicture, preparePicture, type PreparedPicture } from "../../editor/pictureImport";
 import { isMagenta } from "../../editor/picture";
 import type { EditorStore } from "../../editor/store";
 import { putAsset } from "../../io/assets";
@@ -149,8 +149,10 @@ export async function layOutScenes(store: EditorStore, levelId: string, scenes: 
     const prepared = { options: { layer: "play" as const, height: level.size.h, x: 0, repeat: false, grow: true }, levelId, width, picture: { w: keys.w, h: keys.h, pixelSize: 1 }, fit, preview: keys } satisfies PreparedPicture;
     const asset = await putAsset(await encodePng(fit.tileset.w, fit.tileset.h, fit.tileset.data), "image/png");
     store.editProject(label, (p) => {
-      putBackground(p, { prepared, asset }, scenes.map((s) => s.name).join(" + "));
       const l = p.levels.find((x) => x.id === levelId);
+      // the level ends where the scenes do (narrower when they overlap more, never cutting a zone or an object off)
+      if (l) setLevelWidth(l, width);
+      putBackground(p, { prepared, asset }, scenes.map((s) => s.name).join(" + "));
       if (l) l.scenes = scenes.map((s) => ({ ...s }));
     });
     return "ok";
