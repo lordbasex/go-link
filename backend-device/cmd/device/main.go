@@ -69,6 +69,8 @@ func run() error {
 		testRoom   = flag.Bool("test-room", true, "open the test pattern room (or the game given with --game)")
 		testPause  = flag.Bool("test-room-pause", false, "let the host pause the test pattern room (to try the pause and its requests without a game)")
 		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p, 2160p, or auto: the best this computer streams at 60 fps, checked) made of --hd-far and --hd-play")
+		hdCore     = flag.String("hd-core", "", "go-link HD's libretro core (default: golink_hd_libretro in the cores folder): game rooms of .glhd packages run it; with --test-room-hd 720p, 1080p or 2160p the test room plays its built-in demo (its 640x360 screen enlarged x2, x3 or x6)")
+		hdRoomSize = flag.String("hd-room-size", "720p", "go-link HD game rooms' picture: 720p (x2) or 1080p (x3)")
 		hdFar      = flag.String("hd-far", "", "the HD scene's far picture (with --test-room-hd)")
 		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
 		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
@@ -155,6 +157,22 @@ func run() error {
 		return err
 	}
 	streamCfg := services.StreamConfig{API: api, UDPPort: port, AnnounceIPs: ips, Logger: logger}
+	if *hdCore != "" && *testHD == "auto" {
+		return errors.New("--hd-core plays in the test room with --test-room-hd 720p, 1080p or 2160p, not auto")
+	}
+	if *hdCore != "" {
+		library.SetHDCore(*hdCore)
+		library.Scan()
+	}
+	hdRoomScale := 0
+	switch *hdRoomSize {
+	case "720p":
+		hdRoomScale = 2
+	case "1080p":
+		hdRoomScale = 3
+	default:
+		return fmt.Errorf("--hd-room-size: %q is not 720p or 1080p", *hdRoomSize)
+	}
 	if *testHD == "auto" {
 		// go-link HD picks the size and codec this computer streams at 60 fps (hdAuto)
 		if *hdFar == "" {
@@ -266,7 +284,12 @@ func run() error {
 				stream.SendToLinks(services.RoomPauseAskEvent{PauseAskEvent: ev, ID: services.TestRoomID})
 			})
 		}
-		if *testHD != "" {
+		if *hdCore != "" && *testHD != "" {
+			if err := useHDCore(stream, *testHD, *hdCore, filepath.Join(base, "system"), *hdKbps, logger); err != nil {
+				return err
+			}
+			manager.SetInfo(services.RoomInfo{Title: "Test pattern", Game: "go-link HD demo", Host: hostName()})
+		} else if *testHD != "" {
 			if err := useHDScene(stream, *testHD, *hdFar, *hdPlay, *hdKbps, logger); err != nil {
 				return err
 			}
@@ -282,6 +305,7 @@ func run() error {
 	// Recordings of game rooms, only for the host (~/go-link/rec).
 	recordings := services.NewRecordingService(filepath.Join(base, "rec"), nil)
 	history.SetRecordings(recordings)
+	probes := saveProbes(library)
 	games := services.NewRoomsService(services.RoomsConfig{
 		Library:    library,
 		Status:     status,
@@ -308,11 +332,20 @@ func run() error {
 		Save: func(list []models.SavedRoom) error {
 			return updateConfig(store, &cfg, func(c *models.Config) { c.Rooms = list })
 		},
-		ProbeSaves: saveProbes(library).SavesWork,
+		ProbeSaves: func(ctx context.Context, rom string) (bool, error) {
+			if library.IsHD(rom) {
+				return true, nil // go-link HD's save states are exact by design
+			}
+			return probes.SavesWork(ctx, rom)
+		},
 		NewSource: func(rom, state string, onReady func(libretro.AVInfo)) services.RoomSource {
+			upscale := 0
+			if library.IsHD(rom) {
+				upscale = hdRoomScale
+			}
 			return services.NewWorkerSource(services.WorkerConfig{
-				CorePath: library.CorePath(), RomPath: library.RomPath(rom), SystemDir: systemDir,
-				StatePath: state, Logger: logger, OnReady: onReady,
+				CorePath: library.CoreFor(rom), RomPath: library.RomPath(rom), SystemDir: systemDir,
+				StatePath: state, Upscale: upscale, Logger: logger, OnReady: onReady,
 			})
 		},
 		Logger: logger,
@@ -897,6 +930,30 @@ func useHDScene(stream *services.StreamService, size, far, play string, kbps int
 	stream.SetBitrate(kbps)
 	stream.SetSource(&services.HDSceneSource{Width: sz.W, Height: sz.H, FPS: 60, Far: farImg, Play: playImg})
 	log.Info("test room streams the HD scene", "size", size, "kbps", kbps)
+	return nil
+}
+
+// useHDCore makes the test room play a go-link HD libretro core's built-in
+// demo (no content), its 640 x 360 screen enlarged to the HD size.
+func useHDCore(stream *services.StreamService, size, core, systemDir string, kbps int, log *slog.Logger) error {
+	sz, ok := hdSizes[size]
+	if !ok {
+		return fmt.Errorf("--test-room-hd: unknown size %q (720p, 1080p or 2160p)", size)
+	}
+	if _, err := os.Stat(core); err != nil {
+		return fmt.Errorf("--hd-core: %w", err)
+	}
+	if kbps <= 0 {
+		kbps = sz.Kbps
+	}
+	stream.SetBitrate(kbps)
+	stream.SetSource(services.NewEmulatorSource(services.EmulatorConfig{
+		CorePath:  core,
+		SystemDir: systemDir,
+		Upscale:   sz.H / 360,
+		Logger:    log,
+	}))
+	log.Info("test room plays go-link HD", "core", core, "size", size, "kbps", kbps)
 	return nil
 }
 

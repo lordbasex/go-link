@@ -19,10 +19,11 @@ export function OwnBadge() {
   );
 }
 
-/** "4 players · Jump · Fire · Special" for go-link's games, in the reader's language. */
+/** "4 players · Jump · Fire · Special" for go-link's games and go-link HD packages, in the reader's language. */
 export function ownControlsText(rom: DeviceRom): string {
   const c = rom.controls;
-  if (!rom.own || !c || c.labels.length === 0) return "";
+  if (!(rom.own || rom.kind === "glhd") || !c || c.labels.length === 0) return "";
   const names = t.roms.ownButton as Record<string, string>;
-  return t.roms.ownControls(c.players, c.labels.map((l) => names[l] ?? l));
+  // two buttons may do the same (go-link HD jumps with B or A)
+  return t.roms.ownControls(c.players, [...new Set(c.labels)].map((l) => names[l] ?? l));
 }

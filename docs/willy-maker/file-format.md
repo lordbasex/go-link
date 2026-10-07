@@ -177,6 +177,10 @@ my-game.willy.zip
 
 Import checks `format`, every hash and every size before replacing anything. A project with the same `id` asks: replace it, or keep both (the import gets a new `id`).
 
+## The go-link HD package (`.glhd`, beta)
+
+A platformer's Export tab has **go-link HD (beta)**: the game as a package for go-link HD's own core ([go-link-hd.md](../go-link-hd.md); the format is documented in the `golink-hd` repository's README). `io/glhdExport.ts` writes a zip with `manifest.json` (format 1, the title, `genre: "platformer"`, the players), `level.json` (the first level in play order, one letter per 16 px cell: solid `#`, one-way `=`, breakable and crates `B`, coins `o`, checkpoints `C`, the exit's goal `F` on its floor, enemies `E`, and the cell player 1 starts in; a level under 40 × 23 cells gets sky above and its last column repeated) and `tiles.png` (ground top, ground, brick and platform cut from the starter city tileset). Ladders, hazards and water have no cell in format 1 yet; the core draws its own hero, enemies, coins, checkpoints and goal. The same project gives the same bytes. Put the file in the go-link's ROM folder: My device lists it and **New game** starts it with go-link HD's core.
+
 ## The AI pack
 
 A second export for producing the ROM with an AI (or a person) and the tools in `rom/` (`io/aiPack.ts`). It is made only when the Export review has no errors.

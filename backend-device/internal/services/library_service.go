@@ -22,6 +22,7 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/cores"
+	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/ownsets"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/sysinfo"
@@ -46,6 +47,7 @@ type LibraryService struct {
 	mu         sync.Mutex
 	core       models.CoreStatus
 	coresDir   string
+	hdCore     string // go-link HD's core when set by SetHDCore; else in coresDir
 	coreURL    string
 	gameList   *romcheck.Catalog // the core's game list, loaded lazily
 	badList    time.Time         // mod time of a game list that failed to load
@@ -138,6 +140,12 @@ func (l *LibraryService) CheckRom(name string) (res romcheck.Result, ok bool) {
 	if name == MakerRom {
 		return l.checkMaker()
 	}
+	if l.IsHD(name) {
+		if _, err := glhd.Read(l.RomPath(name)); err != nil {
+			return romcheck.Result{Status: romcheck.StatusBadZip}, true
+		}
+		return romcheck.Result{Status: romcheck.StatusOK}, true
+	}
 	cat := l.Catalog()
 	if cat == nil {
 		return romcheck.Result{}, false
@@ -150,6 +158,64 @@ func (l *LibraryService) CorePath() string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return filepath.Join(l.coresDir, cores.FileName(cores.DefaultCore, runtime.GOOS))
+}
+
+// SetHDCore sets where go-link HD's core is (the device's --hd-core);
+// without it the core is looked for in the cores folder.
+func (l *LibraryService) SetHDCore(path string) {
+	l.mu.Lock()
+	l.hdCore = path
+	l.mu.Unlock()
+}
+
+// HDCorePath is where go-link HD's core lives.
+func (l *LibraryService) HDCorePath() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.hdCore != "" {
+		return l.hdCore
+	}
+	return filepath.Join(l.coresDir, cores.FileName(glhd.CoreName, runtime.GOOS))
+}
+
+// IsHD reports whether a game of the folder is a go-link HD package
+// (name.glhd) rather than a MAME set. A .zip of the same name wins.
+func (l *LibraryService) IsHD(name string) bool {
+	if !romNameRE.MatchString(name) {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(l.Dir(), name+".zip")); err == nil {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(l.Dir(), name+glhd.Ext))
+	return err == nil
+}
+
+// CoreFor is the core that plays a game: go-link HD's for its packages,
+// the MAME core for everything else.
+func (l *LibraryService) CoreFor(name string) string {
+	if l.IsHD(name) {
+		return l.HDCorePath()
+	}
+	return l.CorePath()
+}
+
+// HasCoreFor reports whether the core that plays a game is installed.
+func (l *LibraryService) HasCoreFor(name string) bool {
+	_, err := os.Stat(l.CoreFor(name))
+	return err == nil
+}
+
+// HD returns a go-link HD package's manifest, or nil for any other game.
+func (l *LibraryService) HD(name string) *glhd.Manifest {
+	if !l.IsHD(name) {
+		return nil
+	}
+	m, err := glhd.Read(l.RomPath(name))
+	if err != nil {
+		return nil
+	}
+	return &m
 }
 
 // HasCore reports whether the core is installed.
@@ -168,13 +234,16 @@ func (l *LibraryService) HasRom(name string) bool {
 		return false
 	}
 	_, err := os.Stat(filepath.Join(l.Dir(), name+".zip"))
-	return err == nil
+	return err == nil || l.IsHD(name)
 }
 
 // RomPath returns the file of a ROM set.
 func (l *LibraryService) RomPath(name string) string {
 	if name == MakerRom {
 		return l.makerPath()
+	}
+	if l.IsHD(name) {
+		return filepath.Join(l.Dir(), name+glhd.Ext)
 	}
 	return filepath.Join(l.Dir(), name+".zip")
 }
@@ -183,7 +252,7 @@ func (l *LibraryService) RomPath(name string) string {
 // by the SHA-256 of every file inside the zip, never by the name: a real
 // set with the same name is the original game.
 func (l *LibraryService) Own(name string) *ownsets.Set {
-	if !romNameRE.MatchString(name) {
+	if !romNameRE.MatchString(name) || l.IsHD(name) {
 		return nil
 	}
 	return l.own.Match(l.RomPath(name))
@@ -458,25 +527,55 @@ func placeNoOverwrite(src, dst string) error {
 	return os.Rename(src, dst)
 }
 
-// Scan lists the .zip sets and publishes them in the status.
+// Scan lists the .zip sets and the go-link HD packages (.glhd) and
+// publishes them in the status.
 func (l *LibraryService) Scan() {
 	var roms []models.RomInfo
 	files, _ := os.ReadDir(l.Dir())
+	zips := map[string]bool{}
+	for _, f := range files {
+		if name, ok := strings.CutSuffix(f.Name(), ".zip"); ok {
+			zips[name] = true
+		}
+	}
 	for _, f := range files {
 		name, ok := strings.CutSuffix(f.Name(), ".zip")
-		if !ok || f.IsDir() || !romNameRE.MatchString(name) {
+		hd := false
+		if !ok {
+			name, hd = strings.CutSuffix(f.Name(), glhd.Ext)
+			if !hd || zips[name] {
+				continue // a .zip of the same name wins
+			}
+		}
+		if f.IsDir() || !romNameRE.MatchString(name) {
 			continue
 		}
 		info, err := f.Info()
 		if err != nil {
 			continue
 		}
-		roms = append(roms, models.RomInfo{Name: name, Size: info.Size()})
+		rom := models.RomInfo{Name: name, Size: info.Size()}
+		if hd {
+			// go-link HD's packages tell their own title and players
+			rom.Kind = models.KindHD
+			m, err := glhd.Read(filepath.Join(l.Dir(), f.Name()))
+			if err != nil {
+				rom.Check = &romcheck.Result{Status: romcheck.StatusBadZip}
+			} else {
+				rom.Check = &romcheck.Result{Status: romcheck.StatusOK}
+				rom.Title, rom.Description = m.Title, "go-link HD"
+				rom.Controls = &models.RomControls{Players: m.Players, Buttons: len(glhd.Labels), Labels: glhd.Labels}
+			}
+		}
+		roms = append(roms, rom)
 	}
 	// Check each set against the core's game list, without running it.
 	if cat := l.Catalog(); cat != nil {
 		checker := romcheck.NewChecker(cat, l.Dir())
 		for i := range roms {
+			if roms[i].Kind == models.KindHD {
+				continue
+			}
 			res := checker.Check(roms[i].Name)
 			roms[i].Check = &res
 			if g := cat.Game(roms[i].Name); g != nil {
@@ -487,6 +586,9 @@ func (l *LibraryService) Scan() {
 	// go-link's own sets show go-link's game, never the original set's
 	// title or the host's pictures of it.
 	for i := range roms {
+		if roms[i].Kind == models.KindHD {
+			continue
+		}
 		if s := l.Own(roms[i].Name); s != nil {
 			roms[i].Own = true
 			roms[i].Title, roms[i].Year, roms[i].Maker, roms[i].Description = s.Title, s.Year, s.Maker, s.Description
@@ -515,6 +617,9 @@ func (l *LibraryService) Scan() {
 	l.mu.Unlock()
 	core.Installed = installed
 	core.Catalog = l.Catalog() != nil
+	if _, err := os.Stat(l.HDCorePath()); err == nil {
+		core.HDInstalled = true
+	}
 	lib := models.Library{Dir: l.Dir(), Roms: roms, Core: core, ThumbnailsDir: thumbsDir, ThumbKind: string(l.ThumbnailKind()), ThumbnailsBytes: thumbnails.Size(thumbsDir)}
 	if d, ok := sysinfo.DiskOf(l.Dir()); ok {
 		lib.Disk = &d

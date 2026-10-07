@@ -4,6 +4,10 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ## [Unreleased]
 
+### Added
+
+- **go-link HD (beta) in Export:** a platformer downloads as a go-link HD package (`.glhd`): manifest, its first level as one letter per cell (blocks, one-way platforms, coins, checkpoints, the goal, enemies, the start) and the city's tiles (`io/glhdExport.ts`, same bytes for the same project); a go-link with go-link HD's core lists it and plays it in a game room. Texts in English, Spanish and Portuguese; tests.
+
 ### Docs
 
 - **The AI playtester's specification** ([docs/willy-maker/ai-playtester.md](../../docs/willy-maker/ai-playtester.md)): what Test with AI will do, each item marked Base, Later or Idea (players, training, the report, the editor, genres, data and privacy, QA bots in rooms), with budgets, phases and the decisions taken: a small network trained on each game with the route bot as its teacher, reading the game's state, in the browser, the platformer first. Nothing is built yet.

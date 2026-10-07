@@ -45,8 +45,19 @@ export interface DeviceRom {
    * description and controls are go-link's, not the original set's.
    */
   own?: boolean;
+  /**
+   * "glhd" for a go-link HD game package (name.glhd), played by go-link
+   * HD's own core; its title, description and controls come from the
+   * package's manifest. Absent for a MAME set (name.zip).
+   */
+  kind?: "glhd";
   description?: string;
   controls?: RomControls;
+}
+
+/** The game's file in the host's folder: name.zip, or name.glhd for a go-link HD package. */
+export function romFile(r: { name: string; kind?: string }): string {
+  return r.name + (r.kind === "glhd" ? ".glhd" : ".zip");
 }
 
 /** A game's control panel as the library shows it (go-link's own games). */
@@ -89,7 +100,8 @@ export interface DeviceLibrary {
   dir: string;
   roms: DeviceRom[];
   /** catalog: the core's game list, used to check ROMs, is installed. */
-  core: { name: string; installed: boolean; catalog: boolean; downloading: boolean; error?: string };
+  /** The MAME core; hdInstalled tells whether go-link HD's core (for .glhd packages) is there too. */
+  core: { name: string; installed: boolean; catalog: boolean; downloading: boolean; error?: string; hdInstalled?: boolean };
   /** Space on the volume that holds the ROM folder, in bytes. */
   disk?: { total: number; free: number };
   /** Folder of the host's own thumbnails on the device. */
@@ -306,8 +318,9 @@ function parseLibrary(v: unknown): DeviceLibrary | undefined {
       const name = text(o.name, 16);
       if (!name) return [];
       const rom: DeviceRom = { name, size: typeof o.size === "number" ? o.size : 0, title: text(o.title, 160), year: text(o.year, 4), maker: text(o.maker), thumbs: parseThumbs(o.thumbs), check: parseCheck(o.check) };
-      if (o.own === true) {
-        rom.own = true;
+      if (o.own === true || o.kind === "glhd") {
+        if (o.own === true) rom.own = true;
+        else rom.kind = "glhd";
         rom.description = text(o.description, 400);
         rom.controls = parseRomControls(o.controls);
       }
@@ -315,7 +328,7 @@ function parseLibrary(v: unknown): DeviceLibrary | undefined {
     }),
     core: (() => {
       const c = (typeof l.core === "object" && l.core !== null ? l.core : {}) as Record<string, unknown>;
-      return { name: text(c.name, 40) ?? "", installed: c.installed === true, catalog: c.catalog === true, downloading: c.downloading === true, error: text(c.error, 200) };
+      return { name: text(c.name, 40) ?? "", installed: c.installed === true, catalog: c.catalog === true, downloading: c.downloading === true, error: text(c.error, 200), hdInstalled: c.hd_installed === true };
     })(),
     disk: (() => {
       const k = (typeof l.disk === "object" && l.disk !== null ? l.disk : {}) as Record<string, unknown>;

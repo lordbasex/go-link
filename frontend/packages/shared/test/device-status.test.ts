@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { parseDeviceStatus, parsePauseAskEvent } from "../src/device-status";
+import { parseDeviceStatus, parsePauseAskEvent, romFile } from "../src/device-status";
 
 describe("device update", () => {
   const base = { type: "device_status", device_id: "d", version: "v0.1.0" };
@@ -56,5 +56,27 @@ describe("video quality", () => {
       undefined,
     ]);
     expect(parseDeviceStatus({ type: "device_status", device_id: "d", video_quality: "4k" })?.videoQuality).toBeUndefined();
+  });
+});
+
+describe("go-link HD packages in the library", () => {
+  it("keeps a package's kind and the controls of its manifest", () => {
+    const s = parseDeviceStatus({
+      type: "device_status",
+      device_id: "d",
+      library: {
+        roms: [
+          { name: "neon", size: 10, kind: "glhd", title: "Neon Run", description: "go-link HD", controls: { players: 2, buttons: 4, labels: ["Jump", "Jump", "Run", "Run"] }, thumbs: {} },
+          { name: "robby", size: 10, kind: "other", controls: { players: 2, buttons: 2 }, thumbs: {} },
+        ],
+      },
+    });
+    const [neon, robby] = s!.library!.roms;
+    expect(neon!.kind).toBe("glhd");
+    expect(neon!.controls?.players).toBe(2);
+    expect(romFile(neon!)).toBe("neon.glhd");
+    expect(robby!.kind).toBeUndefined();
+    expect(robby!.controls).toBeUndefined();
+    expect(romFile(robby!)).toBe("robby.zip");
   });
 });

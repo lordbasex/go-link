@@ -4,6 +4,12 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (go-link HD)
+
+- **The engine is C99, in its own repository:** go-link HD's core is written in C99 instead of Go, in `golink-hd`, so it can be published to libretro; the device calls it from Go through `pkg/libretro`. Phase 1's core and its demo are done, and it reads game packages (`.glhd` format 1); status and phases updated.
+- **go-link HD games in the library and in game rooms:** `.glhd` packages in the ROM folder are listed next to the zips with their manifest's title, players and buttons (`RomInfo.kind`, `pkg/glhd`), and their rooms run go-link HD's core in the `device emulate` worker (`--upscale`; `--hd-room-size 720p|1080p`; `--hd-core PATH` or `golink_hd_libretro` in the cores folder; `library.core.hd_installed`). The website shows each game's file (`romFile`), the controls of a package and asks for the core the chosen game needs. `e2e/tests/hd-core.spec.ts` (on demand) plays the demo in the test room and an exported Willy Maker game in its own room.
+- **The device plays go-link HD:** `--test-room-hd 720p|1080p|2160p --hd-core PATH` makes the test room play the core's built-in demo, its 640 × 360 screen enlarged ×2, ×3 or ×6 (`libretro.ToI420Scaled`, bit for bit the same as enlarging first), seated players at its ports; `pkg/libretro` starts a core with no content when given an empty path; a test runs the real core when `GOLINK_HD_CORE` is set.
+
 ## [0.2.5] - 2026-10-07
 
 ### Changed (emulator)

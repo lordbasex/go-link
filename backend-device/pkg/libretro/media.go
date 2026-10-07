@@ -136,6 +136,61 @@ func ToI420Double(dst []byte, f Frame) {
 	}
 }
 
+// ToI420Scaled scales a frame n times (n >= 1) with nearest neighbour and
+// converts it to packed I420 in one pass: dst must have
+// FrameSizeI420(n*Width, n*Height) bytes. Like ToI420Double, the result is
+// exactly ToI420 of the frame upscaled first, bit for bit: each chroma
+// sample comes from the source pixel under the top-left pixel of its 2x2
+// block. go-link HD's 640 x 360 screen uses n = 3 for 1080p and 6 for 4K.
+func ToI420Scaled(dst []byte, f Frame, n int) {
+	w, h := f.Width, f.Height
+	ww, hh := n*w, n*h
+	cw := (ww + 1) / 2
+	uPlane := dst[ww*hh : ww*hh+cw*((hh+1)/2)]
+	vPlane := dst[ww*hh+cw*((hh+1)/2):]
+	// each source pixel is converted once: its luma and chroma
+	row := make([]byte, w*3)
+	lum := make([]byte, w)
+	cb := make([]byte, w)
+	cr := make([]byte, w)
+	// the source column under each chroma sample's top-left pixel
+	cmap := make([]int32, cw)
+	for cx := range cmap {
+		cmap[cx] = int32(2 * cx / n)
+	}
+	for y := 0; y < h; y++ {
+		decodeRow(row, f, y)
+		for x := 0; x < w; x++ {
+			r, g, b := int(row[x*3]), int(row[x*3+1]), int(row[x*3+2])
+			lum[x] = lumaOf(r, g, b)
+			cb[x] = byte(cbOf(r, g, b))
+			cr[x] = byte(crOf(r, g, b))
+		}
+		first := dst[n*y*ww : n*y*ww+ww]
+		for x, l := range lum {
+			o := first[n*x : n*x+n : n*x+n]
+			for i := range o {
+				o[i] = l
+			}
+		}
+		for k := 1; k < n; k++ {
+			copy(dst[(n*y+k)*ww:(n*y+k+1)*ww], first)
+		}
+		// the chroma rows whose top-left pixel row falls in this source row
+		for yy := n * y; yy < n*y+n; yy++ {
+			if yy%2 != 0 {
+				continue
+			}
+			u := uPlane[(yy/2)*cw : (yy/2)*cw+cw]
+			v := vPlane[(yy/2)*cw : (yy/2)*cw+cw]
+			for cx, sx := range cmap {
+				u[cx] = cb[sx]
+				v[cx] = cr[sx]
+			}
+		}
+	}
+}
+
 // ToI420Box converts a frame to packed I420 like ToI420, but each chroma
 // sample is the rounded average of the chroma of its 2x2 block (the
 // pixels inside the picture), instead of the top-left pixel's. It keeps

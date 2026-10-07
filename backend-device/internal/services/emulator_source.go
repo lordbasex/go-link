@@ -13,8 +13,10 @@ import (
 
 // EmulatorConfig describes the game to run.
 type EmulatorConfig struct {
-	CorePath  string // e.g. ~/go-link/cores/mame2003_plus_libretro.dylib
-	RomPath   string // e.g. ~/go-link/roms/robby.zip
+	CorePath string // e.g. ~/go-link/cores/mame2003_plus_libretro.dylib
+	RomPath  string // e.g. ~/go-link/roms/robby.zip; empty starts the core with no content
+	// Upscale enlarges the picture that many times (GameCoreConfig.Upscale).
+	Upscale   int
 	SystemDir string // BIOS, samples, hiscores, NVRAM
 	Logger    *slog.Logger
 	// OnReady runs once the game is loaded, before the first frame.
@@ -48,6 +50,7 @@ func (e *EmulatorSource) Run(ctx context.Context, sink MediaSink) error {
 		CorePath:  e.cfg.CorePath,
 		RomPath:   e.cfg.RomPath,
 		SystemDir: e.cfg.SystemDir,
+		Upscale:   e.cfg.Upscale,
 		Logger:    e.log,
 		Video:     sink.VideoFrame,
 		Audio:     sink.AudioSamples,

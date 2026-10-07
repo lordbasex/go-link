@@ -1144,7 +1144,7 @@ export const en = {
     ownBadge: "go-link",
     ownBadgeTitle: "A game made by go-link: your device checked every file of this set",
     ownControls: (players: number, labels: string[]) => `${players} players · ${labels.join(" · ")}`,
-    ownButton: { Jump: "Jump", Fire: "Fire", Special: "Special" },
+    ownButton: { Jump: "Jump", Fire: "Fire", Special: "Special", Run: "Run" },
     colGame: "Game",
     colSet: "Set",
     colYear: "Year",

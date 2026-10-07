@@ -42,6 +42,11 @@ export const exportEs: ExportMessages = {
     text: "Un .zip con todo: niveles, personajes, fondos y ajustes. Ábrelo en otro navegador y sigue donde estabas. No es una ROM: el dispositivo no lo ejecuta (Crear ROM hace la ROM).",
     download: "Descargar proyecto (.zip)",
   },
+  hd: {
+    title: "go-link HD (beta)",
+    text: "El juego como paquete para go-link HD, el motor 2D propio de go-link (640 × 360, 1080p en una sala): el primer nivel, sus bloques, monedas, enemigos, checkpoints y meta, con los tiles de la ciudad. Pon el archivo .glhd en la carpeta de ROMs de tu go-link. Por ahora el motor dibuja su propio héroe y sus enemigos.",
+    download: "Descargar para go-link HD (.glhd)",
+  },
   ai: {
     title: "2 · Paquete para una IA",
     text: "El proyecto más un PROMPT.md con la placa, las reglas, la historia y la especificación de arte. Dáselo a una IA para que arme la ROM con las herramientas de rom/. Tampoco es una ROM.",

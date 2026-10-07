@@ -98,8 +98,11 @@ unsigned core_api_version(core_t *c) { return c->api_version(); }
 void core_system_info(core_t *c, struct retro_system_info *info) { c->get_system_info(info); }
 void core_av_info(core_t *c, struct retro_system_av_info *info) { c->get_system_av_info(info); }
 
+/* A NULL path starts the core with no content (RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME). */
 bool core_load_game(core_t *c, const char *path) {
 	struct retro_game_info g;
+	if (!path)
+		return c->load_game(NULL);
 	memset(&g, 0, sizeof(g));
 	g.path = path;
 	return c->load_game(&g);

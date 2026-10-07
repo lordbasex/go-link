@@ -14,6 +14,8 @@ import { applyFix, checkText, type Check, type Target } from "../../editor/valid
 import { useReview } from "../../editor/validate/useReview";
 import { exportProjectZip, zipName } from "../../io/projectZip";
 import { aiPackName, buildAiPack, buildPrompt } from "../../io/aiPack";
+import { buildGlhd, glhdName } from "../../io/glhdExport";
+import { CITY_TILESET } from "../../templates/tiles";
 import { PackBuildError, packReport } from "../../io/packCheck";
 import { Capsule, Card, Eyebrow } from "../atoms";
 import { IconCheck, IconCopy, IconDownload, IconInfo, IconWarn, IconX } from "../icons";
@@ -24,7 +26,7 @@ import { CreateRomCard } from "./CreateRomCard";
 import { BotsCard } from "./BotsCard";
 import { usePromptMessages } from "./PromptDialog";
 
-type Busy = null | "project" | "ai";
+type Busy = null | "project" | "ai" | "hd";
 
 const ICONS = { ok: IconCheck, info: IconInfo, warning: IconWarn, error: IconX } as const;
 
@@ -58,6 +60,24 @@ export function ExportView({ project, version, store, onGo, onPrompt }: { projec
       }
       const zip = await exportProjectZip(project, { thumbnails });
       const name = zipName(project);
+      downloadBytes(zip, name, "application/zip");
+      setStatus({ ok: true, text: t.done(name) });
+    } catch (e) {
+      setStatus({ ok: false, text: t.failed((e as Error).message) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // go-link HD (beta): the platformer as a .glhd package for go-link HD's own core
+  const downloadHD = async () => {
+    setBusy("hd");
+    setStatus(null);
+    try {
+      const res = await fetch(new URL(CITY_TILESET.url.slice(1), new URL(import.meta.env.BASE_URL, location.href)));
+      const city = res.ok ? new Uint8Array(await res.arrayBuffer()) : null;
+      const zip = await buildGlhd(project, city);
+      const name = glhdName(project);
       downloadBytes(zip, name, "application/zip");
       setStatus({ ok: true, text: t.done(name) });
     } catch (e) {
@@ -203,6 +223,16 @@ export function ExportView({ project, version, store, onGo, onPrompt }: { projec
       <div className="wm-export-col">
         <BotsCard project={project} onGo={onGo} />
         <CreateRomCard project={project} blocked={review.errors > 0} />
+        {project.genre === "platformer" && (
+          <Card className="wm-export-card">
+            <Eyebrow accent>{t.hd.title}</Eyebrow>
+            <p className="wm-dim">{t.hd.text}</p>
+            <pre className="wm-tree-pre wm-mono">{`${glhdName(project)}\n├ manifest.json\n├ level.json\n└ tiles.png`}</pre>
+            <Capsule size="lg" className="wm-self-start" disabled={busy !== null} onClick={() => void downloadHD()}>
+              <IconDownload /> {busy === "hd" ? t.preparing : t.hd.download}
+            </Capsule>
+          </Card>
+        )}
         <PowerOnCard />
       </div>
     </div>
