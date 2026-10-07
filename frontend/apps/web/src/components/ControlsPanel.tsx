@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import {
   DEFAULT_KEYBOARD,
   MAX_LOCAL_PLAYERS,
+  type GameControls,
   type InputAction,
   type InputConfig,
   type KeyMap,
@@ -44,6 +45,38 @@ const ACTION_LABEL: Record<InputAction, string> = {
 };
 
 type Key = { code: string; label: string; w?: number };
+
+/**
+ * Whether the running game reads an action: the stick, Coin and Start
+ * always; buttons up to the game's count; the players' starts up to its
+ * players (4 when it does not say). L2, R2, L3, R3, Home, Capture and the
+ * host's pause never reach the game.
+ */
+export function gameUses(action: InputAction, game: GameControls): boolean {
+  switch (action) {
+    case "up":
+    case "down":
+    case "left":
+    case "right":
+    case "coin":
+    case "start":
+      return true;
+    case "b1":
+    case "b2":
+    case "b3":
+    case "b4":
+    case "b5":
+    case "b6":
+      return Number(action.slice(1)) <= game.buttons;
+    case "start1":
+    case "start2":
+    case "start3":
+    case "start4":
+      return Number(action.slice(5)) <= (game.players > 0 ? game.players : 4);
+    default:
+      return false;
+  }
+}
 
 const isMac =
   typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
@@ -99,18 +132,22 @@ function KeyCap({
   k,
   held,
   keymap,
+  game,
 }: {
   k: Key;
   held: ReadonlySet<string>;
   keymap: KeyMap;
+  game?: GameControls;
 }) {
   const action = keymap[k.code];
   const mapped = action !== undefined;
+  const used = mapped && game !== undefined && gameUses(action, game);
   const pressed = held.has(k.code);
   return (
     <span
-      className={`kb-key${mapped ? " is-mapped" : ""}${pressed ? " is-pressed" : ""}`}
+      className={`kb-key${mapped ? " is-mapped" : ""}${used ? " is-game" : ""}${pressed ? " is-pressed" : ""}`}
       style={{ flexGrow: k.w ?? 1 }}
+      title={used ? t.controls.gameKey : undefined}
     >
       {mapped && <span className="kb-legend">{k.label}</span>}
       <span className="kb-label">
@@ -124,12 +161,15 @@ function KeyCap({
 export function KeyboardView({
   held,
   keymap = DEFAULT_KEYBOARD,
+  game,
 }: {
   held: ReadonlySet<string>;
   keymap?: KeyMap;
+  /** The running game's controls: the keys it reads get an orange border. */
+  game?: GameControls;
 }) {
   const arrow = (code: string, label: string) => (
-    <KeyCap k={{ code, label }} held={held} keymap={keymap} />
+    <KeyCap k={{ code, label }} held={held} keymap={keymap} game={game} />
   );
   return (
     <div className="kb" aria-label={t.controls.keyboardLabel}>
@@ -137,7 +177,7 @@ export function KeyboardView({
         {ROWS.map((row, i) => (
           <div key={i} className="kb-row">
             {row.map((k) => (
-              <KeyCap key={k.code} k={k} held={held} keymap={keymap} />
+              <KeyCap key={k.code} k={k} held={held} keymap={keymap} game={game} />
             ))}
           </div>
         ))}
@@ -217,6 +257,8 @@ export interface ControlsPanelProps {
   input?: InputConfig;
   onRemap?: (target: RemapTarget) => void;
   onPlayer?: (slot: string, player: number | null) => void;
+  /** The running game's controls (room_state.controls). */
+  game?: GameControls;
 }
 
 /**
@@ -231,6 +273,7 @@ export function ControlsPanel({
   input,
   onRemap,
   onPlayer,
+  game,
 }: ControlsPanelProps) {
   const [tab, setTab] = useState<"gamepads" | "keyboard">("gamepads");
   const hasPads = controllers.length > 0;
@@ -294,9 +337,12 @@ export function ControlsPanel({
         </div>
       ) : (
         <>
-          <KeyboardView held={heldKeys} keymap={input?.keyboard} />
+          <KeyboardView held={heldKeys} keymap={input?.keyboard} game={game} />
           <div className="kb-footer">
-            <p className="small muted">{t.controls.keyboardHint}</p>
+            <p className="small muted">
+              {t.controls.keyboardHint}
+              {game && <> <span className="kb-game-note">{t.controls.gameKeysNote}</span></>}
+            </p>
             {onRemap && (
               <button
                 type="button"

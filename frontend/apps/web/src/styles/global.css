@@ -368,6 +368,9 @@ kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--color-border
 .kb-arrows .kb-key { flex: 1 1 0; }
 .kb-key { flex: 1 1 0; min-width: 0; height: 40px; border-radius: 7px; background: var(--color-surface-2); border: 1px solid var(--color-border-input); color: var(--color-text-muted); font-size: 11px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; white-space: nowrap; }
 .kb-key.is-mapped { background: var(--tint-ok-bg); border-color: var(--tint-ok-border); color: var(--color-text); font-weight: 600; }
+/* The keys the running game reads: an orange ring over the mapped green. */
+.kb-key.is-game { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+.kb-game-note { color: var(--color-accent-text); }
 .kb-key.is-pressed { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 .kb-legend { position: absolute; top: 2px; left: 5px; font-size: 9px; font-weight: 500; opacity: 0.8; }
 .gp-list { display: flex; flex-wrap: wrap; gap: 16px; }
@@ -2929,16 +2932,41 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
   }
   .room-page.is-header-hero .room-side { flex: 1 1 0; width: 100%; min-height: 260px; }
 }
-/* The controls in the chat's place (wide screens): a panel beside the video,
-   a little wider than the chat so the keyboard fits, scrolling on its own. */
-.room-controls-side { width: min(560px, 44vw); }
-.room-controls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--color-divider); }
-.room-controls-side .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; justify-content: safe center; }
-.room-controls-side .gp-list { justify-content: center; }
-@media (max-width: 1100px) { .room-controls-side { width: 100%; } }
+/* The side panel's Controls tab (wide screens): the panel grows a little so
+   the keyboard fits, and the keyboard or gamepads sit centered in it,
+   scrolling on their own. */
+.room-side.is-controls { width: min(560px, 44vw); }
+.side-controls { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.side-controls .controls-panel { flex: 1 1 auto; min-height: 0; overflow: auto; border: none; border-radius: 0; background: transparent; justify-content: safe center; }
+.side-controls .gp-list { justify-content: center; }
+@media (max-width: 1100px) { .room-side.is-controls { width: 100%; } }
 /* There the keyboard fits the panel's width: smaller keys, the arrows under it. */
-.room-controls-side .kb { min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; }
-.room-controls-side .kb-main, .room-controls-side .kb-row { gap: 4px; }
-.room-controls-side .kb-key { height: 34px; font-size: 10px; border-radius: 6px; }
-.room-controls-side .kb-legend { font-size: 8px; left: 4px; }
-.room-controls-side .kb-arrows { width: 150px; align-self: center; gap: 4px; }
+.side-controls .kb { min-width: 0; flex-direction: column; align-items: stretch; gap: 12px; }
+.side-controls .kb-main, .side-controls .kb-row { gap: 4px; }
+.side-controls .kb-key { height: 34px; font-size: 10px; border-radius: 6px; }
+.side-controls .kb-legend { font-size: 8px; left: 4px; }
+.side-controls .kb-arrows { width: 150px; align-self: center; gap: 4px; }
+/* The header's "…" menu (in a room and on phones): every tool as a line of
+   a list; the device and the language move into it from the bar. */
+.header-inline { display: contents; }
+.app-header-main.is-room .header-inline, .app-header-main.is-room .header-tools { display: none; }
+@media (max-width: 700px) { .header-inline { display: none; } }
+.header-menu {
+  position: absolute; z-index: 40; top: calc(100% + 10px); right: 0; width: 272px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 2px; padding: 6px; box-sizing: border-box;
+  border-radius: 18px; background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+.header-menu-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 12px; box-sizing: border-box;
+  border: none; border-radius: 12px; background: transparent; color: var(--color-text); font: inherit; font-size: 14px; text-align: left; text-decoration: none; cursor: pointer;
+}
+.header-menu-item:hover, .header-menu-item:focus-visible { background: var(--color-surface-2); outline: none; }
+.header-menu-item.is-warning { color: var(--color-accent-text); }
+.header-menu-icon { position: relative; width: 24px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
+.header-menu-icon .header-device-dot { right: 0; bottom: -2px; }
+.header-menu-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.header-menu-detail { font-size: 12px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-menu-chevron { margin-left: auto; display: inline-flex; color: var(--color-text-muted); transition: transform 0.15s; }
+.header-menu-chevron.is-open { transform: rotate(90deg); }
+.header-menu-sub { display: flex; flex-direction: column; gap: 2px; padding-left: 36px; }
+.header-menu-sub .header-menu-item { min-height: 40px; }

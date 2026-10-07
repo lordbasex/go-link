@@ -111,30 +111,38 @@ test("the test pattern room streams video", async () => {
 
 /** In a room the theme lives in the header's "…" (Settings). */
 async function switchTheme(p: Page, name: "Light mode" | "Dark mode") {
-  const button = p.getByRole("button", { name, exact: true });
-  if (!(await button.isVisible())) await p.getByRole("button", { name: "Settings" }).click();
-  await button.click();
+  await p.getByRole("button", { name: "Settings" }).click();
+  const menu = p.getByRole("menu", { name: "Settings" });
+  await expect(menu.getByRole("menuitem", { name: /Device linked/ })).toBeVisible();
+  await menu.getByRole("menuitem", { name, exact: true }).click();
   await p.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
 }
 
-/** The dock's controls button opens the keyboard and gamepads in the chat's
- * place, beside the video, which keeps its height; closing it brings the chat back. */
+/** The side panel is one canvas with tabs: the dock's controls button opens
+ * it on Controls (the keyboard and gamepads), the video keeps its height,
+ * the Chat tab brings the chat back, and the header's chat button closes and
+ * reopens the panel. */
 async function expectControlsBesideTheVideo(p: Page) {
   const stage = p.locator(".video-stage");
   const before = await stage.boundingBox();
   await clickControl(p, "Show controls");
-  const side = p.getByRole("complementary", { name: "Controls" });
-  await expect(side).toBeVisible();
-  await expect(side.getByText("Keyboard").first()).toBeVisible();
+  const controlsTab = p.getByRole("tab", { name: "Controls" });
+  await expect(controlsTab).toHaveAttribute("aria-selected", "true");
+  const panel = p.getByRole("tabpanel");
+  await expect(panel.getByText("Keyboard").first()).toBeVisible();
   // The keyboard fits the panel: nothing to scroll sideways.
-  expect(await side.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-  await expect(p.getByRole("tab", { name: "Chat" })).toBeHidden();
+  expect(await panel.locator(".controls-panel").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await expect(p.getByRole("textbox", { name: "Message" })).toBeHidden();
   const after = await stage.boundingBox();
   expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2);
-  await expectAccessible(p, "room controls beside the video");
-  await side.getByRole("button", { name: "Hide controls" }).click();
-  await expect(side).toBeHidden();
-  await expect(p.getByRole("tab", { name: "Chat" })).toBeVisible();
+  await expectAccessible(p, "room controls in the side panel");
+  await p.getByRole("tab", { name: "Chat" }).click();
+  await expect(p.getByRole("textbox", { name: "Message" })).toBeVisible();
+  await p.getByRole("button", { name: "Close the panel" }).click();
+  await expect(p.getByRole("tab", { name: "Chat" })).toBeHidden();
+  await p.getByRole("button", { name: "Show the chat" }).click();
+  await expect(p.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
 }
 
 /** The dock's Picture settings switch the GPU renderer on and off live, without a reload. */

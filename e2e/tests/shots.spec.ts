@@ -128,8 +128,17 @@ async function nav(p: Page, href: string) {
 }
 
 async function switchLang(p: Page, lang: Lang) {
-  await p.locator(".lang-menu-button").first().click();
-  await p.locator(`.lang-menu [lang="${lang}"]`).click();
+  // The language button in the bar, or (in a room, on a phone) the "…" menu's Language.
+  const button = p.locator(".lang-menu-button").first();
+  if (await button.isVisible()) {
+    await button.click();
+    await p.locator(`.lang-menu [lang="${lang}"]`).click();
+  } else {
+    await p.locator(".header-more").click();
+    await p.locator(".header-menu [aria-haspopup=menu]").click();
+    await p.locator(`.header-menu [lang="${lang}"]`).click();
+    await p.keyboard.press("Escape");
+  }
   await expect(p.locator("html")).toHaveAttribute("lang", lang);
 }
 

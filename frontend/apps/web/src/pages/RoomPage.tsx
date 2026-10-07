@@ -92,7 +92,7 @@ import {
 } from "../signal/useVoice";
 import { applySink, useAudioDevices, type AudioDevices } from "../signal/useAudioDevices";
 import { AudioDevicesBlock } from "../components/AudioDevices";
-import { SidePanel, useUnreadChat, type SideActions } from "./RoomSide";
+import { SidePanel, useUnreadChat, type SideActions, type SideTab } from "./RoomSide";
 import { ConsoleDrawer, DRAWER_TABS, type DrawerTab } from "./ConsoleDrawer";
 import { inSheet, useSheetLayout } from "../components/sheet";
 import { PictureControl } from "../components/PictureControl";
@@ -936,16 +936,31 @@ export function RoomPage() {
   // On wide screens the room's title and actions sit in the main header, one
   // row next to the logo, so the video gets the height.
   const inHeader = wide && headerInfo !== null && headerActions !== null;
-  // There the controls (keyboard, gamepads) open in the chat's place, beside
-  // the video, instead of under it: the video keeps its height.
-  const [sideControls, setSideControls] = useState(false);
-  const controlsInSide = inHeader && live.media !== null && !touch && sideControls;
-  // New lines count as unread while the chat is out of sight: hidden on a
-  // computer, replaced by the controls, or behind a closed drawer or another
-  // tab on a phone.
+  // There the side panel is one canvas with tabs (Chat, Queue, Spectators
+  // and, while a game streams, Controls): the chat button opens it on Chat,
+  // the dock's controller button on Controls, and the video keeps its height.
+  const [sideTabWanted, setSideTab] = useState<SideTab>("chat");
+  const controlsTab = inHeader && live.media !== null && !touch;
+  const sideTab: SideTab = sideTabWanted === "controls" && !controlsTab ? "chat" : sideTabWanted;
+  const showPanel = (open: boolean) => {
+    setChatHidden(!open);
+    writeStorage(CHAT_HIDDEN_KEY, String(!open));
+  };
+  /** Opens the side panel on a tab, or closes it if it already shows that tab. */
+  const togglePanel = (tab: SideTab) => {
+    if (!chatHidden && sideTab === tab) {
+      showPanel(false);
+      return;
+    }
+    setSideTab(tab);
+    showPanel(true);
+  };
+  // New lines count as unread while the chat is out of sight: hidden, on
+  // another tab of the side panel, or behind a closed drawer or another tab
+  // on a phone.
   const chatOutOfSight = consoleMode
     ? !(drawer && drawerTab === "chat")
-    : chatHidden || controlsInSide;
+    : chatHidden || (inHeader && sideTab !== "chat");
   // A new message from someone else: a chime, and a count while unseen.
   const unread = useUnreadChat(
     live.chat,
@@ -1065,7 +1080,7 @@ export function RoomPage() {
   const streaming = live.media !== null;
   const pictureOn = streaming && renderer !== null && (needsRenderer(picture) || compare);
   const touchOn = streaming && touch && touchPad;
-  const controlsOn = touch ? touchPad : inHeader ? sideControls : showControls;
+  const controlsOn = touch ? touchPad : inHeader ? !chatHidden && sideTab === "controls" : showControls;
   // Demo variants mirror the prototype: ?perspective=spectator&spectatorsHearVoice=true
   const model = demo
     ? demoModel(
@@ -1161,23 +1176,35 @@ export function RoomPage() {
       return next;
     });
 
+  const controlsPanel = (
+    <ControlsPanel
+      controllers={live.controllers}
+      heldKeys={live.heldKeys}
+      keyboardPlayer={keyboardPlayer}
+      onKeyboardPlayer={(player) => {
+        setKeyboardPlayer(player);
+        writeStorage(KEYBOARD_PLAYER_KEY, String(player));
+      }}
+      input={inputCfg.input}
+      onRemap={setRemap}
+      onPlayer={inputCfg.setPlayer}
+      game={live.room?.controls}
+    />
+  );
+  const chatShown = !chatHidden && !(inHeader && sideTab !== "chat");
   const roomActions = (
     <>
       {!demo && (
         <button
           type="button"
-          className={`icon-button tip-below icon-with-badge${chatHidden ? "" : " is-on"}`}
-          aria-label={chatHidden ? t.room.chatShow : t.room.chatHide}
-          data-tip={chatHidden ? t.room.chatShow : t.room.chatHide}
-          aria-pressed={!chatHidden}
-          onClick={() => {
-            const hide = !chatHidden;
-            setChatHidden(hide);
-            writeStorage(CHAT_HIDDEN_KEY, String(hide));
-          }}
+          className={`icon-button tip-below icon-with-badge${chatShown ? " is-on" : ""}`}
+          aria-label={chatShown ? t.room.chatHide : t.room.chatShow}
+          data-tip={chatShown ? t.room.chatHide : t.room.chatShow}
+          aria-pressed={chatShown}
+          onClick={() => (inHeader ? togglePanel("chat") : showPanel(chatHidden))}
         >
           <ChatIcon />
-          {chatHidden && unread > 0 && (
+          {!chatShown && unread > 0 && (
             <span className="icon-badge">{unread > 99 ? "99+" : unread}</span>
           )}
         </button>
@@ -1650,7 +1677,7 @@ export function RoomPage() {
                           return !v;
                         })
                       : inHeader
-                        ? setSideControls((v) => !v)
+                        ? togglePanel("controls")
                         : setShowControls((v) => {
                             writeStorage(CONTROLS_KEY, String(!v));
                             return !v;
@@ -1758,20 +1785,7 @@ export function RoomPage() {
             </div>
           </div>
 
-          {streaming && !touch && showControls && !inHeader && (
-            <ControlsPanel
-              controllers={live.controllers}
-              heldKeys={live.heldKeys}
-              keyboardPlayer={keyboardPlayer}
-              onKeyboardPlayer={(player) => {
-                setKeyboardPlayer(player);
-                writeStorage(KEYBOARD_PLAYER_KEY, String(player));
-              }}
-              input={inputCfg.input}
-              onRemap={setRemap}
-              onPlayer={inputCfg.setPlayer}
-            />
-          )}
+          {streaming && !touch && showControls && !inHeader && controlsPanel}
           {remap && (
             <RemapDialog
               target={remap}
@@ -1907,35 +1921,19 @@ export function RoomPage() {
             />
           </>
         ) : (
-          controlsInSide ? (
-            <aside className="room-side room-controls-side" aria-label={t.controls.title}>
-              <div className="room-controls-head">
-                <span className="strong">{t.controls.title}</span>
-                <button
-                  type="button"
-                  className="icon-button tip-below"
-                  aria-label={t.controls.hide}
-                  data-tip={t.controls.hide}
-                  onClick={() => setSideControls(false)}
-                >
-                  <CloseIcon />
-                </button>
-              </div>
-              <ControlsPanel
-                controllers={live.controllers}
-                heldKeys={live.heldKeys}
-                keyboardPlayer={keyboardPlayer}
-                onKeyboardPlayer={(player) => {
-                  setKeyboardPlayer(player);
-                  writeStorage(KEYBOARD_PLAYER_KEY, String(player));
-                }}
-                input={inputCfg.input}
-                onRemap={setRemap}
-                onPlayer={inputCfg.setPlayer}
+          !(chatHidden && !demo) && (
+            inHeader ? (
+              <SidePanel
+                model={model}
+                actions={actions}
+                tab={sideTab}
+                onTab={setSideTab}
+                controls={controlsTab ? controlsPanel : undefined}
+                onClose={() => showPanel(false)}
               />
-            </aside>
-          ) : (
-            !(chatHidden && !demo) && <SidePanel model={model} actions={actions} />
+            ) : (
+              <SidePanel model={model} actions={actions} />
+            )
           )
         )}
       </div>

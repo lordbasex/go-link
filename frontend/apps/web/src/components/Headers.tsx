@@ -6,7 +6,9 @@ import { useSignal } from "../signal/SignalProvider";
 import { DEMO_DEVICE_NAME } from "../fixtures";
 import {
   BookIcon,
+  ChevronRightIcon,
   GamepadIcon,
+  GlobeIcon,
   HelpIcon,
   MonitorIcon,
   MoonIcon,
@@ -151,6 +153,98 @@ export function LangMenu() {
   );
 }
 
+/**
+ * The "…" menu (in a room and on phones): every tool as a line of the list,
+ * the linked device and the language included, the language opening its own
+ * short list in place.
+ */
+function HeaderMenu({ onClose }: { onClose: () => void }) {
+  const { hostLink, demo, linkedDevice, server, setServerDialogOpen } = useSignal();
+  const lang = useLang();
+  const theme = useTheme();
+  const [langOpen, setLangOpen] = useState(false);
+  const current = LANGS.find((l) => l.id === lang) ?? LANGS[0]!;
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const name = demo
+    ? DEMO_DEVICE_NAME
+    : linkedDevice.status?.system?.hardware.hostname?.replace(/\.local$/i, "");
+  const linked = hostLink || demo;
+  return (
+    <div className="header-menu" role="menu" aria-label={t.nav.tools}>
+      {ROLE !== "site" && (
+        <Link to="/device" role="menuitem" className="header-menu-item" onClick={onClose}>
+          <span className="header-menu-icon">
+            <MonitorIcon size={17} />
+            {linked && <span className="header-device-dot" aria-hidden="true" />}
+          </span>
+          <span className="header-menu-text">
+            {linked ? t.device.linked : t.nav.myDevice}
+            {linked && name && <span className="header-menu-detail">{name}</span>}
+          </span>
+        </Link>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        className="header-menu-item"
+        aria-haspopup="menu"
+        aria-expanded={langOpen}
+        onClick={() => setLangOpen(!langOpen)}
+      >
+        <span className="header-menu-icon"><GlobeIcon /></span>
+        <span className="header-menu-text">
+          {t.lang.label}
+          <span className="header-menu-detail">{current.name}</span>
+        </span>
+        <span className={`header-menu-chevron${langOpen ? " is-open" : ""}`}><ChevronRightIcon /></span>
+      </button>
+      {langOpen && (
+        <div className="header-menu-sub" role="group" aria-label={t.lang.label}>
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              role="menuitemradio"
+              lang={l.id}
+              aria-checked={l.id === lang}
+              className={`header-menu-item lang-menu-item${l.id === lang ? " is-active" : ""}`}
+              onClick={() => {
+                setLang(l.id);
+                setLangOpen(false);
+              }}
+            >
+              <span className="lang-menu-code">{l.label}</span>
+              {l.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {ROLE !== "site" && (
+        <button
+          type="button"
+          role="menuitem"
+          className={`header-menu-item${server.custom ? " is-warning" : ""}`}
+          onClick={() => {
+            onClose();
+            setServerDialogOpen(true);
+          }}
+        >
+          <span className="header-menu-icon"><ServerIcon /></span>
+          <span className="header-menu-text">{server.custom ? t.server.customBadge : t.server.button}</span>
+        </button>
+      )}
+      <button type="button" role="menuitem" className="header-menu-item" onClick={() => setTheme(nextTheme)}>
+        <span className="header-menu-icon">{nextTheme === "light" ? <SunIcon /> : <MoonIcon />}</span>
+        <span className="header-menu-text">{nextTheme === "light" ? t.theme.toLight : t.theme.toDark}</span>
+      </button>
+      <a role="menuitem" className="header-menu-item" href={REPO_URL} target="_blank" rel="noopener" onClick={onClose}>
+        <span className="header-menu-icon"><GithubIcon /></span>
+        <span className="header-menu-text">{t.legal.footer.github}</span>
+      </a>
+    </div>
+  );
+}
+
 // Stable callbacks, so a header render never empties the slots for a moment.
 const infoSlotRef = (el: HTMLDivElement | null) => setHeaderSlot("info", el);
 const actionsSlotRef = (el: HTMLDivElement | null) => setHeaderSlot("actions", el);
@@ -220,11 +314,16 @@ export function MainHeader() {
       </div>
       <div className="header-right" ref={toolsRef}>
         {inRoom && <div className="header-slot" ref={actionsSlotRef} />}
-        {/* The landing keeps no link to a device and never connects. */}
-        {ROLE !== "site" && <DeviceBadge />}
+        {/* The landing keeps no link to a device and never connects. In a
+            room and on phones the device and the language live in "…". */}
+        <span className="header-inline">
+          {ROLE !== "site" && <DeviceBadge />}
+        </span>
         {/* Always in sight (not folded into the tools on phones): it wants to be found. */}
         <DevilButton />
-        <LangMenu />
+        <span className="header-inline">
+          <LangMenu />
+        </span>
         <button
           type="button"
           className={`icon-button header-more${toolsOpen ? " is-on" : ""}`}
@@ -234,7 +333,8 @@ export function MainHeader() {
         >
           <MoreIcon />
         </button>
-        <div className={`header-tools${toolsOpen ? " is-open" : ""}`}>
+        {toolsOpen && <HeaderMenu onClose={() => setToolsOpen(false)} />}
+        <div className="header-tools">
           {ROLE !== "site" && <ServerButton />}
           <ThemeButton />
           <a

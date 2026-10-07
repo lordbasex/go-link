@@ -508,6 +508,7 @@ export const es: Messages = {
     chatOffNote: "El anfitrión apagó el chat de esta sala.",
     tapForSound: "Toca en cualquier lugar para activar el sonido",
     chatHide: "Esconder el chat",
+    panelClose: "Cerrar el panel",
     chatShow: "Mostrar el chat",
     chatSoundOn: "Sonar con los mensajes nuevos",
     chatSoundOff: "Silenciar los mensajes nuevos",
@@ -691,6 +692,8 @@ export const es: Messages = {
     show: "Mostrar controles",
     hide: "Ocultar controles",
     keyboardTitle: "Teclado",
+    gameKey: "Este juego usa esta tecla",
+    gameKeysNote: "Borde naranja: las teclas que usa este juego.",
     keyboardLabel: "Mapa del teclado. Las teclas resaltadas controlan el juego.",
     keyboardHint:
       "Las teclas resaltadas controlan el juego. Conecta un gamepad (USB o Bluetooth) y presiona cualquier botón para usarlo.",
