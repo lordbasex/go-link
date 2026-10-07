@@ -884,3 +884,37 @@ func TestRoomsIgnoreAnUnknownPicture(t *testing.T) {
 		t.Fatalf("created with %+v", p)
 	}
 }
+
+func TestAPausedRoomComesBackPausedAndResumes(t *testing.T) {
+	now := time.Now()
+	saved := []models.SavedRoom{
+		{ID: "a1", Name: "Robby", Rom: "robby", State: models.RoomPaused, CreatedAt: now, Since: now},
+	}
+	h := newRoomsHarness(t, 4, saved)
+	eventually(t, "restart", func() bool {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		return len(h.games) == 1
+	})
+	// Paused once the game is ready (a pause before that was lost).
+	eventually(t, "game paused", func() bool { return h.game(0).isPaused() })
+	if h.room("a1").State != models.RoomPaused {
+		t.Fatalf("state %s", h.room("a1").State)
+	}
+	if _, err := h.rooms.Action(context.Background(), "a1", "resume", ""); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "resumed", func() bool { return !h.game(0).isPaused() && h.room("a1").State == models.RoomLive })
+}
+
+func TestAListedRoomHasItsGamesSeats(t *testing.T) {
+	now := time.Now()
+	saved := []models.SavedRoom{
+		{ID: "c3", Name: "Kept", Rom: "galaga", State: models.RoomArchived, CreatedAt: now, Since: now},
+	}
+	h := newRoomsHarness(t, 4, saved)
+	// The test library has no catalog: a game that does not say has 4 seats.
+	if got := h.room("c3").MaxPlayers; got != 4 {
+		t.Fatalf("max players %d", got)
+	}
+}

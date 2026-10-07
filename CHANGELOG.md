@@ -8,7 +8,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed (device)
 
-- **A room has the seats its game has.** Every game room had 4 seats, so a two-player game such as Street Fighter II said "1 of 4 playing" and offered P3 and P4, which the game never reads. The room now has as many seats as the game has players (from mame2003-plus's list of games, the same number that already chose the 1P-2P start buttons): two in Street Fighter II, four in Teenage Mutant Ninja Turtles, four when the game does not say. A third person waits in the queue.
+- **A room has the seats its game has.** Every game room had 4 seats, so a two-player game such as Street Fighter II said "1 of 4 playing" and offered P3 and P4, which the game never reads. The room now has as many seats as the game has players (from mame2003-plus's list of games, the same number that already chose the 1P-2P start buttons): two in Street Fighter II, four in Teenage Mutant Ninja Turtles, four when the game does not say. A third person waits in the queue. The rooms list and cards show the game's seats too, even before anyone joins and for rooms that are off.
+- **A paused room came back stuck.** A room paused when go-link stopped was paused again before its game had loaded, which was ignored: the room said Paused while the game ran, and Resume did nothing. It now pauses once the game is ready, and Resume always brings a paused room back.
 
 ### Fixed (website)
 

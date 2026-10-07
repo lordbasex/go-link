@@ -209,6 +209,7 @@ type gameRoom struct {
 	ready   bool
 	roomID  string
 	summary RoomSummary
+	seats   int             // as many as the game has players, known when the room opens
 	art     string          // Boxart for the lobby, base64 JPEG
 	reply   func(GameReply) // pending answer to the owner who started it
 	invite  string          // current invitation (link, QR) while it runs
@@ -282,7 +283,6 @@ func (r *RoomsService) Run(ctx context.Context) {
 		if gr.saved.Autosave && !gr.saved.NoSaves {
 			state = r.statePath(gr.saved.ID, "auto")
 		}
-		wasPaused := gr.saved.State == models.RoomPaused
 		if state != "" && r.cfg.ProbeSaves != nil {
 			// As in Start: make sure the save brings the whole game back
 			// before loading it, off this loop (the first time takes a
@@ -293,11 +293,11 @@ func (r *RoomsService) Run(ctx context.Context) {
 					r.markNoSaves(gr)
 					state = ""
 				}
-				r.restart(gr, state, wasPaused)
+				r.restart(gr, state)
 			}(gr, state)
 			continue
 		}
-		r.restart(gr, state, wasPaused)
+		r.restart(gr, state)
 	}
 	r.purgeTrash()
 	t := time.NewTicker(time.Hour)
@@ -314,14 +314,11 @@ func (r *RoomsService) Run(ctx context.Context) {
 
 // restart launches a room that was running when the device stopped, from
 // state (empty = from power on), paused again if it was.
-func (r *RoomsService) restart(gr *gameRoom, state string, wasPaused bool) {
+func (r *RoomsService) restart(gr *gameRoom, state string) {
 	if err := r.launch(gr, state); err != nil {
 		r.log.Warn("cannot restart room", "room", gr.saved.Name, "err", err)
 		r.update(gr, func(s *models.SavedRoom) { s.State, s.LastError = models.RoomArchived, err.Error() })
 		return
-	}
-	if m := r.managerOf(gr); m != nil && wasPaused {
-		m.Pause(true, "The host")
 	}
 }
 
@@ -589,6 +586,21 @@ func (r *RoomsService) Action(ctx context.Context, id, action, name string) (int
 			return 0, ErrRoomState
 		}
 		m.Pause(action == "pause", "The host")
+		if action == "resume" {
+			// A room marked paused whose game already runs (the manager has
+			// nothing to resume, so its hook never fires): mark it live.
+			r.update(gr, func(s *models.SavedRoom) {
+				if s.State == models.RoomPaused {
+					s.State, s.Since = models.RoomLive, r.cfg.Now()
+				}
+			})
+			r.mu.Lock()
+			sig := gr.signal
+			r.mu.Unlock()
+			if sig != nil {
+				sig.SetMetaExtra(r.lobbyExtra(gr))
+			}
+		}
 	case "record_start":
 		return 0, r.startRecording(gr)
 	case "record_stop":
@@ -758,6 +770,9 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	// The room has as many seats as the game has players (Street Fighter II
 	// two, Teenage Mutant Ninja Turtles four).
 	controls := r.controlsOf(saved.Rom)
+	r.mu.Lock()
+	gr.seats = SeatsFor(controls)
+	r.mu.Unlock()
 	manager := NewRoomManager(RoomManagerConfig{Logger: r.log, MaxPlayers: SeatsFor(controls), OnSummary: func(s RoomSummary) {
 		signal.OnSummary(s)
 		r.mu.Lock()
@@ -791,6 +806,15 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 			manager.SetChat(!saved.ChatOff)
 			manager.SetPicture(saved.Picture)
 			manager.SetPausable(true)
+			// A room saved paused comes back paused, now that the game can
+			// be paused (a pause before this was ignored, leaving the room
+			// marked paused while its game ran, and Resume did nothing).
+			r.mu.Lock()
+			wasPaused := gr.saved.State == models.RoomPaused
+			r.mu.Unlock()
+			if wasPaused {
+				manager.Pause(true, "The host")
+			}
 			manager.SetControls(controls)
 			r.mu.Lock()
 			gr.ready = true
@@ -1301,9 +1325,14 @@ func (r *RoomsService) List() []models.ManagedRoom {
 	defer r.mu.Unlock()
 	out := make([]models.ManagedRoom, 0, len(r.rooms))
 	for _, gr := range r.rooms {
+		// A room that is not running yet still has its game's seats.
+		seats := gr.seats
+		if seats < 1 {
+			seats = SeatsFor(r.controlsOf(gr.saved.Rom))
+		}
 		out = append(out, models.ManagedRoom{
 			SavedRoom: gr.saved, Game: gr.game, RoomID: gr.roomID,
-			Players: gr.summary.Players, MaxPlayers: seatsOrDefault(gr.summary.MaxPlayers), Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
+			Players: gr.summary.Players, MaxPlayers: seats, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
 			PauseAsks: slices.Clone(gr.pauseAsks),
 		})
