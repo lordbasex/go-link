@@ -36,7 +36,7 @@ export const studioPt: StudioMessages = {
   expand: "Expandir painel",
 
   insertHeading: "Inserir",
-  insert: { background: "Fundo…", replaceBackground: "Substituir fundo…", character: "Personagem…", enemy: "Inimigo…", object: "Objeto…", group: "Novo grupo de camadas", prompt: "Prompts para IA de imagens…" },
+  insert: { background: "Fundo…", replaceBackground: "Substituir fundo…", character: "Personagem…", enemy: "Inimigo…", object: "Objeto…", group: "Novo grupo de camadas", prompt: "Prompts para IA de imagens…", far: "Fundo distante (parallax)…" },
   insertNote: "Também com clique direito na tela.",
   drawZoneHeading: "Desenhar zona · B",
 
@@ -136,6 +136,7 @@ export const studioPt: StudioMessages = {
     canvas: "Menu da tela",
   },
   toast: {
+    farReady: "Fundo distante pronto: aparece onde o fundo é transparente e no jogo se move à metade da velocidade.",
     sceneReady: (w: number) => `Cenário adicionado: o nível agora tem ${w} px de largura.`,
     drawHint: (kind) => `Arraste na tela para marcar: ${kind}.`,
     notImage: "Isso não é uma imagem.",
@@ -164,6 +165,8 @@ export const studioPt: StudioMessages = {
   },
   backgroundName: "Fundo",
   undoLabels: {
+    far: "Fundo distante",
+    removeFar: "Remover fundo distante",
     addScene: "Adicionar cenário",
     drawZone: "Desenhar zona",
     move: "Mover",
@@ -182,6 +185,11 @@ export const studioPt: StudioMessages = {
   groupNames: { objects: "Personagens", zones: "Zonas", group: (n) => `Grupo ${n}` },
   exampleGroups: { platforms: "Plataformas e escadas", hazards: "Perigos", ground: "Chão e caixas" },
   layersPanel: {
+    far: "Distante",
+    farUnnamed: "imagem",
+    farTip: "Um horizonte atrás do fundo que no jogo se move à metade da velocidade (parallax). O céu magenta do fundo deixa vê-lo.",
+    insertFar: "+ Fundo distante (parallax)…",
+    removeFar: "Remover o fundo distante",
     groupTip: "Clique duplo para renomear · clique direito para opções",
     openClose: "Abrir / fechar",
     groupEye: "Mostrar / ocultar o grupo",

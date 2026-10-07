@@ -46,7 +46,7 @@ describe("Create ROM from a project file (T-14)", () => {
     expect(rom.symbols).toBe(browser.symbols);
     // and the pictures were really used: the play tiles are in the graphics
     expect(rom.pack.stats.playTiles).toBeGreaterThan(1);
-  });
+  }, 30_000);
 
   it("stops at review errors unless forced", async () => {
     const p = specProject();

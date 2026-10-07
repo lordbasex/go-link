@@ -13,13 +13,13 @@ import { cloneProject, findLevel, newId, newLevel, newProject, objectLayer, reco
 import { EditorStore } from "../../editor/store";
 import { gameIssues } from "../../editor/validate/game";
 import type { Target } from "../../editor/validate";
-import { addGroup, moveObject, placeZone, backgroundLayer, changeObjectPart, clearBackground, deleteGroup, duplicateItem, findObject, findZone, flipObject, groupItem, moveGroup, moveToGroup, patchGroup, patchZone, placeObject, removeItem, setBackgroundFlags, targetGroup, ungroup, type ItemRef } from "../../editor/zoneOps";
+import { addGroup, moveObject, placeZone, backgroundLayer, changeObjectPart, clearBackground, deleteGroup, duplicateItem, findObject, findZone, flipObject, groupItem, moveGroup, moveToGroup, patchGroup, patchZone, placeObject, removeItem, setBackgroundFlags, targetGroup, ungroup, type ItemRef, clearFarBackground } from "../../editor/zoneOps";
 import type { MenuScreenId } from "../../game/menus";
 import { autosaver, saveProject } from "../../io/storage";
 import { ExportView } from "../organisms/ExportView";
 import { PromptDialog } from "../organisms/PromptDialog";
 import { useProjectImages } from "../useTileImages";
-import { appendBackground, importBackground } from "./background";
+import { appendBackground, farBackgroundFile, importBackground, importFarBackground } from "./background";
 import { StageTimeline, type TimelineView } from "./StageTimeline";
 import { openExample } from "./example";
 import { catalog, itemOfObject, roleOf } from "./catalog";
@@ -244,6 +244,13 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
     const r = await appendBackground(store, level.id, images, source, t.undoLabels.addScene);
     if (r === "ok") ui.flash(t.toast.sceneReady(store.level(level.id)?.size.w ?? level.size.w));
     else ui.flash(r === "not-image" ? t.toast.notImage : t.toast.bgFailed);
+  };
+  // the far background: a skyline behind, at half speed in the game
+  const farInput = useRef<HTMLInputElement>(null);
+  const setFar = async (file: File) => {
+    ui.flash(t.toast.fitting);
+    const r = await importFarBackground(store, level.id, file, t.undoLabels.far);
+    ui.flash(r === "ok" ? t.toast.farReady : r === "not-image" ? t.toast.notImage : t.toast.bgFailed);
   };
   // what the canvas shows, for the timeline
   const [view, setView] = useState<TimelineView | null>(null);
@@ -688,7 +695,7 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
       />
       {s.workspace === "level" ? (
         <div className="studio-body" style={{ gridTemplateColumns: gridColumns(s) }}>
-          <LeftPanel steps={steps} hasBackground={steps[0]} onInsertBackground={pickBackground} onInsert={(tab) => openPicker("place", tab, null)} onPrompt={() => setPrompt(true)} />
+          <LeftPanel steps={steps} hasBackground={steps[0]} onInsertBackground={pickBackground} onInsertFar={() => farInput.current?.click()} onInsert={(tab) => openPicker("place", tab, null)} onPrompt={() => setPrompt(true)} />
           <main className="studio-main">
             <OptionsBar kinds={kinds} onZoomBy={(f) => stage.current?.zoomBy(f)} />
             <div className="studio-canvas">
@@ -730,6 +737,18 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                 onGoTo={(x, y) => stage.current?.goTo(x, y)}
               />
             )}
+            <input
+              ref={farInput}
+              type="file"
+              accept="image/*"
+              hidden
+              aria-label={t.insert.far}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void setFar(f);
+              }}
+            />
             <input
               ref={sceneInput}
               type="file"
@@ -783,8 +802,11 @@ function StudioBody({ project, lang, theme, onLang, onTheme, onHome, onCreated, 
                   return { name: nameOf(o), kind: t.roles[role], swatch: "", role };
                 }}
                 backgroundName={backgroundFile(p, level) ?? t.backgroundName}
+                farName={farBackgroundFile(p, level)}
                 onPlace={() => openPicker("place", "heroes", null)}
                 onInsertBackground={pickBackground}
+                onInsertFar={() => farInput.current?.click()}
+                onRemoveFar={() => clearFarBackground(store, level.id, t.undoLabels.removeFar)}
               />
             }
           />
