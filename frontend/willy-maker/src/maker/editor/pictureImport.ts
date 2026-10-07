@@ -84,6 +84,26 @@ export function growLevel(level: Level, width: number): void {
   level.size.w = width;
 }
 
+/**
+ * Sets a level's width, wider or narrower, keeping each row's cells on the
+ * left (a background of scenes ends where its last scene does: overlapping
+ * scenes can make it shorter than before).
+ */
+export function setLevelWidth(level: Level, width: number): void {
+  if (width === level.size.w) return;
+  for (const l of level.layers) {
+    if (l.kind !== "tiles" && l.kind !== "tags") continue;
+    const oldCols = Math.ceil(level.size.w / l.grid);
+    const cols = Math.ceil(width / l.grid);
+    const rows = Math.ceil(level.size.h / l.grid);
+    const old = decodeCells(l.data, oldCols * rows);
+    const next = new Uint16Array(cols * rows);
+    for (let r = 0; r < rows; r++) next.set(old.subarray(r * oldCols, r * oldCols + Math.min(oldCols, cols)), r * cols);
+    l.data = encodeCells(next);
+  }
+  level.size.w = width;
+}
+
 /** Saves a prepared picture: its tileset (already stored as `asset`), its palettes and the layer's cells, as one undo step. */
 export function applyPicture(store: EditorStore, prepared: PreparedPicture, asset: Project["tilesets"][number]["image"], label: string): void {
   store.editProject(label, (p) => setPicture(p, prepared, asset));

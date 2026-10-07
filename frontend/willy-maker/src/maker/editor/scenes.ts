@@ -58,13 +58,23 @@ export function nextSceneX(level: Level, scenes: readonly BackgroundScene[], sou
 }
 
 /**
- * The scenes laid out as the play layer's art: each standing on the level's
- * bottom, moved by its dy, later scenes over earlier ones. The width is the
- * level's, or the scenes' end on the 32 px grid when that is wider.
+ * The width of a level whose background is its scenes: where the scenes end,
+ * on the 32 px grid, but never short of a zone or an object (nothing placed
+ * is cut off) nor of one screen (384 px).
  */
-export function composeScenes(level: Level, scenes: readonly BackgroundScene[], sources: ReadonlyMap<string, Rgba>, keyMagenta: (src: Rgba) => boolean): { keys: KeyImage; width: number } {
-  const end = nextSceneX(level, scenes, sources);
-  const width = Math.max(level.size.w, Math.ceil(end / 32) * 32);
+export function scenesWidth(level: Level, scenes: readonly BackgroundScene[], sources: ReadonlyMap<string, Rgba>): number {
+  let end = Math.max(384, nextSceneX(level, scenes, sources));
+  for (const z of level.zones ?? []) end = Math.max(end, z.x + z.w);
+  for (const l of level.layers) if (l.kind === "objects") for (const o of l.items) end = Math.max(end, o.x + 16);
+  return Math.ceil(end / 32) * 32;
+}
+
+/**
+ * The scenes laid out as the play layer's art: each standing on the level's
+ * bottom, moved by its dy, later scenes over earlier ones, `width` px wide
+ * (scenesWidth by default).
+ */
+export function composeScenes(level: Level, scenes: readonly BackgroundScene[], sources: ReadonlyMap<string, Rgba>, keyMagenta: (src: Rgba) => boolean, width = scenesWidth(level, scenes, sources)): { keys: KeyImage; width: number } {
   const h = level.size.h;
   const keys: KeyImage = { w: width, h, keys: new Int16Array(width * h).fill(-1) };
   for (const s of scenes) {

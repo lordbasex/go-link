@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { migrateProject, newProject, type BackgroundScene, type Level } from "../model";
 import type { Rgba } from "./picture";
-import { composeScenes, floorLine, lineUpFloors, nextSceneX, sceneBox, sceneFloor, sceneSize } from "./scenes";
+import { composeScenes, floorLine, lineUpFloors, nextSceneX, sceneBox, sceneFloor, sceneSize, scenesWidth } from "./scenes";
 
 /** A picture: dark above, a bright floor from `floor` (share of the height) down. */
 function picture(w: number, h: number, floor: number, color = [200, 160, 60]): Rgba {
@@ -14,6 +14,9 @@ function picture(w: number, h: number, floor: number, color = [200, 160, 60]): R
 const level = (): Level => {
   const l = newProject({ title: "Scenes" }).levels[0]!;
   l.size = { w: 480, h: 272 };
+  // nothing placed: the level's width is the scenes' alone
+  l.zones = [];
+  for (const layer of l.layers) if (layer.kind === "objects") layer.items = [];
   return l;
 };
 const scene = (id: string, x: number, dy = 0, scale = 1): BackgroundScene => ({ id, asset: `sha256:${id}`, name: `${id}.png`, x, dy, scale });
@@ -56,6 +59,14 @@ describe("the background's scenes", () => {
     expect(at(430)).toBe(at(700));
     expect(at(410)).not.toBe(at(430));
     expect(nextSceneX(l, [scene("a", 0), b], sources)).toBe(860);
+  });
+
+  it("never makes the level narrower than a zone or an object reaches", () => {
+    const l = level();
+    const sources = new Map([["sha256:a", picture(1672, 941, 0.8)]]);
+    expect(scenesWidth(l, [scene("a", 0)], sources)).toBe(480);
+    l.zones = [{ id: "z", kind: "floor", n: 1, x: 0, y: 256, w: 1000, h: 16 }] as typeof l.zones;
+    expect(scenesWidth(l, [scene("a", 0)], sources)).toBe(1024);
   });
 
   it("finds a picture's floor line and lines every scene's up with the first one's", () => {
