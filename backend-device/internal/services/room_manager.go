@@ -760,6 +760,12 @@ func (m *RoomManager) releaseSeat(host string, port int, mode string) {
 		m.teleLog("seat_released", k.peer, fmt.Sprintf("%s sent %s from P%d to the queue", host, name, port), map[string]any{"port": port, "mode": "queue"})
 	} else {
 		mem.spectator = true
+		// The seat is freed here, as in the queue mode: reconcile would add a
+		// "left P<port>" line to the chat that says the same thing again.
+		m.seats[port-1] = nil
+		if j := slices.IndexFunc(m.pauseAsks, func(a pauseAsk) bool { return a.peer == k.peer }); j >= 0 {
+			m.dropPauseAsk(j)
+		}
 		m.event(EventSentToWatch, fmt.Sprintf("%s moved %s from P%d to watching", host, name, port), chatArgs{Name: host, Name2: name, Port: port})
 		m.teleLog("seat_released", k.peer, fmt.Sprintf("%s moved %s from P%d to watching", host, name, port), map[string]any{"port": port, "mode": "watch"})
 	}

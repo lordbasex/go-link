@@ -956,4 +956,8 @@ func TestTheHostFreesASeat(t *testing.T) {
 	if !events[EventSentToQueue] || !events[EventSentToWatch] {
 		t.Fatalf("chat events %v", events)
 	}
+	// One line per release: no "left P2" after "moved c from P2 to watching".
+	if events[EventLeftSeat] {
+		t.Fatalf("a released seat also said left: %v", events)
+	}
 }

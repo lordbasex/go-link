@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Fixed (device)
+
+- **One chat line when the host makes a player a spectator:** "Fede moved Bob from P2 to watching" no longer comes with a second "Bob left P2".
+
 ## [0.2.7] - 2026-10-08
 
 ### Changed (website)
