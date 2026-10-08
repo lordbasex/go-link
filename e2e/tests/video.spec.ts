@@ -241,8 +241,8 @@ test("the test pattern room: controls, latency test and an invitation", async ({
     await noSplash(p);
     await expectVideoPlaying(p);
     await sleep(2500);
-    // Controls: the keyboard map lights up with every key.
-    await point(p, p.getByRole("button", { name: W.controls.show }).first());
+    // Controls (open by default): the keyboard map lights up with every key.
+    await point(p, p.getByRole("tab", { name: "Controls" }).first());
     await sleep(1200);
     for (const k of ["ArrowRight", "ArrowRight", "KeyZ", "KeyX", "ArrowUp", "KeyC"]) await hold(p, k, 380), await sleep(120);
     // The latency test: the controllers on the video, each press measured.
