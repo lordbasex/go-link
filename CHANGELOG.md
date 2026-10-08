@@ -4,6 +4,14 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (website)
+
+- **A shorter dock and the keys in sight:** the dock beside the video keeps what you use while playing: full screen (now first), the microphone with its level and a small chevron for the volumes and devices, pause, controls, sound and screenshot (six buttons instead of eleven, so they all fit a small window). **Record** moved to the room's header, next to Invite (host only), and **Picture** to the header's "…" menu while a game streams. The start buttons (1P, 2P…) left the dock: a player's menu in the players capsule has **Press Start**, and the keyboard (1 to 4), the gamepad's Start and the touch pad still press them. The side panel opens on **Controls** while a game streams, so someone new sees the keys at once; the tab chosen last stays for the browser tab. Host and guests alike; How to play explains the changes.
+
+### Added
+
+- **The host frees a seat:** in the players capsule the host sends a player (itself included) to the end of the queue, so the next in line plays, or to watching; with nobody waiting only watching is offered. The device accepts it only from the host's browsers (`release_seat`), tells everyone in the chat ("Fede sent Bob from P2 to the queue") and keeps it in the room telemetry.
+
 ### Changed (device)
 
 - **Each player's video quality adapts to their own connection:** every room now gives each guest their own video track (the tiers go-link HD used), with two more steps under the full picture at half and a quarter of its bitrate. Lost packets (3 % or more) or a freeze in a player's reports step that player down at once; 20 clean seconds step them back up, one step at a time. The others keep their full picture, and a step costs an encoder only while someone is on it. Recordings and the icon drawn while recording come from the full picture. Each step is a `video_quality` telemetry event with its reason, and peer samples carry `video_kbps_target`. With a simulated 8 % loss on one guest, that guest went from 2500 to 1250 and 625 kbps in four seconds while the host stayed at full quality with no loss.

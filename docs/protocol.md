@@ -119,6 +119,7 @@ The **local player** lets two or more people play from the same browser (for exa
 | `spectate` | guest → device | Leave the seat and the queue, to just watch |
 | `queue` | guest → device | Back to the queue from spectating |
 | `swap_seat` | guest → device | `from`, `to` (ports). Swap controllers. Only from the person seated in `from` |
+| `release_seat` | host → device | `port`, `mode` (`queue` or `watch`). Frees a seat, the host's own included: its player goes to the end of the queue (the head of the queue takes the seat) or watches. With nobody else waiting, `queue` works as `watch`, or the same player would take the seat back. Only from the host's browsers (`refused` `release_owner_only` otherwise); chat events `sent_to_queue` / `sent_to_watch` (`name`: the host, `name2`, `port`) and a `seat_released` telemetry event |
 | `swap_answer` | guest → device | `from`, `to`, `accept`. The answer of the player in `to` |
 | `pause` | guest → device | `paused` (`true` or `false`). **Only from the host** (an owner peer, see [Pausing](#pausing-is-the-hosts)), only while a game runs (the test card cannot pause). Anyone else gets `error` with `code: "pause_owner_only"`. While paused, the device repeats the last frame and sends no sound |
 | `pause_request` | guest → device | Ask the host for a pause: `{"type":"pause_request"}`; withdraw it with `{"type":"pause_request","cancel":true}` |

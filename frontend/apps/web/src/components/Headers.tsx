@@ -21,7 +21,7 @@ import { setTheme, useTheme } from "../theme";
 import { DevilIcon, GithubIcon } from "./Icons";
 import { launchDestroy, prefetchDestroy } from "../destroyLauncher";
 import { REPO_URL } from "../config";
-import { setHeaderSlot } from "./headerSlot";
+import { setHeaderSlot, useHeaderMenuItems } from "./headerSlot";
 import { ROLE, homeHref } from "../role";
 
 export function Brand() {
@@ -169,8 +169,25 @@ function HeaderMenu({ onClose }: { onClose: () => void }) {
     ? DEMO_DEVICE_NAME
     : linkedDevice.status?.system?.hardware.hostname?.replace(/\.local$/i, "");
   const linked = hostLink || demo;
+  const pageItems = useHeaderMenuItems();
   return (
     <div className="header-menu" role="menu" aria-label={t.nav.tools}>
+      {pageItems.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="menuitem"
+          className="header-menu-item"
+          onClick={() => {
+            onClose();
+            item.onSelect();
+          }}
+        >
+          <span className="header-menu-icon">{item.icon}</span>
+          <span className="header-menu-text">{item.label}</span>
+        </button>
+      ))}
+      {pageItems.length > 0 && <span className="header-menu-sep" role="separator" />}
       {ROLE !== "site" && (
         <Link to="/device" role="menuitem" className="header-menu-item" onClick={onClose}>
           <span className="header-menu-icon">

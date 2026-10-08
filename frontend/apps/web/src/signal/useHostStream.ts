@@ -92,6 +92,8 @@ export interface HostStreamView {
   joinQueue: () => void;
   /** Moves your seat from port from to port to (a taken one asks first). */
   swapSeat: (from: number, to: number) => void;
+  /** The host frees a seat: its player to the end of the queue or to watching. */
+  releaseSeat: (port: number, mode: "queue" | "watch") => void;
   /** Answers a request to swap controllers. */
   answerSwap: (from: number, to: number, accept: boolean) => void;
   /** Voice of the other players, by port (1-4). */
@@ -493,6 +495,7 @@ export function useHostStream(
     spectate: () => send({ type: "spectate" }),
     joinQueue: () => send({ type: "queue" }),
     swapSeat: (from, to) => send({ type: "swap_seat", from, to }),
+    releaseSeat: (port, mode) => send({ type: "release_seat", port, mode }),
     answerSwap: (from, to, accept) => send({ type: "swap_answer", from, to, accept }),
     voiceStreams,
     setMicTrack: (track) => streamRef.current?.setMicTrack(track),

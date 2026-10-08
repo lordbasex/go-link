@@ -1177,6 +1177,9 @@ button.capsule-avatar:hover, button.capsule-avatar[aria-expanded="true"] { trans
 .dock-group { display: flex; align-items: center; gap: 6px; padding-right: 8px; margin-right: 2px; border-right: 1px solid var(--color-border-input); }
 .dock-group .start-button { background: rgb(22 26 35 / 0.85); }
 .voice-control { position: relative; }
+/* The voice settings fold into a small chevron beside the mic. */
+.icon-button.voice-settings.is-mini { width: 20px; height: 20px; min-height: 20px; padding: 0; margin-top: -2px; border-color: transparent; background: transparent; color: var(--color-text-muted); }
+.icon-button.voice-settings.is-mini.is-on { color: var(--color-accent-text); transform: rotate(90deg); }
 .mic-toggle.is-on { background: var(--color-voice) !important; border-color: var(--color-voice) !important; color: var(--color-bg) !important; }
 .mic-toggle:not(.is-on):not(.is-locked) { background: var(--color-danger-bg) !important; border-color: var(--color-danger-border) !important; color: var(--color-danger-text) !important; }
 .mini-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
@@ -2366,6 +2369,8 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .picture-split-label.is-before { right: 10px; }
 .picture-split-label.is-after { left: 10px; }
 .picture-control { position: relative; }
+/* Opened from the header's "..." menu: no button, the popover keeps its place in the dock. */
+.picture-control.is-headless { width: 0; height: 0; }
 .picture-compare { height: 36px; min-height: 36px; border-radius: 999px; align-self: flex-start; }
 .picture-compare.is-on { border-color: var(--color-accent); color: var(--color-accent-text); }
 .picture-pop { width: 300px; }
@@ -2974,6 +2979,7 @@ body .video-stage.has-touchpad.is-console .picture-layer { inset: auto; left: va
 .header-menu-chevron.is-open { transform: rotate(90deg); }
 .header-menu-sub { display: flex; flex-direction: column; gap: 2px; padding-left: 36px; }
 .header-menu-sub .header-menu-item { min-height: 40px; }
+.header-menu-sep { height: 1px; margin: 4px 8px; background: var(--color-divider); }
 .controls-multi { padding: 10px 12px; background: var(--color-bg); }
 .latency-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--color-bg); border: 1px solid var(--color-border); }
 .latency-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

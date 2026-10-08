@@ -26,10 +26,10 @@ import {
   startOf,
 } from "@go-link/shared";
 import { playDing, setDingOutput } from "../components/ding";
-import { t } from "../i18n";
+import { t, useLang } from "../i18n";
 import { DEMO_DEVICE_NAME } from "../fixtures";
 import { useSignal } from "../signal/SignalProvider";
-import { useHeaderSlot, useMediaQuery } from "../components/headerSlot";
+import { setHeaderMenuItems, useHeaderSlot, useMediaQuery } from "../components/headerSlot";
 import { useJoinRoom, usePublicRoomMeta } from "../signal/useJoinRoom";
 import { useLatencyProbe } from "../signal/useLatencyProbe";
 import { useHostStream } from "../signal/useHostStream";
@@ -47,6 +47,8 @@ import {
   MicIcon,
   MicOffIcon,
   PauseIcon,
+  PictureIcon,
+  ChevronRightIcon,
   PlayIcon,
   SoundOffIcon,
   SoundOnIcon,
@@ -106,6 +108,7 @@ import { invitationUrl } from "../role";
 const CONTROLS_KEY = "go-link.show-controls";
 const TOUCH_KEY = "go-link.touchpad";
 const CHAT_HIDDEN_KEY = "go-link.chat-hidden";
+const SIDE_TAB_KEY = "go-link.side-tab";
 const CHAT_SOUND_KEY = "go-link.chat-sound";
 /** The console drawer's last tab, for this browser tab's session. */
 const DRAWER_TAB_KEY = "go-link.drawer-tab";
@@ -157,6 +160,22 @@ function readStorage(key: string): string | null {
 function writeStorage(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
+  } catch {
+    // storage disabled: the choice lasts for this page only
+  }
+}
+
+function readSession(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(key: string, value: string): void {
+  try {
+    sessionStorage.setItem(key, value);
   } catch {
     // storage disabled: the choice lasts for this page only
   }
@@ -250,49 +269,6 @@ function PinPrompt({
         {busy ? t.room.pinChecking : t.room.pinEnter}
       </button>
     </form>
-  );
-}
-
-/**
- * One start button of the arcade panel (1P, 2P...). It stays down while
- * held with the mouse or a finger; from the keyboard, a click is a short
- * press.
- */
-function StartButton({
-  port,
-  mine,
-  onHold,
-}: {
-  port: number;
-  mine: boolean;
-  onHold: (held: boolean) => void;
-}) {
-  const [down, setDown] = useState(false);
-  const hold = (held: boolean) => {
-    setDown(held);
-    onHold(held);
-  };
-  return (
-    <button
-      type="button"
-      className={`start-button${mine ? " is-mine" : ""}${down ? " is-on" : ""}`}
-      aria-label={t.touch.startLabel(port)}
-      title={t.touch.startLabel(port)}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-        hold(true);
-      }}
-      onPointerUp={() => hold(false)}
-      onPointerCancel={() => hold(false)}
-      onLostPointerCapture={() => down && hold(false)}
-      onClick={(e) => {
-        if (e.detail !== 0) return; // mouse and touch use the pointer events
-        hold(true);
-        setTimeout(() => hold(false), 150);
-      }}
-    >
-      {t.touch.startPlayer(port)}
-    </button>
   );
 }
 
@@ -455,13 +431,13 @@ function VoiceControl({
       )}
       <button
         type="button"
-        className={`icon-button voice-settings${open ? " is-on" : ""}`}
+        className={`icon-button voice-settings is-mini${open ? " is-on" : ""}`}
         aria-expanded={open}
         aria-label={t.room.voiceSettings}
         data-tip={open ? undefined : t.room.voiceSettings}
         onClick={() => setOpen(!open)}
       >
-        <SlidersIcon />
+        <ChevronRightIcon size={12} />
       </button>
       {open && inSheet(sheet, setOpen, (
         <div
@@ -652,6 +628,7 @@ export function RoomPage() {
   const roomPicture = live.room?.picture ?? null;
   const [picture, setPicture, pictureChoice] = usePictureSettings(roomPicture);
   const [pictureOpen, setPictureOpen] = useState(false);
+  const lang = useLang();
   const [compare, setCompare] = useState(false);
   const [split, setSplit] = useState(0.5);
   // undefined: not tried yet; null: this browser cannot (plain <video>).
@@ -772,6 +749,12 @@ export function RoomPage() {
   // Pausing a game that is being recorded ends the recording: ask first.
   const recordingRef = useRef(false);
   const [pauseAsk, setPauseAsk] = useState(false);
+  // A seat's Start from the players capsule: a short press, like a tap on
+  // the arcade's 1P/2P button.
+  const pressStart = (port: number) => {
+    live.setTouchButtons(startOf(port));
+    window.setTimeout(() => live.setTouchButtons(0), 150);
+  };
   const togglePause = () => {
     if (!paused && recordingRef.current) setPauseAsk(true);
     else setPaused(!paused);
@@ -982,10 +965,27 @@ export function RoomPage() {
   // On wide screens the room's title and actions sit in the main header, one
   // row next to the logo, so the video gets the height.
   const inHeader = wide && headerInfo !== null && headerActions !== null;
+  // While a game streams, its Picture settings live in the header's "..."
+  // menu (the touch pad keeps them in its dock).
+  const pictureInMenu = live.media !== null && !(touch && touchPad);
+  useEffect(() => {
+    if (!pictureInMenu) return;
+    setHeaderMenuItems([{ id: "picture", label: t.picture.button, icon: <PictureIcon />, onSelect: () => {
+          setPictureOpen(true);
+          wake();
+        } }]);
+    return () => setHeaderMenuItems([]);
+  }, [pictureInMenu, lang]);
   // There the side panel is one canvas with tabs (Chat, Queue, Spectators
   // and, while a game streams, Controls): the chat button opens it on Chat,
   // the dock's controller button on Controls, and the video keeps its height.
-  const [sideTabWanted, setSideTab] = useState<SideTab>("chat");
+  // While a game streams the side panel opens on Controls, so someone new
+  // sees the keys at once; the tab chosen last stays for this browser tab.
+  const [sideTabWanted, setSideTabState] = useState<SideTab>(() => (readSession(SIDE_TAB_KEY) === "chat" ? "chat" : "controls"));
+  const setSideTab = useCallback((tab: SideTab) => {
+    setSideTabState(tab);
+    writeSession(SIDE_TAB_KEY, tab);
+  }, []);
   const controlsTab = inHeader && live.media !== null && !touch;
   const sideTab: SideTab = sideTabWanted === "controls" && !controlsTab ? "chat" : sideTabWanted;
   const showPanel = (open: boolean) => {
@@ -1037,9 +1037,11 @@ export function RoomPage() {
     window.clearTimeout(idleTimer.current);
     const sleep = () => {
       const stage = stageRef.current;
-      // Keep them while a menu is open or the mouse rests on them.
+      // Keep them while a menu or a settings panel is open (Picture opens
+      // from the header, with no button of its own here) or the mouse rests
+      // on them.
       const busy =
-        stage?.querySelector('[aria-expanded="true"]') ||
+        stage?.querySelector('[aria-expanded="true"], .voice-pop') ||
         (window.matchMedia?.("(hover: hover)").matches &&
           stage?.querySelector(".video-toolbar:hover, .players-capsule:hover"));
       if (busy) idleTimer.current = window.setTimeout(sleep, IDLE_MS);
@@ -1301,6 +1303,19 @@ export function RoomPage() {
           <UserPlusIcon />
         </button>
       )}
+      {streaming && ownsRoom && ownRoom && live.room?.pausable && (
+        <button
+          type="button"
+          className={`icon-button tip-below video-record${recording ? " is-recording" : ""}`}
+          aria-pressed={recording}
+          aria-label={recording ? t.rec.stop : t.rec.start}
+          data-tip={recording ? t.rec.stop : paused ? t.rec.pauseText : `${t.rec.start} · ${t.rec.limits}`}
+          disabled={!recording && paused}
+          onClick={() => sendToDevice(recording ? recordStop(ownRoom.id) : recordStart(ownRoom.id))}
+        >
+          {recording ? <StopIcon size={16} /> : <RecordIcon size={16} />}
+        </button>
+      )}
       {ownsRoom && (
         <button
           type="button"
@@ -1537,6 +1552,9 @@ export function RoomPage() {
                 seats={model.seats}
                 swapFor={(port) => (demo ? undefined : swapFor(port))}
                 onToggleSilence={demo ? undefined : toggleSilence}
+                onStart={streaming && playing && !touchOn ? pressStart : undefined}
+                onRelease={!demo && streaming && (ownsRoom || ownTest) ? live.releaseSeat : undefined}
+                queueWaiting={model.queue.length > 0}
               />
             )}
             {streaming && pauseAsked && (
@@ -1636,24 +1654,24 @@ export function RoomPage() {
               {dockOpen ? <CloseIcon size={16} /> : <SlidersIcon />}
             </button>
             <div className={`video-toolbar${dockOpen ? " is-open" : ""}`}>
-              {streaming && playing && !touchOn && (
-                <div
-                  className="dock-group"
-                  role="group"
-                  aria-label={t.room.startBar}
-                >
-                  {Array.from({ length: starts }, (_, i) => (
-                    <StartButton
-                      key={i}
-                      port={i + 1}
-                      mine={myPorts.includes(i + 1)}
-                      onHold={(held) =>
-                        live.setTouchButtons(held ? startOf(i + 1) : 0)
-                      }
-                    />
-                  ))}
-                </div>
-              )}
+              <button
+                type="button"
+                className={`icon-button video-fullscreen${fullscreen.active ? " is-on" : ""}`}
+                aria-label={
+                  fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
+                }
+                aria-pressed={fullscreen.active}
+                data-tip={
+                  fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
+                }
+                onClick={toggleFullscreen}
+              >
+                {fullscreen.active ? (
+                  <ExitFullscreenIcon />
+                ) : (
+                  <FullscreenIcon />
+                )}
+              </button>
               {(demo || streaming) && (
                 <VoiceControl
                   model={model}
@@ -1779,6 +1797,7 @@ export function RoomPage() {
               )}
               {streaming && (
                 <PictureControl
+                  hideButton={!touchOn}
                   open={pictureOpen}
                   setOpen={setPictureOpen}
                   settings={picture}
@@ -1813,47 +1832,8 @@ export function RoomPage() {
                   <CameraIcon />
                 </button>
               )}
-              {streaming && ownsRoom && ownRoom && live.room?.pausable && (
-                <button
-                  type="button"
-                  className={`icon-button video-record${recording ? " is-recording" : ""}`}
-                  aria-pressed={recording}
-                  aria-label={recording ? t.rec.stop : t.rec.start}
-                  data-tip={
-                    recording
-                      ? t.rec.stop
-                      : paused
-                        ? t.rec.pauseText
-                        : `${t.rec.start} · ${t.rec.limits}`
-                  }
-                  disabled={!recording && paused}
-                  onClick={() =>
-                    sendToDevice(
-                      recording ? recordStop(ownRoom.id) : recordStart(ownRoom.id),
-                    )
-                  }
-                >
-                  {recording ? <StopIcon size={16} /> : <RecordIcon size={16} />}
-                </button>
-              )}
-              <button
-                type="button"
-                className={`icon-button video-fullscreen${fullscreen.active ? " is-on" : ""}`}
-                aria-label={
-                  fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
-                }
-                aria-pressed={fullscreen.active}
-                data-tip={
-                  fullscreen.active ? t.touch.exitFullscreen : t.room.fullscreen
-                }
-                onClick={toggleFullscreen}
-              >
-                {fullscreen.active ? (
-                  <ExitFullscreenIcon />
-                ) : (
-                  <FullscreenIcon />
-                )}
-              </button>
+
+
             </div>
           </div>
 

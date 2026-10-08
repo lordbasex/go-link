@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 
 /**
  * Places in the main header that a page can fill with its own content (the
@@ -25,6 +25,32 @@ export function useHeaderSlot(name: HeaderSlotName): HTMLElement | null {
     },
     () => slots[name],
     () => null,
+  );
+}
+
+/** An entry a page adds to the header's "..." menu (the room's Picture). */
+export interface HeaderMenuItem {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  onSelect: () => void;
+}
+let menuItems: HeaderMenuItem[] = [];
+const menuListeners = new Set<() => void>();
+
+export function setHeaderMenuItems(items: HeaderMenuItem[]) {
+  menuItems = items;
+  menuListeners.forEach((l) => l());
+}
+
+export function useHeaderMenuItems(): HeaderMenuItem[] {
+  return useSyncExternalStore(
+    (l) => {
+      menuListeners.add(l);
+      return () => menuListeners.delete(l);
+    },
+    () => menuItems,
+    () => menuItems,
   );
 }
 

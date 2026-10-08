@@ -76,7 +76,10 @@ export function PictureControl({
   saved = false,
   onReset,
   onSetRoomDefault,
+  hideButton = false,
 }: {
+  /** The button lives elsewhere (the header's "..." menu opens it). */
+  hideButton?: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
   settings: PictureSettings;
@@ -111,17 +114,19 @@ export function PictureControl({
     };
   }, [open, setOpen]);
   return (
-    <div className="picture-control" ref={rootRef}>
-      <button
-        type="button"
-        className={`icon-button picture-button${open ? " is-on" : ""}`}
-        aria-expanded={open}
-        aria-label={t.picture.button}
-        data-tip={open ? undefined : t.picture.button}
-        onClick={() => setOpen(!open)}
-      >
-        <PictureIcon />
-      </button>
+    <div className={`picture-control${hideButton ? " is-headless" : ""}`} ref={rootRef}>
+      {!hideButton && (
+        <button
+          type="button"
+          className={`icon-button picture-button${open ? " is-on" : ""}`}
+          aria-expanded={open}
+          aria-label={t.picture.button}
+          data-tip={open ? undefined : t.picture.button}
+          onClick={() => setOpen(!open)}
+        >
+          <PictureIcon />
+        </button>
+      )}
       {open &&
         inSheet(
           sheet,

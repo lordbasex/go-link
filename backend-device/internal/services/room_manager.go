@@ -575,16 +575,18 @@ func (m *RoomManager) refuse(peer, code, text string) {
 const (
 	EventRecordingStarted = "recording_started"
 	EventRecordingStopped = "recording_stopped"
-	EventGamePaused       = "game_paused"  // name (and name2: the host, when name asked for it)
-	EventGameResumed      = "game_resumed" // name
-	EventNowWatching      = "now_watching" // name
-	EventMoved            = "moved"        // name, port
-	EventSwapAsked        = "swap_asked"   // name, port, name2, port2
-	EventKeptSeat         = "kept_seat"    // name, port
-	EventSwapped          = "swapped"      // name, port, name2, port2
-	EventLeftSeat         = "left_seat"    // name, port
-	EventSeatFree         = "seat_free"    // port
-	EventTookSeat         = "took_seat"    // name, port
+	EventGamePaused       = "game_paused"   // name (and name2: the host, when name asked for it)
+	EventGameResumed      = "game_resumed"  // name
+	EventNowWatching      = "now_watching"  // name
+	EventMoved            = "moved"         // name, port
+	EventSwapAsked        = "swap_asked"    // name, port, name2, port2
+	EventKeptSeat         = "kept_seat"     // name, port
+	EventSwapped          = "swapped"       // name, port, name2, port2
+	EventLeftSeat         = "left_seat"     // name, port
+	EventSeatFree         = "seat_free"     // port
+	EventTookSeat         = "took_seat"     // name, port
+	EventSentToQueue      = "sent_to_queue" // name (the host), name2, port
+	EventSentToWatch      = "sent_to_watch" // name (the host), name2, port
 	// EventPauseDeclined goes only to the guest whose request for a pause
 	// the host declined (name, port: the requester's own).
 	EventPauseDeclined = "pause_declined"
@@ -640,6 +642,9 @@ type controlIn struct {
 	Accept bool            `json:"accept"`
 	On     bool            `json:"on"`
 	Cancel bool            `json:"cancel"`
+	// release_seat: the seat and where its player goes ("queue" or "watch").
+	Port int    `json:"port"`
+	Mode string `json:"mode"`
 }
 
 // fromPort reads "from" as a port (0 when it is not a number).
@@ -718,12 +723,47 @@ func (m *RoomManager) HandleControl(peerID string, data []byte) {
 			if m.owners[peerID] {
 				m.answerPause(msg.fromPeer(), msg.Accept, mem.name)
 			}
+		case "release_seat":
+			// Only the host frees someone's seat (its own included).
+			if !m.owners[peerID] {
+				m.refuse(peerID, "release_owner_only", "Only the host frees a seat")
+				return
+			}
+			m.releaseSeat(mem.name, msg.Port, msg.Mode)
 		case "swap_seat":
 			m.askSwap(peerID, msg.fromPort(), msg.To)
 		case "swap_answer":
 			m.answerSwap(peerID, msg.fromPort(), msg.To, msg.Accept)
 		}
 	})
+}
+
+// releaseSeat frees seat port for the next person: its player goes to the
+// end of the queue (mode "queue") or watches (mode "watch"). Sending to the
+// queue needs someone else waiting, or the same player would take the seat
+// back at once; then it is like watching.
+func (m *RoomManager) releaseSeat(host string, port int, mode string) {
+	if port < 1 || port > len(m.seats) || m.seats[port-1] == nil {
+		return
+	}
+	k := *m.seats[port-1]
+	mem := m.members[k.peer]
+	if mem == nil {
+		return
+	}
+	others := slices.ContainsFunc(m.queue, func(q seatKey) bool { return q.peer != k.peer })
+	name := m.displayName(k)
+	if mode == "queue" && others {
+		m.seats[port-1] = nil
+		m.queue = append(slices.DeleteFunc(m.queue, func(q seatKey) bool { return q == k }), k)
+		m.event(EventSentToQueue, fmt.Sprintf("%s sent %s from P%d to the queue", host, name, port), chatArgs{Name: host, Name2: name, Port: port})
+		m.teleLog("seat_released", k.peer, fmt.Sprintf("%s sent %s from P%d to the queue", host, name, port), map[string]any{"port": port, "mode": "queue"})
+	} else {
+		mem.spectator = true
+		m.event(EventSentToWatch, fmt.Sprintf("%s moved %s from P%d to watching", host, name, port), chatArgs{Name: host, Name2: name, Port: port})
+		m.teleLog("seat_released", k.peer, fmt.Sprintf("%s moved %s from P%d to watching", host, name, port), map[string]any{"port": port, "mode": "watch"})
+	}
+	m.reconcile()
 }
 
 // askSwap moves a seated player from port from to port to. A free port is

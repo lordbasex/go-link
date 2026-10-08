@@ -124,6 +124,8 @@ export type ChatEvent =
   | "left_seat"
   | "seat_free"
   | "took_seat"
+  | "sent_to_queue"
+  | "sent_to_watch"
   | "pause_declined";
 const CHAT_EVENTS: readonly ChatEvent[] = [
   "recording_started",
@@ -138,6 +140,8 @@ const CHAT_EVENTS: readonly ChatEvent[] = [
   "left_seat",
   "seat_free",
   "took_seat",
+  "sent_to_queue",
+  "sent_to_watch",
   "pause_declined",
 ];
 

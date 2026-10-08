@@ -74,6 +74,10 @@ function systemText(c: ChatLine & { kind: "system" }): string {
       return e.free(p);
     case "took_seat":
       return e.took(n, p);
+    case "sent_to_queue":
+      return e.sentToQueue(n, n2, p);
+    case "sent_to_watch":
+      return e.sentToWatch(n, n2, p);
     case "pause_declined":
       return t.pauseAsk.declined;
     default:

@@ -892,3 +892,68 @@ func TestTheHostsLatencyTestReachesTheRoomState(t *testing.T) {
 		t.Fatalf("input_hud %v", st["input_hud"])
 	}
 }
+
+// The host frees a seat: its player goes to the end of the queue (the head
+// of the queue takes the seat) or watches; a guest cannot do it.
+func TestTheHostFreesASeat(t *testing.T) {
+	out := newOutbox()
+	m := NewRoomManager(RoomManagerConfig{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), MaxPlayers: 2}, out)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go m.Run(ctx)
+	for _, p := range []string{"host", "b", "c"} {
+		m.Join(p)
+	}
+	m.MarkOwner("host")
+	m.Sync()
+	port := func(p string) int {
+		n, _ := m.PortOf(p, 0)
+		return n
+	}
+	if port("host") != 1 || port("b") != 2 || port("c") != 0 {
+		t.Fatalf("seats host %d b %d c %d", port("host"), port("b"), port("c"))
+	}
+	// A guest is refused.
+	m.HandleControl("c", []byte(`{"type":"release_seat","port":2,"mode":"queue"}`))
+	m.Sync()
+	if port("b") != 2 {
+		t.Fatal("a guest freed a seat")
+	}
+	// The host sends b to the queue: c, who waited, takes P2.
+	m.HandleControl("host", []byte(`{"type":"release_seat","port":2,"mode":"queue"}`))
+	m.Sync()
+	if port("c") != 2 || port("b") != 0 {
+		t.Fatalf("after the queue: b %d c %d", port("b"), port("c"))
+	}
+	if q := you(out.lastState(t, "b"))["queue_positions"].([]any); len(q) != 1 {
+		t.Fatalf("b is not in the queue: %v", q)
+	}
+	// The host gives up its own seat: it waits at the end of the queue and
+	// b, first in it, plays.
+	m.HandleControl("host", []byte(`{"type":"release_seat","port":1,"mode":"queue"}`))
+	m.Sync()
+	if port("host") != 0 || port("b") != 1 {
+		t.Fatalf("after the host's own seat: host %d b %d", port("host"), port("b"))
+	}
+	// c goes to watching: the host, who waited, takes P2.
+	m.HandleControl("host", []byte(`{"type":"release_seat","port":2,"mode":"watch"}`))
+	m.Sync()
+	if port("c") != 0 || you(out.lastState(t, "c"))["spectator"] != true || port("host") != 2 {
+		t.Fatalf("after watch: c %d host %d", port("c"), port("host"))
+	}
+	// Nobody else waits: "queue" works as "watch" and the seat stays free.
+	m.HandleControl("host", []byte(`{"type":"release_seat","port":1,"mode":"queue"}`))
+	m.Sync()
+	if port("b") != 0 || you(out.lastState(t, "b"))["spectator"] != true {
+		t.Fatalf("b: port %d, state %v", port("b"), you(out.lastState(t, "b")))
+	}
+	events := map[string]bool{}
+	for _, c := range out.chats("b") {
+		if e, ok := c["event"].(string); ok {
+			events[e] = true
+		}
+	}
+	if !events[EventSentToQueue] || !events[EventSentToWatch] {
+		t.Fatalf("chat events %v", events)
+	}
+}

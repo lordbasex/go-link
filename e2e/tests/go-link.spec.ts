@@ -109,6 +109,13 @@ test("the test pattern room streams video", async () => {
   await page.keyboard.press("Escape");
 });
 
+/** A room's Picture settings open from the header's "…" (Settings). */
+async function openPicture(p: Page) {
+  await p.getByRole("button", { name: "Settings" }).click();
+  await p.getByRole("menu", { name: "Settings" }).getByRole("menuitem", { name: "Picture" }).click();
+  await expect(p.getByRole("dialog", { name: "Picture" })).toBeVisible();
+}
+
 /** In a room the theme lives in the header's "…" (Settings). */
 async function switchTheme(p: Page, name: "Light mode" | "Dark mode") {
   await p.getByRole("button", { name: "Settings" }).click();
@@ -119,16 +126,17 @@ async function switchTheme(p: Page, name: "Light mode" | "Dark mode") {
   await expect(menu).toBeHidden();
 }
 
-/** The side panel is one canvas with tabs: the dock's controls button opens
- * it on Controls (the keyboard and gamepads), the video keeps its height,
- * the Chat tab brings the chat back, and the header's chat button closes and
- * reopens the panel. */
+/** The side panel is one canvas with tabs: while a game streams it opens on
+ * Controls (the keyboard and gamepads), so someone new sees the keys at
+ * once; the video keeps its height, the Chat tab brings the chat back, and
+ * the header's chat button closes and reopens the panel. */
 async function expectControlsBesideTheVideo(p: Page) {
   const stage = p.locator(".video-stage");
   const before = await stage.boundingBox();
   const canvas = p.getByRole("tablist", { name: "Room panel" });
-  await clickControl(p, "Show controls");
   await expect(canvas.getByRole("tab", { name: "Controls" })).toHaveAttribute("aria-selected", "true");
+  await wake(p);
+  await expect(p.getByRole("button", { name: "Hide controls" })).toBeVisible();
   const panel = p.locator("#canvas-controls");
   await expect(panel.getByText("Keyboard").first()).toBeVisible();
   // The host may seat several controllers; by default they are one player.
@@ -176,7 +184,7 @@ async function expectPictureStyles(p: Page) {
   await expect(stage).toHaveAttribute("data-picture-style", "smooth");
   await expect(stage).toHaveAttribute("data-picture-bands", "ambient");
   await expect(stage).toHaveAttribute("data-picture", /^webgl2?$/);
-  await clickControl(p, "Picture");
+  await openPicture(p);
   const settings = p.getByRole("dialog", { name: "Picture" });
   await settings.getByRole("combobox", { name: "Style" }).click();
   await p.getByRole("option", { name: /^Sharp/ }).click();
@@ -260,7 +268,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   test.setTimeout(150_000);
   const stage = page.locator(".video-stage");
   // The owner picks CRT arcade and makes it the room's default.
-  await clickControl(page, "Picture");
+  await openPicture(page);
   const settings = page.getByRole("dialog", { name: "Picture" });
   await settings.getByRole("combobox", { name: "Style" }).click();
   await page.getByRole("option", { name: /^CRT arcade/ }).click();
@@ -281,7 +289,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   await expect(freshStage).toHaveAttribute("data-picture-style", "crt");
   await expect(freshStage).toHaveAttribute("data-picture-bands", "black");
   await expect(freshStage).toHaveAttribute("data-picture", /^webgl2?$/);
-  await clickControl(fresh.page, "Picture");
+  await openPicture(fresh.page);
   const guestSettings = fresh.page.getByRole("dialog", { name: "Picture" });
   await expect(guestSettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
   // Guests never change the room.
@@ -299,7 +307,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   await expectVideoPlaying(picky.page);
   const pickyStage = picky.page.locator(".video-stage");
   await expect(pickyStage).toHaveAttribute("data-picture-style", "sharp");
-  await clickControl(picky.page, "Picture");
+  await openPicture(picky.page);
   const pickySettings = picky.page.getByRole("dialog", { name: "Picture" });
   await expect(pickySettings.getByText("Room default: CRT arcade · Black")).toBeVisible();
   await expect(pickySettings.getByRole("button", { name: "Use the room's default" })).toBeVisible();
@@ -322,7 +330,7 @@ test("the host's picture default reaches guests who never chose one; a guest's o
   // Back to the room, with the owner's own picture back to Smooth.
   await page.getByRole("link", { name: "Test pattern" }).click();
   await expectVideoPlaying(page);
-  await clickControl(page, "Picture");
+  await openPicture(page);
   await expect(settings.getByText("Room default:")).toHaveCount(0);
   await settings.getByRole("combobox", { name: "Style" }).click();
   await page.getByRole("option", { name: /^Smooth(?! edges)/ }).click();
@@ -428,6 +436,8 @@ test("only the host pauses: a player asks, the host accepts or declines, a guest
   await ask.getByRole("button", { name: "Pause", exact: true }).click();
   await expect(g.locator(".video-paused-label")).toHaveText("Paused by bZoëb");
   await expect(page.locator(".video-paused-label")).toHaveText("Paused by bZoëb");
+  // The side panel opens on Controls: the line is in the Chat tab.
+  await g.getByRole("tablist", { name: "Room panel" }).getByRole("tab", { name: "Chat" }).click();
   await expect(g.getByText("bZoëb asked for a pause and", { exact: false }).first()).toBeVisible();
   // Only the host resumes.
   await expect(g.locator(".video-paused").getByRole("button", { name: "Resume" })).toHaveCount(0);

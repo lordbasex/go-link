@@ -48,4 +48,29 @@ describe("Escape without a key code", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await vi.waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
+
+  it("presses a seat's Start and lets the host free a seat", async () => {
+    const onStart = vi.fn();
+    const onRelease = vi.fn();
+    const { rerender } = render(
+      <PlayersCapsule seats={[seat("Ana", true), seat("Bob"), null, null]} swapFor={() => undefined} onStart={onStart} onRelease={onRelease} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /P2 · Bob/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Press Start 2P" }));
+    expect(onStart).toHaveBeenCalledWith(2);
+    // Nobody waits: only "to watching" (the queue would give the seat back).
+    await userEvent.click(screen.getByRole("button", { name: /P2 · Bob/ }));
+    expect(screen.queryByRole("menuitem", { name: /to the queue/ })).toBeNull();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Make Bob a spectator" }));
+    expect(onRelease).toHaveBeenCalledWith(2, "watch");
+    // Someone waits: the host may send a player, itself included, to the queue.
+    rerender(
+      <PlayersCapsule seats={[seat("Ana", true), seat("Bob"), null, null]} swapFor={() => undefined} onStart={onStart} onRelease={onRelease} queueWaiting />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /P1 · Ana/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Give up my seat (to the queue)" }));
+    expect(onRelease).toHaveBeenCalledWith(1, "queue");
+    // Free seats have no Start or release.
+    expect(screen.queryByRole("button", { name: /P3 · Free seat/ })).toBeNull();
+  });
 });

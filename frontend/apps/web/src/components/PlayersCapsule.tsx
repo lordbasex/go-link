@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import type { SeatCard } from "../pages/roomModel";
-import { MicOffIcon, SoundOffIcon, SoundOnIcon, SwapIcon } from "./Icons";
+import { EyeIcon, GamepadIcon, MicOffIcon, SoundOffIcon, SoundOnIcon, SwapIcon, UserIcon } from "./Icons";
 import { portStyle } from "./Seats";
 
 /** Swapping controllers with a seat: move there, or ask its player. */
@@ -25,17 +25,27 @@ const initials = (name: string) =>
 /**
  * The players as round avatars in a floating capsule over the video, like a
  * video call: the seat's color as a ring, a glow while speaking and a badge
- * when muted. Tapping an avatar opens its actions (swap controllers, move
- * to a free seat, silence).
+ * when muted. Tapping an avatar opens its actions (press that seat's
+ * Start, swap controllers, move to a free seat, silence and, for the host,
+ * free the seat: to the end of the queue or to watching).
  */
 export function PlayersCapsule({
   seats,
   swapFor,
   onToggleSilence,
+  onStart,
+  onRelease,
+  queueWaiting = false,
 }: {
   seats: (SeatCard | null)[];
   swapFor: (port: number) => SeatSwap | undefined;
   onToggleSilence?: (port: number) => void;
+  /** A seated player presses a seat's Start (any seat, like the arcade's panel). */
+  onStart?: (port: number) => void;
+  /** The host frees a seat. */
+  onRelease?: (port: number, mode: "queue" | "watch") => void;
+  /** Someone waits in the queue (sending to the queue frees the seat for them). */
+  queueWaiting?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -62,7 +72,9 @@ export function PlayersCapsule({
         const label = seat
           ? `P${port} · ${seat.name}${seat.you ? ` (${t.room.you})` : ""} · ${seat.status}`
           : `P${port} · ${t.room.freeSeat}`;
-        const hasMenu = !!swap || !!silence;
+        const start = seat && onStart ? () => onStart(port) : undefined;
+        const release = seat && onRelease ? onRelease : undefined;
+        const hasMenu = !!swap || !!silence || !!start || !!release;
         const avatar = (
           <>
             <span className="capsule-port">P{port}</span>
@@ -102,6 +114,19 @@ export function PlayersCapsule({
             {open === port && (
               <div className="capsule-menu" role="menu" aria-label={label}>
                 <span className="capsule-menu-title">{label}</span>
+                {start && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      start();
+                      setOpen(null);
+                    }}
+                  >
+                    <GamepadIcon size={15} />
+                    {t.room.pressStart(port)}
+                  </button>
+                )}
                 {swap && (
                   <button
                     type="button"
@@ -127,6 +152,32 @@ export function PlayersCapsule({
                   >
                     {seat.silenced ? <SoundOnIcon size={15} /> : <SoundOffIcon size={15} />}
                     {seat.silenced ? t.room.unsilence(seat.name) : t.room.silence(seat.name)}
+                  </button>
+                )}
+                {release && seat && queueWaiting && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      release(port, "queue");
+                      setOpen(null);
+                    }}
+                  >
+                    <UserIcon size={15} />
+                    {seat.you ? t.room.freeMySeat : t.room.sendToQueue(seat.name)}
+                  </button>
+                )}
+                {release && seat && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      release(port, "watch");
+                      setOpen(null);
+                    }}
+                  >
+                    <EyeIcon size={15} />
+                    {seat.you ? t.room.watchMyself : t.room.makeSpectator(seat.name)}
                   </button>
                 )}
               </div>
