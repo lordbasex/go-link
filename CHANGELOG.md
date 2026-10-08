@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Changed (core patches)
+
+- **The YM2151 timers fix is upstream** (libretro/mame2003-plus-libretro#2042, merged 2026-10-08): `cores/mame2003-plus` builds on that commit and keeps sixteen patches. The QSound games' sound after loading (`0002`, `0003`, `0005`) went upstream as #2043.
+
 ### Fixed (device)
 
 - **One chat line when the host makes a player a spectator:** "Fede moved Bob from P2 to watching" no longer comes with a second "Bob left P2".
