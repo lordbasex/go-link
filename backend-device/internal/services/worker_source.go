@@ -29,8 +29,8 @@ type WorkerConfig struct {
 	CorePath, RomPath, SystemDir string
 	// StatePath is an optional save state loaded right after the game.
 	StatePath string
-	// AllButtons gives the core L2, R2, L3, R3 and the sticks (go-link HD).
-	AllButtons bool
+	// Native runs go-link HD's engine (CorePath its library) instead of a libretro core.
+	Native bool
 	// Upscale enlarges the picture that many times (go-link HD's 640x360
 	// screen: 2 for 720p, 3 for 1080p); 0 or 1 keeps the video mode.
 	Upscale int
@@ -203,8 +203,8 @@ func (s *WorkerSource) args() []string {
 	if s.cfg.Upscale > 1 {
 		args = append(args, "--upscale", strconv.Itoa(s.cfg.Upscale))
 	}
-	if s.cfg.AllButtons {
-		args = append(args, "--all-buttons")
+	if s.cfg.Native {
+		args = append(args, "--golinkhd")
 	}
 	return args
 }

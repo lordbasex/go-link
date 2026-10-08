@@ -13,13 +13,13 @@ import (
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 )
 
-// TestGoLinkHDCorePlaysItsDemo runs the real go-link HD libretro core (built
-// in its own repository, golink-hd) with no content, the way the test room
-// does with --hd-core: GOLINK_HD_CORE=/path/golink_hd_libretro.dylib.
+// TestGoLinkHDCorePlaysItsDemo runs go-link HD's real engine library (built
+// in its own repository, golink-hd) through its own API with no game, the
+// way the test room does with --hd-core: GOLINK_HD_LIB=/path/libgolinkhd.dylib.
 func TestGoLinkHDCorePlaysItsDemo(t *testing.T) {
-	src := os.Getenv("GOLINK_HD_CORE")
+	src := os.Getenv("GOLINK_HD_LIB")
 	if src == "" {
-		t.Skip("GOLINK_HD_CORE is not set")
+		t.Skip("GOLINK_HD_LIB is not set")
 	}
 	// a copy, so the checksum file next to it stays in the test's folder
 	data, err := os.ReadFile(src)
@@ -36,6 +36,7 @@ func TestGoLinkHDCorePlaysItsDemo(t *testing.T) {
 	game, err := OpenGameCore(GameCoreConfig{
 		CorePath:  core,
 		SystemDir: filepath.Join(dir, "system"),
+		Native:    true,
 		Upscale:   3,
 		Video: func(i420 []byte, fw, fh int, dur time.Duration) {
 			w, h = fw, fh
@@ -76,6 +77,9 @@ func TestGoLinkHDCorePlaysItsDemo(t *testing.T) {
 	if samples != 240*800 {
 		t.Fatalf("got %d samples, want %d", samples, 240*800)
 	}
+	if !game.SavesComplete() {
+		t.Fatal("go-link HD's save state is the whole game")
+	}
 	// a save state continues exactly where it was taken
 	state, err := game.SaveState()
 	if err != nil {
@@ -98,12 +102,11 @@ func TestGoLinkHDCorePlaysItsDemo(t *testing.T) {
 	}
 }
 
-// The left stick reaches go-link HD's core (AllButtons) and moves the player
-// like the D-pad; without AllButtons (as for MAME) the core never sees it.
+// The left stick reaches go-link HD's engine and moves the player like the D-pad.
 func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
-	src := os.Getenv("GOLINK_HD_CORE")
+	src := os.Getenv("GOLINK_HD_LIB")
 	if src == "" {
-		t.Skip("GOLINK_HD_CORE is not set")
+		t.Skip("GOLINK_HD_LIB is not set")
 	}
 	data, err := os.ReadFile(src)
 	if err != nil {
@@ -114,10 +117,10 @@ func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
 	if err := os.WriteFile(core, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	run := func(all bool) [32]byte {
+	run := func(stick bool) [32]byte {
 		var last [32]byte
 		game, err := OpenGameCore(GameCoreConfig{
-			CorePath: core, SystemDir: filepath.Join(dir, "system"), AllButtons: all,
+			CorePath: core, SystemDir: filepath.Join(dir, "system"), Native: true,
 			Video: func(i420 []byte, w, h int, dur time.Duration) { last = sha256.Sum256(i420) },
 		})
 		if err != nil {
@@ -128,7 +131,7 @@ func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
 			var pads [4]input.Pad
 			if f >= 10 && f < 14 {
 				pads[0].Buttons = input.State(input.Start)
-			} else if f >= 14 {
+			} else if f >= 14 && stick {
 				pads[0].Axes[0] = 127 // the left stick all the way right
 			}
 			game.SetPads(pads)
@@ -137,6 +140,6 @@ func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
 		return last
 	}
 	if run(true) == run(false) {
-		t.Fatal("the stick made no difference: the core does not get it")
+		t.Fatal("the stick made no difference: the engine does not get it")
 	}
 }

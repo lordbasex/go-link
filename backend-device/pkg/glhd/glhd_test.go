@@ -40,7 +40,7 @@ func TestRead(t *testing.T) {
 		files map[string]string
 		want  string
 	}{
-		"newer":    {map[string]string{"manifest.json": `{"format": 2, "title": "x", "level": "l"}`, "l": ""}, "newer go-link HD"},
+		"newer":    {map[string]string{"manifest.json": `{"format": 9, "title": "x", "level": "l"}`, "l": ""}, "newer go-link HD"},
 		"no title": {map[string]string{"manifest.json": `{"format": 1, "level": "l"}`, "l": ""}, "no title"},
 		"no level": {map[string]string{"manifest.json": `{"format": 1, "title": "x", "level": "l"}`}, "no level"},
 		"none":     {map[string]string{"level.json": ""}, "no manifest.json"},

@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
-	"github.com/lordbasex/go-link/backend-device/pkg/cores"
 	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 )
@@ -67,7 +66,7 @@ func TestLibraryListsGoLinkHDPackages(t *testing.T) {
 	if res, ok := lib.CheckRom("neon"); !ok || res.Status != romcheck.StatusOK {
 		t.Fatalf("check %+v", res)
 	}
-	if want := filepath.Join(coresDir, cores.FileName(glhd.CoreName, runtime.GOOS)); lib.CoreFor("neon") != want || lib.CoreFor("robby") != lib.CorePath() {
+	if want := filepath.Join(coresDir, glhd.LibraryFile(runtime.GOOS)); lib.CoreFor("neon") != want || lib.CoreFor("robby") != lib.CorePath() {
 		t.Fatalf("cores: %s and %s", lib.CoreFor("neon"), lib.CoreFor("robby"))
 	}
 	if lib.HasCoreFor("neon") {
@@ -111,10 +110,10 @@ func TestWorkerUpscalesGoLinkHD(t *testing.T) {
 	if args := src.args(); !slices.Contains(args, "--upscale") || args[slices.Index(args, "--upscale")+1] != "2" {
 		t.Fatalf("args %v", args)
 	}
-	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.zip", SystemDir: "/s"}).args(); slices.Contains(args, "--upscale") || slices.Contains(args, "--all-buttons") {
-		t.Fatalf("a MAME game is upscaled or gets every button: %v", args)
+	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.zip", SystemDir: "/s"}).args(); slices.Contains(args, "--upscale") || slices.Contains(args, "--golinkhd") {
+		t.Fatalf("a MAME game is upscaled or run as go-link HD: %v", args)
 	}
-	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.glhd", SystemDir: "/s", Upscale: 2, AllButtons: true}).args(); !slices.Contains(args, "--all-buttons") {
-		t.Fatalf("go-link HD does not get every button: %v", args)
+	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.glhd", SystemDir: "/s", Upscale: 2, Native: true}).args(); !slices.Contains(args, "--golinkhd") {
+		t.Fatalf("a go-link HD game is not run by its engine: %v", args)
 	}
 }

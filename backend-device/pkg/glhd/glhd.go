@@ -2,10 +2,10 @@
 
 // Package glhd reads the manifest of a go-link HD game package (.glhd): a
 // zip with manifest.json, a level and PNG pictures, played by go-link HD's
-// own libretro core (github.com/lordbasex/golink-hd, its README documents
-// the format). The device only reads what it shows and checks that the
-// package is one the core can open; the core validates the rest when it
-// loads the game.
+// engine (the golink-hd repository, whose README documents the format), run
+// through its own API by package golinkhd. The device only reads what it
+// shows and checks that the package is one the engine can open; the engine
+// validates the rest when it loads the game.
 package glhd
 
 import (
@@ -18,14 +18,23 @@ import (
 	"strings"
 )
 
-// Format is the newest package format the core reads.
-const Format = 1
+// Format is the newest package format the engine reads.
+const Format = 2
 
 // MaxBytes is the largest package the core loads.
 const MaxBytes = 256 << 20
 
-// CoreName is the core's name in its file: golink_hd_libretro.dylib, .so or .dll.
-const CoreName = "golink_hd"
+// LibraryFile is the engine library's file name on an OS: libgolinkhd.dylib,
+// libgolinkhd.so or golinkhd.dll.
+func LibraryFile(goos string) string {
+	switch goos {
+	case "darwin":
+		return "libgolinkhd.dylib"
+	case "windows":
+		return "golinkhd.dll"
+	}
+	return "libgolinkhd.so"
+}
 
 // Ext is a package's file extension.
 const Ext = ".glhd"
@@ -82,7 +91,7 @@ func Read(path string) (Manifest, error) {
 	}
 	switch {
 	case m.Format > Format:
-		return m, errors.New("this game was made for a newer go-link HD: update the core")
+		return m, errors.New("this game was made for a newer go-link HD: update go-link HD")
 	case m.Format < 1:
 		return m, errors.New("manifest.json has no format number")
 	case strings.TrimSpace(m.Title) == "":

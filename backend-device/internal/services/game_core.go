@@ -3,6 +3,7 @@
 package services
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 	"regexp"
@@ -10,9 +11,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/lordbasex/go-link/backend-device/pkg/cores"
 	"github.com/lordbasex/go-link/backend-device/pkg/emuproc"
+	"github.com/lordbasex/go-link/backend-device/pkg/golinkhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 )
@@ -30,10 +33,11 @@ type GameCoreConfig struct {
 	// VideoMode is how frames are converted to I420 (the zero value is the
 	// game's size with top-left chroma); SetVideoMode changes it later.
 	VideoMode emuproc.VideoMode
-	// AllButtons also gives the core L2, R2, L3 and R3 and the analog
-	// sticks: go-link HD's core uses them; MAME's must never get them (see
-	// retroButton).
-	AllButtons bool
+	// Native means CorePath is go-link HD's engine (libgolinkhd), run
+	// through its own API (package golinkhd) instead of libretro; RomPath
+	// is then a game package (.glhd), or empty for its built-in demo. It
+	// gets every button and both sticks, which MAME's core never gets.
+	Native bool
 	// Upscale, when above 1, enlarges every frame that many times with
 	// nearest neighbour instead of VideoMode: go-link HD's 640 x 360 screen
 	// is streamed x3 at 1080p.
@@ -70,6 +74,8 @@ type GameCore struct {
 	resample *libretro.Resampler
 	capture  []string // core log lines, while SavesComplete listens
 	listen   bool
+	cfg      GameCoreConfig
+	hd       *golinkhd.Engine // go-link HD's engine (Native), instead of core
 }
 
 // mame2003PlusOptions skip the screens that wait for a key press and ask
@@ -104,15 +110,6 @@ var retroButton = map[int]input.Button{
 	libretro.JoypadSelect: input.Coin,
 }
 
-// extraButton are the RetroPad buttons only cores that ask for every
-// button get (GameCoreConfig.AllButtons): go-link HD's.
-var extraButton = map[int]input.Button{
-	libretro.JoypadL2: input.L2,
-	libretro.JoypadR2: input.R2,
-	libretro.JoypadL3: input.L3,
-	libretro.JoypadR3: input.R3,
-}
-
 // OpenGameCore pins the calling goroutine to its OS thread, loads the core
 // and the game. Close it when done.
 func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
@@ -123,11 +120,14 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 	if err := os.MkdirAll(cfg.SystemDir, 0o755); err != nil {
 		return nil, err
 	}
-	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1, upscale: cfg.Upscale}
+	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1, upscale: cfg.Upscale, cfg: cfg}
 	log := cfg.Logger
 	// Never run a core someone changed after it was downloaded.
 	if err := cores.Verify(cfg.CorePath); err != nil {
 		return nil, err
+	}
+	if cfg.Native {
+		return g, g.openNative()
 	}
 	core, err := libretro.Open(cfg.CorePath, libretro.Config{
 		SystemDir: cfg.SystemDir,
@@ -152,16 +152,7 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 			},
 			Pressed: func(port, id int) bool {
 				b, ok := retroButton[id]
-				if !ok && cfg.AllButtons {
-					b, ok = extraButton[id]
-				}
 				return ok && port < len(g.pads) && g.pads[port].Buttons.Pressed(b)
-			},
-			Axis: func(port, index, id int) int16 {
-				if !cfg.AllButtons || port >= len(g.pads) {
-					return 0
-				}
-				return int16(g.pads[port].Axes[index*2+id]) * 258 // -127..127 to libretro's range
 			},
 			Log: func(level int, msg string) {
 				if cfg.LogLine != nil {
@@ -253,17 +244,33 @@ func (g *GameCore) Aspect() float64 {
 func (g *GameCore) SetPads(pads [4]input.Pad) { g.pads = pads }
 
 // Run emulates one frame; Video and Audio are called during it.
-func (g *GameCore) Run() { g.core.Run() }
+func (g *GameCore) Run() {
+	if g.hd != nil {
+		g.runNative()
+		return
+	}
+	g.core.Run()
+}
 
 // LastFrame returns the last picture (nil before the first one). The
 // slice is reused by the next frame.
 func (g *GameCore) LastFrame() (i420 []byte, w, h int) { return g.frame, g.fw, g.fh }
 
 // SaveState snapshots the game.
-func (g *GameCore) SaveState() ([]byte, error) { return g.core.SaveState() }
+func (g *GameCore) SaveState() ([]byte, error) {
+	if g.hd != nil {
+		return g.hd.SaveState()
+	}
+	return g.core.SaveState()
+}
 
 // LoadState restores a snapshot made by SaveState.
-func (g *GameCore) LoadState(b []byte) error { return g.core.LoadState(b) }
+func (g *GameCore) LoadState(b []byte) error {
+	if g.hd != nil {
+		return g.hd.LoadState(b)
+	}
+	return g.core.LoadState(b)
+}
 
 // stateItem is one line of the list mame2003-plus logs on every save:
 // "<module>.<n>.<item>: <offsets>", e.g. "z80.1.PC: 1a3c..1a3d".
@@ -284,6 +291,9 @@ func (g *GameCore) SavesComplete() bool {
 // SaveContents makes a save in memory and returns SavesComplete's verdict
 // and the modules the save holds ("m68000", "z80", "QSound"...).
 func (g *GameCore) SaveContents() (complete bool, modules []string) {
+	if g.hd != nil {
+		return true, nil // go-link HD's save state is the whole game by design
+	}
 	g.capture, g.listen = nil, true
 	_, err := g.core.SaveState()
 	g.listen = false
@@ -345,7 +355,101 @@ func savesComplete(lines []string) bool {
 }
 
 // Close unloads the game and the core.
-func (g *GameCore) Close() { g.core.Close() }
+func (g *GameCore) Close() {
+	if g.hd != nil {
+		g.hd.Close()
+		return
+	}
+	g.core.Close()
+}
+
+// openNative starts go-link HD's engine and its game (Native).
+func (g *GameCore) openNative() error {
+	eng, err := golinkhd.Open(g.cfg.CorePath)
+	if err != nil {
+		return err
+	}
+	if g.cfg.RomPath == "" {
+		eng.LoadDemo(0)
+	} else {
+		st, err := os.Stat(g.cfg.RomPath)
+		if err == nil && st.Size() > 256<<20 {
+			err = errors.New("go-link HD: the game package is bigger than 256 MB")
+		}
+		var data []byte
+		if err == nil {
+			data, err = os.ReadFile(g.cfg.RomPath)
+		}
+		if err == nil {
+			err = eng.Load(data)
+		}
+		if err != nil {
+			eng.Close()
+			return err
+		}
+	}
+	info := eng.Info()
+	g.hd = eng
+	g.info = libretro.SystemInfo{Name: "go-link HD", Version: info.EngineVersion, Extensions: "glhd"}
+	g.av = libretro.AVInfo{
+		BaseWidth: info.Width, BaseHeight: info.Height, MaxWidth: info.Width, MaxHeight: info.Height,
+		AspectRatio: float64(info.Width) / float64(info.Height), FPS: float64(info.FPS), SampleRate: float64(info.SampleRate),
+	}
+	if info.FPS > 0 {
+		g.frameDur = time.Second / time.Duration(info.FPS)
+	}
+	g.resample = libretro.NewResampler(g.av.SampleRate, 48000)
+	g.cfg.Logger.Info("go-link HD", "engine", info.EngineVersion, "game", info.Title, "players", info.Players)
+	return nil
+}
+
+// hdButtons maps go-link's buttons to go-link HD's, as a RetroPad would:
+// B and A jump, Y and X run, every face button also on its own.
+var hdButtons = []struct {
+	from input.Button
+	to   uint32
+}{
+	{input.Up, golinkhd.Up}, {input.Down, golinkhd.Down}, {input.Left, golinkhd.Left}, {input.Right, golinkhd.Right},
+	{input.Button1, golinkhd.Jump | golinkhd.B}, {input.Button2, golinkhd.Jump | golinkhd.A},
+	{input.Button3, golinkhd.Run | golinkhd.Y}, {input.Button4, golinkhd.Run | golinkhd.X},
+	{input.Button5, golinkhd.L}, {input.Button6, golinkhd.R}, {input.Start, golinkhd.Start}, {input.Coin, golinkhd.Select},
+	{input.L2, golinkhd.L2}, {input.R2, golinkhd.R2}, {input.L3, golinkhd.L3}, {input.R3, golinkhd.R3},
+}
+
+// runNative runs one frame of go-link HD's engine and hands out its picture and sound.
+func (g *GameCore) runNative() {
+	var pads [4]golinkhd.Pad
+	for i, p := range g.pads {
+		for _, m := range hdButtons {
+			if p.Buttons.Pressed(m.from) {
+				pads[i].Buttons |= m.to
+			}
+		}
+		// sticks: -127..127 to -32766..32766
+		pads[i].LX, pads[i].LY = int32(p.Axes[0])*258, int32(p.Axes[1])*258
+		pads[i].RX, pads[i].RY = int32(p.Axes[2])*258, int32(p.Axes[3])*258
+	}
+	out := g.hd.Frame(pads[:])
+	if len(out.Pixels) > 0 {
+		f := libretro.Frame{
+			Data:   unsafe.Slice((*byte)(unsafe.Pointer(&out.Pixels[0])), len(out.Pixels)*4),
+			Width:  out.Width,
+			Height: out.Height,
+			Pitch:  out.Pitch * 4,
+			Format: libretro.FormatXRGB8888,
+		}
+		if g.cfg.RawVideo != nil {
+			g.cfg.RawVideo(f)
+		}
+		g.convert(f)
+		if g.cfg.Video != nil {
+			g.cfg.Video(g.frame, g.fw, g.fh, g.frameDur)
+		}
+	}
+	if len(out.Audio) > 0 && g.cfg.Audio != nil {
+		g.cfg.Audio(g.resample.Process(out.Audio))
+	}
+}
 
 func trimNewline(s string) string {
 	for len(s) > 0 && (s[len(s)-1] == '\n' || s[len(s)-1] == '\r') {

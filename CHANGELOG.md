@@ -66,6 +66,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (go-link HD)
 
+- **go-link HD has its own API, not libretro's:** the engine is a library (`libgolinkhd`) with a small versioned API; the device runs it from Go through `pkg/golinkhd` (`device emulate --golinkhd`, `GameCoreConfig.Native`), next to MAME, which keeps running through libretro. go-link HD is meant to become go-link's main engine. libretro's API is credited as its inspiration. The `--all-buttons` worker flag is gone: the engine's own API carries every button and both sticks.
+
 - **The engine's effects (phase 4, part A):** go-link HD's core has 4:3 and vertical screens, up to 8 players, blend modes, outlines and shadows, sprites turned and scaled, Mode 7, a pseudo 3D road, skeletal animation, color grading, bloom, blur, waves, 2D lights, the camera's zoom, dialog boxes with accents, low pass and echo, A*, package format 2 with a level's effects and a showcase demo (in its own repository, `golink-hd`). The device gives its core L2, R2, L3, R3 and both analog sticks (`--all-buttons`), never to MAME's.
 
 - **The engine is C99, in its own repository:** go-link HD's core is written in C99 instead of Go, in `golink-hd`, so it can be published to libretro; the device calls it from Go through `pkg/libretro`. Phase 1's core and its demo are done, and it reads game packages (`.glhd` format 1); status and phases updated.
