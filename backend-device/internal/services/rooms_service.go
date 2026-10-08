@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -968,6 +969,7 @@ func (r *RoomsService) applyVideo(gr *gameRoom, stream *StreamService, source Ro
 	} else {
 		stream.ArmEncodeProbe(nil)
 	}
+	stream.SetOverloadHandler(func(share float64) { r.hostOverloaded(gr, stream, share) })
 	r.mu.Lock()
 	gr.video = models.RoomVideo{Quality: plan.Quality, Scale: scale}
 	r.mu.Unlock()
@@ -996,6 +998,28 @@ func (r *RoomsService) encoderTooSlow(gr *gameRoom, stream *StreamService, p95, 
 	gr.video = models.RoomVideo{Quality: plan.Quality, Fallback: models.VideoFallbackCPU, Scale: 1}
 	r.mu.Unlock()
 	r.publish()
+}
+
+// hostOverloaded runs when encoding kept a running room busy for seconds
+// (encode_load.go): a 2x room drops to saver, as when the encoder probe
+// finds 2x too slow; a 1x room has nothing lighter, so it is only logged.
+func (r *RoomsService) hostOverloaded(gr *gameRoom, stream *StreamService, share float64) {
+	r.mu.Lock()
+	current := gr.stream == stream && gr.source != nil
+	scale := gr.video.Scale
+	r.mu.Unlock()
+	if !current {
+		return
+	}
+	pct := math.Round(share * 100)
+	if scale == 2 {
+		stream.teleEvent(telemetry.Warn, "host_overloaded", "", "the host's computer could not keep up: the room went to saver (the game's own size)", map[string]any{"encode_pct": pct, "action": "saver"})
+		const frame = time.Second / 60
+		r.encoderTooSlow(gr, stream, time.Duration(share*float64(frame)), frame)
+		return
+	}
+	stream.teleEvent(telemetry.Warn, "host_overloaded", "", "the host's computer cannot keep up, even at the game's own size", map[string]any{"encode_pct": pct, "action": "none"})
+	r.log.Warn("the host's computer cannot keep up", "room", gr.saved.Name, "encode_pct", pct)
 }
 
 // SetVideoQuality changes the video quality of game rooms. Running rooms

@@ -944,6 +944,7 @@ export const es: Messages = {
       upload: "Subida del anfitrión",
       voice: "Voz a través del dispositivo",
       playout: "Espera del video por jugador",
+      quality: "Calidad del video por jugador",
     },
     hints: {
       latency: "Ida y vuelta del navegador de cada jugador al dispositivo; punteada, la prueba de latencia de la mano a la pantalla.",
@@ -956,8 +957,9 @@ export const es: Messages = {
       upload: "Todo lo que envía la computadora del anfitrión, y el video de esta sala sola.",
       voice: "Paquetes por segundo del micrófono de cada jugador que llegan al dispositivo: si la voz siguió pasando durante un congelamiento, no fue la red.",
       playout: "Cuánto puede retener cada navegador el video antes de mostrarlo. 0 es lo ideal; sube sola con congelamientos, paquetes perdidos o llegada despareja y vuelve a 0 tras 30 segundos sin problemas.",
+      quality: "El bitrate al que se manda el video a cada jugador: baja a la mitad o a un cuarto con paquetes perdidos o un congelamiento, y vuelve a subir tras 20 segundos sin problemas.",
     },
-    metrics: { e2e: "punta a punta", gameGap: "juego", fpsIn: "juego", fpsSent: "enviados", buffer: "búfer", cpu: "computadora", procCpu: "go-link", netUp: "todo el tráfico", video: "esta sala" },
+    metrics: { e2e: "punta a punta", gameGap: "juego", fpsIn: "juego", fpsSent: "enviados", buffer: "búfer", cpu: "computadora", procCpu: "go-link", netUp: "todo el tráfico", video: "esta sala" , encoding: "codificación" },
     zoomHint: "Arrastra sobre un gráfico para acercarlo; doble clic para volver.",
     resetZoom: "Ver todo",
     expand: (chart: string) => `Ampliar ${chart}`,

@@ -202,7 +202,8 @@ type StreamService struct {
 	h264Sent, h264Bytes atomic.Int64
 	opus                *encoder.Opus
 	pcm                 []int16
-	audioFrames         int // sound frames encoded (AudioSamples only)
+	audioFrames         int        // sound frames encoded (AudioSamples only)
+	load                encodeLoad // the encode load watch (encode_load.go)
 	sent                int
 	window              time.Time
 	probe               *encodeProbe
@@ -731,8 +732,12 @@ func (s *StreamService) VideoFrame(i420 []byte, w, h int, dur time.Duration) {
 		s.sentFPS = float64(s.sent) / elapsed.Seconds()
 		s.videoKbps = float64(s.sentBytes) * 8 / 1000 / elapsed.Seconds()
 		s.mu.Unlock()
+		s.countLoad(elapsed, time.Now())
 		s.sent, s.sentBytes, s.window = 0, 0, time.Now()
 	}
+	// Everything from here to the end of the frame is encoding work.
+	encStart := time.Now()
+	defer func() { s.load.busy += time.Since(encStart) }()
 	if n := int(s.hud.Load()); n > 0 {
 		// Drawn before any encoder or tier, on a copy (the source may
 		// reuse its frame).

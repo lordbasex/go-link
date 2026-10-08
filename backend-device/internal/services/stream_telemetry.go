@@ -287,6 +287,7 @@ func (s *StreamService) sampleTelemetry(rec *telemetry.Recorder, elapsed float64
 	}
 	s.mu.Unlock()
 	room["viewers"] = float64(len(viewers))
+	room["enc_load_pct"] = s.EncodeLoad() * 100
 	if host != nil {
 		for k, v := range host() {
 			room[k] = v

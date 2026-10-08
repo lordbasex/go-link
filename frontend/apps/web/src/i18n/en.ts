@@ -933,6 +933,7 @@ export const en = {
       upload: "Host's upload",
       voice: "Voice through the device",
       playout: "Video wait per player",
+      quality: "Video quality per player",
     },
     hints: {
       latency: "Round trip from each player's browser to the device; dashed, the latency test from the hand to the screen.",
@@ -945,8 +946,9 @@ export const en = {
       upload: "Everything the host's computer sends, and the video of this room alone.",
       voice: "Packets per second of each player's microphone reaching the device: voice that kept flowing during a freeze rules out the network.",
       playout: "How long each browser may hold the video before showing it. 0 is best; it rises by itself on freezes, lost packets or uneven arrival and goes back to 0 after 30 clean seconds.",
+      quality: "The bitrate each player\u2019s video is sent at: it steps down to a half or a quarter on lost packets or a freeze, and back up after 20 clean seconds.",
     },
-    metrics: { e2e: "end to end", gameGap: "game", fpsIn: "game", fpsSent: "sent", buffer: "buffer", cpu: "computer", procCpu: "go-link", netUp: "all traffic", video: "this room" },
+    metrics: { e2e: "end to end", gameGap: "game", fpsIn: "game", fpsSent: "sent", buffer: "buffer", cpu: "computer", procCpu: "go-link", netUp: "all traffic", video: "this room" , encoding: "encoding" },
     zoomHint: "Drag across a chart to zoom in; double-click to go back.",
     resetZoom: "Show everything",
     expand: (chart: string) => `Enlarge ${chart}`,

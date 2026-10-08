@@ -30,6 +30,7 @@ The test pattern room is recorded too (room `test`, one run per device run).
 | `fps_sent`, `kbps` | What the encoder sent |
 | `viewers` | Participants connected |
 | `cpu_pct`, `proc_cpu_pct`, `proc_mem_mb` | The computer's CPU, go-link's (with its games) and its memory |
+| `enc_load_pct` | The share of the last second spent encoding, every tier together (`encode_load.go`); 75 % or more for five seconds is an overload |
 | `net_up_kbps`, `net_down_kbps` | Everything the host's computer sends and receives: every guest's picture shares the upload |
 | `hud` | 1 while the latency test draws the controllers |
 
@@ -40,6 +41,7 @@ The test pattern room is recorded too (room `test`, one run per device run).
 | `input_pps`, `input_lost` | Input packets received, and the ones missing from their sequence |
 | `input_gap_max_ms` | Longest silence while a control was held (the browser repeats a held control every 100 ms) |
 | `rr_loss_pct`, `rr_jitter_ms`, `rr_lost` | The browser's RTCP receiver reports on the video: fraction lost, jitter, total lost |
+| `video_kbps_target` | The bitrate this participant's video is sent at: its quality step ([quality ladder](protocol.md#playout-delay)) |
 | `playout_max_ms` | The longest wait the device lets this browser add before showing a frame ([playout delay](protocol.md#playout-delay)) |
 | `pli`, `nack` | Keyframe requests and retransmission requests |
 | `voice_in_pps` | Packets of that player's microphone reaching the device |
@@ -72,6 +74,9 @@ The test pattern room is recorded too (room `test`, one run per device run).
 | `video_loss` | warn | A receiver report with 5 % or more lost (at most every 5 s per participant) |
 | `input_gap` | warn | A held control went quiet for 400 ms or more |
 | `client_freeze` | warn | A browser reported a frozen picture of 250 ms or more (never while its tab is hidden: the browser stops drawing it on purpose, so a hidden tab's `freeze_ms` and `freezes` are not kept) |
+| `video_quality` | info | A participant's video quality stepped down or up, with the reason (`from_kbps`, `to_kbps`, `step`) |
+| `host_overloaded` | warn | Encoding kept the host busy 75 % of each second for five seconds: a 2x room went to saver (`action: "saver"`), or even 1x did not keep up (`action: "none"`); `encode_pct` |
+| `seat_released` | info | The host freed a seat: to the queue or to watching (`port`, `mode`) |
 | `playout_delay` | info | A participant's playout delay changed, with the reason (`from_ms`, `to_ms`) |
 | `client_hidden` | info | A participant's tab was hidden or shown again |
 | `signal_down`, `signal_up` | warn, info | The device lost (or got back) the signaling server: games already playing go on, nobody new gets in |
@@ -121,4 +126,4 @@ device telemetry export ROOM|#GAME [--since 2h]   # everything, as JSON lines
 
 ## Website
 
-My device › History has a **Game ID** column (a click copies `#id`) and a **Network report** action per game (`/device/history/<room>/network?run=<id>`; without `run`, every time the room was on). The page (`components/device/NetworkReport.tsx`, charts in `TimeChart.tsx`) shows the freezes with their verdict (the three longest, and **Show all**), ten charts (latency with the latency test dashed, lost packets, frozen picture with the game's pauses, frames per second, controls, jitter and buffer, each player's video wait from `playout_max_ms`, the host's CPU and upload, voice) with the freezes marked under the plot and a cursor that lists every value, and the raw log (all or warnings, more pages, **Copy log**). A running room refreshes every 5 seconds. Dragging across any chart zooms every chart into that span (`from` and `to` in the address, in unix ms, so a zoomed report can be shared; the device answers with buckets down to 2 s); a double click or **Show everything** goes back. **Enlarge** opens one chart in a dialog with **Save PNG** and **Copy image**: the picture carries the title, the room, the game id, the span and the legend (`chartImage.ts`, the SVG copied with its computed colors as presentation attributes, since the CSP forbids inline styles). Two participants with the same name (someone who came back) are told apart by the time they joined.
+My device › History has a **Game ID** column (a click copies `#id`) and a **Network report** action per game (`/device/history/<room>/network?run=<id>`; without `run`, every time the room was on). The page (`components/device/NetworkReport.tsx`, charts in `TimeChart.tsx`) shows the freezes with their verdict (the three longest, and **Show all**), eleven charts (latency with the latency test dashed, lost packets, frozen picture with the game's pauses, frames per second, controls, jitter and buffer, each player's video wait from `playout_max_ms`, the host's CPU and upload, voice) with the freezes marked under the plot and a cursor that lists every value, and the raw log (all or warnings, more pages, **Copy log**). A running room refreshes every 5 seconds. Dragging across any chart zooms every chart into that span (`from` and `to` in the address, in unix ms, so a zoomed report can be shared; the device answers with buckets down to 2 s); a double click or **Show everything** goes back. **Enlarge** opens one chart in a dialog with **Save PNG** and **Copy image**: the picture carries the title, the room, the game id, the span and the legend (`chartImage.ts`, the SVG copied with its computed colors as presentation attributes, since the CSP forbids inline styles). Two participants with the same name (someone who came back) are told apart by the time they joined.

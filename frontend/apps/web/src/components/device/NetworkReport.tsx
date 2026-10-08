@@ -34,7 +34,8 @@ const CHARTS: { id: keyof typeof t.net.charts; unit: string; metrics: Metric[]; 
   { id: "input", unit: "ms", metrics: [{ m: "peer.input_gap_max_ms", agg: "max" }] },
   { id: "jitter", unit: "ms", metrics: [{ m: "client.jitter_ms", agg: "max" }, { m: "client.buffer_ms", agg: "avg", dashed: true, label: (l) => l.buffer }] },
   { id: "playout", unit: "ms", metrics: [{ m: "peer.playout_max_ms", agg: "max" }] },
-  { id: "host", unit: "%", metrics: [{ m: "room.cpu_pct", agg: "avg", label: (l) => l.cpu }, { m: "room.proc_cpu_pct", agg: "avg", label: (l) => l.procCpu, dashed: true }] },
+  { id: "quality", unit: "kbps", metrics: [{ m: "peer.video_kbps_target", agg: "avg" }] },
+  { id: "host", unit: "%", metrics: [{ m: "room.cpu_pct", agg: "avg", label: (l) => l.cpu }, { m: "room.proc_cpu_pct", agg: "avg", label: (l) => l.procCpu, dashed: true }, { m: "room.enc_load_pct", agg: "max", label: (l) => l.encoding }] },
   { id: "upload", unit: "kbps", metrics: [{ m: "room.net_up_kbps", agg: "avg", label: (l) => l.netUp }, { m: "room.kbps", agg: "avg", label: (l) => l.video, dashed: true }] },
   { id: "voice", unit: "pkt/s", metrics: [{ m: "peer.voice_in_pps", agg: "avg" }] },
 ];

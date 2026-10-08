@@ -6,6 +6,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (website)
 
+- **The network report shows each player's video quality** (a chart of the bitrate each one's video is sent at, stepping down and back up) and the share of each second the host spent encoding (in the host's CPU chart).
 - **A shorter dock and the keys in sight:** the dock beside the video keeps what you use while playing: full screen (now first), the microphone with its level and a small chevron for the volumes and devices, pause, controls, sound and screenshot (six buttons instead of eleven, so they all fit a small window). **Record** moved to the room's header, next to Invite (host only), and **Picture** to the header's "…" menu while a game streams. The start buttons (1P, 2P…) left the dock: a player's menu in the players capsule has **Press Start**, and the keyboard (1 to 4), the gamepad's Start and the touch pad still press them. The side panel opens on **Controls** while a game streams, so someone new sees the keys at once; the tab chosen last stays for the browser tab. Host and guests alike; How to play explains the changes.
 
 ### Added
@@ -14,6 +15,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (device)
 
+- **A busy computer drops the room to saver mid-game:** the device measures, every second, how much of it goes into encoding (every tier together). When that stays at 75 % or more for five seconds in a row, a 2x room goes to its saver quality (the game's own size), as the encoder check already did when a room starts; a room already at 1x only logs that the computer cannot keep up. At most once a minute; each time is a `host_overloaded` telemetry event, and room samples carry `enc_load_pct`.
 - **Each player's video quality adapts to their own connection:** every room now gives each guest their own video track (the tiers go-link HD used), with two more steps under the full picture at half and a quarter of its bitrate. Lost packets (3 % or more) or a freeze in a player's reports step that player down at once; 20 clean seconds step them back up, one step at a time. The others keep their full picture, and a step costs an encoder only while someone is on it. Recordings and the icon drawn while recording come from the full picture. Each step is a `video_quality` telemetry event with its reason, and peer samples carry `video_kbps_target`. With a simulated 8 % loss on one guest, that guest went from 2500 to 1250 and 625 kbps in four seconds while the host stayed at full quality with no loss.
 - **The game's sound holds up better on lossy connections:** once a second the Opus encoder hears the worst packet loss among the players and, when there is any, turns on in-band FEC and leans less on the previous frame, so one lost packet hurts fewer of the ones after it (the browser hides the gap). With no loss nothing changes.
 
