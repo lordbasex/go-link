@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-10-08
+
 ### Changed (website)
 
 - **The network report shows each player's video quality** (a chart of the bitrate each one's video is sent at, stepping down and back up) and the share of each second the host spent encoding (in the host's CPU chart).
