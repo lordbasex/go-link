@@ -111,7 +111,10 @@ func TestWorkerUpscalesGoLinkHD(t *testing.T) {
 	if args := src.args(); !slices.Contains(args, "--upscale") || args[slices.Index(args, "--upscale")+1] != "2" {
 		t.Fatalf("args %v", args)
 	}
-	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.zip", SystemDir: "/s"}).args(); slices.Contains(args, "--upscale") {
-		t.Fatalf("a MAME game is upscaled: %v", args)
+	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.zip", SystemDir: "/s"}).args(); slices.Contains(args, "--upscale") || slices.Contains(args, "--all-buttons") {
+		t.Fatalf("a MAME game is upscaled or gets every button: %v", args)
+	}
+	if args := NewWorkerSource(WorkerConfig{CorePath: "/c", RomPath: "/r.glhd", SystemDir: "/s", Upscale: 2, AllButtons: true}).args(); !slices.Contains(args, "--all-buttons") {
+		t.Fatalf("go-link HD does not get every button: %v", args)
 	}
 }

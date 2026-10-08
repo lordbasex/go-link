@@ -15,6 +15,8 @@ import (
 type EmulatorConfig struct {
 	CorePath string // e.g. ~/go-link/cores/mame2003_plus_libretro.dylib
 	RomPath  string // e.g. ~/go-link/roms/robby.zip; empty starts the core with no content
+	// AllButtons gives the core every button and the sticks (GameCoreConfig.AllButtons).
+	AllButtons bool
 	// Upscale enlarges the picture that many times (GameCoreConfig.Upscale).
 	Upscale   int
 	SystemDir string // BIOS, samples, hiscores, NVRAM
@@ -47,13 +49,14 @@ func NewEmulatorSource(cfg EmulatorConfig) *EmulatorSource {
 // one OS thread.
 func (e *EmulatorSource) Run(ctx context.Context, sink MediaSink) error {
 	game, err := OpenGameCore(GameCoreConfig{
-		CorePath:  e.cfg.CorePath,
-		RomPath:   e.cfg.RomPath,
-		SystemDir: e.cfg.SystemDir,
-		Upscale:   e.cfg.Upscale,
-		Logger:    e.log,
-		Video:     sink.VideoFrame,
-		Audio:     sink.AudioSamples,
+		CorePath:   e.cfg.CorePath,
+		RomPath:    e.cfg.RomPath,
+		SystemDir:  e.cfg.SystemDir,
+		Upscale:    e.cfg.Upscale,
+		AllButtons: e.cfg.AllButtons,
+		Logger:     e.log,
+		Video:      sink.VideoFrame,
+		Audio:      sink.AudioSamples,
 	})
 	if err != nil {
 		return err

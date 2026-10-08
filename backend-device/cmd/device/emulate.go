@@ -30,6 +30,8 @@ type emulateConfig struct {
 	// Upscale enlarges every frame that many times instead (--upscale,
 	// go-link HD's 640x360 screen).
 	Upscale int
+	// AllButtons gives the core L2, R2, L3, R3 and the sticks (--all-buttons, go-link HD).
+	AllButtons bool
 }
 
 // runEmulate is the hidden "emulate" subcommand: an emulator worker that
@@ -45,6 +47,7 @@ func runEmulate(args []string) error {
 	fs.StringVar(&cfg.RomPath, "rom", "", "ROM set to run")
 	fs.StringVar(&cfg.SystemDir, "system", "", "system folder: BIOS, samples, NVRAM")
 	fs.StringVar(&cfg.StatePath, "state", "", "save state to load after the game starts")
+	fs.BoolVar(&cfg.AllButtons, "all-buttons", false, "give the core L2, R2, L3, R3 and the analog sticks (go-link HD; never MAME)")
 	fs.IntVar(&cfg.Upscale, "upscale", 0, "enlarge every frame this many times with nearest neighbour (go-link HD), instead of --video")
 	video := fs.String("video", "native", "how frames are converted: native, box (2x2 averaged color) or double (2x nearest neighbour)")
 	probe := fs.String("probe", "", `test the game's saves instead of streaming it: "save" or "load" (see runProbe)`)
@@ -91,12 +94,13 @@ func emulate(cfg emulateConfig, in io.Reader, out io.Writer, log *slog.Logger) e
 	}
 	var game *services.GameCore // set before the first frame runs
 	game, err := services.OpenGameCore(services.GameCoreConfig{
-		CorePath:  cfg.CorePath,
-		RomPath:   cfg.RomPath,
-		SystemDir: cfg.SystemDir,
-		Logger:    log,
-		VideoMode: cfg.Video,
-		Upscale:   cfg.Upscale,
+		CorePath:   cfg.CorePath,
+		RomPath:    cfg.RomPath,
+		SystemDir:  cfg.SystemDir,
+		Logger:     log,
+		VideoMode:  cfg.Video,
+		Upscale:    cfg.Upscale,
+		AllButtons: cfg.AllButtons,
 		Video: func(i420 []byte, width, height int, dur time.Duration) {
 			if writeErr == nil && !hidden {
 				writeErr = w.WriteVideo(width, height, game.VideoScale(), dur, i420)

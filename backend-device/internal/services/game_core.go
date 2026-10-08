@@ -30,6 +30,10 @@ type GameCoreConfig struct {
 	// VideoMode is how frames are converted to I420 (the zero value is the
 	// game's size with top-left chroma); SetVideoMode changes it later.
 	VideoMode emuproc.VideoMode
+	// AllButtons also gives the core L2, R2, L3 and R3 and the analog
+	// sticks: go-link HD's core uses them; MAME's must never get them (see
+	// retroButton).
+	AllButtons bool
 	// Upscale, when above 1, enlarges every frame that many times with
 	// nearest neighbour instead of VideoMode: go-link HD's 640 x 360 screen
 	// is streamed x3 at 1080p.
@@ -100,6 +104,15 @@ var retroButton = map[int]input.Button{
 	libretro.JoypadSelect: input.Coin,
 }
 
+// extraButton are the RetroPad buttons only cores that ask for every
+// button get (GameCoreConfig.AllButtons): go-link HD's.
+var extraButton = map[int]input.Button{
+	libretro.JoypadL2: input.L2,
+	libretro.JoypadR2: input.R2,
+	libretro.JoypadL3: input.L3,
+	libretro.JoypadR3: input.R3,
+}
+
 // OpenGameCore pins the calling goroutine to its OS thread, loads the core
 // and the game. Close it when done.
 func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
@@ -139,7 +152,16 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 			},
 			Pressed: func(port, id int) bool {
 				b, ok := retroButton[id]
+				if !ok && cfg.AllButtons {
+					b, ok = extraButton[id]
+				}
 				return ok && port < len(g.pads) && g.pads[port].Buttons.Pressed(b)
+			},
+			Axis: func(port, index, id int) int16 {
+				if !cfg.AllButtons || port >= len(g.pads) {
+					return 0
+				}
+				return int16(g.pads[port].Axes[index*2+id]) * 258 // -127..127 to libretro's range
 			},
 			Log: func(level int, msg string) {
 				if cfg.LogLine != nil {

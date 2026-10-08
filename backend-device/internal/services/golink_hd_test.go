@@ -97,3 +97,46 @@ func TestGoLinkHDCorePlaysItsDemo(t *testing.T) {
 		t.Fatal("the frames after loading the save state differ")
 	}
 }
+
+// The left stick reaches go-link HD's core (AllButtons) and moves the player
+// like the D-pad; without AllButtons (as for MAME) the core never sees it.
+func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
+	src := os.Getenv("GOLINK_HD_CORE")
+	if src == "" {
+		t.Skip("GOLINK_HD_CORE is not set")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	core := filepath.Join(dir, filepath.Base(src))
+	if err := os.WriteFile(core, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(all bool) [32]byte {
+		var last [32]byte
+		game, err := OpenGameCore(GameCoreConfig{
+			CorePath: core, SystemDir: filepath.Join(dir, "system"), AllButtons: all,
+			Video: func(i420 []byte, w, h int, dur time.Duration) { last = sha256.Sum256(i420) },
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer game.Close()
+		for f := 0; f < 200; f++ {
+			var pads [4]input.Pad
+			if f >= 10 && f < 14 {
+				pads[0].Buttons = input.State(input.Start)
+			} else if f >= 14 {
+				pads[0].Axes[0] = 127 // the left stick all the way right
+			}
+			game.SetPads(pads)
+			game.Run()
+		}
+		return last
+	}
+	if run(true) == run(false) {
+		t.Fatal("the stick made no difference: the core does not get it")
+	}
+}
