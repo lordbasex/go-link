@@ -2,6 +2,8 @@
 import { Composition, registerRoot } from "remotion";
 import { createElement, Fragment } from "react";
 import { Trailer } from "./Trailer";
+import { Demo } from "./Demo";
+import { demoTotal } from "./demoTimeline";
 import { FPS } from "./theme";
 import { total, type Lang } from "./timeline";
 
@@ -22,6 +24,8 @@ function Root() {
     ...VERSIONS.map((v) =>
       createElement(Composition, { key: v.id, id: v.id, component: Trailer, durationInFrames: total(v.voice), fps: FPS, width: 1920, height: 1080, defaultProps: { voice: v.voice, subs: v.subs } }),
     ),
+    // The demo (English first; the other languages follow the same timeline).
+    createElement(Composition, { key: "Demo", id: "Demo", component: Demo, durationInFrames: demoTotal("en"), fps: FPS, width: 1920, height: 1080, defaultProps: { lang: "en" as const } }),
   );
 }
 

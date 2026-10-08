@@ -6,7 +6,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "trailer": "remotion render src/index.ts Trailer ../dist/video/go-link-trailer-en.mp4 --codec=h264 --crf=18 && npm run srt",
-    "demo": "remotion render src/index.ts Demo ../dist/video/go-link-demo.mp4",
+    "demo": "remotion render src/index.ts Demo ../dist/video/go-link-demo-en.mp4 --codec=h264 --crf=18 && npm run srt",
     "typecheck": "tsc --noEmit",
     "srt": "tsx scripts/srt.ts",
     "voice": "python3 scripts/voice.py en es pt",

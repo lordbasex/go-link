@@ -1,0 +1,26 @@
+{
+  "lines": {
+    "en": {
+      "intro": "This is go-link: a free and open source way to play arcade games with your friends, from your own computer.",
+      "hero": "go-link runs the MAME arcade emulator on your computer and streams the game live. Your ROMs stay on your disk: only the picture and the sound travel.",
+      "steps": "Your friends install nothing. They join from a browser, or from the Android app, with a code and a PIN.",
+      "code": "First, install go-link on the computer that has your games. Its window shows a nine-digit code: type it on play.go-link.org to link your browser.",
+      "dashboard": "My device shows that computer live: its processor, its memory, its network, and the rooms it runs.",
+      "roms": "The ROMs tab lists your library and checks every set, so you know which games run before you open a room.",
+      "room": "Pick a game, and its room opens with the game streaming at sixty frames per second.",
+      "controls": "Controls opens next to the picture. The keys light up as you press them, and a gamepad works as soon as you press a button.",
+      "latency": "Turn on Controls on the video, and every press is measured, from your hand to the screen.",
+      "invite": "To bring a friend, press Invite. You get a link, a nine-digit code and a QR code, plus a PIN that works for one person only.",
+      "join": "Your friend types the code and the PIN, accepts the terms, and is in.",
+      "play": "Up to four people play at once, each in their own seat, with voice chat between the players.",
+      "phone": "On a phone, the room becomes a console: the gamepad sits under the picture, or on both sides when you turn the phone.",
+      "wizard": "With Willy Maker, at maker.go-link.org, you can make your own arcade game. Choose the kind of game, the board and the players.",
+      "editor": "Draw the levels, place the enemies and the items, and try it right away in the browser.",
+      "build": "When it's ready, Willy Maker builds a real ROM for the arcade board you chose.",
+      "makerRoom": "And it plays in a go-link room like any other game, with your friends.",
+      "charts": "Every room keeps a network report: latency, lost packets, frames per second, and the video quality of each player.",
+      "log": "When something goes wrong, the event log and the freeze report tell you where it came from.",
+      "end": "go-link. Free and open source, for macOS, Windows, Linux and Raspberry Pi. Play together, from anywhere."
+    }
+  }
+}

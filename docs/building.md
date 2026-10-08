@@ -152,6 +152,16 @@ The landing page shows real screenshots (`frontend/apps/web/public/shots/<lang>/
 
 Before every web picture the page's computer name, user name and local paths are replaced (the test stack's addresses read as the public ones), and a picture that still shows any of them or an IPv4 address fails. Only the test pattern room is ever played. Pictures are converted with `cwebp` (desktop 1440 px wide, phones 600 px, each under 150 KB). Look at every picture before publishing them.
 
+### Trailer and demo video
+
+`video/` makes go-link's trailer (about 50 s) and its demo (about 3 minutes, seven chapters) with Remotion, from takes of the real app:
+
+1. **Takes:** `cd e2e && npm run video` (`VIDEO_LANG=es|pt` for the other languages) records the website with the `video` Playwright project, with the invented ROM library of the screenshots, into `video/public/takes/<lang>/` (landing, linking, the test pattern room, a guest, the phone console, Willy Maker and the network report).
+2. **Narrator:** `scripts/voice.py` (Kokoro, `KOKORO_DIR`) turns `src/narration.json` (trailer) or `src/demo-narration.json` (demo, `VOICE_SET=demo`) into one WAV per line at -16 LUFS, and writes how long each line lasts; the scenes stretch to fit their line.
+3. **Render:** `npm run trailers` (every language and subtitle version) or `npm run demo` (English) write `dist/video/*.mp4`, plus SubRip subtitles (`npm run srt`) from the same timelines (`src/timeline.ts`, `src/demoTimeline.ts`). Where each shot starts in its take is set in those timelines (the test pattern's clock in the room take tells the time).
+
+Takes, voices and music stay out of the repository; the music is the author's own.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request, with read-only permissions:

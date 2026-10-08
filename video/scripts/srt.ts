@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-// Writes the trailers' subtitles as SubRip (.srt) from the same timeline the
-// videos use (npm run srt): each trailer in its own language, and the
-// English one also in Spanish and Portuguese.
+// Writes the subtitles as SubRip (.srt) from the same timelines the videos
+// use (npm run srt): each trailer in its own language, the English one also
+// in Spanish and Portuguese, and the demo.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { captions, FPS, type Lang } from "../src/timeline";
+import { demoCaptions } from "../src/demoTimeline";
 
 const stamp = (frame: number) => {
   const ms = Math.round((frame / FPS) * 1000);
@@ -19,3 +20,7 @@ for (const [voice, subs] of files) {
   writeFileSync(out, list.map((c, i) => `${i + 1}\n${stamp(c.from)} --> ${stamp(c.to)}\n${c.text}\n`).join("\n"));
   console.log(`${out}: ${list.length} subtitles`);
 }
+
+const demo = demoCaptions("en");
+writeFileSync("../dist/video/go-link-demo-en.en.srt", demo.map((c, i) => `${i + 1}\n${stamp(c.from)} --> ${stamp(c.to)}\n${c.text}\n`).join("\n"));
+console.log(`../dist/video/go-link-demo-en.en.srt: ${demo.length} subtitles`);

@@ -34,7 +34,7 @@ function Split({ len, title, sub, chips = [], side = "left", children }: { len: 
   );
 }
 
-function Intro({ len, tagline }: { len: number; tagline: string }) {
+export function Intro({ len, tagline }: { len: number; tagline: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   // Anticipation: the mark dips, then pops past full size and settles.
@@ -57,7 +57,7 @@ function Intro({ len, tagline }: { len: number; tagline: string }) {
   );
 }
 
-function End({ len, title, free }: { len: number; title: string; free: string }) {
+export function End({ len, title, free }: { len: number; title: string; free: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = spring({ frame: frame - 2, fps, config: { damping: 11, stiffness: 150 } });
@@ -82,7 +82,7 @@ function End({ len, title, free }: { len: number; title: string; free: string })
 }
 
 /** The cut between scenes: a band of the accent color sweeps across. */
-function Wipe({ at: start }: { at: number }) {
+export function Wipe({ at: start }: { at: number }) {
   const frame = useCurrentFrame();
   const x = interpolate(frame, [start - 5, start + 5], [-30, 130], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE_IN });
   if (frame < start - 5 || frame > start + 5) return null;

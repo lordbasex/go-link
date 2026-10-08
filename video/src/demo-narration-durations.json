@@ -1,0 +1,24 @@
+{
+  "en": {
+    "intro": 6.25,
+    "hero": 9.56,
+    "steps": 6.31,
+    "code": 9.92,
+    "dashboard": 5.95,
+    "roms": 6.31,
+    "room": 4.54,
+    "controls": 7.13,
+    "latency": 4.86,
+    "invite": 8.49,
+    "join": 4.14,
+    "play": 5.27,
+    "phone": 6.72,
+    "wizard": 8.06,
+    "editor": 4.8,
+    "build": 5.16,
+    "makerRoom": 3.61,
+    "charts": 7.17,
+    "log": 4.59,
+    "end": 6.91
+  }
+}
