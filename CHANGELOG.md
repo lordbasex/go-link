@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-08
+
 ### Added (device)
 
 - **go-link HD comes with the device:** its engine (the public repository [golink-hd](https://github.com/lordbasex/golink-hd), MIT) ships inside go-link.app (universal), the Linux and Windows archives and the Docker image, so `.glhd` games play with nothing to install (`--hd-core` still names another library, and one in the cores folder is used when none is shipped). With the engine, My games lists its two **built-in games**: **go-link HD: Platformer** and **go-link HD: Showcase** (a scene for each effect: a kart on Mode 7, the road, a cave with lights, the sea, colors), which open game rooms like any game. The build needs the engine's clone next to this repository (`GOLINK_HD_DIR`), and `THIRD_PARTY_NOTICES.md` carries its license.
