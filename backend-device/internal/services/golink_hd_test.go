@@ -3,10 +3,13 @@
 package services
 
 import (
+	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -182,5 +185,64 @@ func TestGoLinkHDCorePlaysItsBuiltInGames(t *testing.T) {
 			t.Fatalf("%s draws the same as %s", d.Name, other)
 		}
 		seen[last] = d.Name
+	}
+}
+
+// A package made for 1080p in a 720p room is drawn by the engine at 720p
+// (golinkhd_set_resolution), not drawn at 1080p and streamed bigger than the room.
+func TestGoLinkHDDrawsAtTheRoomSize(t *testing.T) {
+	src := os.Getenv("GOLINK_HD_LIB")
+	if src == "" {
+		t.Skip("GOLINK_HD_LIB is not set")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	core := filepath.Join(dir, filepath.Base(src))
+	if err := os.WriteFile(core, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rows := make([]string, 30)
+	for y := range rows {
+		c := "."
+		if y >= 27 {
+			c = "#"
+		}
+		rows[y] = strings.Repeat(c, 60)
+	}
+	level, _ := json.Marshal(map[string]any{"width": 60, "height": 30, "start": []int{2, 26}, "rows": rows})
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range map[string][]byte{
+		"manifest.json": []byte(`{"format": 3, "title": "Big", "level": "level.json", "resolution": "1080p"}`),
+		"level.json":    level,
+	} {
+		f, _ := zw.Create(name)
+		f.Write(body)
+	}
+	zw.Close()
+	pkg := filepath.Join(dir, "big.glhd")
+	if err := os.WriteFile(pkg, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var w, h int
+	game, err := OpenGameCore(GameCoreConfig{
+		CorePath:  core,
+		RomPath:   pkg,
+		SystemDir: filepath.Join(dir, "system"),
+		Native:    true,
+		Upscale:   2,
+		Video:     func(i420 []byte, fw, fh int, dur time.Duration) { w, h = fw, fh },
+		Audio:     func(pcm []int16) {},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer game.Close()
+	game.Run()
+	if w != 1280 || h != 720 {
+		t.Fatalf("frames of %dx%d, want 1280x720", w, h)
 	}
 }

@@ -51,6 +51,7 @@ int ghd_open(ghd_t *g, const char *path, char *err, size_t errlen) {
 	LOAD(state_size, "golinkhd_state_size");
 	LOAD(state_save, "golinkhd_state_save");
 	LOAD(state_load, "golinkhd_state_load");
+	*(void **)(&g->set_resolution) = lib_sym(g->handle, "golinkhd_set_resolution"); /* optional */
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.api_version = GOLINKHD_API_VERSION; /* the API this host was written for */
 	g->engine = g->create(&cfg, &why);
@@ -78,6 +79,12 @@ void ghd_set_language(ghd_t *g, const char *lang) { g->set_language(g->engine, l
 void ghd_set_music(ghd_t *g, int on) { g->set_music(g->engine, on); }
 void ghd_frame(ghd_t *g, const golinkhd_pad *pads, int32_t count, golinkhd_frame_out *out) { g->frame(g->engine, pads, count, out); }
 void ghd_restart(ghd_t *g) { g->restart(g->engine); }
+int ghd_set_resolution(ghd_t *g, int32_t lines) {
+	if (!g->set_resolution)
+		return 0;
+	g->set_resolution(g->engine, lines);
+	return 1;
+}
 size_t ghd_state_size(ghd_t *g) { return g->state_size(g->engine); }
 int ghd_state_save(ghd_t *g, uint8_t *out, size_t size) { return g->state_save(g->engine, out, size); }
 int ghd_state_load(ghd_t *g, const uint8_t *in, size_t size, const char **err) { return g->state_load(g->engine, in, size, err); }

@@ -424,6 +424,10 @@ func (g *GameCore) openNative() error {
 			data, err = os.ReadFile(g.cfg.RomPath)
 		}
 		if err == nil {
+			// drawn at the room's size: a package painted for 1080p plays at 720p without enlarging or shrinking frames
+			if g.cfg.Upscale > 0 {
+				eng.SetResolution(g.cfg.Upscale * 360)
+			}
 			err = eng.Load(data)
 		}
 		if err != nil {
