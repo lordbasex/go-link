@@ -24,8 +24,10 @@ VERSION       ?= $(shell git describe --tags --always --dirty 2>/dev/null || ech
 # Application: Name (TEAMID)" the app is signed with the hardened runtime,
 # ready to notarize (scripts/release.sh with NOTARY_PROFILE).
 CODESIGN_IDENTITY ?= -
-# The x.y.z macOS shows for the app (the latest vX.Y.Z tag, else 0.1.0).
-SHORT_VERSION ?= $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//' || true)
+# The x.y.z macOS shows for the app: VERSION when it is one (a release,
+# whose tag does not exist yet while it builds), else the latest vX.Y.Z
+# tag, else 0.1.0.
+SHORT_VERSION ?= $(shell echo '$(VERSION)' | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+$$' && echo '$(VERSION)' | sed 's/^v//' || git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//' || true)
 SHORT_VERSION := $(or $(SHORT_VERSION),0.1.0)
 DIST           = $(CURDIR)/dist
 

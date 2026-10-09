@@ -4,6 +4,16 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-09
+
+### Changed (device)
+
+- **Signed and notarized by Apple:** the macOS app is signed with a Developer ID (with the hardened runtime) and the disk image is notarized and stapled, so macOS opens go-link like any other app, without the "Open Anyway" step. The release is no longer a pre-release.
+
+### Fixed (device)
+
+- **The macOS app shows its own version:** Finder's Get Info showed the version before (the release's tag did not exist yet while it built); a release build now takes its version number.
+
 ## [0.2.9] - 2026-10-09
 
 ### Fixed (device and website)

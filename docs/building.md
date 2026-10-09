@@ -97,9 +97,9 @@ The release also writes `frontend/apps/web/src/release.json` (version and downlo
 
 It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from the repository's tap) and, with `gh`, creates the `v0.1.0` release on `lordbasex/go-link` (`REPO=…` changes it) with every file and generated notes. `SKIP_BUILD=1` packs what is already in `dist/device`, and `GITHUB_RELEASE=0` only builds the files.
 
-**Development mode (today):** without an Apple Developer ID, the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: open it, then System Settings › Privacy & Security › Open Anyway (right click › Open on macOS 14 and earlier).
+**Development mode** (no `CODESIGN_IDENTITY`, the default): the macOS app has an ad hoc signature and the GitHub release is a **pre-release**. On another Mac, macOS blocks it the first time: open it, then System Settings › Privacy & Security › Open Anyway (right click › Open on macOS 14 and earlier). Releases before 0.3.0 were made this way.
 
-**With an Apple Developer ID:**
+**With an Apple Developer ID** (every release since 0.3.0):
 
 1. Install the "Developer ID Application: Name (TEAMID)" certificate in the keychain.
 2. Store the notarization credentials once: `xcrun notarytool store-credentials "go-link-notary" --apple-id you@example.com --team-id TEAMID --password <app-specific-password>`.

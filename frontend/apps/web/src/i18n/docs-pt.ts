@@ -871,7 +871,7 @@ export const docsPt: Docs = {
         { t: "h2", id: "restart", text: "Um jogo começa do início" },
         { t: "p", text: "O emulador não consegue salvar esse jogo por completo, então o go-link sempre o começa do zero. Pause a sala em vez de arquivá-la." },
         { t: "h2", id: "macos", text: "O macOS diz que não pode abrir o app" },
-        { t: "p", text: "Vá em **Ajustes do Sistema › Privacidade e Segurança** e clique em **Abrir Mesmo Assim** (veja [Instalação](/docs/install))." },
+        { t: "p", text: "Desde a 0.3.0 o go-link é assinado e notarizado pela Apple e abre como qualquer outro app: baixe a versão mais recente. Com uma anterior, vá em **Ajustes do Sistema › Privacidade e Segurança** e clique em **Abrir Mesmo Assim** (veja [Instalação](/docs/install))." },
         { t: "h2", id: "help", text: "Ainda com problemas?" },
         { t: "p", text: "Abra uma issue no [GitHub](https://github.com/lordbasex/go-link/issues) com o seu sistema e a versão do go-link (o Resumo do app, ou `go-link-device --help`)." },
       ],
