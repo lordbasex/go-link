@@ -25,6 +25,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 - **`cores/mame2003-plus/tools/savecheck`:** a small C program (any libretro core, no go-link needed) that plays a game twice with the same buttons, once without stopping and once loading a state into a fresh board, and counts the identical frames of picture and sound. It is the evidence for the core pull requests, and it was offered to libretro as a tool of its own (libretro/mame2003-plus-libretro#2047).
 - **More fixes are upstream** (libretro/mame2003-plus-libretro): the Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged on 2026-10-08; the Konami CPU (`0001`, The Simpsons and Aliens resume, #2046), the interrupt event queue (`0011`, #2048, the first with `savecheck` as evidence) and the sound latches, each CPU's local time and the mixer (`0008`, `0012`, `0013`, #2049) on 2026-10-09, and the same day the boards sent with `savecheck` evidence: The Simpsons (`0004`, #2050), Aliens and TMNT (`0007`, #2051) and Galaga (`0016`-`0018`, #2052). `cores/mame2003-plus` builds on that commit (`e05caba`) and keeps one patch, the K054539 (`0015`), which waits until X-Men's other missing state is found.
 
+### Docs
+
+- **go-link HD's phase 9, the AI kit** ([docs/go-link-hd.md](docs/go-link-hd.md#phases)): the API reference in one document, the scripting API's type file, examples and templates, and a command-line loop (pack, check, play with screenshots, bench, hash gates) so an AI can make a whole game with the SDK alone; its test is an AI building a 2D mining and building game from the kit.
+
 ## [0.2.8] - 2026-10-08
 
 ### Added (device)
