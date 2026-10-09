@@ -23,7 +23,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 - **`cores/mame2003-plus/tools/savecheck`:** a small C program (any libretro core, no go-link needed) that plays a game twice with the same buttons, once without stopping and once loading a state into a fresh board, and counts the identical frames of picture and sound. It is the evidence for the core pull requests, and it was offered to libretro as a tool of its own (libretro/mame2003-plus-libretro#2047).
 
-- **More fixes are upstream** (libretro/mame2003-plus-libretro, merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). The Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged too. `cores/mame2003-plus` builds on that commit and keeps eleven patches. The Konami CPU (`0001`, The Simpsons and Aliens resume) went upstream as #2046.
+- **More fixes are upstream** (libretro/mame2003-plus-libretro, merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). The Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged too. The Konami CPU (`0001`, The Simpsons and Aliens resume, #2046) was merged on 2026-10-09. `cores/mame2003-plus` builds on that commit and keeps ten patches.
 
 ### Fixed (device)
 
