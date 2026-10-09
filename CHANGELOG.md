@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (device)
+
+- **go-link HD games speak the device's language:** their texts and dialogs show in the device's language (Settings › General, else the computer's), in English, Spanish or Portuguese; until now they were always in English.
+
 ## [0.2.8] - 2026-10-08
 
 ### Added (device)

@@ -348,7 +348,7 @@ func run() error {
 			}
 			return services.NewWorkerSource(services.WorkerConfig{
 				CorePath: library.CoreFor(rom), RomPath: library.RomPath(rom), SystemDir: systemDir,
-				StatePath: state, Upscale: upscale, Native: hd, Logger: logger, OnReady: onReady,
+				StatePath: state, Upscale: upscale, Native: hd, Language: gameLanguage(cfg.Language), Logger: logger, OnReady: onReady,
 			})
 		},
 		Logger: logger,
