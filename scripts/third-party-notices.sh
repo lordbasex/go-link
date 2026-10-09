@@ -3,7 +3,7 @@
 #
 # Writes THIRD_PARTY_NOTICES.md: the license of every third-party component
 # that go-link's binaries and website include (Go modules, the Go standard
-# library, libvpx, libopus, Musashi, npm packages and fonts). The BSD, MIT,
+# library, libvpx, libopus, go-link HD's engine, Musashi, npm packages and fonts). The BSD, MIT,
 # Apache and OFL licenses ask for their notices to travel with the
 # binaries, so the release packs this file next to them.
 #
@@ -86,6 +86,12 @@ cat "$WORK/libvpx-$VPX_VERSION/LICENSE" "$WORK/libvpx-$VPX_VERSION/PATENTS" > "$
 section "libvpx" "$VPX_VERSION" "https://chromium.googlesource.com/webm/libvpx" "$WORK/vpx.txt"
 curl -fsSL "https://downloads.xiph.org/releases/opus/opus-$OPUS_VERSION.tar.gz" | tar xz -C "$WORK"
 section "libopus" "$OPUS_VERSION" "https://opus-codec.org" "$WORK/opus-$OPUS_VERSION/COPYING"
+
+echo "▶ go-link HD (the game engine shipped with the device)"
+HD_DIR="${GOLINK_HD_DIR:-$ROOT/../golink-hd}"
+[[ -f "$HD_DIR/LICENSE" ]] || { echo "  go-link HD's repository is not in $HD_DIR (set GOLINK_HD_DIR)" >&2; exit 1; }
+HD_VERSION=$(sed -n 's/^#define HD_VERSION "\(.*\)"/\1/p' "$HD_DIR/src/hd.h")
+section "go-link HD" "$HD_VERSION" "https://github.com/lordbasex/golink-hd" "$HD_DIR/LICENSE"
 
 echo "▶ Musashi (the 68000 in the website's ROM power-on test)"
 # Vendored in frontend/packages/cps1-sim/musashi (VENDORED.txt has the commit).

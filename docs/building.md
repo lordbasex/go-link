@@ -9,6 +9,7 @@
 | Website | Node.js (version in `frontend/.nvmrc`) and npm |
 | Cross builds | Docker with `buildx` (Linux and Windows device builds run in containers); `nasm` for the macOS Intel build (`brew install nasm`) |
 | Willy Maker's board model (only to rebuild it) | Emscripten from [emsdk](https://emscripten.org/docs/getting_started/downloads.html) and a host C compiler (see below) |
+| Device builds (`make device…`, `make release`) | A clone of [golink-hd](https://github.com/lordbasex/golink-hd), go-link HD's engine, next to this repository (`../golink-hd`) or `GOLINK_HD_DIR`: every build ships its library, compiled from that clone's committed HEAD |
 | End-to-end tests | A clone of [signalhub](https://github.com/lordbasex/signalhub) next to this repository (`../signaling`) or `SIGNALING_DIR` |
 
 Install the device's C libraries:

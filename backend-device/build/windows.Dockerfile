@@ -6,6 +6,11 @@
 #
 #   docker buildx build --build-arg ARCH=x86_64 --build-arg GOARCH=amd64 \
 #     -f build/windows.Dockerfile --output type=local,dest=../dist/device/windows-amd64 .
+# go-link HD's engine library, shipped next to the device: its sources come
+# as the "golinkhd" build context (the Makefile's golinkhd-src); a plain
+# `docker build` gets this empty stage and builds the device without it.
+FROM scratch AS golinkhd
+
 FROM mstorsjo/llvm-mingw:latest AS build
 ARG ARCH=x86_64
 ARG GOARCH=amd64
@@ -47,6 +52,12 @@ RUN CGO_ENABLED=1 GOOS=windows GOARCH=$GOARCH CC=$HOST-clang CXX=$HOST-clang++ \
     CGO_LDFLAGS="-static -lpthread" \
     go build -trimpath -ldflags "-s -w -H windowsgui -X main.version=$VERSION" \
       -o /out/go-link-device.exe ./cmd/device
+# go-link HD's engine as golinkhd.dll beside the .exe; only the API is
+# exported (GOLINKHD_BUILD_SHARED marks it dllexport).
+COPY --from=golinkhd / /golinkhd
+RUN if [ -f /golinkhd/Makefile ]; then cd /golinkhd && \
+      $HOST-clang -std=c99 -O2 -DNDEBUG -DGOLINKHD_BUILD_SHARED -Iinclude -Isrc -shared \
+        -o /out/golinkhd.dll src/*.c; fi
 
 FROM scratch AS export
-COPY --from=build /out/go-link-device.exe /
+COPY --from=build /out/ /

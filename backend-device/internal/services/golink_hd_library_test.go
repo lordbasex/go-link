@@ -117,3 +117,45 @@ func TestWorkerUpscalesGoLinkHD(t *testing.T) {
 		t.Fatalf("a go-link HD game is not run by its engine: %v", args)
 	}
 }
+
+func TestLibraryListsGoLinkHDBuiltInGames(t *testing.T) {
+	dir, coresDir := t.TempDir(), t.TempDir()
+	st := NewStatusService(deviceID, "test", "ws://x", "")
+	lib := NewLibraryService(dir, st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	lib.SetCore(coresDir, "")
+	lib.Scan()
+	if got := st.Snapshot().Library; len(got.Roms) != 0 {
+		t.Fatalf("built-in games listed without the engine: %+v", got.Roms)
+	}
+	_ = os.WriteFile(filepath.Join(coresDir, glhd.LibraryFile(runtime.GOOS)), []byte("engine"), 0o644)
+	// a file of the folder with a built-in game's name wins
+	_ = os.WriteFile(filepath.Join(dir, "glhd_platformer.zip"), []byte("PK"), 0o644)
+	lib.Scan()
+	got := st.Snapshot().Library
+	var names []string
+	for _, r := range got.Roms {
+		names = append(names, r.Name)
+	}
+	if !slices.Equal(names, []string{"glhd_platformer", "glhd_showcase"}) || got.Roms[0].Kind != "" {
+		t.Fatalf("roms %v", got.Roms)
+	}
+	show := got.Roms[1]
+	if show.Kind != models.KindHD || show.Title != "go-link HD: Showcase" || show.Check.Status != romcheck.StatusOK || show.Controls.Players != 4 {
+		t.Fatalf("showcase %+v", show)
+	}
+	if !lib.IsHD("glhd_showcase") || !lib.HasRom("glhd_showcase") || !lib.HasCoreFor("glhd_showcase") {
+		t.Fatal("the showcase cannot be played")
+	}
+	if n, ok := glhd.DemoIndex(lib.RomPath("glhd_showcase")); !ok || n != 1 {
+		t.Fatalf("path %q", lib.RomPath("glhd_showcase"))
+	}
+	if m := lib.HD("glhd_showcase"); m == nil || m.Players != 4 {
+		t.Fatalf("manifest %+v", m)
+	}
+	if res, ok := lib.CheckRom("glhd_showcase"); !ok || res.Status != romcheck.StatusOK {
+		t.Fatalf("check %+v", res)
+	}
+	if lib.IsHD("glhd_platformer") {
+		t.Fatal("the folder's zip lost to the built-in game")
+	}
+}

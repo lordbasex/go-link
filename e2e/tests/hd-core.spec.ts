@@ -18,6 +18,13 @@ import { pairingCode } from "../stack";
 //   E2E_HD_CORE=1 E2E_HD_GAME=neon_run E2E_ROMS=/path/neon_run.glhd \
 //     E2E_DEVICE_ARGS="--hd-core /path/libgolinkhd.dylib" npx playwright test tests/hd-core.spec.ts --project=web
 
+// The engine's built-in games (the platformer and the showcase), with the
+// engine shipped inside a packaged app:
+//   E2E_HD_CORE=1 E2E_HD_BUILTIN=1 E2E_HD_GAME=glhd_platformer \
+//     E2E_DEVICE_COMMAND="HOME=$PWD/.state/home exec /path/go-link.app/Contents/MacOS/go-link-device --headless \
+//     --config $PWD/.state/device.json --server-signaling ws://127.0.0.1:8191/ws --panel 127.0.0.1:7391 \
+//     --web-url http://localhost:5191" npx playwright test tests/hd-core.spec.ts --project=web
+
 test.skip(!process.env.E2E_HD_CORE, "go-link HD's core runs only with E2E_HD_CORE");
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -102,6 +109,34 @@ test("a Willy Maker game exported for go-link HD is listed, starts a game room a
     return { w: el.videoWidth, h: el.videoHeight, frames: el.getVideoPlaybackQuality().totalVideoFrames };
   });
   console.log(`go-link HD game room: ${v.w}x${v.h}, ${v.frames} frames shown`);
+  expect(v.w * 9).toBe(v.h * 16);
+});
+
+test("go-link HD's built-in games are listed with the engine and the showcase plays in a game room", async ({ page }) => {
+  test.skip(!process.env.E2E_HD_BUILTIN, "needs E2E_HD_BUILTIN (a device with go-link HD's engine, shipped or --hd-core)");
+  test.setTimeout(180_000);
+  await link(page);
+  await page.goto("/create?rom=glhd_showcase");
+  await page.getByRole("button", { name: "Start the game" }).click();
+  await expect(page).toHaveURL(/\/r\//, { timeout: 60_000 });
+  await videoPlays(page);
+  // the showcase's first scene, Mode 7, moves by itself: the picture keeps changing
+  const frame = () => page.evaluate(() => {
+    const v = document.querySelector("video.video") as HTMLVideoElement;
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 36;
+    const g = c.getContext("2d")!;
+    g.drawImage(v, 0, 0, 64, 36);
+    return Array.from(g.getImageData(0, 0, 64, 36).data).join(",");
+  });
+  const first = await frame();
+  await expect.poll(frame, { timeout: 10_000 }).not.toBe(first);
+  await shot(page, "showcase");
+  const v = await page.evaluate(() => {
+    const el = document.querySelector("video.video") as HTMLVideoElement;
+    return { w: el.videoWidth, h: el.videoHeight };
+  });
   expect(v.w * 9).toBe(v.h * 16);
 });
 

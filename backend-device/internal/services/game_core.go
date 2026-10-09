@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/pkg/cores"
 	"github.com/lordbasex/go-link/backend-device/pkg/emuproc"
+	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/golinkhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
@@ -122,9 +125,12 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 	}
 	g := &GameCore{frameDur: time.Second / 60, mode: cfg.VideoMode, scale: 1, upscale: cfg.Upscale, cfg: cfg}
 	log := cfg.Logger
-	// Never run a core someone changed after it was downloaded.
-	if err := cores.Verify(cfg.CorePath); err != nil {
-		return nil, err
+	// Never run a core someone changed after it was downloaded. The engine
+	// library shipped with the device is signed with it instead.
+	if !shippedLibrary(cfg.CorePath) {
+		if err := cores.Verify(cfg.CorePath); err != nil {
+			return nil, err
+		}
 	}
 	if cfg.Native {
 		return g, g.openNative()
@@ -363,6 +369,17 @@ func (g *GameCore) Close() {
 	g.core.Close()
 }
 
+// shippedLibrary reports whether a core is go-link HD's library shipped
+// next to the device's program.
+func shippedLibrary(path string) bool {
+	own := glhd.BundledLibrary(runtime.GOOS)
+	if own == "" {
+		return false
+	}
+	abs, err := filepath.Abs(path)
+	return err == nil && filepath.Clean(abs) == own
+}
+
 // openNative starts go-link HD's engine and its game (Native).
 func (g *GameCore) openNative() error {
 	eng, err := golinkhd.Open(g.cfg.CorePath)
@@ -371,6 +388,8 @@ func (g *GameCore) openNative() error {
 	}
 	if g.cfg.RomPath == "" {
 		eng.LoadDemo(0)
+	} else if demo, ok := glhd.DemoIndex(g.cfg.RomPath); ok {
+		eng.LoadDemo(demo) // a game built into the engine
 	} else {
 		st, err := os.Stat(g.cfg.RomPath)
 		if err == nil && st.Size() > 256<<20 {

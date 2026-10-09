@@ -6,6 +6,11 @@
 #
 #   docker buildx build --platform linux/arm64 --build-arg TAGS=headless \
 #     -f build/linux.Dockerfile --output type=local,dest=../dist/device/linux-arm64 .
+# go-link HD's engine library, shipped next to the device: its sources come
+# as the "golinkhd" build context (the Makefile's golinkhd-src); a plain
+# `docker build` gets this empty stage and builds the device without it.
+FROM scratch AS golinkhd
+
 FROM golang:1.26-bookworm AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       pkg-config libvpx-dev libopus-dev libgl1-mesa-dev xorg-dev \
@@ -24,7 +29,9 @@ ARG VERSION=dev
 RUN mkdir /static && ln -s /usr/lib/*-linux-gnu/libvpx.a /usr/lib/*-linux-gnu/libopus.a /static/ && \
     CGO_ENABLED=1 CGO_LDFLAGS="-L/static" go build -trimpath -tags "$TAGS" \
       -ldflags "-s -w -X main.version=$VERSION" -o /out/go-link-device ./cmd/device
+COPY --from=golinkhd / /golinkhd
+RUN if [ -f /golinkhd/Makefile ]; then make -s -B -C /golinkhd && cp /golinkhd/libgolinkhd.so /out/; fi
 
-# Only the binary leaves the build (docker buildx --output type=local).
+# Only the binary and the engine library leave the build (docker buildx --output type=local).
 FROM scratch AS export
-COPY --from=build /out/go-link-device /
+COPY --from=build /out/ /

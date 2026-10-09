@@ -141,6 +141,9 @@ func (l *LibraryService) CheckRom(name string) (res romcheck.Result, ok bool) {
 		return l.checkMaker()
 	}
 	if l.IsHD(name) {
+		if _, ok := l.demo(name); ok {
+			return romcheck.Result{Status: romcheck.StatusOK}, true
+		}
 		if _, err := glhd.Read(l.RomPath(name)); err != nil {
 			return romcheck.Result{Status: romcheck.StatusBadZip}, true
 		}
@@ -161,7 +164,8 @@ func (l *LibraryService) CorePath() string {
 }
 
 // SetHDCore sets where go-link HD's engine library is (the device's
-// --hd-core); without it the library is looked for in the cores folder.
+// --hd-core); without it the one shipped with the device is used, else
+// the one in the cores folder.
 func (l *LibraryService) SetHDCore(path string) {
 	l.mu.Lock()
 	l.hdCore = path
@@ -175,11 +179,15 @@ func (l *LibraryService) HDCorePath() string {
 	if l.hdCore != "" {
 		return l.hdCore
 	}
+	if p := glhd.BundledLibrary(runtime.GOOS); p != "" {
+		return p
+	}
 	return filepath.Join(l.coresDir, glhd.LibraryFile(runtime.GOOS))
 }
 
-// IsHD reports whether a game of the folder is a go-link HD package
-// (name.glhd) rather than a MAME set. A .zip of the same name wins.
+// IsHD reports whether a game is go-link HD's, a package of the folder
+// (name.glhd) or one of the engine's built-in games, rather than a MAME
+// set. A .zip of the same name wins.
 func (l *LibraryService) IsHD(name string) bool {
 	if !romNameRE.MatchString(name) {
 		return false
@@ -188,7 +196,26 @@ func (l *LibraryService) IsHD(name string) bool {
 		return false
 	}
 	_, err := os.Stat(filepath.Join(l.Dir(), name+glhd.Ext))
-	return err == nil
+	if err == nil {
+		return true
+	}
+	_, ok := glhd.FindDemo(name)
+	return ok
+}
+
+// demo returns the engine's built-in game of a name, when no file of the
+// folder has that name.
+func (l *LibraryService) demo(name string) (glhd.Demo, bool) {
+	d, ok := glhd.FindDemo(name)
+	if !ok {
+		return d, false
+	}
+	for _, ext := range []string{".zip", glhd.Ext} {
+		if _, err := os.Stat(filepath.Join(l.Dir(), name+ext)); err == nil {
+			return d, false
+		}
+	}
+	return d, true
 }
 
 // CoreFor is the core that plays a game: go-link HD's for its packages,
@@ -210,6 +237,9 @@ func (l *LibraryService) HasCoreFor(name string) bool {
 func (l *LibraryService) HD(name string) *glhd.Manifest {
 	if !l.IsHD(name) {
 		return nil
+	}
+	if d, ok := l.demo(name); ok {
+		return &glhd.Manifest{Format: glhd.Format, Title: d.Title, Players: d.Players}
 	}
 	m, err := glhd.Read(l.RomPath(name))
 	if err != nil {
@@ -241,6 +271,9 @@ func (l *LibraryService) HasRom(name string) bool {
 func (l *LibraryService) RomPath(name string) string {
 	if name == MakerRom {
 		return l.makerPath()
+	}
+	if d, ok := l.demo(name); ok {
+		return glhd.DemoPath(d)
 	}
 	if l.IsHD(name) {
 		return filepath.Join(l.Dir(), name+glhd.Ext)
@@ -568,6 +601,19 @@ func (l *LibraryService) Scan() {
 			}
 		}
 		roms = append(roms, rom)
+	}
+	// The engine's built-in games, whenever the engine is installed.
+	if _, err := os.Stat(l.HDCorePath()); err == nil {
+		for _, d := range glhd.Demos {
+			if _, ok := l.demo(d.Name); !ok {
+				continue
+			}
+			roms = append(roms, models.RomInfo{
+				Name: d.Name, Kind: models.KindHD, Title: d.Title, Description: "go-link HD",
+				Check:    &romcheck.Result{Status: romcheck.StatusOK},
+				Controls: &models.RomControls{Players: d.Players, Buttons: len(glhd.Labels), Labels: glhd.Labels},
+			})
+		}
 	}
 	// Check each set against the core's game list, without running it.
 	if cat := l.Catalog(); cat != nil {

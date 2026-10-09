@@ -9,7 +9,7 @@
 #   make maker-deploy build and upload Willy Maker's site (deploy/local/hosting.mk)
 #   make help         everything else
 
-.PHONY: all e2e release legal panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy maker-build maker-deploy hosting-help \
+.PHONY: all e2e release legal golinkhd-src panel device-dmg device-darwin-universal FORCE device-docker device-docker-oci help info web-build web-deploy maker-build maker-deploy hosting-help \
 	device device-windows device-windows-amd64 device-windows-arm64 clean android-debug android-apk
 
 # The darwin and linux device targets are pattern rules (device-darwin-%,
@@ -177,6 +177,27 @@ MACOS_LIBS     = $(DIST)/.macos-libs
 MACOS_CLANG    = $$(xcrun -f clang)
 clang_arch     = $(if $(filter amd64,$(1)),x86_64,arm64)
 
+# go-link HD's engine (its own repository, github.com/lordbasex/golink-hd,
+# next to this one) ships inside every build: go-link.app's Frameworks,
+# beside the binary in the Linux and Windows archives, in the Docker image.
+# It is built from the repository's committed HEAD (git archive), never
+# from files left in its folder.
+GOLINK_HD_DIR ?= ../golink-hd
+GOLINK_HD_SRC  = $(DIST)/.golinkhd/src
+
+golinkhd-src:
+	@test -d $(GOLINK_HD_DIR)/.git || { echo "$(RED)✗ go-link HD's engine is not in $(GOLINK_HD_DIR) (git clone https://github.com/lordbasex/golink-hd there, or set GOLINK_HD_DIR)$(NC)"; exit 1; }
+	@rm -rf $(GOLINK_HD_SRC) && mkdir -p $(GOLINK_HD_SRC)
+	@git -C $(GOLINK_HD_DIR) archive HEAD | tar -x -C $(GOLINK_HD_SRC)
+	@echo "$(GREEN)✓ go-link HD $$(git -C $(GOLINK_HD_DIR) describe --tags --always) goes in the build$(NC)"
+
+# The engine library of one Mac architecture, for macOS $(MIN_MACOS)+.
+$(DEVICE_OUT)/darwin-%/libgolinkhd.dylib: golinkhd-src
+	@mkdir -p $(DEVICE_OUT)/darwin-$*
+	@$(MAKE) -s -B -C $(GOLINK_HD_SRC) platform=osx arch=$(call clang_arch,$*) CC="$(MACOS_CLANG)" \
+		MACOSX_DEPLOYMENT_TARGET=$(MIN_MACOS) SDKROOT="$$(xcrun --sdk macosx --show-sdk-path)"
+	cp $(GOLINK_HD_SRC)/libgolinkhd.dylib $@
+
 # The device binary of one architecture: dist/device/darwin-<arch>/go-link-device.
 $(DEVICE_OUT)/darwin-%/go-link-device: $(PANEL_DIST)/index.html FORCE
 	@if [ "$(HOST_OS)" != "darwin" ]; then echo "$(RED)✗ macOS builds need a Mac$(NC)"; exit 1; fi
@@ -193,30 +214,36 @@ $(DEVICE_OUT)/darwin-%/go-link-device: $(PANEL_DIST)/index.html FORCE
 		-o $(DEVICE_OUT)/darwin-$*/go-link-device ./cmd/device
 
 # One architecture's app, for development: dist/device/darwin-<arch>/go-link.app.
-device-darwin-%: $(DEVICE_OUT)/darwin-%/go-link-device
+device-darwin-%: $(DEVICE_OUT)/darwin-%/go-link-device $(DEVICE_OUT)/darwin-%/libgolinkhd.dylib
 	@$(DEVICE_DIR)/build/macos/make-app.sh $(DEVICE_OUT)/darwin-$*/go-link-device \
-		$(DEVICE_OUT)/darwin-$*/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)"
+		$(DEVICE_OUT)/darwin-$*/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)" \
+		$(DEVICE_OUT)/darwin-$*/libgolinkhd.dylib
 
 # The release app: both architectures in one binary (lipo),
 # dist/device/darwin-universal/go-link.app.
-device-darwin-universal: $(DEVICE_OUT)/darwin-amd64/go-link-device $(DEVICE_OUT)/darwin-arm64/go-link-device
+device-darwin-universal: $(DEVICE_OUT)/darwin-amd64/go-link-device $(DEVICE_OUT)/darwin-arm64/go-link-device \
+		$(DEVICE_OUT)/darwin-amd64/libgolinkhd.dylib $(DEVICE_OUT)/darwin-arm64/libgolinkhd.dylib
 	@mkdir -p $(DEVICE_OUT)/darwin-universal
-	lipo -create -output $(DEVICE_OUT)/darwin-universal/go-link-device $^
+	lipo -create -output $(DEVICE_OUT)/darwin-universal/go-link-device $(DEVICE_OUT)/darwin-amd64/go-link-device $(DEVICE_OUT)/darwin-arm64/go-link-device
+	lipo -create -output $(DEVICE_OUT)/darwin-universal/libgolinkhd.dylib $(DEVICE_OUT)/darwin-amd64/libgolinkhd.dylib $(DEVICE_OUT)/darwin-arm64/libgolinkhd.dylib
 	@$(DEVICE_DIR)/build/macos/make-app.sh $(DEVICE_OUT)/darwin-universal/go-link-device \
-		$(DEVICE_OUT)/darwin-universal/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)"
+		$(DEVICE_OUT)/darwin-universal/go-link.app $(VERSION) $(SHORT_VERSION) "$(CODESIGN_IDENTITY)" \
+		$(DEVICE_OUT)/darwin-universal/libgolinkhd.dylib
 
 FORCE:
 
 # Linux builds in Docker (the other architecture through QEMU).
-device-linux-%-headless: $(PANEL_DIST)/index.html
+device-linux-%-headless: $(PANEL_DIST)/index.html golinkhd-src
 	@echo "$(YELLOW)Building the headless device for linux/$*...$(NC)"
 	cd $(DEVICE_DIR) && docker buildx build --platform linux/$* --build-arg TAGS=headless --build-arg VERSION=$(VERSION) \
+		--build-context golinkhd=$(GOLINK_HD_SRC) \
 		-f build/linux.Dockerfile --output type=local,dest=$(DEVICE_OUT)/linux-$*-headless .
 	@echo "$(GREEN)✓ $(DEVICE_OUT)/linux-$*-headless/go-link-device$(NC)"
 
-device-linux-%: $(PANEL_DIST)/index.html
+device-linux-%: $(PANEL_DIST)/index.html golinkhd-src
 	@echo "$(YELLOW)Building the device for linux/$*...$(NC)"
 	cd $(DEVICE_DIR) && docker buildx build --platform linux/$* --build-arg VERSION=$(VERSION) \
+		--build-context golinkhd=$(GOLINK_HD_SRC) \
 		-f build/linux.Dockerfile --output type=local,dest=$(DEVICE_OUT)/linux-$* .
 	@echo "$(GREEN)✓ $(DEVICE_OUT)/linux-$*/go-link-device$(NC)"
 
@@ -227,9 +254,10 @@ device-windows-amd64:
 device-windows-arm64:
 	@$(MAKE) device-windows MINGW_ARCH=aarch64 GO_ARCH=arm64
 
-device-windows: $(PANEL_DIST)/index.html
+device-windows: $(PANEL_DIST)/index.html golinkhd-src
 	@echo "$(YELLOW)Building the device for windows/$(GO_ARCH)...$(NC)"
 	cd $(DEVICE_DIR) && docker buildx build --build-arg ARCH=$(MINGW_ARCH) --build-arg GOARCH=$(GO_ARCH) \
+		--build-context golinkhd=$(GOLINK_HD_SRC) \
 		--build-arg VERSION=$(VERSION) -f build/windows.Dockerfile \
 		--output type=local,dest=$(DEVICE_OUT)/windows-$(GO_ARCH) .
 	@echo "$(GREEN)✓ $(DEVICE_OUT)/windows-$(GO_ARCH)/go-link-device.exe$(NC)"
@@ -243,16 +271,16 @@ legal:
 # The device as a container (headless, web panel on 7373): loaded into the
 # local Docker for this computer's CPU, and an OCI archive for amd64 and
 # arm64 (Raspberry Pi). Not pushed to any registry.
-device-docker: $(PANEL_DIST)/index.html legal
+device-docker: $(PANEL_DIST)/index.html legal golinkhd-src
 	@echo "$(YELLOW)Building the go-link-device image...$(NC)"
 	cd $(DEVICE_DIR) && docker buildx build -f build/docker.Dockerfile --build-arg VERSION=$(VERSION) \
-		--build-context legal=$(LEGAL_DIR) -t go-link-device:$(VERSION) -t go-link-device:latest --load .
+		--build-context legal=$(LEGAL_DIR) --build-context golinkhd=$(GOLINK_HD_SRC) -t go-link-device:$(VERSION) -t go-link-device:latest --load .
 	@echo "$(GREEN)✓ go-link-device:$(VERSION) (docker compose -f $(DEVICE_DIR)/docker-compose.yml up -d)$(NC)"
 
-device-docker-oci: $(PANEL_DIST)/index.html legal
+device-docker-oci: $(PANEL_DIST)/index.html legal golinkhd-src
 	mkdir -p $(DOCKER_OUT)
 	cd $(DEVICE_DIR) && docker buildx build -f build/docker.Dockerfile --build-arg VERSION=$(VERSION) \
-		--build-context legal=$(LEGAL_DIR) --platform linux/amd64,linux/arm64 -t go-link-device:$(VERSION) \
+		--build-context legal=$(LEGAL_DIR) --build-context golinkhd=$(GOLINK_HD_SRC) --platform linux/amd64,linux/arm64 -t go-link-device:$(VERSION) \
 		--output type=oci,dest=$(DOCKER_OUT)/go-link-device-$(VERSION).oci.tar .
 	@echo "$(GREEN)✓ $(DOCKER_OUT)/go-link-device-$(VERSION).oci.tar$(NC)"
 
