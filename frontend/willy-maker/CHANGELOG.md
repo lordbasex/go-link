@@ -10,6 +10,7 @@ Willy Maker, go-link's arcade game maker (maker.go-link.org). Newest first. Its 
 
 ### Docs
 
+- **The second evolution, code, on the roadmap** ([docs/willy-maker/code.md](../../docs/willy-maker/code.md)): games with their own logic, from Scratch-like blocks to scripts in a language close to TypeScript, only for go-link HD; the engine runs them as a sandboxed WebAssembly module (deterministic, in the save state, with a budget per frame), with the scripting API, the editor, phases C1 to C5 and the open questions. Nothing is built yet.
 - **The AI playtester's specification** ([docs/willy-maker/ai-playtester.md](../../docs/willy-maker/ai-playtester.md)): what Test with AI will do, each item marked Base, Later or Idea (players, training, the report, the editor, genres, data and privacy, QA bots in rooms), with budgets, phases and the decisions taken: a small network trained on each game with the route bot as its teacher, reading the game's state, in the browser, the platformer first. Nothing is built yet.
 
 ### Changed

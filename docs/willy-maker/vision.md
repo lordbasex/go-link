@@ -17,9 +17,9 @@ Willy Maker is named after go-link's mascot, Willy Gorklingo, but it is not a ma
 |---|---|---|---|
 | 1, today | **Capcom CPS-1** (384 × 224, the `slammast` layout of 4 players × 3 buttons) | Three scroll layers, 256 sprites, 6 MB of graphics; the board of the classic fighting and beat 'em up games of 1991 | 15 colors per tile, no rotation, no transparency |
 | 2 | **Bigger boards that the mame2003-plus core runs**, to be evaluated: Taito F3 (transparency, per-line effects, much more graphics memory), CPS-2 (more memory; its encryption must be handled), Sega boards with sprite scaling | Effects and sizes the CPS-1 lacks | Each board is a new profile: its rules, its graphics converters and a genre engine in its CPU |
-| 3 | **go-link's own engine**, a "virtual board" shipped as a libretro core of our own | HD output, colors without palette limits, skeletal animation, particles, shaders, updates: modern console-class 2D | It has to be written; it is not MAME, so it does not carry MAME's hardware or license limits |
+| 3 | **go-link's own engine**, go-link HD: a "virtual board", a library with its own API | HD output, colors without palette limits, skeletal animation, particles, shaders, updates: modern console-class 2D | It has to be written; it is not MAME, so it does not carry MAME's hardware or license limits |
 
-Step 3 fits go-link as it is: the device already runs a libretro core and streams it to the players. A go-link core takes the place of the MAME core, and rooms, voice, controllers, recordings, invitations and phones keep working unchanged.
+Step 3 fits go-link as it is: the device runs go-link HD next to MAME's libretro core and streams it to the players the same way, and rooms, voice, controllers, recordings, invitations and phones keep working unchanged.
 
 ## What this asks of the code today
 
@@ -48,3 +48,4 @@ Every game made in Willy Maker should be playable by an AI before anyone else pl
 3. More genres on the CPS-1, in the order of [genres.md](genres.md), each one as an experiment with a frozen spec and a jury.
 4. The first bigger board, chosen when a genre needs what the CPS-1 cannot do.
 5. go-link's own engine (its base: [go-link-hd.md](../go-link-hd.md)).
+6. **The second evolution: code.** Scripts in a language close to TypeScript and Scratch-like blocks that generate them, run by go-link HD as a sandboxed WebAssembly module, so a game goes from visual to code in the same tool ([code.md](code.md)).
