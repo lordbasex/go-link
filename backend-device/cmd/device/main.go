@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -71,6 +72,8 @@ func run() error {
 		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p, 2160p, or auto: the best this computer streams at 60 fps, checked) made of --hd-far and --hd-play")
 		hdCore     = flag.String("hd-core", "", "go-link HD's engine library (default: the one shipped with the device, else libgolinkhd in the cores folder): game rooms of .glhd packages run it; with --test-room-hd 720p, 1080p or 2160p the test room plays its built-in demo (its 640x360 screen enlarged x2, x3 or x6)")
 		hdRoomSize = flag.String("hd-room-size", "720p", "go-link HD game rooms' picture: 720p (x2) or 1080p (x3)")
+		hdRoomCdc  = flag.String("hd-room-codec", "auto", "go-link HD game rooms' codec: vp8, h264 (--hd-h264's encoder) or auto (the Mac's hardware H.264 through VideoToolbox, vp8 elsewhere)")
+		hdRoomKbps = flag.Int("hd-room-kbps", 0, "go-link HD game rooms' bitrate at high quality (default by size: 4000 at 720p, 8000 at 1080p)")
 		hdFar      = flag.String("hd-far", "", "the HD scene's far picture (with --test-room-hd)")
 		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
 		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
@@ -177,6 +180,11 @@ func run() error {
 	default:
 		return fmt.Errorf("--hd-room-size: %q is not 720p or 1080p", *hdRoomSize)
 	}
+	roomH264, roomKbps, err := hdRoomVideo(*hdRoomCdc, *hdH264, *hdRoomKbps, hdRoomScale, runtime.GOOS, encoder.FFmpegPath)
+	if err != nil {
+		return err
+	}
+	logger.Info("go-link HD rooms", "size", *hdRoomSize, "codec", map[bool]string{true: "h264 " + roomH264, false: "vp8"}[roomH264 != ""], "kbps", roomKbps)
 	if *testHD == "auto" {
 		// go-link HD picks the size and codec this computer streams at 60 fps (hdAuto)
 		if *hdFar == "" {
@@ -314,6 +322,8 @@ func run() error {
 		Status:     status,
 		ICE:        ice,
 		Stream:     streamCfg,
+		HDH264:     roomH264,
+		HDKbps:     roomKbps,
 		Opener:     opener,
 		HostName:   hostName(),
 		SavesDir:   filepath.Join(base, "saves"),

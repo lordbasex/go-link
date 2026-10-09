@@ -145,6 +145,14 @@ func (e *Engine) SetMusic(on bool) {
 	C.ghd_set_music(e.g, v)
 }
 
+// SetResolution asks for the picture's size of the next Load, in lines (360,
+// 720 or 1080; 0 is the package's own): a package painted bigger is drawn
+// at that size, never bigger than its pictures. False on an engine older
+// than API 2, which keeps the package's own size.
+func (e *Engine) SetResolution(lines int) bool {
+	return C.ghd_set_resolution(e.g, C.int32_t(lines)) != 0
+}
+
 // Frame runs one frame with the players' pads (ports 1 to len(pads)).
 func (e *Engine) Frame(pads []Pad) Frame {
 	n := min(len(pads), MaxPlayers)
