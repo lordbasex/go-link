@@ -21,7 +21,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Changed (core patches)
 
-- **More fixes are upstream** (libretro/mame2003-plus-libretro, merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). The Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) was merged too. `cores/mame2003-plus` builds on that commit and keeps twelve patches. The YM3812 (`0010`, Snow Bros.' sound after loading) went upstream as #2045.
+- **More fixes are upstream** (libretro/mame2003-plus-libretro, merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). The Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged too. `cores/mame2003-plus` builds on that commit and keeps eleven patches. The Konami CPU (`0001`, The Simpsons and Aliens resume) went upstream as #2046.
 
 ### Fixed (device)
 
