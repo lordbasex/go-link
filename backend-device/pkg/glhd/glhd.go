@@ -47,11 +47,56 @@ type Manifest struct {
 	Genre   string `json:"genre"`
 	Players int    `json:"players"`
 	Level   string `json:"level"`
+	// Weapon is format 3's weapon: its button fires and its super's button
+	// throws the super attack (the engine reads the rest).
+	Weapon *struct {
+		Button string `json:"button"`
+		Super  *struct {
+			Button string `json:"button"`
+		} `json:"super"`
+	} `json:"weapon"`
 }
 
-// Labels names the buttons of format 1 games (the platformer): button 1
-// jumps, button 3 runs (the core also takes 2 and 4).
+// Labels names the buttons of the built-in games (the platformer): buttons
+// 1 and 2 (B and A) jump, 3 and 4 (Y and X) run.
 var Labels = []string{"Jump", "Jump", "Run", "Run"}
+
+// Labels names a package's buttons 1 to 4 (B, A, Y and X on a pad): they
+// jump and run, unless its weapon fires ("Fire") or throws its super
+// ("Special") with one of them. With a weapon the run button no longer runs.
+func (m Manifest) Labels() []string {
+	if m.Weapon == nil {
+		return Labels
+	}
+	l := []string{"Jump", "Jump", "", ""}
+	// the engine's button names: "run" is Y and X together, "b" and "a" also jump
+	set := func(button, label string) {
+		switch button {
+		case "", "run":
+			l[2], l[3] = label, label
+		case "y":
+			l[2] = label
+		case "x":
+			l[3] = label
+		}
+	}
+	set(m.Weapon.Button, "Fire")
+	if m.Weapon.Super != nil {
+		b := m.Weapon.Super.Button
+		if b == "" {
+			b = "r" // the engine's default: a shoulder button, not one of these four
+		}
+		set(b, "Special")
+	}
+	// Y or X left with nothing to do (a weapon turns running off) shows what the other one does
+	if l[2] == "" {
+		l[2] = l[3]
+	}
+	if l[3] == "" {
+		l[3] = l[2]
+	}
+	return l
+}
 
 // Read opens a package and returns its manifest, or why the core cannot
 // play it.

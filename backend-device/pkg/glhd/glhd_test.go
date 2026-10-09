@@ -4,6 +4,7 @@ package glhd
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,5 +54,27 @@ func TestRead(t *testing.T) {
 	os.WriteFile(bad, []byte("not a zip"), 0o644)
 	if _, err := Read(bad); err == nil {
 		t.Error("a file that is not a zip was read")
+	}
+}
+
+// A package's buttons: jump and run without a weapon; a weapon's fire and super buttons name theirs.
+func TestLabels(t *testing.T) {
+	for name, c := range map[string]struct {
+		manifest string
+		want     string
+	}{
+		"no weapon":      {`{}`, "Jump Jump Run Run"},
+		"fire with run":  {`{"weapon": {}}`, "Jump Jump Fire Fire"},
+		"fire and super": {`{"weapon": {"button": "x", "super": {"button": "y"}}}`, "Jump Jump Special Fire"},
+		"super on R":     {`{"weapon": {"button": "x", "super": {}}}`, "Jump Jump Fire Fire"},
+		"fire on Y":      {`{"weapon": {"button": "y"}}`, "Jump Jump Fire Fire"},
+	} {
+		var m Manifest
+		if err := json.Unmarshal([]byte(c.manifest), &m); err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(m.Labels(), " "); got != c.want {
+			t.Errorf("%s: got %q, want %q", name, got, c.want)
+		}
 	}
 }

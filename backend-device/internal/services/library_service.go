@@ -597,7 +597,7 @@ func (l *LibraryService) Scan() {
 			} else {
 				rom.Check = &romcheck.Result{Status: romcheck.StatusOK}
 				rom.Title, rom.Description = m.Title, "go-link HD"
-				rom.Controls = &models.RomControls{Players: m.Players, Buttons: len(glhd.Labels), Labels: glhd.Labels}
+				rom.Controls = &models.RomControls{Players: m.Players, Buttons: len(m.Labels()), Labels: m.Labels()}
 			}
 		}
 		roms = append(roms, rom)

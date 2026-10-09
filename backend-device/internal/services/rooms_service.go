@@ -20,7 +20,6 @@ import (
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/internal/telemetry"
-	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
 	"github.com/lordbasex/go-link/backend-device/pkg/romcheck"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
@@ -1550,9 +1549,9 @@ func (r *RoomsService) controlsOf(rom string) GameControls {
 		return GameControls{Players: m.Players, Buttons: buttons, Control: "joy8way", Labels: m.Labels}
 	}
 	if r.cfg.Library != nil {
-		// go-link HD's packages: their players, the platformer's buttons
+		// go-link HD's packages: their players and buttons (a weapon fires with some)
 		if m := r.cfg.Library.HD(rom); m != nil {
-			return GameControls{Players: m.Players, Buttons: len(glhd.Labels), Control: "joy8way", Labels: glhd.Labels}
+			return GameControls{Players: m.Players, Buttons: len(m.Labels()), Control: "joy8way", Labels: m.Labels()}
 		}
 		// go-link's own games name their buttons.
 		if s := r.cfg.Library.Own(rom); s != nil {

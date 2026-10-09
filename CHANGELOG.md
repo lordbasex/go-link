@@ -7,6 +7,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 ### Added (device)
 
 - **go-link HD packages of format 3:** the device lists and plays games with their own physics, sprites, painted layers, floor textures, screens (title, a level intro skipped by holding jump, ending), music and sounds (go-link HD 0.2.0's package format 3).
+- **go-link HD games name their buttons:** a package with a weapon shows Fire and Special (its super) on the buttons that do them, in the game list and the room's controls, instead of Run.
 - **go-link HD games speak the device's language:** their texts and dialogs show in the device's language (Settings › General, else the computer's), in English, Spanish or Portuguese; until now they were always in English.
 
 ## [0.2.8] - 2026-10-08
