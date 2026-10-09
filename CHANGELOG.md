@@ -11,6 +11,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed
 
+- **CI:** gitleaks runs from GitHub's registry (`ghcr.io/gitleaks/gitleaks`): Docker Hub refused the image past its unauthenticated pull limit and failed the secrets check.
 - **go-link HD games drawn in HD:** a game made for 720p or 1080p (format 3's `resolution`) streams at its own size instead of being enlarged again (a 720p game in a 1080p room was 2560 x 1440); a 360p game is still enlarged 2 or 3 times.
 
 ### Added (iOS)
