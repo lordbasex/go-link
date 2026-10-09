@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (device)
+
+- **go-link HD rooms in H.264 from the Mac's hardware:** `--hd-room-codec auto` (the default) sends HD game rooms in H.264 from VideoToolbox when ffmpeg is installed (VP8 otherwise), at their own bitrate (`--hd-room-kbps`, 4,000 kbps at 720p and 8,000 at 1080p by default); recordings keep working (VP8 for the WebM). On an M1 at 1080p the encoding went from 28–90 % of a core to 12–14 %, with more than twice the bitrate.
+
 ### Fixed
 
 - **go-link HD games drawn in HD:** a game made for 720p or 1080p (format 3's `resolution`) streams at its own size instead of being enlarged again (a 720p game in a 1080p room was 2560 x 1440); a 360p game is still enlarged 2 or 3 times.

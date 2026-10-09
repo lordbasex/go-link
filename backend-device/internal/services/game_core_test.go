@@ -3,6 +3,7 @@
 package services
 
 import (
+	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"testing"
 
 	"github.com/lordbasex/go-link/backend-device/pkg/libretro"
@@ -59,5 +60,12 @@ func TestHDUpscale(t *testing.T) {
 		if got := hdUpscale(c.up, c.w, c.h); got != c.want {
 			t.Errorf("hdUpscale(%d, %d, %d) = %d, want %d", c.up, c.w, c.h, got, c.want)
 		}
+	}
+}
+
+// A go-link HD room's bitrate: its own at high, less for normal and saver.
+func TestHDPlanKbps(t *testing.T) {
+	if hdPlanKbps(8000, models.VideoHigh) != 8000 || hdPlanKbps(8000, models.VideoNormal) != 5333 || hdPlanKbps(8000, models.VideoSaver) != 4000 {
+		t.Error(hdPlanKbps(8000, models.VideoHigh), hdPlanKbps(8000, models.VideoNormal), hdPlanKbps(8000, models.VideoSaver))
 	}
 }

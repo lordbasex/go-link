@@ -44,6 +44,7 @@ const minTierHeight = 360
 type videoTier struct {
 	vp8      *encoder.VP8
 	h264     *encoder.H264
+	recVP8   *encoder.VP8 // with H.264, the recording's own VP8 (WebM) while a room records
 	w, h     int
 	kbps     int
 	keyframe atomic.Bool
@@ -61,7 +62,36 @@ func (t *videoTier) close() {
 		t.h264.Close()
 		t.h264 = nil
 	}
+	t.closeRec()
 	t.w, t.h = 0, 0
+}
+
+func (t *videoTier) closeRec() {
+	if t.recVP8 != nil {
+		t.recVP8.Close()
+		t.recVP8 = nil
+	}
+}
+
+// recordH264 gives a recording the full picture in VP8 when the room sends
+// H.264: recordings are WebM, which carries VP8 (the browser makes the MP4).
+func (s *StreamService) recordH264(t *videoTier, cfg encoder.Config, i420 []byte) {
+	rec := s.rec.Load()
+	if rec == nil {
+		t.closeRec()
+		return
+	}
+	if t.recVP8 == nil {
+		enc, err := encoder.NewVP8(cfg)
+		if err != nil {
+			s.log.Error("recording encoder", "err", err)
+			return
+		}
+		t.recVP8 = enc
+	}
+	if data, _, err := t.recVP8.Encode(i420, false); err == nil && len(data) > 0 {
+		rec.Video(data, cfg.Width, cfg.Height)
+	}
 }
 
 // tierLevels is how many tiers a w x h source has: the source and each half
@@ -270,9 +300,9 @@ func (s *StreamService) tierIdle(t *videoTier) {
 
 func (s *StreamService) tierEncode(t *videoTier, level int, i420 []byte, w, h, kbps int, dur time.Duration) {
 	fps := max(int(time.Second/dur), 1)
+	cfg := encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps, Threads: s.cfg.EncoderThreads, GOPFrames: fps}
 	if t.w != w || t.h != h || t.kbps != kbps || (t.vp8 == nil && t.h264 == nil) {
 		t.close()
-		cfg := encoder.Config{Width: w, Height: h, FPS: fps, BitrateKbps: kbps, Threads: s.cfg.EncoderThreads, GOPFrames: fps}
 		var err error
 		if s.cfg.H264Encoder != "" {
 			t.h264, err = encoder.NewH264(cfg, s.cfg.H264Encoder, func(au []byte) {
@@ -292,6 +322,9 @@ func (s *StreamService) tierEncode(t *videoTier, level int, i420 []byte, w, h, k
 		s.log.Info("video tier encoder", "tier", level, "size", fmt.Sprintf("%dx%d", w, h), "kbps", kbps, "h264", s.cfg.H264Encoder)
 	}
 	if t.h264 != nil {
+		if level == 0 {
+			s.recordH264(t, cfg, i420)
+		}
 		if err := t.h264.Write(i420); err != nil {
 			s.log.Error("encode failed", "tier", level, "err", err)
 			t.close()

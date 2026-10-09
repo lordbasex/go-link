@@ -162,8 +162,15 @@ type RoomsConfig struct {
 	// VideoQuality is the host's video quality for game rooms (high,
 	// normal or saver; empty is the default). SetVideoQuality changes it.
 	VideoQuality string
-	Logger       *slog.Logger
-	Now          func() time.Time
+	// HDH264 is go-link HD rooms' video encoder: "" sends VP8 like every
+	// room, else H.264 made by ffmpeg with this encoder ("videotoolbox",
+	// the Mac's hardware, or "x264").
+	HDH264 string
+	// HDKbps is go-link HD rooms' bitrate at high quality (their picture is
+	// 720p or 1080p, not a 2x arcade game); 0 keeps the qualities' own.
+	HDKbps int
+	Logger *slog.Logger
+	Now    func() time.Time
 }
 
 // RoomsService turns the device into a game server: each room is one game,
@@ -790,7 +797,11 @@ func (r *RoomsService) Close(reply func(GameReply)) {
 // in signalhub once the game runs, so a ROM that fails never shows up in
 // the lobby.
 func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
-	stream, err := NewStreamService(r.cfg.Stream, r.cfg.ICE)
+	streamCfg := r.cfg.Stream
+	if r.isHD(gr) {
+		streamCfg.H264Encoder = r.cfg.HDH264
+	}
+	stream, err := NewStreamService(streamCfg, r.cfg.ICE)
 	if err != nil {
 		return err
 	}
@@ -953,6 +964,10 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 // conversion, the bitrate and, for a 2x picture, the encoder check that
 // falls back to saver when 2x does not fit this computer.
 func (r *RoomsService) applyVideo(gr *gameRoom, stream *StreamService, source RoomSource, plan VideoPlan) {
+	if r.cfg.HDKbps > 0 && r.isHD(gr) {
+		// a go-link HD room's picture is 720p or 1080p: its own bitrate, less for the lower qualities
+		plan.Kbps = hdPlanKbps(r.cfg.HDKbps, plan.Quality)
+	}
 	scale := 1
 	if vs, ok := source.(videoModeSetter); ok {
 		vs.SetVideoMode(plan.Mode)
@@ -972,6 +987,23 @@ func (r *RoomsService) applyVideo(gr *gameRoom, stream *StreamService, source Ro
 	r.mu.Lock()
 	gr.video = models.RoomVideo{Quality: plan.Quality, Scale: scale}
 	r.mu.Unlock()
+}
+
+// isHD is whether a room plays a go-link HD game (a .glhd package or a built-in one).
+func (r *RoomsService) isHD(gr *gameRoom) bool {
+	return r.cfg.Library != nil && r.cfg.Library.IsHD(gr.saved.Rom)
+}
+
+// hdPlanKbps is a go-link HD room's bitrate for a quality: kbps at high,
+// two thirds at normal, a half at saver.
+func hdPlanKbps(kbps int, quality string) int {
+	switch quality {
+	case models.VideoNormal:
+		return kbps * 2 / 3
+	case models.VideoSaver:
+		return kbps / 2
+	}
+	return kbps
 }
 
 // encoderTooSlow moves a room whose 2x picture does not fit this computer
