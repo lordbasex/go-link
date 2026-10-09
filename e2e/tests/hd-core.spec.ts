@@ -3,11 +3,11 @@ import { mkdirSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { pairingCode } from "../stack";
 
-// go-link HD's own libretro core (its repository golink-hd) played in the
+// go-link HD's engine (its repository golink-hd, its own API) played in the
 // test room through the real WebRTC path: the device runs the core's
 // built-in demo (or a package with --hd-content), the guest takes P1 with
 // Start, runs and jumps, and the picture must follow. Runs only when asked:
-//   E2E_HD_CORE=1 E2E_DEVICE_ARGS="--test-room-hd 1080p --hd-core /path/golink_hd_libretro.dylib" \
+//   E2E_HD_CORE=1 E2E_DEVICE_ARGS="--test-room-hd 1080p --hd-core /path/libgolinkhd.dylib" \
 //     npx playwright test tests/hd-core.spec.ts --project=web
 // E2E_HD_CORE_SHOTS=DIR keeps the screenshots there.
 //
@@ -16,7 +16,7 @@ import { pairingCode } from "../stack";
 // writes one with WM_GLHD_OUT), put in the device's ROM folder, listed in
 // New game and played in its own game room:
 //   E2E_HD_CORE=1 E2E_HD_GAME=neon_run E2E_ROMS=/path/neon_run.glhd \
-//     E2E_DEVICE_ARGS="--hd-core /path/golink_hd_libretro.dylib" npx playwright test tests/hd-core.spec.ts --project=web
+//     E2E_DEVICE_ARGS="--hd-core /path/libgolinkhd.dylib" npx playwright test tests/hd-core.spec.ts --project=web
 
 test.skip(!process.env.E2E_HD_CORE, "go-link HD's core runs only with E2E_HD_CORE");
 test.use({ viewport: { width: 1600, height: 900 } });

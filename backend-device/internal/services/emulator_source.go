@@ -15,6 +15,8 @@ import (
 type EmulatorConfig struct {
 	CorePath string // e.g. ~/go-link/cores/mame2003_plus_libretro.dylib
 	RomPath  string // e.g. ~/go-link/roms/robby.zip; empty starts the core with no content
+	// Native runs go-link HD's engine instead of a libretro core (GameCoreConfig.Native).
+	Native bool
 	// Upscale enlarges the picture that many times (GameCoreConfig.Upscale).
 	Upscale   int
 	SystemDir string // BIOS, samples, hiscores, NVRAM
@@ -51,6 +53,7 @@ func (e *EmulatorSource) Run(ctx context.Context, sink MediaSink) error {
 		RomPath:   e.cfg.RomPath,
 		SystemDir: e.cfg.SystemDir,
 		Upscale:   e.cfg.Upscale,
+		Native:    e.cfg.Native,
 		Logger:    e.log,
 		Video:     sink.VideoFrame,
 		Audio:     sink.AudioSamples,

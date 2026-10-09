@@ -342,13 +342,13 @@ func run() error {
 			return probes.SavesWork(ctx, rom)
 		},
 		NewSource: func(rom, state string, onReady func(libretro.AVInfo)) services.RoomSource {
-			upscale := 0
-			if library.IsHD(rom) {
+			upscale, hd := 0, library.IsHD(rom)
+			if hd {
 				upscale = hdRoomScale
 			}
 			return services.NewWorkerSource(services.WorkerConfig{
 				CorePath: library.CoreFor(rom), RomPath: library.RomPath(rom), SystemDir: systemDir,
-				StatePath: state, Upscale: upscale, Logger: logger, OnReady: onReady,
+				StatePath: state, Upscale: upscale, Native: hd, Logger: logger, OnReady: onReady,
 			})
 		},
 		Logger: logger,
@@ -954,6 +954,7 @@ func useHDCore(stream *services.StreamService, size, core, systemDir string, kbp
 		CorePath:  core,
 		SystemDir: systemDir,
 		Upscale:   sz.H / 360,
+		Native:    true,
 		Logger:    log,
 	}))
 	log.Info("test room plays go-link HD", "core", core, "size", size, "kbps", kbps)

@@ -160,22 +160,22 @@ func (l *LibraryService) CorePath() string {
 	return filepath.Join(l.coresDir, cores.FileName(cores.DefaultCore, runtime.GOOS))
 }
 
-// SetHDCore sets where go-link HD's core is (the device's --hd-core);
-// without it the core is looked for in the cores folder.
+// SetHDCore sets where go-link HD's engine library is (the device's
+// --hd-core); without it the library is looked for in the cores folder.
 func (l *LibraryService) SetHDCore(path string) {
 	l.mu.Lock()
 	l.hdCore = path
 	l.mu.Unlock()
 }
 
-// HDCorePath is where go-link HD's core lives.
+// HDCorePath is where go-link HD's engine library lives.
 func (l *LibraryService) HDCorePath() string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.hdCore != "" {
 		return l.hdCore
 	}
-	return filepath.Join(l.coresDir, cores.FileName(glhd.CoreName, runtime.GOOS))
+	return filepath.Join(l.coresDir, glhd.LibraryFile(runtime.GOOS))
 }
 
 // IsHD reports whether a game of the folder is a go-link HD package

@@ -74,7 +74,10 @@ type Handlers struct {
 	Audio func(samples []int16)
 	// Pressed reports whether a RetroPad button is down for a port (0-3).
 	Pressed func(port, id int) bool
-	Log     func(level int, msg string)
+	// Axis reports an analog stick for a port: index 0 left, 1 right; id
+	// 0 x, 1 y; -32768..32767 (down and right positive). Optional.
+	Axis func(port, index, id int) int16
+	Log  func(level int, msg string)
 }
 
 // Config configures a core.
@@ -389,6 +392,9 @@ func goInputPoll() {}
 //export goInputState
 func goInputState(port, device, index, id C.uint) C.int16_t {
 	k := current()
+	if k != nil && device == C.RETRO_DEVICE_ANALOG && k.cfg.Handlers.Axis != nil && port <= 3 && index <= 1 && id <= 1 {
+		return C.int16_t(k.cfg.Handlers.Axis(int(port), int(index), int(id)))
+	}
 	if k == nil || k.cfg.Handlers.Pressed == nil || device != C.RETRO_DEVICE_JOYPAD || port > 3 {
 		return 0
 	}
