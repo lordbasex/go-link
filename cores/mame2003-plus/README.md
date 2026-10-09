@@ -29,6 +29,8 @@ Most patches touch their own files, so they can be sent upstream one by one; `00
 
 X-Men and Snow Bros. still differ even when loaded at the same running time, so something else is not saved yet.
 
+It was offered to libretro, here or in another of its repositories, in [#2047](https://github.com/libretro/mame2003-plus-libretro/issues/2047) (2026-10-09).
+
 ### Verified results
 
 Two measurements, both on this Mac (Intel, macOS) with the user's own sets:
