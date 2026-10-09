@@ -197,13 +197,22 @@ func OpenGameCore(cfg GameCoreConfig) (*GameCore, error) {
 
 // convert turns a core frame into the I420 picture of the current mode.
 func (g *GameCore) convert(f libretro.Frame) {
-	if g.upscale > 1 {
-		w, h := f.Width*g.upscale, f.Height*g.upscale
+	if up := hdUpscale(g.upscale, f.Width, f.Height); up > 1 {
+		w, h := f.Width*up, f.Height*up
 		if size := libretro.FrameSizeI420(w, h); len(g.frame) != size {
 			g.frame = make([]byte, size)
 		}
-		libretro.ToI420Scaled(g.frame, f, g.upscale)
-		g.fw, g.fh, g.scale = w, h, g.upscale
+		libretro.ToI420Scaled(g.frame, f, up)
+		g.fw, g.fh, g.scale = w, h, up
+		return
+	}
+	if g.upscale > 1 {
+		// a go-link HD game drawn at the room's size (or bigger) already: as it comes
+		if size := libretro.FrameSizeI420(f.Width, f.Height); len(g.frame) != size {
+			g.frame = make([]byte, size)
+		}
+		libretro.ToI420(g.frame, f)
+		g.fw, g.fh, g.scale = f.Width, f.Height, 1
 		return
 	}
 	scale := g.mode.Scale()
@@ -220,6 +229,19 @@ func (g *GameCore) convert(f libretro.Frame) {
 		libretro.ToI420(g.frame, f)
 	}
 	g.fw, g.fh, g.scale = w, h, scale
+}
+
+// hdUpscale is how many times a go-link HD frame is enlarged to reach a room
+// of upscale times its logical screen (360 rows on 16:9 and 4:3, 360
+// columns on 9:16): a game drawn at 360p twice for 720p, three times for
+// 1080p; a game drawn at 720p or 1080p (format 3's resolution) already has
+// its picture, and one bigger than the room is never shrunk.
+func hdUpscale(upscale, w, h int) int {
+	short := min(w, h)
+	if upscale <= 1 || short <= 0 {
+		return 1
+	}
+	return max(1, upscale*360/short)
 }
 
 // SetVideoMode changes how the next frames are converted.

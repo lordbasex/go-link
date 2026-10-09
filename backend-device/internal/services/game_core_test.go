@@ -48,3 +48,16 @@ func TestSavesCompleteNeedsEveryCPUsRegisters(t *testing.T) {
 		}
 	}
 }
+
+// A go-link HD frame reaches the room's size: a 360p game enlarged, a game drawn at 720p or 1080p as it comes.
+func TestHDUpscale(t *testing.T) {
+	for _, c := range []struct{ up, w, h, want int }{
+		{2, 640, 360, 2}, {3, 640, 360, 3}, {3, 360, 640, 3}, {2, 480, 360, 2},
+		{2, 1280, 720, 1}, {3, 1280, 720, 1}, {3, 1920, 1080, 1}, {2, 1920, 1080, 1},
+		{0, 640, 360, 1}, {3, 0, 0, 1},
+	} {
+		if got := hdUpscale(c.up, c.w, c.h); got != c.want {
+			t.Errorf("hdUpscale(%d, %d, %d) = %d, want %d", c.up, c.w, c.h, got, c.want)
+		}
+	}
+}
