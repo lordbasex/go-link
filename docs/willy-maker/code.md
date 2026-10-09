@@ -81,7 +81,7 @@ The engine's own rules (the platformer, and the genres of phase 4B) stay in C; a
 | Scripts attached to objects and a game script, listed in Layers and Properties | Base | |
 | Blocks (Scratch-like) for events, conditions, objects, sound and variables, and "Show as code" | Base | Blocks to code first; code back to blocks only for code the blocks can show |
 | Examples and templates: a door with a key, a boss with phases, a race lap counter, a menu | Base | In English, Spanish and Portuguese |
-| The AI pack includes the scripting API, so an AI assistant can write scripts for the game | Later | Like `PROMPT.md` does for the project today |
+| The AI pack includes the scripting API, so an AI assistant can write scripts for the game | Later | Like `PROMPT.md` does for the project today; it reuses go-link HD's AI kit ([phase 9](../go-link-hd.md#phases)), which also lets an AI make a whole game without Willy Maker |
 | A debugger: breakpoints, step frame by frame, watch variables | Later | The debug view's frame step already planned for go-link HD |
 | Sharing scripts between games, a library of behaviors | Idea | |
 

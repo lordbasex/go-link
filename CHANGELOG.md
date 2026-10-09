@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Docs
+
+- **go-link HD's phase 9, the AI kit** ([docs/go-link-hd.md](docs/go-link-hd.md#phases)): the API reference in one document, the scripting API's type file, examples and templates, and a command-line loop (pack, check, play with screenshots, bench, hash gates) so an AI can make a whole game with the SDK alone; its test is an AI building a 2D mining and building game from the kit.
+
 ## [0.2.8] - 2026-10-08
 
 ### Added (device)
