@@ -10,6 +10,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Docs
 
+- **go-link HD's phases 7 and 8 and its SDK** ([docs/go-link-hd.md](docs/go-link-hd.md#phases)): API v2 with system services (achievements, saved progress, game events for the room, a view per player, rumble), a draw list run by a software or GPU backend, and the parts that make go-link HD's open SDK.
 - **go-link HD's phase 6, code** ([docs/go-link-hd.md](docs/go-link-hd.md#phases)): games with their own scripts run by the engine as a sandboxed WebAssembly module, planned in Willy Maker's [code.md](docs/willy-maker/code.md).
 
 ### Added
