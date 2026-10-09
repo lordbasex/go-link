@@ -17,6 +17,18 @@ go-link uses the [mame2003-plus](https://github.com/libretro/mame2003-plus-libre
 | `0018-namco54-save-state.patch` | The Namco 54XX explosion sound generator (`namco54.c`): its envelopes, noise generator and filters. Without it Galaga's explosions after loading were much quieter. |
 Most patches touch their own files, so they can be sent upstream one by one; `0013` changes the same file as `0008` and applies after it. These are upstream already: `0014` (the YM2151 swapped its channel and algorithm when it rebuilt each channel's connections on load; [#2041](https://github.com/libretro/mame2003-plus-libretro/pull/2041), merged 2026-10-07 as `b52156e`) and `0006` (the YM2151 timers are MAME timers, which 0.78 does not save: a sound CPU that polls the timer flag or takes its interrupt from the timer stopped after loading; [#2042](https://github.com/libretro/mame2003-plus-libretro/pull/2042), merged 2026-10-08 as `10315f7`) and the QSound games' sound after loading (`0002`, `0003` and `0005`: the QSound chip, its Z80's ROM bank and each CPU's lasting suspend state; [#2043](https://github.com/libretro/mame2003-plus-libretro/pull/2043), merged 2026-10-08 as `21c9f8f`) the Namco wave sound chip (`0009`; [#2044](https://github.com/libretro/mame2003-plus-libretro/pull/2044), merged 2026-10-08 as `1104e22`) and the YM3812 (`0010`; [#2045](https://github.com/libretro/mame2003-plus-libretro/pull/2045), merged 2026-10-08 as `64de9b2`), so `UPSTREAM` is that commit. Every file the patches use `state_save_*` in includes `state.h` (without it newer compilers stop on the implicit declaration).
 
+### Checking a save state: `tools/savecheck`
+
+`tools/savecheck` is a small C program, independent of go-link, that loads any libretro core and plays a game twice with the same buttons: once without stopping, and once loading a state saved at frame N into a freshly started board. It counts the identical frames (picture and sound) and shows the sound level second by second (see its [README](tools/savecheck/README.md)). It is the evidence for the pull requests: anyone with the same set repeats the check with one command. With the core at `64de9b2` and every patch here, saved at frame 2400 and comparing 600 frames:
+
+| Game | `64de9b2` | with the patches |
+|---|---|---|
+| Aliens, The Simpsons, Teenage Mutant Ninja Turtles | 0/600 picture, 0/600 sound | 600/600, 600/600 |
+| Street Fighter II | 160/600, 0/600 | 599/600, 600/600 |
+| Galaga | 0/600, 0/600 | 501/600, 589/600 (600/600 and 596/600 loaded at the same running time) |
+
+X-Men and Snow Bros. still differ even when loaded at the same running time, so something else is not saved yet.
+
 ### Verified results
 
 Two measurements, both on this Mac (Intel, macOS) with the user's own sets:
