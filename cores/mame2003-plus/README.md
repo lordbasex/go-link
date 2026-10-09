@@ -58,6 +58,20 @@ How the last causes were found (2026-10-05): the harness also saved the game aga
 
 The device does not rely on this table: its save probe (`services.ProbeSaves`) decides per game and per core version. With the official core, the games marked ❌ above are marked as "cannot be saved".
 
+### Across the catalog: `tools/statescan` and `savecheck/batch.sh`
+
+To fix by impact instead of game by game, two tools look at the whole catalog. [`tools/statescan`](tools/statescan/README.md) reads the core's source and lists, per game and per part of its board (driver, video and machine files, CPUs, sound chips), the state variables that nothing saves, and ranks the parts by how many of the 5372 games use them. [`tools/savecheck/batch.sh`](tools/savecheck/README.md#many-games-at-once) runs `savecheck` over a whole ROM folder.
+
+First run (2026-10-09, this Mac, the user's folder of 84 sets: 39 pass `romcheck`, 33 of them save, saved at frame 2400, 600 frames compared):
+
+| | master `0fe5665` | with the six patches here |
+|---|---|---|
+| Identical picture and sound | 0 of 33 | 4 of 33 (The Simpsons, Aliens, TMNT, Punk Shot) |
+| Silent or much quieter after loading | The Simpsons, Punk Shot, X-Men, Super Invaders, Shadow Dancer, Superman, Puzzle Bobble | X-Men, Super Invaders, Shadow Dancer, Superman, Puzzle Bobble |
+| No save at all (`retro_serialize_size` 0) | Mortal Kombat, Mortal Kombat II, Ultimate Mortal Kombat 3, NBA Jam, Cruis'n USA, Rampage World Tour | the same |
+
+Loading at the same running time instead (`--load-after 2400`) splits the rest. Shadow Dancer (597/594) and Superman (364 pictures, sound 594/600) then resume, and D&D Shadow over Mystara is identical, so what they lose is not a part of the board but time: **no timer of `timer.c` is in the save state**, and a board that loads a save right after starting keeps its own start-up timers. That covers every game, so it is the next fix to measure. The ones that still differ at the same running time have a part missing: the picture of Cabal, Wonder Boy, Marvel Super Heroes, Saturday Night Slam Masters, Vigilante, Super Missile Attack, Fantasia II, Miss World '96 and X-Men, and the sound of Rygar, Toki, Snow Bros., Blood Bros. and Puzzle Bobble.
+
 **The original code is never modified.** `build.sh` clones the official repository at the `UPSTREAM` commit, applies the patches and builds with the core's own Makefile:
 
 ```bash

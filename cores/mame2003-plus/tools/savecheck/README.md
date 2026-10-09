@@ -47,6 +47,24 @@ IDENTICAL: simpsons.zip picture 600/600, sound 600/600    (with the fixes)
 
 Without `--quiet` it also prints the sound level per second (RMS) in both runs, the first different frame and every range of different frames, marked `P` (picture) or `S` (sound).
 
+## Many games at once
+
+`batch.sh` runs `savecheck` over every zip in a folder, several at a time, and writes one line per game to `OUTDIR/results.txt` (and each game's JSON next to it):
+
+```bash
+./batch.sh CORE ROMDIR OUTDIR --option mame2003-plus_skip_disclaimer=enabled \
+    --option mame2003-plus_skip_warnings=enabled
+```
+
+```
+ERROR: 1941.zip the core does not load it
+ERROR: mk.zip the core saves nothing for this game (retro_serialize_size is 0)
+DIFFERENT: pacman.zip picture 599/600, sound 261/600
+IDENTICAL: simpsons.zip picture 600/600, sound 600/600
+```
+
+Options after `OUTDIR` go to every `savecheck` run. `JOBS` sets how many games run at once (default: half the CPUs), and a game that runs longer than five minutes is stopped. Run it once with `--load-after` equal to `--save-at` too: the games that pass only then lose state through the time base, not through a part of the board.
+
 ## How it plays
 
 The buttons depend only on the frame number, so both runs press the same ones. Player 1 and player 2 insert a coin and press Start every 8 seconds, then use the joystick and the first three buttons in a fixed pattern, different for each player. During the second board's warm-up frames nothing is pressed.
