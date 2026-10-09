@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (iOS)
+
+- **go-link Player on TestFlight:** the iPhone and iPad app is signed with the developer account and uploaded to App Store Connect: `make testflight` (archive, sign, upload, a new build number each time) and `make install-device` (signed and installed on the connected iPhone), both with an App Store Connect API key from the environment, and `scripts/asc.py` for the TestFlight groups and beta review. The app now has its privacy manifest (no tracking, no data collected) and Universal Links (`go-link.org/g/...`) are on.
+
 ## [0.3.0] - 2026-10-09
 
 ### Changed (device)

@@ -3,7 +3,7 @@
 
 The native iPhone and iPad app for joining a go-link game as a player: the iOS counterpart of [the Android app](../android/README.md). SwiftUI, iOS 17 or newer, bundle id `org.golink.player`. It speaks the same signalhub and WebRTC protocol as the website ([docs/mobile.md](../../docs/mobile.md), [docs/protocol.md](../../docs/protocol.md)). It only joins rooms; hosting stays on the device app.
 
-It is not distributed yet (no App Store or TestFlight build): build it with Xcode and install it on your own iPhone as explained below.
+It is distributed through **TestFlight** (Apple's beta: a public link for friends once Apple approves each build, see [TestFlight](#testflight)), and you can also build it and install it on your own iPhone as explained below.
 
 ## Layout
 
@@ -113,6 +113,34 @@ Then:
 2. On the iPhone turn on **Developer Mode**: Settings › Privacy & Security › Developer Mode, restart and confirm (it appears after the phone has been connected to Xcode once).
 3. In Xcode pick your iPhone as the destination and Run (or `make device-build`). Xcode creates the provisioning profile (Automatic signing).
 4. With a free Apple ID, the first launch is blocked until you trust the developer: Settings › General › VPN & Device Management › your Apple ID › Trust.
+
+## Automated signing (App Store Connect API key)
+
+With a paid account, an [App Store Connect API key](https://appstoreconnect.apple.com/access/integrations/api) (role Admin, the `.p8` file Apple lets you download once) lets `xcodebuild` create the certificates and provisioning profiles, register the connected iPhone and upload builds by itself, without Xcode's Accounts. Nothing of it is committed: keep the key outside the repository and pass it through the environment, for example a file you `source` first:
+
+```bash
+export TEAM_ID=...            # developer.apple.com › Membership
+export ASC_KEY_ID=...         # the key's ID
+export ASC_ISSUER_ID=...      # Users and Access › Integrations › Issuer ID
+export ASC_KEY_PATH=/path/to/AuthKey_<ASC_KEY_ID>.p8
+```
+
+| Command | What it does |
+|---|---|
+| `make install-device` | Debug build signed for the first paired iPhone (cable or Wi-Fi), installed and launched with `devicectl` |
+| `make testflight` | Release archive (`VERSION` from the latest tag, build number `<version code>.<yymmddHHMM>` so every upload is new), exported with `method app-store-connect` and uploaded to App Store Connect |
+| `scripts/asc.py GET\|POST\|PATCH /v1/...` | The App Store Connect API with the same key (no packages: openssl signs the token), for TestFlight groups, testers and beta review |
+
+`GoLinkPlayer/PrivacyInfo.xcprivacy` is the privacy manifest the App Store requires: no tracking, no data collected, and the reasons for the two "required reason" APIs the app uses (`UserDefaults` CA92.1, system boot time 35F9.1).
+
+## TestFlight
+
+App Store Connect has the app **go-link Player** (bundle id `org.golink.player`, SKU `golink-player`) and two TestFlight groups:
+
+- **Equipo** (internal): the team's own App Store Connect users, every build as soon as Apple processes it (about 10 minutes after `make testflight`), no review.
+- **Amigos** (external): anyone with the public link, up to 100 people. Each new build is added to the group and submitted to Beta App Review (`betaAppReviewSubmissions`); once approved, the link installs it through the TestFlight app. The beta's description, feedback email, review contact and What to Test are set in English, Spanish and Portuguese.
+
+A tester installs **TestFlight** from the App Store, opens the link (or the email invitation) and taps Accept, then Install. Builds expire after 90 days.
 
 ## Universal Links
 
