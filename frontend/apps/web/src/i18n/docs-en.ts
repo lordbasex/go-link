@@ -125,6 +125,8 @@ export const docsEn: Docs = {
           ],
         },
         { t: "note", tone: "info", text: "Sets must match **MAME 0.78**. A set from a recent MAME often has other file names and shows as Missing files." },
+        { t: "h2", id: "hd", text: "go-link HD games (beta)" },
+        { t: "p", text: "go-link also comes with **go-link HD**, its own 2D game engine, with nothing to download. **New game** lists its two built-in games, **go-link HD: Platformer** and **go-link HD: Showcase** (a kart on a Mode 7 track, a road, a cave with lights, the sea and color effects; L and R change the scene), and they open rooms like any game. Games made for it are `.glhd` files: put them in your ROM folder, next to the zips. [Willy Maker](https://maker.go-link.org) exports them from its Export tab." },
         { t: "h2", id: "rights", text: "Your games, your responsibility" },
         { t: "p", text: "go-link never includes or downloads games. Use only files you have the right to use; see the [terms of use](/terms)." },
       ],

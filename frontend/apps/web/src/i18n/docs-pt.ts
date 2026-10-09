@@ -125,6 +125,8 @@ export const docsPt: Docs = {
           ],
         },
         { t: "note", tone: "info", text: "Os sets precisam ser do **MAME 0.78**. Um set de um MAME recente costuma ter outros nomes de arquivo e aparece como Faltam arquivos." },
+        { t: "h2", id: "hd", text: "Jogos go-link HD (beta)" },
+        { t: "p", text: "O go-link também traz o **go-link HD**, seu próprio motor de jogos 2D, sem nada para baixar. **Nova partida** mostra seus dois jogos integrados, **go-link HD: Platformer** e **go-link HD: Showcase** (um kart numa pista Mode 7, uma estrada, uma caverna com luzes, o mar e efeitos de cor; L e R trocam de cena), e eles abrem salas como qualquer jogo. Os jogos feitos para ele são arquivos `.glhd`: coloque-os na sua pasta de ROMs, junto aos zip. O [Willy Maker](https://maker.go-link.org) os exporta pela aba Exportar." },
         { t: "h2", id: "rights", text: "Seus jogos, sua responsabilidade" },
         { t: "p", text: "O go-link nunca inclui nem baixa jogos. Use apenas arquivos que você tem o direito de usar; veja os [termos de uso](/terms)." },
       ],

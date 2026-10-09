@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lordbasex/go-link/backend-device/pkg/glhd"
 	"github.com/lordbasex/go-link/backend-device/pkg/input"
 )
 
@@ -141,5 +142,45 @@ func TestGoLinkHDCoreReadsTheStick(t *testing.T) {
 	}
 	if run(true) == run(false) {
 		t.Fatal("the stick made no difference: the engine does not get it")
+	}
+}
+
+func TestGoLinkHDCorePlaysItsBuiltInGames(t *testing.T) {
+	src := os.Getenv("GOLINK_HD_LIB")
+	if src == "" {
+		t.Skip("GOLINK_HD_LIB is not set")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	core := filepath.Join(dir, filepath.Base(src))
+	if err := os.WriteFile(core, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// each built-in game draws its own first picture
+	seen := map[[32]byte]string{}
+	for _, d := range glhd.Demos {
+		var last [32]byte
+		game, err := OpenGameCore(GameCoreConfig{
+			CorePath:  core,
+			RomPath:   glhd.DemoPath(d),
+			SystemDir: filepath.Join(dir, "system"),
+			Native:    true,
+			Video:     func(i420 []byte, fw, fh int, dur time.Duration) { last = sha256.Sum256(i420) },
+			Audio:     func(pcm []int16) {},
+		})
+		if err != nil {
+			t.Fatalf("%s: %v", d.Name, err)
+		}
+		for range 30 {
+			game.Run()
+		}
+		game.Close()
+		if other, ok := seen[last]; ok {
+			t.Fatalf("%s draws the same as %s", d.Name, other)
+		}
+		seen[last] = d.Name
 	}
 }

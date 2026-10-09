@@ -197,7 +197,7 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 | Feature | Level | Notes |
 |---|---|---|
 | The device runs the engine in a worker per room like MAME: `device emulate --golinkhd --core libgolinkhd` (done 2026-10-08) | Base | |
-| The engine's library is downloaded from go-link's releases with its SHA-256 | Base | A new source next to the libretro buildbot, which keeps serving MAME's core |
+| The engine's library ships with the device (done in 0.2.8) | Base | MAME's core keeps coming from the libretro buildbot |
 | The HD room path for game rooms: H.264 or VP8, size per host (`hdprobe`), size per guest (tiers) | Base | Today only the HD test room uses it |
 | Recordings in H.264 | Base | Today they are VP8 in WebM; H.264 needs MP4 or Matroska |
 | ROM library: `.glhd` files next to the zips, validated by the engine | Base | `romcheck` only knows MAME sets |
@@ -245,7 +245,8 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 | 2 | Game rooms on the HD path; H.264 recordings (proof of concept done on 2026-10-07: `.glhd` packages in the ROM folder are listed and start game rooms with go-link HD's core at 720p or 1080p; the tiers, H.264 and recordings for those rooms are next) | 2 sessions |
 | 3 | Willy Maker's go-link HD board: export, play mode in WebAssembly, validation (proof of concept done on 2026-10-07: a platformer's Export tab downloads a `.glhd` with its first level and the city tiles, [file-format.md](willy-maker/file-format.md#the-go-link-hd-package-glhd-beta); the end to end test plays it in a game room) | 3-4 sessions |
 | 4 | Later items: skeletal animation, lights, post effects, Mode 7, more genres. **Part A, the engine's effects, done on 2026-10-08** (repository `golink-hd`, its README lists them with their measured cost): 4:3 and vertical screens, up to 8 players, both sticks and L2/R2/L3/R3, blend modes, outlines and shadows, sprites turned and scaled, Mode 7, the pseudo 3D road, skeletal animation, fades and color grading (presets and LUTs), bloom, blur, waves, pixelate, 2D lights, the camera's zoom, dialog boxes with accents, low pass and echo, A*; package format 2 carries a level's effects; the showcase demo has a scene for each. Next: part B (the other genres as engine modules) and part C (Willy Maker's bone, particle and block editors, Aseprite import) | by parts |
-| 5 | Distribution: the engine's library built by its own CI for macOS, Linux and Windows, published in go-link's releases, and downloaded by the device with its SHA-256 | 1-2 sessions |
+| 5 | Distribution: **done on 2026-10-08 in go-link 0.2.8, shipped inside the device** instead of downloaded: the engine's repository is public (github.com/lordbasex/golink-hd, its own CI on Linux, macOS and Windows), every device build compiles its committed HEAD (`make golinkhd-src`, `GOLINK_HD_DIR`) into go-link.app's Frameworks (universal), the Linux and Windows archives and the Docker image, and the device lists the engine's built-in games (the platformer and the showcase) | done |
+| 6 | **Code (Willy Maker's second evolution):** games with their own scripts, compiled to a WebAssembly module that the engine runs sandboxed, with its memory in the save state and a per-frame budget; blocks in Willy Maker generate the same code ([code.md](willy-maker/code.md), its phases C1 to C5) | 10-15 sessions |
 
 ## Open questions
 

@@ -77,7 +77,8 @@ for variant in linux-amd64 linux-arm64 linux-amd64-headless linux-arm64-headless
   bin="$DEVICE/$variant/go-link-device"
   [[ -f "$bin" ]] || { echo "  (no $variant build, skipped)"; continue; }
   cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEVICE/$variant/"
-  tar -C "$DEVICE/$variant" -czf "$OUT/$NAME-$variant.tar.gz" go-link-device LICENSE THIRD_PARTY_NOTICES.md
+  [[ -f "$DEVICE/$variant/libgolinkhd.so" ]] || { echo "✗ $variant has no go-link HD engine (libgolinkhd.so)"; exit 1; }
+  tar -C "$DEVICE/$variant" -czf "$OUT/$NAME-$variant.tar.gz" go-link-device libgolinkhd.so LICENSE THIRD_PARTY_NOTICES.md
 done
 
 # Windows: a .zip with the .exe (no console; the log goes to a file).
@@ -85,7 +86,8 @@ for arch in amd64 arm64; do
   exe="$DEVICE/windows-$arch/go-link-device.exe"
   [[ -f "$exe" ]] || { echo "  (no windows-$arch build, skipped)"; continue; }
   cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$DEVICE/windows-$arch/"
-  (cd "$DEVICE/windows-$arch" && zip -q -j "$OUT/$NAME-windows-$arch.zip" go-link-device.exe LICENSE THIRD_PARTY_NOTICES.md)
+  [[ -f "$DEVICE/windows-$arch/golinkhd.dll" ]] || { echo "✗ windows-$arch has no go-link HD engine (golinkhd.dll)"; exit 1; }
+  (cd "$DEVICE/windows-$arch" && zip -q -j "$OUT/$NAME-windows-$arch.zip" go-link-device.exe golinkhd.dll LICENSE THIRD_PARTY_NOTICES.md)
 done
 
 oci="$ROOT/dist/docker/go-link-device-$TAG.oci.tar"

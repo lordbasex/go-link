@@ -14,6 +14,11 @@
 # `docker build` gets this empty stage instead.
 FROM scratch AS legal
 
+# go-link HD's engine library, shipped next to the device: its sources come
+# as the "golinkhd" build context (the Makefile's golinkhd-src); a plain
+# `docker build` gets this empty stage and builds the device without it.
+FROM scratch AS golinkhd
+
 FROM golang:1.26-bookworm AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       pkg-config libvpx-dev libopus-dev && rm -rf /var/lib/apt/lists/*
@@ -26,6 +31,8 @@ ARG VERSION=dev
 RUN mkdir /static && ln -s /usr/lib/*-linux-gnu/libvpx.a /usr/lib/*-linux-gnu/libopus.a /static/ && \
     CGO_ENABLED=1 CGO_LDFLAGS="-L/static" go build -trimpath -tags headless \
       -ldflags "-s -w -X main.version=$VERSION" -o /out/go-link-device ./cmd/device
+COPY --from=golinkhd / /golinkhd
+RUN mkdir -p /out/lib && if [ -f /golinkhd/Makefile ]; then make -s -B -C /golinkhd && cp /golinkhd/libgolinkhd.so /out/lib/; fi
 
 FROM debian:bookworm-slim
 # CA certificates: wss:// to the signaling server and the core download.
@@ -39,6 +46,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # with that owner. Otherwise mounting the ROMs at /data/go-link/roms makes
 # Docker create go-link/ as root, and the device cannot write its core.
 COPY --from=build /out/go-link-device /usr/local/bin/go-link-device
+# go-link HD's engine beside the program, where the device looks for it.
+COPY --from=build /out/lib/ /usr/local/bin/
 COPY --from=legal / /usr/share/doc/go-link/
 USER golink
 ENV HOME=/data
