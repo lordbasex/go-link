@@ -19,7 +19,7 @@ import (
 )
 
 // Format is the newest package format the engine reads.
-const Format = 2
+const Format = 3
 
 // MaxBytes is the largest package the core loads.
 const MaxBytes = 256 << 20
