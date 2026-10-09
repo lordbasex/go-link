@@ -47,6 +47,10 @@ type Manifest struct {
 	Genre   string `json:"genre"`
 	Players int    `json:"players"`
 	Level   string `json:"level"`
+	// Levels is format 3's game of several levels, in place of Level.
+	Levels []struct {
+		Level string `json:"level"`
+	} `json:"levels"`
 	// Weapon is format 3's weapon: its button fires and its super's button
 	// throws the super attack (the engine reads the rest).
 	Weapon *struct {
@@ -141,8 +145,13 @@ func Read(path string) (Manifest, error) {
 		return m, errors.New("manifest.json has no format number")
 	case strings.TrimSpace(m.Title) == "":
 		return m, errors.New("manifest.json has no title")
-	case m.Level == "" || files[m.Level] == nil:
+	case len(m.Levels) == 0 && (m.Level == "" || files[m.Level] == nil):
 		return m, errors.New("the game package has no level")
+	}
+	for _, l := range m.Levels {
+		if l.Level == "" || files[l.Level] == nil {
+			return m, errors.New("the game package is missing one of its levels")
+		}
 	}
 	if m.Players < 1 || m.Players > 4 {
 		m.Players = 4
