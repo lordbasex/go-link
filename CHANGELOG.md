@@ -17,6 +17,7 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Added
 
+- **Roadmap** (`docs/status.md`): save states across the whole catalog (a batch `savecheck` and a source scan, fixes by impact) and FinalBurn Neo as a second core.
 - **A demo video** (`video/`, `npm run demo`): about three minutes in seven chapters (your arcade, linking the computer, opening a room, inviting friends, the phone as a console, Willy Maker and the network report) from takes of the real app, with the trailer's narrator, burned-in subtitles and a SubRip file. `docs/building.md` explains how the trailer and the demo are made.
 
 ### Changed (core patches)
