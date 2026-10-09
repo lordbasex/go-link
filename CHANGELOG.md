@@ -4,6 +4,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-10-09
+
 ### Fixed (device and website)
 
 - **A large ROM folder loads:** with thousands of sets (a full MAME 0.78 collection is about 5,000) My device › ROMs stayed on its loading cards with "0 of 0", because the device sent the whole library in every `device_status` and a WebRTC message carries at most 256 KiB in Chrome. Now `device_status` carries only the library in numbers (`library.summary`), and the website asks the device for pages of 60 sets (`roms_query`: the device searches, filters and sorts an index built once per scan) and for single sets by name (`roms_get`), loading more as the list scrolls. New game searches the device's whole library the same way, and lists the sets that will not run a page at a time. Sets dropped together are scanned once, and a control message the device cannot send is now logged. A device before 0.2.9 keeps working with the new website, which pages its whole list itself.
