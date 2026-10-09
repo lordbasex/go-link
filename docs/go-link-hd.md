@@ -154,7 +154,7 @@ Voice chat between players stays go-link's; the engine only makes the game's sou
 | L2, R2, L3, R3 | Later | The packet has the bits; MAME games never get them (`retroButton` in `game_core.go`), our engine can |
 | Up to 8 players | Idea | Needs more ports in the room |
 | Rumble | Idea | Needs a channel from the device to the guest |
-| On-screen controls per game | Base | The room's touch pad takes its buttons from the game package (as `room_state.controls` does for MAME) |
+| On-screen controls per game | Base | The room's touch pad takes its buttons from the game package (as `room_state.controls` does for MAME): buttons 1 to 4 (B, A, Y, X) jump, jump, run, run, unless the manifest's `weapon` fires ("Fire") or throws its `super` ("Special") with Y or X (`glhd.Manifest.Labels`) |
 
 ## 6. Game rules
 

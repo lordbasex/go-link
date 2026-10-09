@@ -4,6 +4,7 @@ package glhd
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,14 +37,24 @@ func TestRead(t *testing.T) {
 	if err != nil || m.Title != "Neon Run" || m.Players != 2 {
 		t.Fatalf("got %+v, %v", m, err)
 	}
+	// format 3's levels, in place of one level
+	several := writePackage(t, map[string]string{
+		"manifest.json": `{"format": 3, "title": "Body", "levels": [{"level": "a.json"}, {"level": "b.json"}]}`,
+		"a.json":        `{}`,
+		"b.json":        `{}`,
+	})
+	if m, err := Read(several); err != nil || len(m.Levels) != 2 {
+		t.Fatalf("several levels: got %+v, %v", m, err)
+	}
 	for name, c := range map[string]struct {
 		files map[string]string
 		want  string
 	}{
-		"newer":    {map[string]string{"manifest.json": `{"format": 9, "title": "x", "level": "l"}`, "l": ""}, "newer go-link HD"},
-		"no title": {map[string]string{"manifest.json": `{"format": 1, "level": "l"}`, "l": ""}, "no title"},
-		"no level": {map[string]string{"manifest.json": `{"format": 1, "title": "x", "level": "l"}`}, "no level"},
-		"none":     {map[string]string{"level.json": ""}, "no manifest.json"},
+		"newer":           {map[string]string{"manifest.json": `{"format": 9, "title": "x", "level": "l"}`, "l": ""}, "newer go-link HD"},
+		"no title":        {map[string]string{"manifest.json": `{"format": 1, "level": "l"}`, "l": ""}, "no title"},
+		"no level":        {map[string]string{"manifest.json": `{"format": 1, "title": "x", "level": "l"}`}, "no level"},
+		"none":            {map[string]string{"level.json": ""}, "no manifest.json"},
+		"a level missing": {map[string]string{"manifest.json": `{"format": 3, "title": "x", "levels": [{"level": "a"}, {"level": "b"}]}`, "a": ""}, "missing one of its levels"},
 	} {
 		if _, err := Read(writePackage(t, c.files)); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: got %v, want %q", name, err, c.want)
@@ -53,5 +64,27 @@ func TestRead(t *testing.T) {
 	os.WriteFile(bad, []byte("not a zip"), 0o644)
 	if _, err := Read(bad); err == nil {
 		t.Error("a file that is not a zip was read")
+	}
+}
+
+// A package's buttons: jump and run without a weapon; a weapon's fire and super buttons name theirs.
+func TestLabels(t *testing.T) {
+	for name, c := range map[string]struct {
+		manifest string
+		want     string
+	}{
+		"no weapon":      {`{}`, "Jump Jump Run Run"},
+		"fire with run":  {`{"weapon": {}}`, "Jump Jump Fire Fire"},
+		"fire and super": {`{"weapon": {"button": "x", "super": {"button": "y"}}}`, "Jump Jump Special Fire"},
+		"super on R":     {`{"weapon": {"button": "x", "super": {}}}`, "Jump Jump Fire Fire"},
+		"fire on Y":      {`{"weapon": {"button": "y"}}`, "Jump Jump Fire Fire"},
+	} {
+		var m Manifest
+		if err := json.Unmarshal([]byte(c.manifest), &m); err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(m.Labels(), " "); got != c.want {
+			t.Errorf("%s: got %q, want %q", name, got, c.want)
+		}
 	}
 }
