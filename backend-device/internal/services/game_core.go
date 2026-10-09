@@ -36,6 +36,8 @@ type GameCoreConfig struct {
 	// VideoMode is how frames are converted to I420 (the zero value is the
 	// game's size with top-left chroma); SetVideoMode changes it later.
 	VideoMode emuproc.VideoMode
+	// Language is go-link HD's texts' language: en, es or pt (Native).
+	Language string
 	// Native means CorePath is go-link HD's engine (libgolinkhd), run
 	// through its own API (package golinkhd) instead of libretro; RomPath
 	// is then a game package (.glhd), or empty for its built-in demo. It
@@ -406,6 +408,9 @@ func (g *GameCore) openNative() error {
 			eng.Close()
 			return err
 		}
+	}
+	if g.cfg.Language != "" {
+		eng.SetLanguage(g.cfg.Language)
 	}
 	info := eng.Info()
 	g.hd = eng
