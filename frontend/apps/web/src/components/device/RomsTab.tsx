@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -15,7 +14,7 @@ import { romCheckText } from "../romCheck";
 import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
 import { useThumbKind, useThumbnail } from "./useThumbnail";
 import { SkeletonCards, SkeletonRows } from "../ui/Skeleton";
-import { useInfiniteList } from "../ui/useInfiniteList";
+import { useRomPages } from "./useLibrary";
 import { OwnBadge, ownControlsText } from "./OwnBadge";
 import { Select } from "../ui/Select";
 
@@ -52,62 +51,22 @@ const initials = (s: string) =>
     .join("")
     .toUpperCase();
 
-function compare(sort: Sort) {
-  return (a: DeviceRom, b: DeviceRom) => {
-    switch (sort) {
-      case "size":
-        return b.size - a.size;
-      case "year":
-        return (Number(b.year) || 0) - (Number(a.year) || 0);
-      case "status":
-        return (
-          KIND_ORDER.indexOf(kindOf(a)) - KIND_ORDER.indexOf(kindOf(b)) ||
-          titleOf(a).localeCompare(titleOf(b))
-        );
-      default:
-        return titleOf(a).localeCompare(titleOf(b));
-    }
-  };
-}
-
 /** The "ROMs" tab of My device: the library as cards or a list, and adding ROMs. */
 export function RomsTab() {
   const { linkedDevice } = useSignal();
   const library = linkedDevice.status?.library;
-  const roms = useMemo(() => library?.roms ?? [], [library?.roms]);
+  const summary = library?.summary;
   const [view, setView] = useState<View>(readView);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("name");
   const [query, setQuery] = useState("");
-
-  const counts = useMemo(() => {
-    const c: Record<Kind, number> = {
-      runs: 0,
-      missing: 0,
-      unsupported: 0,
-      broken: 0,
-      bios: 0,
-      unchecked: 0,
-    };
-    roms.forEach((r) => (c[kindOf(r)] += 1));
-    return c;
-  }, [roms]);
-
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return roms
-      .filter((r) => filter === "all" || kindOf(r) === filter)
-      .filter(
-        (r) =>
-          !q ||
-          `${r.name} ${r.title ?? ""} ${r.maker ?? ""}`
-            .toLowerCase()
-            .includes(q),
-      )
-      .sort(compare(sort));
-  }, [roms, filter, query, sort]);
-
-  const { shown, more, sentinel, loadMore } = useInfiniteList(visible, `${filter}|${sort}|${query}|${view}`);
+  // The device searches, filters and sorts; the sets come a page at a time.
+  const { roms: shown, total: matching, more, sentinel, loadMore } = useRomPages(
+    { q: query, filter, sort },
+    { enabled: !!library },
+  );
+  const counts = summary?.kinds ?? { runs: 0, missing: 0, unsupported: 0, broken: 0, bios: 0, unchecked: 0 };
+  const all = summary?.total ?? 0;
 
   const pickView = (v: View) => {
     setView(v);
@@ -122,7 +81,7 @@ export function RomsTab() {
     {
       id: "all",
       label: t.dash.filterAll,
-      count: roms.length,
+      count: all,
       color: "var(--color-text-faint)",
     },
     ...KIND_ORDER.filter(
@@ -134,8 +93,8 @@ export function RomsTab() {
       color: KIND_COLOR[k],
     })),
   ];
-  const bytes = roms.reduce((a, r) => a + r.size, 0);
-  const ready = roms.filter(romPlayable).length;
+  const bytes = summary?.bytes ?? 0;
+  const ready = summary?.playable ?? 0;
 
   return (
     <div className="roms">
@@ -182,7 +141,7 @@ export function RomsTab() {
           </span>
           <div className="roms-toolbar-end">
             <span className="small faint">
-              {t.roms.showing(visible.length, roms.length)}
+              {t.roms.showing(shown ? matching : 0, all)}
             </span>
             <div className="roms-view" role="group" aria-label={t.roms.view}>
               <button
@@ -251,11 +210,11 @@ export function RomsTab() {
           ))}
         </div>
 
-        {!library ? (
+        {!library || (all > 0 && !shown) ? (
           view === "cards" ? <SkeletonCards label={t.common.loading} tall /> : <SkeletonRows label={t.common.loading} />
-        ) : roms.length === 0 ? (
+        ) : all === 0 ? (
           <p className="muted small-plus">{t.linked.libraryEmpty}</p>
-        ) : visible.length === 0 ? (
+        ) : !shown || shown.length === 0 ? (
           <p className="muted small-plus">{t.dash.noMatch}</p>
         ) : view === "cards" ? (
           <ul className="roms-cards">
@@ -283,7 +242,7 @@ export function RomsTab() {
               {bytes ? formatBytes(bytes).split(" ")[0] : "0"}
             </span>
             <span className="dash-kpi-unit">
-              {`${bytes ? formatBytes(bytes).split(" ")[1] : "MB"} · ${roms.length} ${t.dash.sets}`}
+              {`${bytes ? formatBytes(bytes).split(" ")[1] : "MB"} · ${all} ${t.dash.sets}`}
             </span>
           </div>
           <div className="dash-stack-bar">
@@ -293,7 +252,7 @@ export function RomsTab() {
                   <span
                     key={k}
                     style={{
-                      width: `${(counts[k] / Math.max(roms.length, 1)) * 100}%`,
+                      width: `${(counts[k] / Math.max(all, 1)) * 100}%`,
                       background: KIND_COLOR[k],
                     }}
                   />
@@ -303,7 +262,7 @@ export function RomsTab() {
           <div className="dash-row small">
             <span className="muted">{t.roms.ready}</span>
             <span className="mono is-voice-text">
-              {t.roms.readyValue(ready, roms.length)}
+              {t.roms.readyValue(ready, all)}
             </span>
           </div>
         </div>
@@ -673,7 +632,7 @@ function ThumbnailSettings() {
   if (!library) return null;
   const send = (change: { kind?: string; dir?: string }) =>
     hostLink?.stream.sendControl({ type: "set_thumbnails", ...change });
-  const counts = KINDS.map((k) => library.roms.filter((r) => r.thumbs[k]).length);
+  const counts = KINDS.map((k) => library.summary.thumbs[k]);
 
   return (
     <form

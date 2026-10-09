@@ -452,6 +452,14 @@ func run() error {
 			Bands   string `json:"bands"`
 			Quality string `json:"quality"` // set_video_quality
 			Frames  int    `json:"frames"`  // rom_test
+			// roms_query and roms_get: req is echoed in the reply
+			Req    string   `json:"req"`
+			Q      string   `json:"q"`
+			Filter string   `json:"filter"`
+			Sort   string   `json:"sort"`
+			Offset int      `json:"offset"`
+			Limit  int      `json:"limit"`
+			Names  []string `json:"names"`
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -482,6 +490,21 @@ func run() error {
 				res["data"] = base64.StdEncoding.EncodeToString(b)
 			} else {
 				res["missing"] = true
+			}
+			if b, err := json.Marshal(res); err == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
+		case "roms_query", "roms_get":
+			// A page of the ROM library (search, filter, order), or some
+			// sets by name: the library is never sent whole (library_index.go).
+			res := map[string]any{"type": "roms_page", "req": msg.Req}
+			if msg.Type == "roms_query" {
+				rev, total, page := library.QueryRoms(services.RomQuery{Q: msg.Q, Filter: msg.Filter, Sort: msg.Sort, Offset: msg.Offset, Limit: msg.Limit})
+				res["revision"], res["total"], res["offset"], res["roms"] = rev, total, max(msg.Offset, 0), page
+			} else {
+				rev, roms := library.GetRoms(msg.Names)
+				res["revision"], res["total"], res["offset"], res["roms"] = rev, len(roms), 0, roms
 			}
 			if b, err := json.Marshal(res); err == nil {
 				stream.SendControl(peerID, b)

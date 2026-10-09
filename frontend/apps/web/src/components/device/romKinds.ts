@@ -1,26 +1,12 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
-import type { DeviceRom } from "@go-link/shared";
+import { romKind, type DeviceRom, type RomKind } from "@go-link/shared";
 import { t } from "../../i18n";
 
-export type Kind =
-  "runs" | "missing" | "unsupported" | "broken" | "bios" | "unchecked";
+export type Kind = RomKind;
 
 /** The state of a set, from the device's check. */
 export function kindOf(r: DeviceRom): Kind {
-  switch (r.check?.status) {
-    case undefined:
-      return "unchecked";
-    case "ok":
-      return "runs";
-    case "missing":
-      return "missing";
-    case "unsupported":
-      return "unsupported";
-    case "bios":
-      return "bios";
-    default:
-      return "broken";
-  }
+  return romKind(r);
 }
 
 export const KIND_LABEL: Record<Kind, () => string> = {

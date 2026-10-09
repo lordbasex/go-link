@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatBytes, parseHistory, parseRecordings, shortRunId, type HistoryItem, type HistoryReason, type RecordingInfo } from "@go-link/shared";
 import { getLang, t } from "../../i18n";
+import { useRomsByName } from "./useLibrary";
 import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
 import { DownloadIcon, PlayIcon, PulseIcon, TrashIcon } from "../Icons";
@@ -101,10 +102,8 @@ export function HistoryTab() {
   }, [all, filter, query]);
   const { shown, more, sentinel, loadMore } = useInfiniteList(visible, `${filter}|${query}`);
   const count = (f: Filter) => (f === "all" ? all.length : all.filter((h) => h.reason === f).length);
-  const hasThumb = (rom: string) => {
-    const r = library?.roms.find((x) => x.name === rom);
-    return r ? r.thumbs[library?.thumbKind ?? "boxart"] : false;
-  };
+  const sets = useRomsByName(useMemo(() => shown.map((h) => h.rom), [shown]));
+  const hasThumb = (rom: string) => sets.get(rom)?.thumbs[library?.thumbKind ?? "boxart"] ?? false;
 
   return (
     <section className="history" aria-label={t.history.title}>

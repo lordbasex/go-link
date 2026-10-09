@@ -52,10 +52,15 @@ type UpdateInfo struct {
 
 // Library is the host's ROM folder.
 type Library struct {
-	Dir  string        `json:"dir"`
-	Roms []RomInfo     `json:"roms"`
-	Core CoreStatus    `json:"core"`
-	Disk *sysinfo.Disk `json:"disk,omitempty"` // the volume of Dir
+	Dir string `json:"dir"`
+	// Roms is every set in the folder, sorted by name. It is never sent
+	// whole: a large folder does not fit one WebRTC message, so browsers
+	// get Summary and ask for pages (roms_query) or sets by name
+	// (roms_get). Scan replaces the slice, never edits it, so it is shared.
+	Roms    []RomInfo      `json:"-"`
+	Summary LibrarySummary `json:"summary"`
+	Core    CoreStatus     `json:"core"`
+	Disk    *sysinfo.Disk  `json:"disk,omitempty"` // the volume of Dir
 	// ThumbnailsDir holds the host's thumbnails, one folder per kind.
 	ThumbnailsDir string `json:"thumbnails_dir"`
 	// ThumbKind is the kind of thumbnail the host chose to show (boxart,
@@ -63,6 +68,46 @@ type Library struct {
 	ThumbKind string `json:"thumb_kind"`
 	// ThumbnailsBytes is the space the thumbnail images take.
 	ThumbnailsBytes int64 `json:"thumbnails_bytes"`
+}
+
+// The states of a set, as the website groups them, in their status order.
+const (
+	RomRuns        = "runs"
+	RomMissing     = "missing"
+	RomUnsupported = "unsupported"
+	RomBroken      = "broken"
+	RomBIOS        = "bios"
+	RomUnchecked   = "unchecked"
+)
+
+// RomKinds lists the states in the order the status sort uses.
+var RomKinds = []string{RomRuns, RomMissing, RomUnsupported, RomBroken, RomBIOS, RomUnchecked}
+
+// LibrarySummary counts the ROM folder for device_status.
+type LibrarySummary struct {
+	// Revision changes with every scan: a browser asks for its pages again.
+	Revision int64          `json:"revision"`
+	Total    int            `json:"total"`
+	Bytes    int64          `json:"bytes"`
+	Playable int            `json:"playable"`
+	Kinds    map[string]int `json:"kinds"` // sets per state (RomKinds)
+	Biggest  []RomBrief     `json:"biggest"`
+	// Thumbs counts the sets with each kind of the host's thumbnails.
+	Thumbs ThumbCounts `json:"thumbs"`
+}
+
+// ThumbCounts counts sets per kind of thumbnail.
+type ThumbCounts struct {
+	Boxart int `json:"boxart"`
+	Title  int `json:"title"`
+	Snap   int `json:"snap"`
+}
+
+// RomBrief names a set and its size.
+type RomBrief struct {
+	Name  string `json:"name"`
+	Title string `json:"title,omitempty"`
+	Size  int64  `json:"size"`
 }
 
 // CoreStatus is the libretro emulator core on this machine.

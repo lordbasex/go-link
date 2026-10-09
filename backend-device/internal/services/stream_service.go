@@ -159,12 +159,15 @@ type viewer struct {
 // out to all peer connections. Each viewer also gets two DataChannels:
 // "control" (reliable, JSON) and "input" (unordered, no retransmits).
 type StreamService struct {
-	cfg   StreamConfig
-	log   *slog.Logger
-	ice   *ICEStore
-	api   *webrtc.API
-	track *webrtc.TrackLocalStaticSample
-	audio *webrtc.TrackLocalStaticSample
+	cfg StreamConfig
+	log *slog.Logger
+	// sendErrAt is when a control message that could not be sent was last
+	// logged (unix nanoseconds); see sendText.
+	sendErrAt atomic.Int64
+	ice       *ICEStore
+	api       *webrtc.API
+	track     *webrtc.TrackLocalStaticSample
+	audio     *webrtc.TrackLocalStaticSample
 
 	keyframe atomic.Bool
 	// rec, while the room is recorded, gets a copy of every encoded frame
@@ -434,7 +437,26 @@ func (s *StreamService) SendControl(peerID string, msg []byte) bool {
 	if v == nil || v.control == nil || v.control.ReadyState() != webrtc.DataChannelStateOpen {
 		return false
 	}
-	return v.control.SendText(string(msg)) == nil
+	return s.sendText(v.control, msg)
+}
+
+// sendText sends a control message and logs, at most once a minute, the
+// ones that do not go out: one larger than the browser takes (Chrome: 256
+// KiB a message) is refused whole, and the browser never knows.
+func (s *StreamService) sendText(dc *webrtc.DataChannel, msg []byte) bool {
+	err := dc.SendText(string(msg))
+	if err == nil {
+		return true
+	}
+	now := time.Now().UnixNano()
+	if last := s.sendErrAt.Load(); now-last > int64(time.Minute) && s.sendErrAt.CompareAndSwap(last, now) {
+		var head struct {
+			Type string `json:"type"`
+		}
+		_ = json.Unmarshal(msg, &head)
+		s.log.Warn("control message not sent", "type", head.Type, "bytes", len(msg), "err", err)
+	}
+	return false
 }
 
 // SendFiles sends a message on a linked browser's "files" channel
@@ -1565,7 +1587,7 @@ func (s *StreamService) SendToLinks(msg any) {
 	}
 	s.mu.Unlock()
 	for _, dc := range targets {
-		_ = dc.SendText(string(b))
+		s.sendText(dc, b)
 	}
 }
 

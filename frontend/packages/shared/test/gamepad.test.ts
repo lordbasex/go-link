@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 
 import { describe, expect, it } from "vitest";
-import { Button, forgetGamepad, parseDeviceStatus, readGamepad, romPlayable, type GamepadLike } from "../src";
+import { Button, forgetGamepad, parseDeviceStatus, parseRomsPage, readGamepad, romPlayable, type GamepadLike } from "../src";
 
 function pad(mapping: string, pressed: number[], axes: number[], index = 0): GamepadLike {
   return {
@@ -54,18 +54,19 @@ describe("ROM checks in device_status", () => {
     const st = parseDeviceStatus({
       type: "device_status",
       device_id: "d",
-      library: {
-        dir: "/roms",
-        core: { name: "mame2003_plus", installed: true, catalog: true },
-        roms: [
+      library: { dir: "/roms", core: { name: "mame2003_plus", installed: true, catalog: true } },
+    });
+    const page = parseRomsPage({
+      type: "roms_page",
+      req: "r",
+      roms: [
           { name: "robby", check: { status: "ok" } },
           { name: "velvtbwl", check: { status: "missing", missing: Array.from({ length: 30 }, (_, i) => `f${i}`), needs: ["neogeo"] } },
           { name: "weird", check: { status: "exploded" } },
           { name: "unchecked" },
-        ],
-      },
+      ],
     });
-    const roms = st!.library!.roms;
+    const roms = page!.roms;
     expect(st!.library!.core.catalog).toBe(true);
     expect(roms[0]!.check).toEqual({ status: "ok", missing: undefined, needs: undefined, driver: undefined });
     expect(roms[1]!.check!.missing).toHaveLength(10);

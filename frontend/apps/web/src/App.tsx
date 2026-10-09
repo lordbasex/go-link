@@ -90,14 +90,10 @@ function useSplash() {
   useEffect(() => {
     if (!hostLink || !status || prefetched.current === hostLink) return;
     prefetched.current = hostLink;
-    const library = status.library;
-    const kind = library?.thumbKind ?? "boxart";
-    const withArt = new Set(
-      library?.roms.filter((r) => r.thumbs[kind]).map((r) => r.name),
-    );
-    const sets = [...new Set(status.rooms.map((r) => r.rom))]
-      .filter((rom) => withArt.has(rom))
-      .slice(0, 24);
+    const kind = status.library?.thumbKind ?? "boxart";
+    // The device answers "missing" at once for a set without a picture,
+    // so the rooms' sets are asked without looking them up first.
+    const sets = [...new Set(status.rooms.map((r) => r.rom))].slice(0, 24);
     void prefetchThumbnails(
       hostLink.stream,
       onDeviceMessage,

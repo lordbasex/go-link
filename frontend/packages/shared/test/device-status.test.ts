@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { parseDeviceStatus, parsePauseAskEvent, romFile } from "../src/device-status";
+import { parseDeviceStatus, parsePauseAskEvent, parseRomsPage, romFile, queryRomsLocally, romKind, romsGet, romsQuery } from "../src/device-status";
 
 describe("device update", () => {
   const base = { type: "device_status", device_id: "d", version: "v0.1.0" };
@@ -61,22 +61,86 @@ describe("video quality", () => {
 
 describe("go-link HD packages in the library", () => {
   it("keeps a package's kind and the controls of its manifest", () => {
-    const s = parseDeviceStatus({
-      type: "device_status",
-      device_id: "d",
-      library: {
-        roms: [
+    const s = parseRomsPage({
+      type: "roms_page",
+      req: "r",
+      roms: [
           { name: "neon", size: 10, kind: "glhd", title: "Neon Run", description: "go-link HD", controls: { players: 2, buttons: 4, labels: ["Jump", "Jump", "Run", "Run"] }, thumbs: {} },
           { name: "robby", size: 10, kind: "other", controls: { players: 2, buttons: 2 }, thumbs: {} },
-        ],
-      },
+      ],
     });
-    const [neon, robby] = s!.library!.roms;
+    const [neon, robby] = s!.roms;
     expect(neon!.kind).toBe("glhd");
     expect(neon!.controls?.players).toBe(2);
     expect(romFile(neon!)).toBe("neon.glhd");
     expect(robby!.kind).toBeUndefined();
     expect(robby!.controls).toBeUndefined();
     expect(romFile(robby!)).toBe("robby.zip");
+  });
+});
+
+describe("the library in pages", () => {
+  it("reads the summary of device_status, never a list of sets", () => {
+    const s = parseDeviceStatus({
+      type: "device_status",
+      device_id: "d",
+      library: {
+        dir: "/roms",
+        roms: [{ name: "ignored" }],
+        summary: { revision: 3, total: 5085, bytes: 11e9, playable: 4818, kinds: { runs: 4818, missing: 250, bios: 2, weird: 9 }, biggest: [{ name: "kof2002", title: "KOF", size: 9e7 }, { size: 1 }], thumbs: { boxart: 4000, snap: -1 } },
+      },
+    });
+    const lib = s!.library!;
+    expect(lib).not.toHaveProperty("roms");
+    expect(lib.summary).toEqual({
+      revision: 3,
+      total: 5085,
+      bytes: 11e9,
+      playable: 4818,
+      kinds: { runs: 4818, missing: 250, unsupported: 0, broken: 0, bios: 2, unchecked: 0 },
+      biggest: [{ name: "kof2002", title: "KOF", size: 9e7 }],
+      thumbs: { boxart: 4000, title: 0, snap: 0 },
+    });
+    expect(parseDeviceStatus({ type: "device_status", device_id: "d", library: { dir: "/x" } })!.library!.summary.total).toBe(0);
+  });
+
+  it("asks for pages and reads the replies", () => {
+    expect(romsQuery("a1", { q: "street", filter: "playable", sort: "year", offset: 60, limit: 500 })).toEqual({
+      type: "roms_query", req: "a1", q: "street", filter: "playable", sort: "year", offset: 60, limit: 100,
+    });
+    expect(romsGet("a2", ["sf2", "pacman"])).toEqual({ type: "roms_get", req: "a2", names: ["sf2", "pacman"] });
+    const page = parseRomsPage({ type: "roms_page", req: "a1", revision: 3, total: 120, offset: 60, roms: [{ name: "sf2", check: { status: "ok" }, thumbs: { boxart: true } }, { title: "no name" }] });
+    expect(page).toMatchObject({ req: "a1", revision: 3, total: 120, offset: 60 });
+    expect(page!.roms.map((r) => [r.name, romKind(r), r.thumbs.boxart])).toEqual([["sf2", "runs", true]]);
+    expect(parseRomsPage({ type: "roms_page" })).toBeNull();
+    expect(parseRomsPage({ type: "history", req: "a" })).toBeNull();
+  });
+});
+
+describe("a device before 0.2.9", () => {
+  it("sends the whole list, which the website pages itself", () => {
+    const s = parseDeviceStatus({
+      type: "device_status",
+      device_id: "d",
+      library: {
+        dir: "/roms",
+        roms: [
+          { name: "sf2", title: "Street Fighter II", year: "1991", size: 30, check: { status: "ok" }, thumbs: { boxart: true } },
+          { name: "pacman", title: "Pac-Man", year: "1980", size: 10, check: { status: "ok" } },
+          { name: "looping", title: "Looping", size: 20, check: { status: "missing" } },
+        ],
+      },
+    });
+    const lib = s!.library!;
+    expect(lib.legacyRoms).toHaveLength(3);
+    expect(lib.summary).toMatchObject({ total: 3, bytes: 60, playable: 2, kinds: { runs: 2, missing: 1 }, thumbs: { boxart: 1 } });
+    expect(lib.summary.biggest.map((b) => b.name)).toEqual(["sf2", "looping", "pacman"]);
+    const names = (q: Parameters<typeof queryRomsLocally>[1]) => queryRomsLocally(lib.legacyRoms!, q).roms.map((r) => r.name);
+    expect(names({})).toEqual(["looping", "pacman", "sf2"]);
+    expect(names({ sort: "year" })).toEqual(["sf2", "pacman", "looping"]);
+    expect(names({ filter: "playable", q: "STREET" })).toEqual(["sf2"]);
+    expect(queryRomsLocally(lib.legacyRoms!, { filter: "missing" }).total).toBe(1);
+    // a newer device sends the summary only
+    expect(parseDeviceStatus({ type: "device_status", device_id: "d", library: { dir: "/r", roms: [{ name: "x" }], summary: { total: 9 } } })!.library!.legacyRoms).toBeUndefined();
   });
 });

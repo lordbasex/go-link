@@ -18,6 +18,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
@@ -57,6 +58,31 @@ type LibraryService struct {
 	thumbCache *thumbnails.Cache
 	own        *ownsets.Matcher // go-link's own sets, by their files' hashes
 	makerDir   string           // the Willy Maker game's folder (maker_game.go)
+
+	scanTimer *time.Timer // a scan after imports (scanSoon), guarded by mu
+
+	index    atomic.Pointer[romIndex] // the last scan's sets, for roms_query
+	revision atomic.Int64             // counts the scans
+}
+
+// QueryRoms returns how many sets match q and the asked page of them.
+func (l *LibraryService) QueryRoms(q RomQuery) (revision int64, total int, page []models.RomInfo) {
+	ix := l.index.Load()
+	if ix == nil {
+		return l.revision.Load(), 0, []models.RomInfo{}
+	}
+	total, page = ix.query(q)
+	return l.revision.Load(), total, page
+}
+
+// GetRoms returns the named sets that are in the folder (at most
+// RomsPageMax), in the asked order.
+func (l *LibraryService) GetRoms(names []string) (revision int64, roms []models.RomInfo) {
+	ix := l.index.Load()
+	if ix == nil {
+		return l.revision.Load(), []models.RomInfo{}
+	}
+	return l.revision.Load(), ix.get(names)
 }
 
 // SetCore configures the libretro core: its folder and the buildbot URL
@@ -539,8 +565,39 @@ func (l *LibraryService) Import(fileName string, r io.Reader) error {
 		return err
 	}
 	l.log.Info("ROM imported", "rom", name)
-	l.Scan()
+	l.scanSoon()
 	return nil
+}
+
+// ScanNow scans the folder at once, in place of a scan scanSoon planned.
+func (l *LibraryService) ScanNow() {
+	l.mu.Lock()
+	if l.scanTimer != nil && l.scanTimer.Stop() {
+		l.scanTimer = nil
+	}
+	l.mu.Unlock()
+	l.Scan()
+}
+
+// importScanDelay is how long scanSoon waits for the next imported set.
+const importScanDelay = 750 * time.Millisecond
+
+// scanSoon scans the folder once a burst of imports is over: a scan reads
+// every set (a full folder takes seconds), and dropping a hundred zips would
+// otherwise scan a hundred times.
+func (l *LibraryService) scanSoon() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.scanTimer != nil {
+		l.scanTimer.Reset(importScanDelay)
+		return
+	}
+	l.scanTimer = time.AfterFunc(importScanDelay, func() {
+		l.mu.Lock()
+		l.scanTimer = nil
+		l.mu.Unlock()
+		l.Scan()
+	})
 }
 
 // placeNoOverwrite moves src to dst and fails if dst already exists. A hard
@@ -666,7 +723,9 @@ func (l *LibraryService) Scan() {
 	if _, err := os.Stat(l.HDCorePath()); err == nil {
 		core.HDInstalled = true
 	}
-	lib := models.Library{Dir: l.Dir(), Roms: roms, Core: core, ThumbnailsDir: thumbsDir, ThumbKind: string(l.ThumbnailKind()), ThumbnailsBytes: thumbnails.Size(thumbsDir)}
+	ix := newRomIndex(roms)
+	l.index.Store(ix)
+	lib := models.Library{Dir: l.Dir(), Roms: roms, Summary: ix.summary(l.revision.Add(1)), Core: core, ThumbnailsDir: thumbsDir, ThumbKind: string(l.ThumbnailKind()), ThumbnailsBytes: thumbnails.Size(thumbsDir)}
 	if d, ok := sysinfo.DiskOf(l.Dir()); ok {
 		lib.Disk = &d
 	}

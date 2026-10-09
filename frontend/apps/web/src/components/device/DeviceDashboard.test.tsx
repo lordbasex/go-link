@@ -1,15 +1,76 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import type { DeviceStatus } from "@go-link/shared";
+import { romKind, romPlayable, summarize, type DeviceRom, type DeviceStatus, type LibrarySummary } from "@go-link/shared";
 import { smoothPath, toPoints } from "./charts";
 
 const MB = 1024 ** 2;
 const GB = 1024 ** 3;
-const sendControl = vi.fn();
 const listeners = new Set<(msg: unknown) => void>();
+
+// The device's library: never in device_status, only its summary; pages
+// come from roms_query and roms_get, answered here like the device does.
+let libraryRoms: DeviceRom[] = [
+  {
+    name: "robby",
+    size: 20 * MB,
+    title: "Glacier Goalies",
+    year: "1981",
+    maker: "Bally Midway",
+    thumbs: { boxart: true, title: false, snap: false },
+    check: { status: "ok" },
+  },
+  {
+    name: "capsnka",
+    size: 96 * MB,
+    title: "Capcom Sports Club",
+    thumbs: { boxart: false, title: false, snap: false },
+    check: { status: "ok" },
+  },
+  {
+    name: "looping",
+    size: 4 * MB,
+    title: "Looping",
+    thumbs: { boxart: false, title: false, snap: false },
+    check: { status: "missing", missing: ["vli3.5a"] },
+  },
+];
+function summaryOf(revision: number): LibrarySummary {
+  const kinds = { runs: 0, missing: 0, unsupported: 0, broken: 0, bios: 0, unchecked: 0 };
+  libraryRoms.forEach((r) => (kinds[romKind(r)] += 1));
+  return {
+    revision,
+    total: libraryRoms.length,
+    bytes: libraryRoms.reduce((a, r) => a + r.size, 0),
+    playable: libraryRoms.filter(romPlayable).length,
+    kinds,
+    biggest: [...libraryRoms].sort((a, b) => b.size - a.size).slice(0, 5),
+    thumbs: { boxart: libraryRoms.filter((r) => r.thumbs.boxart).length, title: 0, snap: 0 },
+  };
+}
+function fakeDevice(msg: unknown) {
+  const m = msg as { type?: string; req?: string; q?: string; filter?: string; offset?: number; limit?: number; names?: string[] };
+  let roms: DeviceRom[];
+  let total: number;
+  if (m.type === "roms_query") {
+    const words = (m.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+    const all = libraryRoms
+      .filter((r) => !m.filter || m.filter === "all" || romKind(r) === m.filter || (m.filter === "playable") === romPlayable(r))
+      .filter((r) => words.every((w) => `${r.name} ${r.title ?? ""} ${r.maker ?? ""}`.toLowerCase().includes(w)))
+      .sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
+    total = all.length;
+    roms = all.slice(m.offset ?? 0, (m.offset ?? 0) + (m.limit ?? 100));
+  } else if (m.type === "roms_get") {
+    roms = libraryRoms.filter((r) => m.names?.includes(r.name));
+    total = roms.length;
+  } else return true;
+  const page = { type: "roms_page", req: m.req, revision: status.library!.summary.revision, total, offset: m.offset ?? 0, roms };
+  queueMicrotask(() => act(() => listeners.forEach((fn) => fn(page))));
+  return true;
+}
+const sendControl = vi.fn(fakeDevice);
 const stream = { sendControl };
 
 const status: DeviceStatus = {
@@ -62,31 +123,7 @@ const status: DeviceStatus = {
   },
   library: {
     dir: "/roms",
-    roms: [
-      {
-        name: "robby",
-        size: 20 * MB,
-        title: "Glacier Goalies",
-        year: "1981",
-        maker: "Bally Midway",
-        thumbs: { boxart: true, title: false, snap: false },
-        check: { status: "ok" },
-      },
-      {
-        name: "capsnka",
-        size: 96 * MB,
-        title: "Capcom Sports Club",
-        thumbs: { boxart: false, title: false, snap: false },
-        check: { status: "ok" },
-      },
-      {
-        name: "looping",
-        size: 4 * MB,
-        title: "Looping",
-        thumbs: { boxart: false, title: false, snap: false },
-        check: { status: "missing", missing: ["vli3.5a"] },
-      },
-    ],
+    summary: summaryOf(1),
     core: {
       name: "mame2003-plus",
       installed: true,
@@ -204,26 +241,27 @@ describe("device dashboard", () => {
         <DeviceDashboard tab="roms" />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Showing 3 of 3")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 3 of 3")).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: /Missing files/ }),
     );
-    expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
-    expect(screen.getByText("Looping")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 1 of 3")).toBeInTheDocument();
+    expect(await screen.findByText("Looping")).toBeInTheDocument();
+    expect(sendControl).toHaveBeenCalledWith(expect.objectContaining({ type: "roms_query", filter: "missing" }));
     expect(
       screen.queryByRole("link", { name: /Play Looping/ }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /All/ }));
     await userEvent.click(screen.getByRole("button", { name: "List" }));
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(await screen.findByRole("table")).toBeInTheDocument();
     expect(localStorage.getItem("go-link.roms-view")).toBe("list");
     expect(
-      screen.getByRole("link", { name: /Play Glacier Goalies/ }),
+      await screen.findByRole("link", { name: /Play Glacier Goalies/ }),
     ).toHaveAttribute("href", "/create?rom=robby");
 
     await userEvent.type(screen.getByRole("searchbox"), "capcom sports");
-    expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 1 of 3")).toBeInTheDocument();
   });
 });
 
@@ -237,7 +275,7 @@ describe("thumbnails", () => {
         <DeviceDashboard tab="roms" />
       </MemoryRouter>,
     );
-    expect(sendControl).toHaveBeenCalledWith({ type: "get_thumb", set: "robby", kind: "boxart", size: "card" });
+    await waitFor(() => expect(sendControl).toHaveBeenCalledWith({ type: "get_thumb", set: "robby", kind: "boxart", size: "card" }));
     // Only sets with a Boxart are asked for.
     expect(sendControl).not.toHaveBeenCalledWith(expect.objectContaining({ set: "looping" }));
     act(() => listeners.forEach((fn) => fn({ type: "thumb", set: "robby", kind: "boxart", size: "card", data: btoa("jpeg") })));
@@ -427,23 +465,57 @@ describe("charts", () => {
       thumbs: { boxart: false, title: false, snap: false },
       check: { status: "ok" as const },
     }));
-    const saved = status.library!.roms;
-    status.library!.roms = big;
+    const saved = libraryRoms;
+    libraryRoms = big;
+    status.library!.summary = summaryOf(2);
     try {
       render(
         <MemoryRouter>
           <DeviceDashboard tab="roms" />
         </MemoryRouter>,
       );
-      expect(screen.getByText("Game 059")).toBeInTheDocument();
+      expect(await screen.findByText("Game 059")).toBeInTheDocument();
       expect(screen.queryByText("Game 060")).not.toBeInTheDocument();
+      expect(sendControl).toHaveBeenCalledWith(expect.objectContaining({ type: "roms_query", offset: 0, limit: 60 }));
       await userEvent.setup().click(screen.getByRole("button", { name: "Show more" }));
-      expect(screen.getByText("Game 119")).toBeInTheDocument();
-      // Search looks through the whole library, not just the rendered page.
+      expect(await screen.findByText("Game 119")).toBeInTheDocument();
+      // The device searches the whole library, not just the pages shown.
       await userEvent.setup().type(screen.getByPlaceholderText("Search game, set or maker"), "Game 149");
-      expect(screen.getByText("Game 149")).toBeInTheDocument();
+      expect(await screen.findByText("Game 149")).toBeInTheDocument();
+      expect(sendControl).toHaveBeenCalledWith(expect.objectContaining({ type: "roms_query", q: "Game 149", offset: 0 }));
     } finally {
-      status.library!.roms = saved;
+      libraryRoms = saved;
+      status.library!.summary = summaryOf(3);
+    }
+  });
+
+  it("pages the whole list of a device before 0.2.9 itself", async () => {
+    const old = Array.from({ length: 150 }, (_, i) => ({
+      name: `old${String(i).padStart(3, "0")}`,
+      size: MB,
+      title: `Old ${String(i).padStart(3, "0")}`,
+      thumbs: { boxart: false, title: false, snap: false },
+      check: { status: "ok" as const },
+    }));
+    const saved = status.library!;
+    status.library = { ...saved, legacyRoms: old, summary: summarize(old) };
+    sendControl.mockClear();
+    try {
+      render(
+        <MemoryRouter>
+          <DeviceDashboard tab="roms" />
+        </MemoryRouter>,
+      );
+      expect(await screen.findByText("Old 059")).toBeInTheDocument();
+      expect(screen.queryByText("Old 060")).not.toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole("button", { name: "Show more" }));
+      expect(await screen.findByText("Old 119")).toBeInTheDocument();
+      await userEvent.setup().type(screen.getByPlaceholderText("Search game, set or maker"), "Old 149");
+      expect(await screen.findByText("Showing 1 of 150")).toBeInTheDocument();
+      // an old device knows no roms_query
+      expect(sendControl).not.toHaveBeenCalledWith(expect.objectContaining({ type: "roms_query" }));
+    } finally {
+      status.library = saved;
     }
   });
 

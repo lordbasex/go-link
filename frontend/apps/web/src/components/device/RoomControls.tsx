@@ -7,6 +7,7 @@ import {
   type ManagedRoomState,
 } from "@go-link/shared";
 import { t } from "../../i18n";
+import { useRomsByName } from "./useLibrary";
 import { useSignal } from "../../signal/SignalProvider";
 import { ConfirmDialog } from "../RemapDialog";
 import { RoomPictureDialog } from "../RoomPictureDialog";
@@ -129,8 +130,8 @@ export function useRoomControls(rooms: ManagedRoom[]) {
   };
   const library = linkedDevice.status?.library;
   const kind = library?.thumbKind ?? "boxart";
-  const hasThumb = (rom: string) =>
-    library?.roms.find((x) => x.name === rom)?.thumbs[kind] ?? false;
+  const sets = useRomsByName(rooms.map((r) => r.rom));
+  const hasThumb = (rom: string) => sets.get(rom)?.thumbs[kind] ?? false;
   const overlays = (
     <>
       {toast && (

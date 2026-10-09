@@ -12,7 +12,7 @@ import { InviteDialog } from "../InviteDialog";
 import { ConfirmDialog } from "../RemapDialog";
 import { AreaChart, Ring, Sparkline } from "./charts";
 import { HISTORY_SIZE, useHistory } from "./useHistory";
-import { KIND_COLOR, KIND_LABEL, kindOf, type Kind } from "./romKinds";
+import { KIND_COLOR, KIND_LABEL, type Kind } from "./romKinds";
 import { RomsTab } from "./RomsTab";
 import { HistoryTab } from "./HistoryTab";
 import { NetworkReport } from "./NetworkReport";
@@ -87,7 +87,10 @@ export function DeviceDashboard({
     [onDeviceMessage],
   );
   const library = status?.library;
-  const roms = library?.roms ?? [];
+  // The library in numbers; its sets come in pages (RomsTab).
+  const summary = library?.summary;
+  const romCount = summary?.total ?? 0;
+  const romBytes = summary?.bytes ?? 0;
 
   const secs = range * 2;
   const xLabels = [4, 3, 2, 1, 0].map((i) => {
@@ -253,7 +256,7 @@ export function DeviceDashboard({
             <path d="M7 8h10M7 12h10M7 16h6" />
           </svg>
           {t.dash.romsTitle}
-          {library && <span className="dash-tab-count">{roms.length}</span>}
+          {library && <span className="dash-tab-count">{romCount}</span>}
         </NavLink>
         <NavLink to="/device/history" className={tabClass}>
           <svg
@@ -633,7 +636,6 @@ export function DeviceDashboard({
   );
 
   function spaceCard() {
-    const romBytes = roms.reduce((a, r) => a + r.size, 0);
     const parts = [
       { label: t.dash.roms, bytes: romBytes, color: "var(--color-accent)" },
       {
@@ -707,10 +709,7 @@ export function DeviceDashboard({
     );
   }
   function libraryCard() {
-    const counts = roms.reduce<Record<Kind, number>>(
-      (acc, r) => ((acc[kindOf(r)] += 1), acc),
-      { runs: 0, missing: 0, unsupported: 0, broken: 0, bios: 0, unchecked: 0 },
-    );
+    const counts: Record<Kind, number> = summary?.kinds ?? { runs: 0, missing: 0, unsupported: 0, broken: 0, bios: 0, unchecked: 0 };
     const parts = (
       [
         "runs",
@@ -721,13 +720,13 @@ export function DeviceDashboard({
         "unchecked",
       ] as Kind[]
     ).map((kind) => ({ kind, color: KIND_COLOR[kind] }));
-    const total = Math.max(roms.length, 1);
+    const total = Math.max(romCount, 1);
     return (
       <div className="card dash-card stack-md">
         <div className="dash-card-head">
           <h2 className="card-title">{t.dash.library}</h2>
           <span className="dash-big-number">
-            {roms.length} <small>{t.dash.sets}</small>
+            {romCount} <small>{t.dash.sets}</small>
           </span>
         </div>
         <div className="dash-stack-bar">
@@ -805,8 +804,8 @@ export function DeviceDashboard({
   }
 
   function storageCard() {
-    const bytes = roms.reduce((a, r) => a + r.size, 0);
-    const biggest = [...roms].sort((a, b) => b.size - a.size).slice(0, 5);
+    const bytes = romBytes;
+    const biggest = summary?.biggest ?? [];
     const disk = library?.disk;
     const used = disk ? disk.total - disk.free : 0;
     const romPct = disk ? (bytes / disk.total) * 100 : 0;
@@ -816,7 +815,7 @@ export function DeviceDashboard({
         <div className="dash-card-head">
           <h2 className="card-title">{t.dash.storage}</h2>
           <span className="small faint">
-            {roms.length} {t.dash.sets}
+            {romCount} {t.dash.sets}
           </span>
         </div>
         <div className="dash-kpi-value">
@@ -826,9 +825,9 @@ export function DeviceDashboard({
           <span className="dash-kpi-unit">
             {bytes ? formatBytes(bytes).split(" ")[1] : "MB"}
           </span>
-          {roms.length > 0 && (
+          {romCount > 0 && (
             <span className="small faint dash-push">
-              {t.dash.avgPerSet(formatBytes(bytes / roms.length))}
+              {t.dash.avgPerSet(formatBytes(bytes / romCount))}
             </span>
           )}
         </div>

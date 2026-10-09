@@ -208,8 +208,9 @@ func clone(st models.Status) models.Status {
 		st.System = &sys
 	}
 	if st.Library != nil {
+		// Roms is replaced whole by each scan, never edited, so the copy
+		// shares it (a large folder holds thousands of sets).
 		lib := *st.Library
-		lib.Roms = slices.Clone(lib.Roms)
 		st.Library = &lib
 	}
 	if st.Peers == nil {

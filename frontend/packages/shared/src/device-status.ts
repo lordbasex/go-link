@@ -96,9 +96,39 @@ export function romPlayable(r: DeviceRom): boolean {
   return !r.check || r.check.status === "ok";
 }
 
+/** The states of a set, as the device groups them (status order). */
+export type RomKind = "runs" | "missing" | "unsupported" | "broken" | "bios" | "unchecked";
+export const ROM_KINDS: readonly RomKind[] = ["runs", "missing", "unsupported", "broken", "bios", "unchecked"];
+
+/**
+ * The ROM folder in numbers. device_status never carries the sets
+ * themselves (a full MAME collection is thousands, far more than one
+ * WebRTC message holds): ask for pages with roms_query and for sets by
+ * name with roms_get (romsQuery, romsGet).
+ */
+export interface LibrarySummary {
+  /** Changes with every scan of the folder: pages asked before are stale. */
+  revision: number;
+  total: number;
+  bytes: number;
+  /** Sets a room can be opened with (check passed, or no check yet). */
+  playable: number;
+  kinds: Record<RomKind, number>;
+  /** The five largest sets. */
+  biggest: { name: string; title?: string; size: number }[];
+  /** Sets with each kind of the host's thumbnails. */
+  thumbs: Record<ThumbKind, number>;
+}
+
 export interface DeviceLibrary {
   dir: string;
-  roms: DeviceRom[];
+  summary: LibrarySummary;
+  /**
+   * The whole list, from a device before 0.2.9 (it sends every set in
+   * device_status and knows no roms_query): pages are then made here,
+   * with queryRomsLocally. Absent from newer devices.
+   */
+  legacyRoms?: DeviceRom[];
   /** catalog: the core's game list, used to check ROMs, is installed. */
   /** The MAME core; hdInstalled tells whether go-link HD's core (for .glhd packages) is there too. */
   core: { name: string; installed: boolean; catalog: boolean; downloading: boolean; error?: string; hdInstalled?: boolean };
@@ -307,25 +337,19 @@ function bytesOf(v: unknown): number {
 function parseLibrary(v: unknown): DeviceLibrary | undefined {
   if (typeof v !== "object" || v === null) return undefined;
   const l = v as Record<string, unknown>;
-  const text = (x: unknown, max = 80) => (typeof x === "string" ? x.slice(0, max) : undefined);
   return {
     dir: text(l.dir, 300) ?? "",
     thumbnailsDir: text(l.thumbnails_dir, 300) ?? "",
     thumbKind: l.thumb_kind === "title" || l.thumb_kind === "snap" ? l.thumb_kind : "boxart",
     thumbnailsBytes: bytesOf(l.thumbnails_bytes),
-    roms: (Array.isArray(l.roms) ? l.roms : []).slice(0, 5000).flatMap((r) => {
-      const o = (typeof r === "object" && r !== null ? r : {}) as Record<string, unknown>;
-      const name = text(o.name, 16);
-      if (!name) return [];
-      const rom: DeviceRom = { name, size: typeof o.size === "number" ? o.size : 0, title: text(o.title, 160), year: text(o.year, 4), maker: text(o.maker), thumbs: parseThumbs(o.thumbs), check: parseCheck(o.check) };
-      if (o.own === true || o.kind === "glhd") {
-        if (o.own === true) rom.own = true;
-        else rom.kind = "glhd";
-        rom.description = text(o.description, 400);
-        rom.controls = parseRomControls(o.controls);
+    ...(() => {
+      // A device before 0.2.9: the whole list instead of a summary.
+      if (Array.isArray(l.roms) && (typeof l.summary !== "object" || l.summary === null)) {
+        const legacyRoms = l.roms.slice(0, 5000).flatMap((r) => parseRom(r) ?? []);
+        return { legacyRoms, summary: summarize(legacyRoms) };
       }
-      return [rom];
-    }),
+      return { summary: parseSummary(l.summary) };
+    })(),
     core: (() => {
       const c = (typeof l.core === "object" && l.core !== null ? l.core : {}) as Record<string, unknown>;
       return { name: text(c.name, 40) ?? "", installed: c.installed === true, catalog: c.catalog === true, downloading: c.downloading === true, error: text(c.error, 200), hdInstalled: c.hd_installed === true };
@@ -334,6 +358,148 @@ function parseLibrary(v: unknown): DeviceLibrary | undefined {
       const k = (typeof l.disk === "object" && l.disk !== null ? l.disk : {}) as Record<string, unknown>;
       return typeof k.total === "number" && typeof k.free === "number" && k.total > 0 ? { total: k.total, free: Math.min(k.free, k.total) } : undefined;
     })(),
+  };
+}
+
+const text = (x: unknown, max = 80) => (typeof x === "string" ? x.slice(0, max) : undefined);
+const count = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x > 0 ? x : 0);
+
+function parseSummary(v: unknown): LibrarySummary {
+  const s = (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
+  const k = (typeof s.kinds === "object" && s.kinds !== null ? s.kinds : {}) as Record<string, unknown>;
+  return {
+    revision: count(s.revision),
+    total: count(s.total),
+    bytes: bytesOf(s.bytes),
+    playable: count(s.playable),
+    kinds: Object.fromEntries(ROM_KINDS.map((x) => [x, count(k[x])])) as Record<RomKind, number>,
+    thumbs: (() => {
+      const th = (typeof s.thumbs === "object" && s.thumbs !== null ? s.thumbs : {}) as Record<string, unknown>;
+      return { boxart: count(th.boxart), title: count(th.title), snap: count(th.snap) };
+    })(),
+    biggest: (Array.isArray(s.biggest) ? s.biggest : []).slice(0, 5).flatMap((b) => {
+      const o = (typeof b === "object" && b !== null ? b : {}) as Record<string, unknown>;
+      const name = text(o.name, 16);
+      return name ? [{ name, title: text(o.title, 160), size: bytesOf(o.size) }] : [];
+    }),
+  };
+}
+
+/** One set as the device describes it, or null when it is not one. */
+export function parseRom(r: unknown): DeviceRom | null {
+  const o = (typeof r === "object" && r !== null ? r : {}) as Record<string, unknown>;
+  const name = text(o.name, 16);
+  if (!name) return null;
+  const rom: DeviceRom = { name, size: bytesOf(o.size), title: text(o.title, 160), year: text(o.year, 4), maker: text(o.maker), thumbs: parseThumbs(o.thumbs), check: parseCheck(o.check) };
+  if (o.own === true || o.kind === "glhd") {
+    if (o.own === true) rom.own = true;
+    else rom.kind = "glhd";
+    rom.description = text(o.description, 400);
+    rom.controls = parseRomControls(o.controls);
+  }
+  return rom;
+}
+
+/** The kind of a set (its check's verdict), as the device groups it. */
+export function romKind(r: DeviceRom): RomKind {
+  switch (r.check?.status) {
+    case undefined:
+      return "unchecked";
+    case "ok":
+      return "runs";
+    case "missing":
+    case "unsupported":
+    case "bios":
+      return r.check.status;
+    default:
+      return "broken";
+  }
+}
+
+/** The summary of a whole list (a device before 0.2.9 sends the list). */
+export function summarize(roms: DeviceRom[]): LibrarySummary {
+  const kinds = Object.fromEntries(ROM_KINDS.map((k) => [k, 0])) as Record<RomKind, number>;
+  roms.forEach((r) => (kinds[romKind(r)] += 1));
+  return {
+    revision: 0,
+    total: roms.length,
+    bytes: roms.reduce((a, r) => a + r.size, 0),
+    playable: roms.filter(romPlayable).length,
+    kinds,
+    biggest: [...roms].sort((a, b) => b.size - a.size).slice(0, 5).map((r) => ({ name: r.name, title: r.title, size: r.size })),
+    thumbs: {
+      boxart: roms.filter((r) => r.thumbs.boxart).length,
+      title: roms.filter((r) => r.thumbs.title).length,
+      snap: roms.filter((r) => r.thumbs.snap).length,
+    },
+  };
+}
+
+/** roms_query answered here, the device's way, over a whole list (a device before 0.2.9). */
+export function queryRomsLocally(
+  roms: DeviceRom[],
+  q: { q?: string; filter?: RomsFilter; sort?: RomsSort; offset?: number; limit?: number },
+): { total: number; roms: DeviceRom[] } {
+  const words = (q.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  const filter = q.filter ?? "all";
+  const title = (r: DeviceRom) => (r.title || r.name).toLowerCase();
+  const byTitle = (a: DeviceRom, b: DeviceRom) => (title(a) < title(b) ? -1 : title(a) > title(b) ? 1 : a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const year = (r: DeviceRom) => Number(r.year) || 0;
+  const sorts: Record<RomsSort, (a: DeviceRom, b: DeviceRom) => number> = {
+    name: byTitle,
+    size: (a, b) => b.size - a.size || byTitle(a, b),
+    year: (a, b) => year(b) - year(a) || byTitle(a, b),
+    status: (a, b) => ROM_KINDS.indexOf(romKind(a)) - ROM_KINDS.indexOf(romKind(b)) || byTitle(a, b),
+  };
+  const all = roms
+    .filter((r) => filter === "all" || (filter === "playable" ? romPlayable(r) : filter === "unplayable" ? !romPlayable(r) : romKind(r) === filter))
+    .filter((r) => {
+      const hay = `${r.name} ${r.title ?? ""} ${r.maker ?? ""}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
+    })
+    .sort(sorts[q.sort ?? "name"] ?? byTitle);
+  const offset = Math.max(q.offset ?? 0, 0);
+  return { total: all.length, roms: all.slice(offset, offset + (q.limit ?? ROMS_PAGE_MAX)) };
+}
+
+/** Sorts of roms_query: by title, the largest or newest first, or by state. */
+export type RomsSort = "name" | "size" | "year" | "status";
+/** Filters of roms_query: a state, or the sets a room can (not) be opened with. */
+export type RomsFilter = "all" | "playable" | "unplayable" | RomKind;
+
+/** The most sets one reply carries (the device's RomsPageMax). */
+export const ROMS_PAGE_MAX = 100;
+
+/** Asks the device for a page of its library: every word of q in the set's name, title or maker. */
+export function romsQuery(req: string, q: { q?: string; filter?: RomsFilter; sort?: RomsSort; offset?: number; limit?: number }) {
+  return { type: "roms_query", req, q: q.q ?? "", filter: q.filter ?? "all", sort: q.sort ?? "name", offset: q.offset ?? 0, limit: Math.min(q.limit ?? ROMS_PAGE_MAX, ROMS_PAGE_MAX) };
+}
+
+/** Asks the device for some sets by name (at most ROMS_PAGE_MAX); missing ones are left out. */
+export function romsGet(req: string, names: string[]) {
+  return { type: "roms_get", req, names: names.slice(0, ROMS_PAGE_MAX) };
+}
+
+export interface RomsPage {
+  req: string;
+  revision: number;
+  /** The sets that match (roms_query), or the sets found (roms_get). */
+  total: number;
+  offset: number;
+  roms: DeviceRom[];
+}
+
+/** The device's reply to roms_query or roms_get, or null for another message. */
+export function parseRomsPage(msg: unknown): RomsPage | null {
+  if (typeof msg !== "object" || msg === null) return null;
+  const m = msg as Record<string, unknown>;
+  if (m.type !== "roms_page" || typeof m.req !== "string") return null;
+  return {
+    req: m.req,
+    revision: count(m.revision),
+    total: count(m.total),
+    offset: count(m.offset),
+    roms: (Array.isArray(m.roms) ? m.roms : []).slice(0, ROMS_PAGE_MAX).flatMap((r) => parseRom(r) ?? []),
   };
 }
 

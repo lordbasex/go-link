@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { parseDeviceStatus } from "../src/device-status";
+import { parseRomsPage } from "../src/device-status";
 import { parseRomTestResult, testRomOnDevice, type RomTestLink } from "../src/rom-test";
 
 const passing = {
@@ -90,18 +90,15 @@ describe("testRomOnDevice", () => {
 
 describe("own sets in the library", () => {
   it("reads go-link's games with their controls", () => {
-    const s = parseDeviceStatus({
-      type: "device_status",
-      device_id: "d",
-      library: {
-        dir: "/roms",
-        roms: [
+    const s = parseRomsPage({
+      type: "roms_page",
+      req: "r",
+      roms: [
           { name: "slammast", size: 60000, title: "Willy", own: true, description: "Ours", controls: { players: 4, buttons: 3, labels: ["Jump", "Fire", "Special"] }, thumbs: { boxart: true } },
           { name: "robby", size: 1, title: "Robby Roto", controls: { players: 9 } },
-        ],
-      },
+      ],
     });
-    const [own, other] = s!.library!.roms;
+    const [own, other] = s!.roms;
     expect(own).toMatchObject({ own: true, description: "Ours", controls: { players: 4, buttons: 3, labels: ["Jump", "Fire", "Special"] } });
     expect(other!.own).toBeUndefined();
     expect(other!.controls).toBeUndefined();

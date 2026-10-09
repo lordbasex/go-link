@@ -44,13 +44,23 @@ function Art({ option }: { option: GameOption }) {
 export function GamePicker({
   options,
   value,
+  selectedOption,
   onChange,
   label,
+  remote,
 }: {
   options: GameOption[];
   value: string;
+  /** The chosen game when it may not be among options (a page of a big library). */
+  selectedOption?: GameOption;
   onChange: (id: string) => void;
   label: string;
+  /**
+   * The library is searched on the device: options are already the
+   * matches of what is typed (onQuery), total counts them all, and onMore
+   * asks for the next page when the list is scrolled to its end.
+   */
+  remote?: { total: number; loading: boolean; onQuery: (q: string) => void; onMore?: () => void };
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,19 +68,21 @@ export function GamePicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
-  const selected = options.find((o) => o.id === value);
+  const selected = selectedOption ?? options.find((o) => o.id === value);
 
   const q = query.trim().toLowerCase();
   const matches = useMemo(
     () =>
-      q
+      q && !remote
         ? options.filter(
             (o) => o.game.toLowerCase().includes(q) || o.id.includes(q) || o.detail.toLowerCase().includes(q),
           )
         : options,
-    [options, q],
+    [options, q, remote],
   );
-  const shown = matches.slice(0, MAX_SHOWN);
+  const shown = remote ? matches : matches.slice(0, MAX_SHOWN);
+  const onQuery = remote?.onQuery;
+  useEffect(() => onQuery?.(query), [onQuery, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -162,7 +174,17 @@ export function GamePicker({
               }}
             />
           </label>
-          <ul className="game-picker-list" role="listbox" id={listId} ref={listRef} aria-label={label}>
+          <ul
+            className="game-picker-list"
+            role="listbox"
+            id={listId}
+            ref={listRef}
+            aria-label={label}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              if (remote?.onMore && el.scrollTop + el.clientHeight > el.scrollHeight - 200) remote.onMore();
+            }}
+          >
             {shown.map((o, i) => (
               <li
                 key={o.id}
@@ -185,10 +207,16 @@ export function GamePicker({
                 </span>
               </li>
             ))}
-            {shown.length === 0 && <li className="game-picker-empty muted small-plus">{t.create.noGames}</li>}
+            {shown.length === 0 && !remote?.loading && <li className="game-picker-empty muted small-plus">{t.create.noGames}</li>}
           </ul>
           <div className="game-picker-foot small faint">
-            {matches.length > shown.length ? t.create.moreGames(shown.length, matches.length) : t.roms.showing(matches.length, options.length)}
+            {remote
+              ? remote.total > shown.length
+                ? t.create.moreGames(shown.length, remote.total)
+                : t.roms.showing(shown.length, remote.total)
+              : matches.length > shown.length
+                ? t.create.moreGames(shown.length, matches.length)
+                : t.roms.showing(matches.length, options.length)}
           </div>
         </div>
       )}

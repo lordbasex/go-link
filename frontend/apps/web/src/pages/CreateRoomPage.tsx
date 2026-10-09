@@ -12,6 +12,7 @@ import { GamepadIcon, LockIcon } from "../components/Icons";
 import { Chip, HeroTile, PageHero } from "../components/ui/PageHero";
 import { useThumbKind, useThumbnail } from "../components/device/useThumbnail";
 import { OwnBadge, ownControlsText } from "../components/device/OwnBadge";
+import { useRomPages, useRomsByName } from "../components/device/useLibrary";
 
 interface RomOption {
   id: string;
@@ -30,8 +31,14 @@ export function CreateRoomPage() {
     useSignal();
   const navigate = useNavigate();
   const library = linkedDevice.status?.library;
-  // The ROM library comes from the linked device over WebRTC.
-  const all: RomOption[] = demo
+  const summary = library?.summary;
+  // The ROM library stays on the linked device: the picker asks it for
+  // the playable sets that match what is typed, a page at a time.
+  const [pickerQuery, setPickerQuery] = useState("");
+  const playablePages = useRomPages({ q: pickerQuery, filter: "playable" }, { enabled: !demo && !!library });
+  const [showUnplayable, setShowUnplayable] = useState(false);
+  const unplayablePages = useRomPages({ filter: "unplayable" }, { page: 50, enabled: !demo && showUnplayable });
+  const roms: RomOption[] = demo
     ? DEMO_ROMS.map((r) => ({
         id: r.id,
         game: r.game,
@@ -39,20 +46,10 @@ export function CreateRoomPage() {
         playable: true,
         note: "",
       }))
-    : (library?.roms ?? []).map((r) => ({
-        rom: r,
-        id: r.name,
-        game: r.title || r.name,
-        detail:
-          [r.year, r.maker, ownControlsText(r)].filter(Boolean).join(" · ") ||
-          romFile(r),
-        playable: romPlayable(r),
-        note: romCheckText(r.check),
-      }));
-  // Only sets the device's check accepts can be chosen; the rest are
-  // listed apart with the reason, so the host knows what to fix.
-  const roms = all.filter((r) => r.playable);
-  const unplayable = all.filter((r) => !r.playable);
+    : (playablePages.roms ?? []).map(toOption);
+  const unplayable = (unplayablePages.roms ?? []).map(toOption);
+  const playableCount = demo ? roms.length : (summary?.playable ?? 0);
+  const unplayableCount = demo ? 0 : (summary?.total ?? 0) - playableCount;
   // "Play" in My device › ROMs opens this page with ?rom=<set>.
   const [params] = useSearchParams();
   const [romId, setRomId] = useState(
@@ -65,10 +62,17 @@ export function CreateRoomPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-  const selected = roms.find((r) => r.id === romId) ?? roms[0];
+  // The chosen set may be on no page loaded (a link from My device › ROMs).
+  const chosen = useRomsByName(demo || !romId ? [] : [romId]).get(romId);
+  const selected = demo ? (roms.find((r) => r.id === romId) ?? roms[0]) : chosen && romPlayable(chosen) ? toOption(chosen) : undefined;
+  const firstId = !pickerQuery ? roms[0]?.id : undefined;
   useEffect(() => {
-    if (!romId && roms[0]) setRomId(roms[0].id);
-  }, [romId, roms]);
+    if (!romId && firstId) setRomId(firstId);
+  }, [romId, firstId]);
+  // A set that is not in the folder (null) or cannot run: the first one instead.
+  useEffect(() => {
+    if (!demo && romId && chosen !== undefined && (chosen === null || !romPlayable(chosen))) setRomId("");
+  }, [demo, romId, chosen]);
   // Until the host types a name, the room is named after the game.
   const roomName = nameEdited ? name : (selected?.game ?? "");
 
@@ -118,7 +122,7 @@ export function CreateRoomPage() {
     });
   };
 
-  const ready = all.length;
+  const ready = demo ? roms.length : (summary?.total ?? 0);
   return (
     <div className="page">
       <div className="page-body dash-page create-page">
@@ -137,7 +141,7 @@ export function CreateRoomPage() {
                 <Chip tone="live" dot>
                   {t.create.libraryChip(ready)}
                 </Chip>
-                <Chip>{t.create.playableChip(roms.length)}</Chip>
+                <Chip>{t.create.playableChip(playableCount)}</Chip>
               </>
             ) : undefined
           }
@@ -207,13 +211,13 @@ export function CreateRoomPage() {
             <section className="card dash-card stack-md">
               <div className="dash-card-head">
                 <h2 className="card-title">{t.create.game}</h2>
-                {unplayable.length > 0 && (
+                {unplayableCount > 0 && (
                   <span className="small faint">
-                    {t.create.unplayableTitle(unplayable.length)}
+                    {t.create.unplayableTitle(unplayableCount)}
                   </span>
                 )}
               </div>
-              {roms.length === 0 && linked ? (
+              {playableCount === 0 && linked ? (
                 <p className="muted small-plus">
                   {t.create.libraryEmpty}{" "}
                   <Link to="/device/roms">{t.create.libraryEmptyLink}</Link>
@@ -222,12 +226,23 @@ export function CreateRoomPage() {
                 <GamePicker
                   options={roms}
                   value={selected?.id ?? ""}
+                  selectedOption={selected}
                   onChange={setRomId}
                   label={t.create.game}
+                  remote={
+                    demo
+                      ? undefined
+                      : {
+                          total: playablePages.total,
+                          loading: playablePages.roms === null,
+                          onQuery: setPickerQuery,
+                          onMore: playablePages.more ? playablePages.loadMore : undefined,
+                        }
+                  }
                 />
               )}
-              {unplayable.length > 0 && (
-                <details className="unplayable">
+              {unplayableCount > 0 && (
+                <details className="unplayable" onToggle={(e) => setShowUnplayable(e.currentTarget.open)}>
                   <summary className="small-plus muted">
                     {t.create.unplayableShow}
                   </summary>
@@ -240,6 +255,11 @@ export function CreateRoomPage() {
                       </li>
                     ))}
                   </ul>
+                  {unplayablePages.more && (
+                    <button type="button" className="button button-secondary button-small" onClick={unplayablePages.loadMore}>
+                      {t.common.showMore}
+                    </button>
+                  )}
                 </details>
               )}
             </section>
@@ -333,6 +353,17 @@ export function CreateRoomPage() {
       </div>
     </div>
   );
+}
+
+function toOption(r: DeviceRom): RomOption {
+  return {
+    rom: r,
+    id: r.name,
+    game: r.title || r.name,
+    detail: [r.year, r.maker, ownControlsText(r)].filter(Boolean).join(" · ") || romFile(r),
+    playable: romPlayable(r),
+    note: romCheckText(r.check),
+  };
 }
 
 /** The chosen game, big: its Boxart (the host's own), title and details. */

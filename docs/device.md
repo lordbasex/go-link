@@ -80,12 +80,16 @@ device reset --yes                       # factory reset (with the device stoppe
 
 Every subcommand accepts `--config PATH`. Settings changed from the CLI are saved in `device.json`; a running device picks them up on its next start.
 
+### The ROM library
+
+`LibraryService.Scan` reads the ROM folder (each zip's file list, checked against the core's game list by `pkg/romcheck`, plus its thumbnails); a full MAME 0.78 collection of about 5,000 sets takes a couple of seconds. Each scan builds an index in memory (`library_index.go`): the sets sorted four ways (title, size, year, state) and a lower-case search text per set. Browsers never get the whole list, which does not fit one WebRTC message: `device_status` carries `library.summary` (counts, size, the five biggest, a `revision` that changes with every scan), and the website asks for pages with `roms_query` (search, filter, sort, at most 100 sets) and for single sets with `roms_get` ([protocol](protocol.md)), each answered with one pass over the index. Sets imported from the website or the window are copied at once and scanned together, 750 ms after the last one (`scanSoon`), so dropping a hundred zips scans once. A control message that cannot be sent (for example one larger than the browser takes) is logged, at most once a minute (`control message not sent`).
+
 ### go-link's own sets
 
 go-link makes its own games (the [CPS-1 ROM](rom/README.md), and later Willy Maker's). The stock core only runs sets of its driver list, so they are laid out as one of them (`slammast`) and, by name, look like that original game. The device ships a list of them, `backend-device/pkg/ownsets/sets.json` (embedded), with the **SHA-256 and size of every file inside the zip**: never the zip's own hash, which changes with its entry timestamps on every build. `rom/tools/ownsets.mjs` writes it, and `rom/tools/build.mjs` runs it after every build, so the list always matches the last build.
 
 - A zip is a go-link set only when it has exactly the listed files, each with its size and SHA-256. A set that only matches by name (a real `slammast.zip`, or ours with one byte changed) stays the original game, as `romcheck` sees it. Hashes are kept per file path, size and modification time, so a rescan hashes nothing new.
-- The library (`device_status.library.roms`) then shows go-link's `title`, `year`, `maker` and `description`, `own: true` and `controls` (`players`, `buttons`, `labels`: Jump, Fire, Special), and the picture go-link ships with the set for every thumbnail kind (or none): never the host's thumbnails for that name, which are the original game's. Rooms of it carry `room_state.info.own` and `room_state.controls.labels`.
+- The library (the sets of `roms_page`) then shows go-link's `title`, `year`, `maker` and `description`, `own: true` and `controls` (`players`, `buttons`, `labels`: Jump, Fire, Special), and the picture go-link ships with the set for every thumbnail kind (or none): never the host's thumbnails for that name, which are the original game's. Rooms of it carry `room_state.info.own` and `room_state.controls.labels`.
 - `device roms check` marks it `[go-link set, verified]` (`"own": true` with `--json`).
 - Nothing is weakened: the list only renames, every set still goes through `romcheck`, and a go-link set runs exactly like any other.
 

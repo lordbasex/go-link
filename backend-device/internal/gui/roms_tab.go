@@ -289,6 +289,9 @@ func (t *romsTab) importFiles(uris []fyne.URI, progress func(i, n int, name stri
 		}
 		ok++
 	}
+	if ok > 0 {
+		t.u.opts.Library.ScanNow() // the window counts the new sets at once
+	}
 	return ok, failed
 }
 
