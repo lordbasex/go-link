@@ -4,10 +4,14 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
-### Added (device)
+### Added
 
-- **go-link HD packages of format 3:** the device lists and plays games with their own physics, sprites, painted layers, floor textures, screens (title, a level intro skipped by holding jump, ending), music and sounds (go-link HD 0.2.0's package format 3).
-- **go-link HD games speak the device's language:** their texts and dialogs show in the device's language (Settings › General, else the computer's), in English, Spanish or Portuguese; until now they were always in English.
+- **Roadmap** (`docs/status.md`): save states across the whole catalog (a batch `savecheck` and a source scan, fixes by impact) and FinalBurn Neo as a second core.
+
+### Changed (core patches)
+
+- **`cores/mame2003-plus/tools/savecheck`:** a small C program (any libretro core, no go-link needed) that plays a game twice with the same buttons, once without stopping and once loading a state into a fresh board, and counts the identical frames of picture and sound. It is the evidence for the core pull requests, and it was offered to libretro as a tool of its own (libretro/mame2003-plus-libretro#2047).
+- **More fixes are upstream** (libretro/mame2003-plus-libretro): the Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged on 2026-10-08; the Konami CPU (`0001`, The Simpsons and Aliens resume, #2046), the interrupt event queue (`0011`, #2048, the first with `savecheck` as evidence) and the sound latches, each CPU's local time and the mixer (`0008`, `0012`, `0013`, #2049) on 2026-10-09. `cores/mame2003-plus` builds on that commit and keeps six patches, all for single boards and chips: The Simpsons (#2050), Aliens and TMNT (#2051) and Galaga (#2052) went upstream with `savecheck` evidence; the K054539 (`0015`) waits until X-Men's other missing state is found.
 
 ## [0.2.8] - 2026-10-08
 
@@ -22,14 +26,11 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Added
 
-- **Roadmap** (`docs/status.md`): save states across the whole catalog (a batch `savecheck` and a source scan, fixes by impact) and FinalBurn Neo as a second core.
 - **A demo video** (`video/`, `npm run demo`): about three minutes in seven chapters (your arcade, linking the computer, opening a room, inviting friends, the phone as a console, Willy Maker and the network report) from takes of the real app, with the trailer's narrator, burned-in subtitles and a SubRip file. `docs/building.md` explains how the trailer and the demo are made.
 
 ### Changed (core patches)
 
-- **`cores/mame2003-plus/tools/savecheck`:** a small C program (any libretro core, no go-link needed) that plays a game twice with the same buttons, once without stopping and once loading a state into a fresh board, and counts the identical frames of picture and sound. It is the evidence for the core pull requests, and it was offered to libretro as a tool of its own (libretro/mame2003-plus-libretro#2047).
-
-- **More fixes are upstream** (libretro/mame2003-plus-libretro, merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). The Namco wave sound chip (`0009`, Pac-Man's sound after loading, #2044) and the YM3812 (`0010`, Snow Bros.' sound after loading, #2045) were merged too. The Konami CPU (`0001`, The Simpsons and Aliens resume, #2046) was merged on 2026-10-09. The interrupt event queue (`0011`, #2048, the first with `savecheck` as evidence) was merged the same day. The sound latches, each CPU's local time and the mixer (`0008`, `0012`, `0013`, #2049) were merged together the same day. `cores/mame2003-plus` builds on that commit and keeps six patches, all for single boards and chips: The Simpsons (#2050), Aliens and TMNT (#2051) and Galaga (#2052) went upstream with `savecheck` evidence; the K054539 (`0015`) waits until X-Men's other missing state is found.
+- **Two more fixes are upstream** (libretro/mame2003-plus-libretro, both merged 2026-10-08): the YM2151 timers (#2042) and the QSound games' sound after loading (`0002`, `0003`, `0005`, #2043). `cores/mame2003-plus` builds on that commit and keeps thirteen patches. The Namco wave sound chip (`0009`, Pac-Man's sound after loading) went upstream as #2044.
 
 ### Fixed (device)
 
