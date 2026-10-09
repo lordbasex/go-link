@@ -25,6 +25,7 @@ import (
 // one frame behind the encoder. The SPS and PPS ride with every keyframe,
 // one every two seconds, which is how a new viewer starts the picture.
 type H264 struct {
+	vt      *vtEncoder // VideoToolbox called directly (macOS), else ffmpeg below
 	cmd     *exec.Cmd
 	in      io.WriteCloser
 	done    chan struct{}
@@ -33,8 +34,9 @@ type H264 struct {
 	frameSz int
 }
 
-// H264Encoders are the encoders H264 can drive: "x264" (software) and
-// "videotoolbox" (the Mac's hardware).
+// H264Encoders are the encoders H264 can drive: "x264" (software, through
+// ffmpeg) and "videotoolbox" (the Mac's hardware: called directly on macOS,
+// no ffmpeg needed).
 var H264Encoders = []string{"x264", "videotoolbox"}
 
 // FFmpegPath finds ffmpeg: $FFMPEG, the PATH, then Homebrew's places (an
@@ -65,6 +67,17 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 	}
 	if cfg.BitrateKbps <= 0 {
 		cfg.BitrateKbps = 8000
+	}
+	if kind == "videotoolbox" && hasVT {
+		gop := cfg.FPS * 2
+		if cfg.GOPFrames > 0 {
+			gop = cfg.GOPFrames
+		}
+		vt, err := newVT(cfg, gop, onFrame)
+		if err != nil {
+			return nil, err
+		}
+		return &H264{vt: vt}, nil
 	}
 	path, err := FFmpegPath()
 	if err != nil {
@@ -110,6 +123,15 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 
 // Write hands one I420 frame to the encoder; it blocks while ffmpeg is busy.
 func (e *H264) Write(i420 []byte) error {
+	return e.WriteKey(i420, false)
+}
+
+// WriteKey is Write, with key asking for a keyframe now (a viewer just
+// joined); ffmpeg only makes them on its own schedule (every GOPFrames).
+func (e *H264) WriteKey(i420 []byte, key bool) error {
+	if e.vt != nil {
+		return e.vt.write(i420, key)
+	}
 	if len(i420) < e.frameSz {
 		return fmt.Errorf("h264: frame is %d bytes, want %d", len(i420), e.frameSz)
 	}
@@ -124,6 +146,10 @@ func (e *H264) Write(i420 []byte) error {
 
 // Close stops ffmpeg and waits for the last frame.
 func (e *H264) Close() {
+	if e.vt != nil {
+		e.vt.close()
+		return
+	}
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()

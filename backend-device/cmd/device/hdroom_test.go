@@ -19,11 +19,13 @@ func TestHDRoomVideo(t *testing.T) {
 		fails             bool
 	}{
 		{"auto", "x264", "darwin", 0, 3, found, "videotoolbox", 8000, false},
-		{"auto", "x264", "darwin", 0, 2, missing, "", 4000, false},
+		{"auto", "x264", "darwin", 0, 2, missing, "videotoolbox", 4000, false}, // no ffmpeg needed
+		{"h264", "videotoolbox", "linux", 0, 3, found, "", 0, true},
 		{"auto", "x264", "linux", 0, 2, found, "", 4000, false},
 		{"vp8", "x264", "darwin", 6000, 3, found, "", 6000, false},
 		{"h264", "x264", "linux", 0, 3, found, "x264", 8000, false},
-		{"h264", "videotoolbox", "darwin", 0, 3, missing, "", 0, true},
+		{"h264", "videotoolbox", "darwin", 0, 3, missing, "videotoolbox", 8000, false},
+		{"h264", "x264", "darwin", 0, 3, missing, "", 0, true},
 		{"h264", "nvenc", "linux", 0, 3, found, "", 0, true},
 		{"av1", "x264", "darwin", 0, 3, found, "", 0, true},
 	} {

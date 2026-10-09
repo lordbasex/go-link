@@ -325,7 +325,7 @@ func (s *StreamService) tierEncode(t *videoTier, level int, i420 []byte, w, h, k
 		if level == 0 {
 			s.recordH264(t, cfg, i420)
 		}
-		if err := t.h264.Write(i420); err != nil {
+		if err := t.h264.WriteKey(i420, t.keyframe.Swap(false)); err != nil {
 			s.log.Error("encode failed", "tier", level, "err", err)
 			t.close()
 		}
