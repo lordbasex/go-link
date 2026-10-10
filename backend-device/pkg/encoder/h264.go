@@ -17,7 +17,8 @@ import (
 // H264 encodes I420 frames to H.264 with ffmpeg running as its own process
 // (go-link HD, docs/experiments/hd-streaming.md): x264 in software, the
 // fastest way to 4K on Apple Silicon, or the computer's hardware encoder
-// (VideoToolbox on a Mac). ffmpeg stays a separate program the device talks
+// (VideoToolbox on a Mac, Media Foundation on Windows, both called
+// directly, without ffmpeg). ffmpeg stays a separate program the device talks
 // to through pipes, never linked into it, so go-link keeps its own license
 // whatever ffmpeg was built with. Frames go in with Write; each access unit
 // (one frame, Annex B, with an access unit delimiter in front) comes back to
@@ -25,7 +26,8 @@ import (
 // one frame behind the encoder. The SPS and PPS ride with every keyframe,
 // one every two seconds, which is how a new viewer starts the picture.
 type H264 struct {
-	vt      *vtEncoder // VideoToolbox called directly (macOS), else ffmpeg below
+	vt      *vtEncoder // VideoToolbox called directly (macOS)
+	mf      *mfEncoder // Media Foundation called directly (Windows); with neither, ffmpeg below
 	cmd     *exec.Cmd
 	in      io.WriteCloser
 	done    chan struct{}
@@ -35,9 +37,10 @@ type H264 struct {
 }
 
 // H264Encoders are the encoders H264 can drive: "x264" (software, through
-// ffmpeg) and "videotoolbox" (the Mac's hardware: called directly on macOS,
-// no ffmpeg needed).
-var H264Encoders = []string{"x264", "videotoolbox"}
+// ffmpeg), "videotoolbox" (the Mac's hardware: called directly on macOS, no
+// ffmpeg needed) and "mediafoundation" (Windows' encoders, called directly:
+// the graphics card's when there is one, else Windows' software encoder).
+var H264Encoders = []string{"x264", "videotoolbox", "mediafoundation"}
 
 // FFmpegPath finds ffmpeg: $FFMPEG, the PATH, then Homebrew's places (an
 // app opened from the Finder has a short PATH).
@@ -79,6 +82,24 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 		}
 		return &H264{vt: vt}, nil
 	}
+	if kind == "mediafoundation" && !hasMF {
+		return nil, errors.New("h264: mediafoundation is only on Windows")
+	}
+	if kind == "mediafoundation" {
+		gop := cfg.FPS * 2
+		if cfg.GOPFrames > 0 {
+			gop = cfg.GOPFrames
+		}
+		mf, err := newMF(cfg, gop, true, onFrame)
+		if err != nil {
+			// no graphics card encoder takes it: Windows' own software encoder
+			mf, err = newMF(cfg, gop, false, onFrame)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return &H264{mf: mf}, nil
+	}
 	path, err := FFmpegPath()
 	if err != nil {
 		return nil, err
@@ -95,7 +116,7 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 	case "videotoolbox":
 		codec = []string{"-c:v", "h264_videotoolbox", "-realtime", "1", "-prio_speed", "1", "-profile:v", "baseline", "-bsf:v", "h264_metadata=aud=insert,dump_extra=freq=keyframe"}
 	default:
-		return nil, fmt.Errorf("h264: unknown encoder %q (x264 or videotoolbox)", kind)
+		return nil, fmt.Errorf("h264: unknown encoder %q (x264, videotoolbox or mediafoundation)", kind)
 	}
 	args := []string{"-hide_banner", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "yuv420p", "-s", fmt.Sprintf("%dx%d", cfg.Width, cfg.Height), "-r", strconv.Itoa(cfg.FPS), "-i", "pipe:0"}
 	args = append(args, codec...)
@@ -132,6 +153,9 @@ func (e *H264) WriteKey(i420 []byte, key bool) error {
 	if e.vt != nil {
 		return e.vt.write(i420, key)
 	}
+	if e.mf != nil {
+		return e.mf.write(i420, key)
+	}
 	if len(i420) < e.frameSz {
 		return fmt.Errorf("h264: frame is %d bytes, want %d", len(i420), e.frameSz)
 	}
@@ -144,10 +168,29 @@ func (e *H264) WriteKey(i420 []byte, key bool) error {
 	return err
 }
 
+// Encoder names the encoder in use: Media Foundation's (its graphics card
+// encoder, or Windows' software one), else the kind it was asked for.
+func (e *H264) Encoder() string {
+	if e.mf != nil {
+		if e.mf.hardware {
+			return "mediafoundation (" + e.mf.name + ")"
+		}
+		return "mediafoundation (software: " + e.mf.name + ")"
+	}
+	if e.vt != nil {
+		return "videotoolbox"
+	}
+	return "ffmpeg"
+}
+
 // Close stops ffmpeg and waits for the last frame.
 func (e *H264) Close() {
 	if e.vt != nil {
 		e.vt.close()
+		return
+	}
+	if e.mf != nil {
+		e.mf.close()
 		return
 	}
 	e.mu.Lock()

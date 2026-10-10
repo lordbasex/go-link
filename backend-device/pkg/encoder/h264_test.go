@@ -29,11 +29,15 @@ func TestSplitAccessUnitsCutsAtEachDelimiter(t *testing.T) {
 }
 
 func TestH264EncodesFramesThroughFFmpeg(t *testing.T) {
-	if _, err := FFmpegPath(); err != nil {
-		t.Skip(err)
-	}
+	_, noFFmpeg := FFmpegPath()
 	for _, kind := range H264Encoders {
 		t.Run(kind, func(t *testing.T) {
+			switch {
+			case kind == "mediafoundation" && !hasMF, kind == "videotoolbox" && !hasVT && noFFmpeg != nil:
+				t.Skip("not on this system")
+			case kind == "x264" && noFFmpeg != nil:
+				t.Skip(noFFmpeg)
+			}
 			var mu sync.Mutex
 			var frames [][]byte
 			e, err := NewH264(Config{Width: 640, Height: 360, FPS: 60, BitrateKbps: 1000}, kind, func(au []byte) {

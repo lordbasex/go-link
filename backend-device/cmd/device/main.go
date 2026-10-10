@@ -72,14 +72,14 @@ func run() error {
 		testHD     = flag.String("test-room-hd", "", "go-link HD's experiment (T-31): the test room streams an HD scene (720p, 1080p, 2160p, or auto: the best this computer streams at 60 fps, checked) made of --hd-far and --hd-play")
 		hdCore     = flag.String("hd-core", "", "go-link HD's engine library (default: the one shipped with the device, else libgolinkhd in the cores folder): game rooms of .glhd packages run it; with --test-room-hd 720p, 1080p or 2160p the test room plays its built-in demo (its 640x360 screen enlarged x2, x3 or x6)")
 		hdRoomSize = flag.String("hd-room-size", "720p", "go-link HD game rooms' picture: 720p (x2) or 1080p (x3)")
-		hdRoomCdc  = flag.String("hd-room-codec", "auto", "go-link HD game rooms' codec: vp8, h264 (--hd-h264's encoder) or auto (the Mac's hardware H.264 through VideoToolbox, vp8 elsewhere)")
+		hdRoomCdc  = flag.String("hd-room-codec", "auto", "go-link HD game rooms' codec: vp8, h264 (--hd-h264's encoder) or auto (hardware H.264: the Mac's through VideoToolbox, the graphics card's through Media Foundation on Windows; vp8 elsewhere)")
 		hdRoomKbps = flag.Int("hd-room-kbps", 0, "go-link HD game rooms' bitrate at high quality (default by size: 4000 at 720p, 8000 at 1080p)")
 		hdFar      = flag.String("hd-far", "", "the HD scene's far picture (with --test-room-hd)")
 		hdPlay     = flag.String("hd-play", "", "the HD scene's play picture, #FF00FF transparent (with --test-room-hd)")
 		hdKbps     = flag.Int("hd-kbps", 0, "the HD scene's VP8 bitrate (default by size: 4000, 8000, 25000)")
 		hdThreads  = flag.Int("hd-threads", 8, "libvpx threads for the HD scene")
 		hdCodec    = flag.String("hd-codec", "vp8", "the HD scene's codec: vp8, or h264 made by ffmpeg (needs ffmpeg installed)")
-		hdH264     = flag.String("hd-h264", "x264", "with --hd-codec h264: x264 (software) or videotoolbox (the Mac's hardware)")
+		hdH264     = flag.String("hd-h264", "x264", "the H.264 encoder (--hd-codec h264, --hd-room-codec h264): x264 (software, through ffmpeg), videotoolbox (the Mac's hardware) or mediafoundation (Windows: the graphics card's encoder, else Windows' software one)")
 		game       = flag.String("game", "", "ROM set to play in the room, e.g. robby (from the ROM folder); empty streams the test pattern")
 		udpPort    = flag.Int("udp-port", 0, "carry every WebRTC connection on this UDP port, to forward it on a router (default: udp_port in device.json, else random ports)")
 		announce   = flag.String("announce", "", "comma-separated addresses where browsers reach --udp-port through a forwarding router (default: announce_ips in device.json)")
@@ -180,7 +180,7 @@ func run() error {
 	default:
 		return fmt.Errorf("--hd-room-size: %q is not 720p or 1080p", *hdRoomSize)
 	}
-	roomH264, roomKbps, err := hdRoomVideo(*hdRoomCdc, *hdH264, *hdRoomKbps, hdRoomScale, runtime.GOOS, encoder.FFmpegPath)
+	roomH264, roomKbps, err := hdRoomVideo(*hdRoomCdc, *hdH264, *hdRoomKbps, hdRoomScale, runtime.GOOS, encoder.FFmpegPath, encoder.MFHardware)
 	if err != nil {
 		return err
 	}
