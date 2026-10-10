@@ -119,6 +119,7 @@ type PinGate struct {
 	group       *groupPass       // the room's group invitation, if any
 	groupTokens []string         // return tokens of people it let in
 	knocks      map[string]knock // peer -> waiting for the host
+	declined    map[string]bool  // peers the host said no to, this session
 }
 
 type groupPass struct {
@@ -139,7 +140,7 @@ func NewPinGate(now func() time.Time) *PinGate {
 	if now == nil {
 		now = time.Now
 	}
-	return &PinGate{now: now, tries: map[string]int{}, owner: newToken(), knocks: map[string]knock{}}
+	return &PinGate{now: now, tries: map[string]int{}, owner: newToken(), knocks: map[string]knock{}, declined: map[string]bool{}}
 }
 
 // SetPrivate makes guests need an invitation's PIN (or a token).
@@ -207,17 +208,20 @@ func (g *PinGate) Check(peer, pin, token string) PinResult {
 	if token != "" {
 		if equal(token, g.owner) {
 			delete(g.tries, peer)
+			delete(g.knocks, peer)
 			return PinResult{OK: true, Owner: true}
 		}
 		for _, p := range g.passes {
 			if p.token != "" && equal(token, p.token) {
 				delete(g.tries, peer)
+				delete(g.knocks, peer)
 				return PinResult{OK: true, Token: p.token}
 			}
 		}
 		for _, tk := range g.groupTokens {
 			if equal(token, tk) {
 				delete(g.tries, peer)
+				delete(g.knocks, peer)
 				return PinResult{OK: true, Token: tk}
 			}
 		}
@@ -240,6 +244,7 @@ func (g *PinGate) Check(peer, pin, token string) PinResult {
 		}
 		p.token = newToken()
 		delete(g.tries, peer)
+		delete(g.knocks, peer)
 		return PinResult{OK: true, Token: p.token}
 	}
 	return g.fail(peer, now, "wrong")
@@ -341,7 +346,9 @@ func (g *PinGate) groupInfo() models.GroupInvite {
 
 // CheckKey answers a guest that came with the group invitation's key. With
 // the host's approval on, the guest waits (Reason "waiting") until Answer.
-// A wrong key counts as a wrong PIN.
+// The right key is checked before the room's lock, like a guest's token: a
+// PIN guesser can lock the PIN path, never the people the host invited. A
+// wrong key counts as a wrong PIN. Someone the host said no to stays out.
 func (g *PinGate) CheckKey(peer, key, name string) PinResult {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -349,15 +356,18 @@ func (g *PinGate) CheckKey(peer, key, name string) PinResult {
 	if !g.private {
 		return PinResult{OK: true}
 	}
-	if now.Before(g.lockedUntil) {
-		return PinResult{Reason: "locked", RetryAfter: int(g.lockedUntil.Sub(now).Seconds()) + 1}
-	}
-	if g.tries[peer] >= pinTriesPerPeer {
-		return PinResult{Reason: "blocked"}
-	}
 	gp := g.group
 	if gp == nil || !equal(key, gp.key) {
+		if now.Before(g.lockedUntil) {
+			return PinResult{Reason: "locked", RetryAfter: int(g.lockedUntil.Sub(now).Seconds()) + 1}
+		}
+		if g.tries[peer] >= pinTriesPerPeer {
+			return PinResult{Reason: "blocked"}
+		}
 		return g.fail(peer, now, "wrong")
+	}
+	if g.declined[peer] {
+		return PinResult{Reason: "declined"}
 	}
 	if !now.Before(gp.expires) {
 		return PinResult{Reason: "expired"}
@@ -367,13 +377,25 @@ func (g *PinGate) CheckKey(peer, key, name string) PinResult {
 	}
 	delete(g.tries, peer)
 	if !gp.approval {
+		delete(g.knocks, peer)
 		return g.letInByGroup()
 	}
-	if _, ok := g.knocks[peer]; !ok && len(g.knocks) >= maxKnocks {
+	if _, ok := g.knocks[peer]; ok {
+		return PinResult{Reason: "waiting"} // asked again: still waiting, same place in line
+	}
+	if len(g.knocks) >= maxKnocks {
 		return PinResult{Reason: "busy"}
 	}
 	g.knocks[peer] = knock{name: cleanName(name), since: now}
 	return PinResult{Reason: "waiting"}
+}
+
+// Knocking reports whether a guest is already waiting for the host.
+func (g *PinGate) Knocking(peer string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	_, ok := g.knocks[peer]
+	return ok
 }
 
 // Answer is the host's answer to someone waiting: let in (with a token) or
@@ -386,6 +408,10 @@ func (g *PinGate) Answer(peer string, accept bool) (res PinResult, ok bool) {
 	}
 	delete(g.knocks, peer)
 	if !accept {
+		g.declined[peer] = true // no knocking again with the same connection
+		if len(g.declined) > 1000 {
+			g.declined = map[string]bool{peer: true}
+		}
 		return PinResult{Reason: "declined"}, true
 	}
 	gp := g.group
@@ -411,7 +437,9 @@ func (g *PinGate) letInByGroup() PinResult {
 // cleanName keeps a guest's name short and printable, for the host's list.
 func cleanName(s string) string {
 	s = strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+		// control and format characters (bidi overrides, zero width)
+		// could make one name look like another in the host's list
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) || r == '\u2028' || r == '\u2029' {
 			return -1
 		}
 		return r

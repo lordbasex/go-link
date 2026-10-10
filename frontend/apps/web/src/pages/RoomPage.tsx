@@ -826,7 +826,14 @@ export function RoomPage() {
   // A group invitation's link carries its key after # (never sent to a
   // server): it lets several people in, each one OK'd by the host when the
   // host asked for that. The guest knocks with a name the host recognises.
-  const groupKey = routeInvite ? groupKeyOf(location.hash) : "";
+  // Read once and kept in memory: the address bar (screenshots, shared
+  // screens, the history) no longer shows it once the page has it.
+  const [groupKey] = useState(() => (routeInvite ? groupKeyOf(location.hash) : ""));
+  useEffect(() => {
+    if (groupKey && groupKeyOf(window.location.hash)) {
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    }
+  }, [groupKey]);
   const credentials = useMemo(() => {
     const list: { token?: string; pin?: string; key?: string; stored?: boolean }[] = [];
     if (inviteRoom?.ownerKey) list.push({ token: inviteRoom.ownerKey });

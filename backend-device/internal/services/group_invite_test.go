@@ -4,6 +4,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"slices"
@@ -158,5 +159,87 @@ func TestTheHostLetsAGroupGuestIntoTheRoom(t *testing.T) {
 	}
 	if g, _ := room.Admission(); g.Used != 1 || changes < 3 {
 		t.Fatalf("used %d, %d changes", g.Used, changes)
+	}
+}
+
+// From the security review: what a PIN guesser or a pushy guest cannot do.
+func TestGroupInvitationHoldsUpToAbuse(t *testing.T) {
+	now := time.Date(2026, 10, 10, 20, 0, 0, 0, time.UTC)
+	g := NewPinGate(func() time.Time { return now })
+	g.SetPrivate(true)
+	gi, _ := g.IssueGroup(10, time.Hour, true)
+	pass := g.Issue()
+
+	// 20 wrong PINs lock the room's PIN path, but not the invited group.
+	for i := range pinRoomFails {
+		g.Check(fmt.Sprintf("x%d", i), wrongPin(pass.Pin), "")
+	}
+	if r := g.Check("y", pass.Pin, ""); r.Reason != "locked" {
+		t.Fatalf("the PIN path is locked: %+v", r)
+	}
+	if r := g.CheckKey("A", gi.Key, "Ana"); r.Reason != "waiting" {
+		t.Fatalf("a group guest during a lock: %+v", r)
+	}
+	if r := g.CheckKey("B", "wrong-key", "Bob"); r.Reason != "locked" {
+		t.Fatalf("a wrong key during a lock: %+v", r)
+	}
+
+	// Asking again keeps the same place in line.
+	_, k1 := g.Group()
+	now = now.Add(time.Minute)
+	g.CheckKey("A", gi.Key, "Ana again")
+	if _, k2 := g.Group(); len(k2) != 1 || !k2[0].Since.Equal(k1[0].Since) || k2[0].Name != "Ana" {
+		t.Fatalf("knock again %+v", k2)
+	}
+
+	// Not now means not again, from the same connection.
+	g.Answer("A", false)
+	if r := g.CheckKey("A", gi.Key, "Ana"); r.Reason != "declined" {
+		t.Fatalf("knock after no: %+v", r)
+	}
+	if _, k := g.Group(); k != nil {
+		t.Fatal("a declined guest is back in the list")
+	}
+
+	// Someone waiting who gets in another way stops waiting: the host can
+	// no longer spend a place on them.
+	g.CheckKey("C", gi.Key, "Cid")
+	p2 := g.Issue()
+	now = now.Add(pinLock) // the PIN path opens again
+	if r := g.Check("C", p2.Pin, ""); !r.OK {
+		t.Fatalf("PIN %+v", r)
+	}
+	if _, ok := g.Answer("C", true); ok {
+		t.Fatal("a guest already in was still waiting")
+	}
+	if got, _ := g.Group(); got.Used != 0 {
+		t.Fatalf("a place was spent: %+v", got)
+	}
+
+	// Names lose invisible and direction characters.
+	if got := cleanName("A‮nna​"); got != "Anna" {
+		t.Fatalf("name %q", got)
+	}
+}
+
+func TestTheHostCannotLetInSomeoneWhoLeft(t *testing.T) {
+	room := NewTestRoomService(nil, &fakeViewers{}, "mac", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	sender := newFakeSender()
+	room.SetSender(sender)
+	room.SetPrivate()
+	room.OnConnect(signalclient.Envelope{PeerID: "A"})
+	<-sender.ch
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypeRoomOpened, RoomID: "R"})
+	gi := room.IssueGroup(3, time.Hour, true)
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypePeerJoined, Remote: "G", RoomID: "R"})
+	<-sender.ch
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypeSignal, From: "G", Payload: json.RawMessage(`{"kind":"pin","key":"` + gi.Key + `","name":"Gus"}`)})
+	<-sender.ch
+	room.OnMessage(signalclient.Envelope{Type: signalclient.TypePeerLeft, From: "G", RoomID: "R"})
+	if err := room.Answer("G", true); err != ErrNotWaiting {
+		t.Fatalf("answer after leaving: %v", err)
+	}
+	if g, knocks := room.Admission(); g.Used != 0 || knocks != nil {
+		t.Fatalf("after leaving %+v %+v", g, knocks)
 	}
 }

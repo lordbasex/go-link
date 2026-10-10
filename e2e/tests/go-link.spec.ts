@@ -278,6 +278,8 @@ test("a group invitation lets several people in with one QR code, each one let i
     await form.getByRole("checkbox", { name: /I have read and accept/ }).check();
     await form.getByRole("button", { name: "Ask to come in" }).click();
     await expect(p.getByText("Waiting for the host")).toBeVisible();
+    // The key left the address bar once the page read it.
+    expect(p.url()).not.toContain("#k=");
     await shot(p, `3-guest-${name}-waiting`);
     return { context, page: p };
   };

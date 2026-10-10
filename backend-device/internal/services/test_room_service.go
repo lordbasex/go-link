@@ -116,8 +116,17 @@ func (t *TestRoomService) tellWaiting(peers []string, reason string) {
 	}
 }
 
-// Answer is the host letting someone waiting in, or not.
+// Answer is the host letting someone waiting in, or not. Someone who left
+// or already got in another way is not waiting.
 func (t *TestRoomService) Answer(peer string, accept bool) error {
+	t.mu.Lock()
+	pending := t.pending[peer]
+	t.mu.Unlock()
+	if !pending {
+		t.pin.Forget(peer)
+		t.admissionChanged()
+		return ErrNotWaiting
+	}
 	res, ok := t.pin.Answer(peer, accept)
 	if !ok {
 		return ErrNotWaiting
@@ -213,6 +222,7 @@ func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 		return
 	}
 	var res PinResult
+	wasWaiting := t.pin.Knocking(peer)
 	if msg.Key != "" && msg.Token == "" {
 		res = t.pin.CheckKey(peer, msg.Key, msg.Name)
 	} else {
@@ -227,14 +237,16 @@ func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 			t.markOwner(peer)
 		}
 		t.admit(peer)
-		if msg.Key != "" {
-			t.admissionChanged() // one more place used
+		if msg.Key != "" || wasWaiting {
+			t.admissionChanged() // one more place used, or one less waiting
 		}
 		return
 	}
 	if res.Reason == "waiting" {
-		t.log.Info("guest waits for the host", "peer_id", peer)
-		t.admissionChanged()
+		if !wasWaiting { // asking again changes nothing for the host
+			t.log.Info("guest waits for the host", "peer_id", peer)
+			t.admissionChanged()
+		}
 		return
 	}
 	t.log.Warn("wrong room PIN", "peer_id", peer, "reason", res.Reason)
