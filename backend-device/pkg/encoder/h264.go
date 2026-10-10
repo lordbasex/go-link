@@ -38,9 +38,26 @@ type H264 struct {
 
 // H264Encoders are the encoders H264 can drive: "x264" (software, through
 // ffmpeg), "videotoolbox" (the Mac's hardware: called directly on macOS, no
-// ffmpeg needed) and "mediafoundation" (Windows' encoders, called directly:
-// the graphics card's when there is one, else Windows' software encoder).
-var H264Encoders = []string{"x264", "videotoolbox", "mediafoundation"}
+// ffmpeg needed), "mediafoundation" (Windows' encoders, called directly:
+// the graphics card's when there is one, else Windows' software encoder),
+// and on Linux, through ffmpeg, "nvenc" (an NVIDIA card's) and "vaapi"
+// (Intel's and AMD's, through /dev/dri).
+var H264Encoders = []string{"x264", "videotoolbox", "mediafoundation", "nvenc", "vaapi"}
+
+// VAAPIDevice is the render node ffmpeg's VAAPI encoder opens: $VAAPI_DEVICE,
+// else the first /dev/dri/renderD* there is.
+func VAAPIDevice() string {
+	if d := os.Getenv("VAAPI_DEVICE"); d != "" {
+		return d
+	}
+	for n := 128; n < 136; n++ {
+		d := "/dev/dri/renderD" + strconv.Itoa(n)
+		if _, err := os.Stat(d); err == nil {
+			return d
+		}
+	}
+	return ""
+}
 
 // FFmpegPath finds ffmpeg: $FFMPEG, the PATH, then Homebrew's places (an
 // app opened from the Finder has a short PATH).
@@ -62,6 +79,11 @@ func FFmpegPath() (string, error) {
 // NewH264 starts ffmpeg with encoder kind ("x264" or "videotoolbox").
 // onFrame gets each encoded frame; it runs on the reader goroutine.
 func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
+	return newH264(cfg, kind, onFrame, os.Stderr)
+}
+
+// newH264 is NewH264 with ffmpeg's messages going to stderr (nil drops them).
+func newH264(cfg Config, kind string, onFrame func([]byte), stderr io.Writer) (*H264, error) {
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width%2 != 0 || cfg.Height%2 != 0 {
 		return nil, fmt.Errorf("h264: bad size %dx%d", cfg.Width, cfg.Height)
 	}
@@ -109,16 +131,28 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 	if cfg.GOPFrames > 0 {
 		gop = strconv.Itoa(cfg.GOPFrames)
 	}
-	var codec []string
+	var codec, pre []string
 	switch kind {
 	case "x264":
 		codec = []string{"-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-profile:v", "baseline", "-x264-params", "aud=1:repeat-headers=1"}
 	case "videotoolbox":
 		codec = []string{"-c:v", "h264_videotoolbox", "-realtime", "1", "-prio_speed", "1", "-profile:v", "baseline", "-bsf:v", "h264_metadata=aud=insert,dump_extra=freq=keyframe"}
+	case "nvenc":
+		// the fastest preset, ultra low latency, constant bitrate, no B-frames
+		codec = []string{"-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull", "-zerolatency", "1", "-rc", "cbr", "-profile:v", "baseline", "-bf", "0", "-bsf:v", "h264_metadata=aud=insert,dump_extra=freq=keyframe"}
+	case "vaapi":
+		dev := VAAPIDevice()
+		if dev == "" {
+			return nil, errors.New("h264: vaapi: no /dev/dri/renderD* (in Docker: --device /dev/dri)")
+		}
+		// the frames go up to the card as NV12; one frame in flight at a time
+		pre = []string{"-vaapi_device", dev}
+		codec = []string{"-vf", "format=nv12,hwupload", "-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-rc_mode", "CBR", "-bf", "0", "-async_depth", "1", "-bsf:v", "h264_metadata=aud=insert,dump_extra=freq=keyframe"}
 	default:
-		return nil, fmt.Errorf("h264: unknown encoder %q (x264, videotoolbox or mediafoundation)", kind)
+		return nil, fmt.Errorf("h264: unknown encoder %q (x264, videotoolbox, mediafoundation, nvenc or vaapi)", kind)
 	}
-	args := []string{"-hide_banner", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "yuv420p", "-s", fmt.Sprintf("%dx%d", cfg.Width, cfg.Height), "-r", strconv.Itoa(cfg.FPS), "-i", "pipe:0"}
+	args := append([]string{"-hide_banner", "-loglevel", "error"}, pre...)
+	args = append(args, "-f", "rawvideo", "-pix_fmt", "yuv420p", "-s", fmt.Sprintf("%dx%d", cfg.Width, cfg.Height), "-r", strconv.Itoa(cfg.FPS), "-i", "pipe:0")
 	args = append(args, codec...)
 	args = append(args, "-b:v", rate, "-maxrate", rate, "-bufsize", strconv.Itoa(cfg.BitrateKbps/2)+"k", "-g", gop, "-f", "h264", "-flush_packets", "1", "pipe:1")
 	cmd := exec.Command(path, args...)
@@ -130,7 +164,7 @@ func NewH264(cfg Config, kind string, onFrame func([]byte)) (*H264, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("h264: ffmpeg: %w", err)
 	}
@@ -253,6 +287,8 @@ type H264Support struct {
 	FFmpeg       string `json:"ffmpeg,omitempty"`
 	X264         bool   `json:"x264"`
 	VideoToolbox bool   `json:"videotoolbox"`
+	NVENC        bool   `json:"nvenc"`
+	VAAPI        bool   `json:"vaapi"`
 }
 
 // ProbeH264 asks ffmpeg for its encoders.
@@ -266,5 +302,64 @@ func ProbeH264() H264Support {
 		return H264Support{FFmpeg: path}
 	}
 	s := string(out)
-	return H264Support{FFmpeg: path, X264: strings.Contains(s, " libx264 "), VideoToolbox: strings.Contains(s, " h264_videotoolbox ")}
+	return H264Support{FFmpeg: path, X264: strings.Contains(s, " libx264 "), VideoToolbox: strings.Contains(s, " h264_videotoolbox "),
+		NVENC: strings.Contains(s, " h264_nvenc "), VAAPI: strings.Contains(s, " h264_vaapi ")}
+}
+
+// TryH264 encodes a short clip with the encoder kind and says whether it
+// works: ffmpeg lists NVENC and VAAPI whether or not there is a card (or
+// the container was given it), so only a real encode tells.
+func TryH264(kind string) error {
+	var mu sync.Mutex
+	n := 0
+	// quiet: an encoder that is not there is not an error (ffmpeg's messages dropped)
+	e, err := newH264(Config{Width: 640, Height: 360, FPS: 30, BitrateKbps: 1000}, kind, func([]byte) {
+		mu.Lock()
+		n++
+		mu.Unlock()
+	}, nil)
+	if err != nil {
+		return err
+	}
+	frame := make([]byte, 640*360*3/2)
+	for i := 0; i < 10; i++ {
+		for k := range frame[:640*360] {
+			frame[k] = byte(k + i*7)
+		}
+		if err := e.Write(frame); err != nil {
+			e.Close()
+			return err
+		}
+	}
+	e.Close()
+	mu.Lock()
+	defer mu.Unlock()
+	if n < 5 {
+		return fmt.Errorf("h264: %s gave %d frames for 10", kind, n)
+	}
+	return nil
+}
+
+// HardwareH264 is the computer's hardware H.264 encoder that works, "" when
+// there is none: VideoToolbox on macOS; on Windows the graphics card's,
+// through Media Foundation; on Linux NVENC, else VAAPI, through ffmpeg,
+// each tried with a short clip.
+func HardwareH264(goos string) string {
+	switch goos {
+	case "darwin":
+		return "videotoolbox"
+	case "windows":
+		if MFHardware() != "" {
+			return "mediafoundation"
+		}
+	case "linux":
+		s := ProbeH264()
+		if s.NVENC && TryH264("nvenc") == nil {
+			return "nvenc"
+		}
+		if s.VAAPI && VAAPIDevice() != "" && TryH264("vaapi") == nil {
+			return "vaapi"
+		}
+	}
+	return ""
 }

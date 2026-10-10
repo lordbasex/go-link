@@ -37,6 +37,11 @@ func TestH264EncodesFramesThroughFFmpeg(t *testing.T) {
 				t.Skip("not on this system")
 			case kind == "x264" && noFFmpeg != nil:
 				t.Skip(noFFmpeg)
+			case kind == "nvenc" || kind == "vaapi":
+				// a graphics card through ffmpeg: only where one works
+				if err := TryH264(kind); err != nil {
+					t.Skipf("%s: %v", kind, err)
+				}
 			}
 			var mu sync.Mutex
 			var frames [][]byte
