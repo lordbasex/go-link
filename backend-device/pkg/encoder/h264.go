@@ -4,6 +4,7 @@ package encoder
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -312,13 +313,30 @@ func ProbeH264() H264Support {
 func TryH264(kind string) error {
 	var mu sync.Mutex
 	n := 0
-	// quiet: an encoder that is not there is not an error (ffmpeg's messages dropped)
+	// quiet: an encoder that is not there is not an error (ffmpeg's messages kept for the reason)
+	var said bytes.Buffer
 	e, err := newH264(Config{Width: 640, Height: 360, FPS: 30, BitrateKbps: 1000}, kind, func([]byte) {
 		mu.Lock()
 		n++
 		mu.Unlock()
-	}, nil)
+	}, &said)
 	if err != nil {
+		return err
+	}
+	// why ffmpeg stopped (read once it has exited): the line that names the cause
+	// (a driver library it cannot load, no capable device), else its last line
+	why := func(err error) error {
+		lines := strings.Split(strings.TrimSpace(said.String()), "\n")
+		pick := strings.TrimSpace(lines[len(lines)-1])
+		for _, l := range lines {
+			if strings.Contains(l, "Cannot load") || strings.Contains(l, "No capable") || strings.Contains(l, "No such") || strings.Contains(l, "Failed to initialise") {
+				pick = strings.TrimSpace(l)
+				break
+			}
+		}
+		if pick != "" {
+			return fmt.Errorf("h264: %s: %s", kind, pick)
+		}
 		return err
 	}
 	frame := make([]byte, 640*360*3/2)
@@ -328,14 +346,14 @@ func TryH264(kind string) error {
 		}
 		if err := e.Write(frame); err != nil {
 			e.Close()
-			return err
+			return why(err)
 		}
 	}
 	e.Close()
 	mu.Lock()
 	defer mu.Unlock()
 	if n < 5 {
-		return fmt.Errorf("h264: %s gave %d frames for 10", kind, n)
+		return why(fmt.Errorf("h264: %s gave %d frames for 10", kind, n))
 	}
 	return nil
 }
