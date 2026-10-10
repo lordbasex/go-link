@@ -11,6 +11,8 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ### Fixed
 
+- **Release: the macOS app carries its own notarization ticket.** Only the `.dmg` was stapled, so go-link.app copied to /Applications had to ask Apple's servers the first time it opened (and failed offline). `scripts/release.sh` now notarizes and staples the app first, then makes the `.dmg` with it and notarizes that (`notarize.sh` takes a `.app` or a `.dmg`).
+
 - **CI:** gitleaks runs from GitHub's registry (`ghcr.io/gitleaks/gitleaks`): Docker Hub refused the image past its unauthenticated pull limit and failed the secrets check.
 - **go-link HD games drawn in HD:** a game made for 720p or 1080p (format 3's `resolution`) streams at its own size instead of being enlarged again (a 720p game in a 1080p room was 2560 x 1440); a 360p game is still enlarged 2 or 3 times.
 
