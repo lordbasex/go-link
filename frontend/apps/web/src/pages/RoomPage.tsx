@@ -14,6 +14,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from "reac
 import {
   DEFAULT_CONTROLS,
   bindingOf,
+  groupKeyOf,
   isTouchDevice,
   padMapFor,
   parseInvite,
@@ -34,6 +35,7 @@ import { useJoinRoom, usePublicRoomMeta } from "../signal/useJoinRoom";
 import { useLatencyProbe } from "../signal/useLatencyProbe";
 import { useHostStream } from "../signal/useHostStream";
 import { AndroidAppCard } from "../components/AndroidAppCard";
+import { KnockPrompt } from "../components/KnockPrompt";
 import { forgetRoomPass, roomPass, saveRoomPass } from "../signal/roomPasses";
 import { ServerHelp } from "../components/ServerSettings";
 import {
@@ -794,9 +796,9 @@ export function RoomPage() {
   const ownTest =
     hostLink !== null && !!testRoom?.room_id && testRoom.room_id === roomId;
   const inviteRoom = ownRoom
-    ? { id: ownRoom.id, name: ownRoom.name, invite: ownRoom.invite, inviteCode: ownRoom.inviteCode, ownerKey: ownRoom.ownerKey }
+    ? { id: ownRoom.id, name: ownRoom.name, invite: ownRoom.invite, inviteCode: ownRoom.inviteCode, ownerKey: ownRoom.ownerKey, groupInvite: ownRoom.groupInvite }
     : ownTest && testRoom
-      ? { id: "test", name: testRoom.title ?? "Test pattern", invite: testRoom.invite ?? "", inviteCode: testRoom.invite_code ?? "", ownerKey: testRoom.owner_key ?? "" }
+      ? { id: "test", name: testRoom.title ?? "Test pattern", invite: testRoom.invite ?? "", inviteCode: testRoom.invite_code ?? "", ownerKey: testRoom.owner_key ?? "", groupInvite: testRoom.groupInvite }
       : null;
   const [inviteOpen, setInviteOpen] = useState(false);
   const linkedAsks = useLinkedPauseAsks();
@@ -821,19 +823,40 @@ export function RoomPage() {
   // token this browser got the last time it came in, and the PIN typed on
   // the join page. Only a PIN the person types shows its errors.
   const joinPin = ((location.state as { pin?: unknown } | null)?.pin as string | undefined) ?? "";
+  // A group invitation's link carries its key after # (never sent to a
+  // server): it lets several people in, each one OK'd by the host when the
+  // host asked for that. The guest knocks with a name the host recognises.
+  const groupKey = routeInvite ? groupKeyOf(location.hash) : "";
   const credentials = useMemo(() => {
-    const list: { token?: string; pin?: string; stored?: boolean }[] = [];
+    const list: { token?: string; pin?: string; key?: string; stored?: boolean }[] = [];
     if (inviteRoom?.ownerKey) list.push({ token: inviteRoom.ownerKey });
     const saved = roomId ? roomPass(roomId) : "";
     if (saved) list.push({ token: saved, stored: true });
+    if (groupKey) list.push({ key: groupKey });
     if (/^\d{6}$/.test(joinPin)) list.push({ pin: joinPin });
     return list;
-  }, [inviteRoom?.ownerKey, roomId, joinPin]);
+  }, [inviteRoom?.ownerKey, roomId, joinPin, groupKey]);
   const autoTry = useRef<{ next: number; sent: (typeof credentials)[number] | null }>({ next: 0, sent: null });
   const [typedPin, setTypedPin] = useState(false);
+  // The group invitation: asking for a name, waiting for the host, or closed.
+  const [knock, setKnock] = useState<"" | "form" | "sent">("");
+  const [knockEnd, setKnockEnd] = useState("");
+  const [knockName, setKnockName] = useState(playerName);
+  const knocking = useRef(false);
+  const sendKnock = useCallback(
+    (name: string) => {
+      setPlayerName(name);
+      savePlayerName(name);
+      setKnock("sent");
+      knocking.current = true;
+      live.sendKey(groupKey, name);
+    },
+    [live, groupKey],
+  );
   useEffect(() => {
     const pin = live.pin;
     if (!pin.needed) {
+      knocking.current = false;
       if (pin.token && roomId && !inviteRoom) saveRoomPass(roomId, pin.token);
       // In with a PIN (not a key or a return token): ask for the name.
       if (pin.token && pinSent.current) {
@@ -843,6 +866,14 @@ export function RoomPage() {
       return;
     }
     if (pin.busy) return;
+    if (pin.last?.reason === "waiting") return; // the host decides
+    if (pin.last && knocking.current) {
+      // The group invitation did not let this person in: say why.
+      knocking.current = false;
+      setKnockEnd(pin.last.reason || "wrong");
+      return;
+    }
+    if (knock === "form") return; // the person is typing a name
     const tries = autoTry.current;
     if (!pin.last) tries.next = 0; // a new ask: start again
     else if (tries.sent?.stored && roomId) forgetRoomPass(roomId); // an old token
@@ -859,11 +890,15 @@ export function RoomPage() {
     if (!next) return;
     tries.next++;
     if (next.token) live.sendToken(next.token);
-    else if (next.pin) {
+    else if (next.key) {
+      // A name the host recognises, and the terms the first time.
+      if (playerName.trim() && termsAccepted()) sendKnock(playerName.trim());
+      else setKnock("form");
+    } else if (next.pin) {
       pinSent.current = true;
       live.sendPin(next.pin);
     }
-  }, [live, credentials, roomId, inviteRoom]);
+  }, [live, credentials, roomId, inviteRoom, knock, playerName, sendKnock]);
   // Hold V to talk.
   useEffect(() => {
     if (!seated) return;
@@ -1192,7 +1227,16 @@ export function RoomPage() {
   // The PIN form shows only once what this browser already has (the
   // owner's key, a return token, the join page's PIN) was tried, or for a
   // PIN the person types: the owner never sees it flash while getting in.
-  const pinForm = live.pin.needed && (typedPin || (!live.pin.busy && autoTry.current.next >= credentials.length));
+  // The name form stays while it is filled in, even if the connection to
+  // the device is set up again meanwhile (that asks for the PIN again).
+  const knockMode: "form" | "waiting" | "ended" | null = knockEnd
+    ? "ended"
+    : knock === "form"
+      ? "form"
+      : live.pin.needed && (live.pin.last?.reason === "waiting" || (knock === "sent" && live.pin.busy))
+        ? "waiting"
+        : null;
+  const pinForm = !knockMode && live.pin.needed && (typedPin || (!live.pin.busy && autoTry.current.next >= credentials.length));
   const playing = model.me.kind === "player";
   const myPorts = demo ? [] : (live.room?.you.ports ?? []);
   const seatedCount = live.room?.seats.filter(Boolean).length ?? 0;
@@ -1455,6 +1499,18 @@ export function RoomPage() {
                   : t.audio.outGone(audio.notice.name || t.audio.output)}
               </p>
             )}
+            {!streaming && knockMode && (
+              <div className="pin-stack">
+                <KnockPrompt
+                  mode={knockMode}
+                  reason={knockEnd}
+                  name={knockName}
+                  onName={setKnockName}
+                  onSend={sendKnock}
+                  onLeave={() => navigate(guest ? "/" : "/rooms")}
+                />
+              </div>
+            )}
             {!streaming && pinForm && (
               <div className="pin-stack">
               <PinPrompt
@@ -1470,7 +1526,7 @@ export function RoomPage() {
               {routeInvite && <AndroidAppCard />}
               </div>
             )}
-            {!streaming && !pinForm && (
+            {!streaming && !pinForm && !knockMode && (
               <div className="video-placeholder">
                 <GamepadIcon size={40} />
                 <span className="small-plus">

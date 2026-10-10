@@ -4,8 +4,10 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/lordbasex/go-link/backend-device/internal/models"
 	"github.com/lordbasex/go-link/backend-device/pkg/signalclient"
@@ -58,6 +60,78 @@ type TestRoomService struct {
 	invite     string
 	inviteCode string
 	picture    *models.RoomPicture // the host's default picture style
+
+	onAdmission func() // the group invitation or the people waiting changed
+}
+
+// ErrNotWaiting is the answer to a host who lets in someone not waiting.
+var ErrNotWaiting = errors.New("that person is not waiting to come in")
+
+// OnAdmission calls fn when the room's group invitation or the people
+// waiting for the host change (game rooms publish their status then).
+func (t *TestRoomService) OnAdmission(fn func()) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.onAdmission = fn
+}
+
+func (t *TestRoomService) admissionChanged() {
+	t.mu.Lock()
+	fn := t.onAdmission
+	t.mu.Unlock()
+	t.setStatus()
+	if fn != nil {
+		fn()
+	}
+}
+
+// Admission is the room's group invitation and the people waiting for the
+// host, for the owner's status.
+func (t *TestRoomService) Admission() (*models.GroupInvite, []models.Knock) {
+	return t.pin.Group()
+}
+
+// IssueGroup makes the room's group invitation (one link for several
+// people), replacing the one before. People still waiting with the old link
+// are told it expired.
+func (t *TestRoomService) IssueGroup(uses int, ttl time.Duration, approval bool) models.GroupInvite {
+	gi, waiting := t.pin.IssueGroup(uses, ttl, approval)
+	t.tellWaiting(waiting, "expired")
+	t.admissionChanged()
+	return gi
+}
+
+// RevokeGroup ends the room's group invitation: its link stops working.
+func (t *TestRoomService) RevokeGroup() {
+	t.tellWaiting(t.pin.RevokeGroup(), "expired")
+	t.admissionChanged()
+}
+
+func (t *TestRoomService) tellWaiting(peers []string, reason string) {
+	for _, p := range peers {
+		t.signal(p, struct {
+			Kind string `json:"kind"`
+			PinResult
+		}{"pin_result", PinResult{Reason: reason}})
+	}
+}
+
+// Answer is the host letting someone waiting in, or not.
+func (t *TestRoomService) Answer(peer string, accept bool) error {
+	res, ok := t.pin.Answer(peer, accept)
+	if !ok {
+		return ErrNotWaiting
+	}
+	t.signal(peer, struct {
+		Kind string `json:"kind"`
+		PinResult
+	}{"pin_result", res})
+	if res.OK {
+		t.admit(peer)
+	}
+	t.log.Info("host answered a guest", "peer_id", peer, "accept", accept, "reason", res.Reason)
+	t.admissionChanged()
+	return nil
 }
 
 // SetPrivate makes guests need an invitation's PIN. Guests already in
@@ -132,11 +206,18 @@ func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 		Kind  string `json:"kind"`
 		Pin   string `json:"pin"`
 		Token string `json:"token"`
+		Key   string `json:"key"`  // a group invitation's key
+		Name  string `json:"name"` // shown to the host while waiting
 	}
-	if len(payload) > 256 || json.Unmarshal(payload, &msg) != nil || msg.Kind != "pin" {
+	if len(payload) > 512 || json.Unmarshal(payload, &msg) != nil || msg.Kind != "pin" {
 		return
 	}
-	res := t.pin.Check(peer, msg.Pin, msg.Token)
+	var res PinResult
+	if msg.Key != "" && msg.Token == "" {
+		res = t.pin.CheckKey(peer, msg.Key, msg.Name)
+	} else {
+		res = t.pin.Check(peer, msg.Pin, msg.Token)
+	}
 	t.signal(peer, struct {
 		Kind string `json:"kind"`
 		PinResult
@@ -146,6 +227,14 @@ func (t *TestRoomService) checkPin(peer string, payload json.RawMessage) {
 			t.markOwner(peer)
 		}
 		t.admit(peer)
+		if msg.Key != "" {
+			t.admissionChanged() // one more place used
+		}
+		return
+	}
+	if res.Reason == "waiting" {
+		t.log.Info("guest waits for the host", "peer_id", peer)
+		t.admissionChanged()
 		return
 	}
 	t.log.Warn("wrong room PIN", "peer_id", peer, "reason", res.Reason)
@@ -434,9 +523,13 @@ func (t *TestRoomService) OnMessage(env signalclient.Envelope) {
 		t.mu.Lock()
 		guest := t.guests[env.From]
 		delete(t.guests, env.From)
+		_, waiting := t.pending[env.From]
 		delete(t.pending, env.From)
 		t.mu.Unlock()
 		t.pin.Forget(env.From)
+		if waiting {
+			t.admissionChanged() // a guest waiting for the host gave up
+		}
 		if guest {
 			t.viewers.RemoveViewer(env.From)
 			t.log.Info("viewer left", "peer_id", env.From)
@@ -533,9 +626,11 @@ func (t *TestRoomService) setStatusWith(id string, n int, sum RoomSummary) {
 	if t.pin.Required() {
 		key = t.pin.OwnerKey()
 	}
+	group, knocks := t.pin.Group()
 	t.status.SetRoomDetails(models.RoomStatus{
 		RoomID: id, Viewers: n, Title: title, Game: game, Public: public,
 		Players: sum.Players, MaxPlayers: seatsOrDefault(sum.MaxPlayers), Queue: sum.Queue, Spectators: sum.Spectators,
 		Invite: invite, InviteCode: code, OwnerKey: key, Picture: picture,
+		GroupInvite: group, Knocks: knocks,
 	})
 }

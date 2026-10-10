@@ -4,6 +4,10 @@ All notable changes to go-link. Newest first. Willy Maker, which has its own sit
 
 ## [Unreleased]
 
+### Added (device and website)
+
+- **One QR code for a group:** the Invite dialog has two kinds of invitation, **One person** (a PIN for one person, as before) and **Group**: one link and QR code for several people (2 to 50, valid for 1, 6 or 24 hours), its key after # in the link so no server sees it. With **Ask me first** (on by default) each person types a name and waits, and the host sees "Ana wants to come in" on any page, with Let in, Not now and Let everyone in. **Stop this QR code** ends the link at once; people already inside stay.
+
 ### Added (device)
 
 - **go-link HD rooms in H.264 from the Mac's hardware:** `--hd-room-codec auto` (the default) sends HD game rooms on macOS in H.264 from VideoToolbox, called directly (nothing to install: no ffmpeg; `pkg/encoder` vt_darwin.go, a keyframe as soon as a viewer joins), and VP8 elsewhere, at their own bitrate (`--hd-room-kbps`, 4,000 kbps at 720p and 8,000 at 1080p by default); recordings keep working (VP8 for the WebM). On an M1 at 1080p the encoding went from 28–90 % of a core to 12–14 %, with more than twice the bitrate.

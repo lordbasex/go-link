@@ -28,6 +28,7 @@ Details in [signalhub's README](https://github.com/lordbasex/signalhub). In shor
 - Strict Content Security Policy, with `connect-src wss:` to allow self-hosted signaling servers. No inline scripts or styles.
 - The signaling server is kept in `localStorage` and changed only by hand, never from a link.
 - PINs are never put in URLs.
+- **Group invitations** (one link and QR code for several people) carry a 32 byte key in the link's fragment, which never reaches a server; it cannot be guessed, but a link can be forwarded, so it lets in a limited number of people (50 at most) for a limited time (24 hours at most), and by default the host sees each person's name and lets them in (20 people waiting at most). A new group invitation or "Stop this QR code" ends the old link at once; people already let in keep their return tokens. A wrong key counts like a wrong PIN.
 - No third-party requests: fonts are bundled, and there are no analytics, ads or trackers.
 - Text from other users is always rendered as text.
 - SHA-256 and HMAC are implemented in TypeScript (`packages/shared/src/hmac.ts`), because `crypto.subtle` is missing on plain `http` pages such as the local panel.

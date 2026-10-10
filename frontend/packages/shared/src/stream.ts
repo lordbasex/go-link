@@ -138,7 +138,8 @@ export type StreamState = "connecting" | "connected" | "failed" | "closed";
  * gets a token to come back without a PIN. reason is "wrong" (left tries
  * remain), "used" (someone already came in with that invitation),
  * "blocked" (no tries left) or "locked" (too many wrong PINs in the
- * room: wait retryAfter seconds).
+ * room: wait retryAfter seconds). A group invitation's key also gets
+ * "waiting" (the host decides), "declined", "full", "expired" or "busy".
  */
 export type PinEvent =
   | { kind: "required" }
@@ -193,6 +194,14 @@ export class HostStream {
   /** Sends an invitation's PIN to the device (after a "required" PinEvent). */
   sendPin(pin: string): void {
     this.opts.client.send({ type: "signal", to: this.opts.hostPeerId, payload: { kind: "pin", pin } });
+  }
+
+  /**
+   * Sends a group invitation's key and the guest's name (shown to the host
+   * while it decides): the answer is ok, or "waiting" until the host does.
+   */
+  sendKey(key: string, name: string): void {
+    this.opts.client.send({ type: "signal", to: this.opts.hostPeerId, payload: { kind: "pin", key, name: name.slice(0, 24) } });
   }
 
   /** Sends a token instead: the host's key, or the one got on the first way in. */

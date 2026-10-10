@@ -172,6 +172,18 @@ export const docsEn: Docs = {
           ],
         },
         { t: "note", tone: "info", text: "Never put the PIN in the link. Send the link and the PIN separately, or say the PIN out loud." },
+        { t: "h2", id: "group", text: "One QR code for a group" },
+        { t: "p", text: "For a get-together, choose **Group** in the Invite dialog: one link and QR code for everyone, so you do not make a PIN per person." },
+        {
+          t: "list",
+          items: [
+            "Choose how many people (2 to 50) and for how long (1, 6 or 24 hours), then **Make the group QR code**.",
+            "With **Ask me first** (on by default) each person types a name and waits. You see “Ana wants to come in” on any go-link page, with **Let in**, **Not now** and **Let everyone in**.",
+            "Turn it off only with people you trust: if the link is forwarded, strangers could come in until it is full or expires.",
+            "**Stop this QR code** ends the link at once. People already inside stay.",
+          ],
+        },
+        { t: "note", tone: "info", text: "The group's key goes after # in the link: browsers never send that part to a server, so only the people with the link have it." },
         { t: "h2", id: "guest", text: "What a guest sees" },
         { t: "p", text: "A guest types the code (or opens the link) and the PIN, accepts the terms the first time, and joins. Guests see the game, the players, the chat and the controls, but not the room settings." },
         { t: "h2", id: "name", text: "Your name" },

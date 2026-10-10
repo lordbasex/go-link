@@ -248,6 +248,77 @@ test("an invitation lets one person in; the same PIN refuses the next one", asyn
   await late.context.close();
 });
 
+test("a group invitation lets several people in with one QR code, each one let in by the host", async ({ browser }) => {
+  // E2E_GROUP_SHOTS=dir keeps screenshots of each step.
+  const shot = async (p: Page, name: string) => {
+    if (process.env.E2E_GROUP_SHOTS) await p.screenshot({ path: `${process.env.E2E_GROUP_SHOTS}/${name}.png` });
+  };
+  await page.getByRole("button", { name: "Invite", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: /Invite to/ });
+  await dialog.getByRole("button", { name: "Group" }).click();
+  await expect(dialog.getByRole("checkbox", { name: /Ask me first/ })).toBeChecked();
+  await dialog.getByRole("combobox", { name: "Up to" }).selectOption("2");
+  await dialog.getByRole("button", { name: "Make the group QR code" }).click();
+  await expect(dialog.getByText("0 of 2 people came in")).toBeVisible();
+  await shot(page, "1-host-group-qr");
+  const link = (await dialog.locator(".invite-url[data-link]").getAttribute("data-link")) ?? "";
+  expect(link).toMatch(/\/g\/[A-Za-z0-9_-]{22}#k=[A-Za-z0-9_-]{43}$/);
+  await dialog.getByRole("button", { name: "Got it" }).click();
+
+  // A friend opens the one link: a name for the host, then a wait.
+  const knock = async (name: string) => {
+    const context = await browser.newContext();
+    const p = await context.newPage();
+    await p.goto(link);
+    // The startup intro covers the page for its first seconds.
+    await expect(p.locator("#splash")).toBeHidden();
+    const form = p.locator(".knock-prompt");
+    await form.getByRole("textbox", { name: "Your name" }).fill(name);
+    await shot(p, `2-guest-${name}-form`);
+    await form.getByRole("checkbox", { name: /I have read and accept/ }).check();
+    await form.getByRole("button", { name: "Ask to come in" }).click();
+    await expect(p.getByText("Waiting for the host")).toBeVisible();
+    await shot(p, `3-guest-${name}-waiting`);
+    return { context, page: p };
+  };
+  const ana = await knock("Ana");
+  // The host sees who it is, wherever it is, and lets Ana in: no PIN, no
+  // name step (she gave it).
+  await expect(page.getByRole("button", { name: "Let Ana in", exact: true })).toBeVisible();
+  await shot(page, "4-host-notice");
+  await page.getByRole("button", { name: "Let Ana in", exact: true }).click();
+  await expectVideoPlaying(ana.page);
+  await expect(ana.page.getByRole("dialog", { name: "What\u2019s your name?" })).toHaveCount(0);
+  await shot(ana.page, "5-guest-in");
+
+  // Bea is not let in this time.
+  const bea = await knock("Bea");
+  await page.getByRole("button", { name: "Do not let Bea in" }).click();
+  await expect(bea.page.getByText("The host did not let you in this time.")).toBeVisible();
+  await shot(bea.page, "6-guest-declined");
+
+  // Stopping the QR code: Ana stays, the link no longer works.
+  await page.getByRole("button", { name: "Invite", exact: true }).click();
+  await dialog.getByRole("button", { name: "Group" }).click();
+  await expect(dialog.getByText("1 of 2 people came in")).toBeVisible();
+  await dialog.getByRole("button", { name: "Stop this QR code" }).click();
+  await expect(dialog.getByRole("button", { name: "Make the group QR code" })).toBeVisible();
+  // Back to one person for the next tests.
+  await dialog.getByRole("button", { name: "One person" }).click();
+  await dialog.getByRole("button", { name: "Got it" }).click();
+  const late = await browser.newContext();
+  const lp = await late.newPage();
+  await lp.goto(link);
+  await expect(lp.locator("#splash")).toBeHidden();
+  const lateForm = lp.locator(".knock-prompt");
+  await lateForm.getByRole("textbox", { name: "Your name" }).fill("Cid");
+  await lateForm.getByRole("checkbox", { name: /I have read and accept/ }).check();
+  await lateForm.getByRole("button", { name: "Ask to come in" }).click();
+  await expect(lp.getByText("This invitation does not work anymore.", { exact: false })).toBeVisible();
+  await expectVideoPlaying(ana.page);
+  for (const c of [ana.context, bea.context, late]) await c.close();
+});
+
 test("the host's network report shows the room's charts, freezes and log", async () => {
   // A second tab of the host: the room's tab stays for the next tests.
   const report = await owner.newPage();

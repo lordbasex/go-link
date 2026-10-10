@@ -59,11 +59,14 @@ Also inside `signal`, before any offer:
 { "kind": "pin_required" }                                         // device → guest, on joining
 { "kind": "pin", "pin": "123456" }                                 // guest → device (the PIN of their invitation)
 { "kind": "pin", "token": "<43 chars base64url>" }                 // guest → device (return token or owner key)
+{ "kind": "pin", "key": "<43 chars base64url>", "name": "Ana" }    // guest → device (a group invitation's key)
 { "kind": "pin_result", "ok": true, "token": "<return token>" }    // device → guest
 { "kind": "pin_result", "ok": false, "reason": "used", "left": 4 } // device → guest
 ```
 
-`reason` is `wrong` (`left` tries remain), `used` (another person used that invitation), `blocked` (this guest used their 5 tries) or `locked` (20 failures in 10 minutes in this room: nothing is accepted for 10 minutes, `retry_after` in seconds). A made-up token counts as a failed try. The website tries, in order, the owner key, the saved return token and the PIN typed on the guest page, and only shows the form when none works.
+`reason` is `wrong` (`left` tries remain), `used` (another person used that invitation), `blocked` (this guest used their 5 tries) or `locked` (20 failures in 10 minutes in this room: nothing is accepted for 10 minutes, `retry_after` in seconds). A made-up token counts as a failed try. The website tries, in order, the owner key, the saved return token, a group invitation's key and the PIN typed on the guest page, and only shows the form when none works.
+
+**Group invitations** let several people in with one link and QR code: `<invitation link>#k=<key>`. The key is 32 random bytes in the link's fragment, which browsers never send to a server (not signalhub, not the CDN). The guest sends it with a name (24 characters at most, shown to the host). The device answers `ok` with a return token, or, when the host asked to approve each person (the default), `reason: "waiting"` until the host answers `knock_answer`; then `ok`, or `declined`. Other reasons: `full` (as many people came in as the invitation allows), `expired`, `busy` (20 people already waiting) and, for a key that is not the room's, `wrong`, counted like a wrong PIN. Each room has one group invitation at a time: a new one replaces it, `end_group` ends it, and people let in keep their tokens either way.
 
 ## `input` channel
 
@@ -150,6 +153,9 @@ The browser measures its own latency from WebRTC ICE stats (`currentRoundTripTim
 | `close_room` | linked → device | `id`: archives that room (kept for older websites) |
 | `invite` | linked → device | `id` of a room (or `test`): make a new invitation PIN |
 | `invite_pass` | device → linked | `id`, `pin`, `expires_at` (or `error`) |
+| `invite_group` | linked → device | `id` of a room (or `test`), `uses` (1 to 50 people), `hours` (1 to 24), `approval` (absent: on): make the room's group invitation, replacing the one before. The device answers `invite_group_result` with `ok` and `group` (`key`, `uses`, `used`, `expires_at`, `approval`), or `error` |
+| `end_group` | linked → device | `id`: the group invitation's link stops working (`end_group_result`) |
+| `knock_answer` | linked → device | `id`, `peer`, `accept`: let in someone waiting with the group invitation, or not (`knock_answer_result`). `device_status` shows each room's `group_invite` and its `knocks` (`peer`, `name`, `since`), and the website shows them to the host on every page |
 | `get_thumb` / `thumb` | both | `set`, `kind` (empty = the host's choice) and `size` (`card` 360x480, `mini` 96x128) / the same plus `data` (JPEG, base64) or `missing: true` |
 | `download_core` | linked → device | Download the core and its game list (whatever is missing) |
 | `set_thumbnails` / `thumbnails_result` | both | `kind` (`boxart`, `title` or `snap`) and/or `dir` (a folder on the device, or `default`): which picture everyone sees and where the device reads them, like the window's Settings / `ok`, `error` |

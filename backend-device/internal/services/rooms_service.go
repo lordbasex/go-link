@@ -814,6 +814,7 @@ func (r *RoomsService) launch(gr *gameRoom, statePath string) error {
 	signal.SetOpener(r.cfg.Opener)
 	signal.Configure(saved.Name, game, saved.Public)
 	signal.SetTrusted(r.cfg.Trusted)
+	signal.OnAdmission(r.publish)
 	signal.EnableInvites(func(invite, code string) {
 		r.mu.Lock()
 		gr.invite, gr.code = invite, code
@@ -1446,7 +1447,13 @@ func (r *RoomsService) List() []models.ManagedRoom {
 		if seats < 1 {
 			seats = SeatsFor(r.controlsOf(gr.saved.Rom))
 		}
+		var group *models.GroupInvite
+		var knocks []models.Knock
+		if gr.signal != nil {
+			group, knocks = gr.signal.Admission()
+		}
 		out = append(out, models.ManagedRoom{
+			GroupInvite: group, Knocks: knocks,
 			SavedRoom: gr.saved, Game: gr.game, RoomID: gr.roomID,
 			Players: gr.summary.Players, MaxPlayers: seats, Spectators: gr.summary.Spectators, Queue: gr.summary.Queue,
 			Invite: gr.invite, InviteCode: gr.code, OwnerKey: ownerKey(gr.signal),
@@ -1503,6 +1510,49 @@ func (r *RoomsService) Invite(id string) (Pass, error) {
 		return Pass{}, ErrRoomState
 	}
 	return sig.IssuePass(), nil
+}
+
+// signalOf returns a running room's signaling side.
+func (r *RoomsService) signalOf(id string) (*TestRoomService, error) {
+	gr := r.find(id)
+	if gr == nil {
+		return nil, ErrUnknownRoom
+	}
+	r.mu.Lock()
+	sig := gr.signal
+	r.mu.Unlock()
+	if sig == nil {
+		return nil, ErrRoomState
+	}
+	return sig, nil
+}
+
+// InviteGroup makes a running room's group invitation (one link for
+// several people), replacing the one before.
+func (r *RoomsService) InviteGroup(id string, uses int, ttl time.Duration, approval bool) (models.GroupInvite, error) {
+	sig, err := r.signalOf(id)
+	if err != nil {
+		return models.GroupInvite{}, err
+	}
+	return sig.IssueGroup(uses, ttl, approval), nil
+}
+
+// RevokeGroup ends a running room's group invitation.
+func (r *RoomsService) RevokeGroup(id string) error {
+	sig, err := r.signalOf(id)
+	if err == nil {
+		sig.RevokeGroup()
+	}
+	return err
+}
+
+// AnswerKnock lets someone waiting with a group invitation in, or not.
+func (r *RoomsService) AnswerKnock(id, peer string, accept bool) error {
+	sig, err := r.signalOf(id)
+	if err != nil {
+		return err
+	}
+	return sig.Answer(peer, accept)
 }
 
 // lobbyExtra adds the pause and the Boxart to the room's lobby entry.

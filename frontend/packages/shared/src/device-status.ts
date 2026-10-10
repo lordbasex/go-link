@@ -180,6 +180,10 @@ export interface ManagedRoom {
   invite: string;
   /** Its 9 digit code, to type. */
   inviteCode: string;
+  /** The room's group invitation (one link for several people), while alive. */
+  groupInvite?: GroupInvite;
+  /** People who came with it and wait for the host to let them in. */
+  knocks?: Knock[];
   /** The host turned the room's chat off. */
   chatOff: boolean;
   /** The host is recording the game, since recordingSince. */
@@ -235,6 +239,8 @@ function parseRooms(v: unknown): ManagedRoom[] {
         invite: typeof o.invite === "string" && /^[A-Za-z0-9_-]{22}$/.test(o.invite) ? o.invite : "",
         chatOff: o.chat_off === true,
         inviteCode: typeof o.invite_code === "string" && /^\d{9}$/.test(o.invite_code) ? o.invite_code : "",
+        groupInvite: parseGroupInvite(o.group_invite),
+        knocks: parseKnocks(o.knocks),
         recording: o.recording === true,
         recordingSince: str(o.recording_since, 40),
         pauseAsks: parsePauseAsks(o.pause_asks),
@@ -260,6 +266,9 @@ export interface DeviceRoom {
   invite?: string;
   invite_code?: string;
   owner_key?: string;
+  /** The test pattern room's group invitation and the people waiting (parsed). */
+  groupInvite?: GroupInvite;
+  knocks?: Knock[];
   /** The test pattern room's default picture style (absent: the site's default). */
   picture?: PictureSettings | null;
 }
@@ -325,8 +334,64 @@ export function parseDeviceStatus(msg: unknown): DeviceStatus | null {
 
 function parseDeviceRoom(v: unknown): DeviceRoom | undefined {
   if (typeof v !== "object" || v === null) return undefined;
-  const r = v as DeviceRoom & { picture?: unknown };
-  return { ...r, picture: parseRoomPicture(r.picture) };
+  const r = v as DeviceRoom & { picture?: unknown; group_invite?: unknown };
+  return { ...r, picture: parseRoomPicture(r.picture), groupInvite: parseGroupInvite(r.group_invite), knocks: parseKnocks(r.knocks) };
+}
+
+/**
+ * A group invitation: one link and QR code for several people. The key
+ * goes after # in the link (groupInvitationUrl), so no server ever sees it;
+ * it lets in `uses` people until expiresAt, each one OK'd by the host when
+ * approval is on.
+ */
+export interface GroupInvite {
+  key: string;
+  uses: number;
+  used: number;
+  expiresAt: string;
+  approval: boolean;
+}
+
+/** Someone who came with a group invitation and waits for the host. */
+export interface Knock {
+  peer: string;
+  name: string;
+  since: string;
+}
+
+const GROUP_KEY = /^[A-Za-z0-9_-]{43}$/;
+
+function parseGroupInvite(v: unknown): GroupInvite | undefined {
+  if (typeof v !== "object" || v === null) return undefined;
+  const g = v as Record<string, unknown>;
+  if (typeof g.key !== "string" || !GROUP_KEY.test(g.key)) return undefined;
+  const n = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x >= 0 ? Math.min(x, 1000) : 0);
+  return { key: g.key, uses: n(g.uses), used: n(g.used), expiresAt: typeof g.expires_at === "string" ? g.expires_at.slice(0, 40) : "", approval: g.approval === true };
+}
+
+function parseKnocks(v: unknown): Knock[] {
+  return (Array.isArray(v) ? v : []).slice(0, 20).flatMap((x) => {
+    const k = (typeof x === "object" && x !== null ? x : {}) as Record<string, unknown>;
+    if (typeof k.peer !== "string" || !k.peer) return [];
+    return [{ peer: k.peer.slice(0, 64), name: typeof k.name === "string" ? k.name.slice(0, 24) : "", since: typeof k.since === "string" ? k.since.slice(0, 40) : "" }];
+  });
+}
+
+/** The device's answer to invite_group, end_group or knock_answer. */
+export interface GroupResult {
+  type: "invite_group" | "end_group" | "knock_answer";
+  id: string;
+  ok: boolean;
+  error: string;
+  group?: GroupInvite;
+}
+
+export function parseGroupResult(msg: unknown): GroupResult | null {
+  if (typeof msg !== "object" || msg === null) return null;
+  const m = msg as Record<string, unknown>;
+  const kind = typeof m.type === "string" ? m.type.replace(/_result$/, "") : "";
+  if (!/_result$/.test(String(m.type)) || !["invite_group", "end_group", "knock_answer"].includes(kind) || typeof m.id !== "string") return null;
+  return { type: kind as GroupResult["type"], id: m.id.slice(0, 40), ok: m.ok === true, error: typeof m.error === "string" ? m.error.slice(0, 200) : "", group: parseGroupInvite(m.group) };
 }
 
 /** A byte count from the device: a finite number, never negative. */

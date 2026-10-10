@@ -172,6 +172,18 @@ export const docsEs: Docs = {
           ],
         },
         { t: "note", tone: "info", text: "Nunca pongas el PIN en el link. Envía el link y el PIN por separado, o dilo en voz alta." },
+        { t: "h2", id: "group", text: "Un QR para un grupo" },
+        { t: "p", text: "Para una juntada, elige **Grupo** en la ventana Invitar: un enlace y un QR para todos, sin hacer un PIN por persona." },
+        {
+          t: "list",
+          items: [
+            "Elige cuántas personas (de 2 a 50) y por cuánto tiempo (1, 6 o 24 horas), y toca **Crear el QR del grupo**.",
+            "Con **Pedirme aprobación** (encendido por defecto) cada persona escribe su nombre y espera. Tú ves “Ana quiere entrar” en cualquier página de go-link, con **Dejar entrar**, **Ahora no** y **Dejar entrar a todos**.",
+            "Apágalo solo con gente de confianza: si el enlace se reenvía, podrían entrar desconocidos hasta que se complete o venza.",
+            "**Dar de baja este QR** corta el enlace al instante. Quienes ya están adentro se quedan.",
+          ],
+        },
+        { t: "note", tone: "info", text: "La clave del grupo va después del # en el enlace: los navegadores nunca mandan esa parte a un servidor, así que solo la tienen quienes tienen el enlace." },
         { t: "h2", id: "guest", text: "Qué ve un invitado" },
         { t: "p", text: "Un invitado escribe el código (o abre el link) y el PIN, acepta los términos la primera vez y entra. Los invitados ven el juego, los jugadores, el chat y los controles, pero no la configuración de la sala." },
         { t: "h2", id: "name", text: "Tu nombre" },

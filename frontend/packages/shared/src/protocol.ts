@@ -122,6 +122,19 @@ const INVITE = /^[A-Za-z0-9_-]{22}$/;
 export type InviteTarget = { invite: string } | { code: string };
 
 /**
+ * The key of a group invitation from a link's fragment (/g/<invite>#k=<key>),
+ * or "" when there is none. The fragment never reaches a server.
+ */
+export function groupKeyOf(hashOrLink: string): string {
+  return /[#&]k=([A-Za-z0-9_-]{43})(?:&|$)/.exec(hashOrLink)?.[1] ?? "";
+}
+
+/** A group invitation's link: the room's invitation link plus #k=<key>. */
+export function groupInvitationUrl(link: string, key: string): string {
+  return `${link.replace(/#.*$/, "")}#k=${key}`;
+}
+
+/**
  * Reads an invitation: the 22 character invite of a /g/<invite> link, or a
  * 9 digit code (spaces and dashes allowed). Returns null otherwise.
  */

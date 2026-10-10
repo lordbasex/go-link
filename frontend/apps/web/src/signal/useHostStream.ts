@@ -111,6 +111,8 @@ export interface HostStreamView {
   sendPin: (pin: string) => void;
   /** Sends the host's key or a return token instead of a PIN. */
   sendToken: (token: string) => void;
+  /** Sends a group invitation's key with the guest's name (the host may have to OK it). */
+  sendKey: (key: string, name: string) => void;
 }
 
 /** The PIN a private room asks for before it streams. */
@@ -509,6 +511,10 @@ export function useHostStream(
     sendToken: (value) => {
       setPin((cur) => ({ ...cur, busy: true }));
       streamRef.current?.sendToken(value);
+    },
+    sendKey: (key, name) => {
+      setPin((cur) => ({ ...cur, busy: true }));
+      streamRef.current?.sendKey(key, name);
     },
     setTouchButtons: (buttons) => {
       if (touchRef.current === buttons) return;

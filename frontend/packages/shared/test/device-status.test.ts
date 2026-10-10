@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com>
 import { describe, expect, it } from "vitest";
-import { parseDeviceStatus, parsePauseAskEvent, parseRomsPage, romFile, queryRomsLocally, romKind, romsGet, romsQuery } from "../src/device-status";
+import { parseDeviceStatus, parseGroupResult, parsePauseAskEvent, parseRomsPage, romFile, queryRomsLocally, romKind, romsGet, romsQuery } from "../src/device-status";
+import { groupInvitationUrl, groupKeyOf, parseInvite } from "../src/protocol";
 
 describe("device update", () => {
   const base = { type: "device_status", device_id: "d", version: "v0.1.0" };
@@ -142,5 +143,36 @@ describe("a device before 0.2.9", () => {
     expect(queryRomsLocally(lib.legacyRoms!, { filter: "missing" }).total).toBe(1);
     // a newer device sends the summary only
     expect(parseDeviceStatus({ type: "device_status", device_id: "d", library: { dir: "/r", roms: [{ name: "x" }], summary: { total: 9 } } })!.library!.legacyRoms).toBeUndefined();
+  });
+});
+
+describe("group invitations", () => {
+  const key = "A".repeat(43);
+  it("reads a room's group invitation and the people waiting", () => {
+    const s = parseDeviceStatus({
+      type: "device_status",
+      device_id: "d",
+      room: { room_id: "r", viewers: 1, group_invite: { key, uses: 10, used: 2, expires_at: "2026-10-10T23:00:00Z", approval: true }, knocks: [{ peer: "p1", name: "Ana", since: "2026-10-10T20:00:00Z" }, { name: "no peer" }] },
+      rooms: [{ id: "g1", state: "live", name: "Game", group_invite: { key: "short", uses: 3 }, knocks: "nope" }],
+    });
+    expect(s!.room!.groupInvite).toEqual({ key, uses: 10, used: 2, expiresAt: "2026-10-10T23:00:00Z", approval: true });
+    expect(s!.room!.knocks).toEqual([{ peer: "p1", name: "Ana", since: "2026-10-10T20:00:00Z" }]);
+    expect(s!.rooms[0]!.groupInvite).toBeUndefined();
+    expect(s!.rooms[0]!.knocks).toEqual([]);
+  });
+
+  it("reads the device's answers", () => {
+    expect(parseGroupResult({ type: "invite_group_result", id: "g1", ok: true, group: { key, uses: 5, used: 0, expires_at: "x", approval: false } })).toMatchObject({ type: "invite_group", ok: true, group: { key, uses: 5 } });
+    expect(parseGroupResult({ type: "knock_answer_result", id: "g1", ok: false, error: "that person is not waiting to come in" })).toMatchObject({ type: "knock_answer", ok: false });
+    expect(parseGroupResult({ type: "invite_pass", id: "g1" })).toBeNull();
+  });
+
+  it("keeps the key in the link's fragment", () => {
+    const link = groupInvitationUrl("https://go-link.org/g/AbCdEfGhIjKlMnOpQrStUv", key);
+    expect(link).toBe(`https://go-link.org/g/AbCdEfGhIjKlMnOpQrStUv#k=${key}`);
+    expect(groupKeyOf(new URL(link).hash)).toBe(key);
+    expect(parseInvite(link)).toEqual({ invite: "AbCdEfGhIjKlMnOpQrStUv" });
+    expect(groupKeyOf("#k=short")).toBe("");
+    expect(groupKeyOf("")).toBe("");
   });
 });

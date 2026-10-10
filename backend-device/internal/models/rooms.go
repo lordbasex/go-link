@@ -73,6 +73,10 @@ type ManagedRoom struct {
 	// OwnerKey is what the host's own browsers send instead of a PIN
 	// (guests get a PIN per invitation, see RoomsService.Invite).
 	OwnerKey string `json:"owner_key,omitempty"`
+	// GroupInvite is the room's group invitation, while one is alive, and
+	// Knocks the people that used it and wait for the host to let them in.
+	GroupInvite *GroupInvite `json:"group_invite,omitempty"`
+	Knocks      []Knock      `json:"knocks,omitempty"`
 	// Recording is set while the host records the game, since
 	// RecordingSince.
 	Recording      bool       `json:"recording,omitempty"`
@@ -92,4 +96,23 @@ type PauseAsk struct {
 	Name      string    `json:"name"`
 	Port      int       `json:"port"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// GroupInvite is an invitation for several people: one link and QR code
+// (the key goes after # in the link, never to a server), good for Uses
+// people until ExpiresAt. With Approval the host lets each one in.
+type GroupInvite struct {
+	Key       string    `json:"key"`
+	Uses      int       `json:"uses"` // how many people it lets in
+	Used      int       `json:"used"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Approval  bool      `json:"approval"`
+}
+
+// Knock is someone who came with a group invitation and waits for the
+// host's answer (GroupInvite.Approval).
+type Knock struct {
+	Peer  string    `json:"peer"`
+	Name  string    `json:"name"`
+	Since time.Time `json:"since"`
 }

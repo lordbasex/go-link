@@ -2287,6 +2287,18 @@ body .video-stage.has-touchpad.is-console .audio-toast { top: calc(var(--sy) + 4
 .pause-ask-stage { position: absolute; z-index: 25; left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .pause-ask-notices { position: fixed; z-index: 90; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 12px; max-width: calc(100vw - 32px); }
 .pause-ask-notices .pause-ask { width: min(380px, calc(100vw - 32px)); }
+.knock-hand { font-size: 26px; line-height: 1; }
+.knock-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; }
+.knock-row { display: flex; align-items: center; gap: 8px; }
+.knock-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.knock-prompt { text-align: center; align-items: stretch; }
+.knock-prompt .knock-hand { font-size: 34px; }
+.invite-modes { align-self: flex-start; }
+.invite-qr-empty { display: grid; place-items: center; text-align: center; min-height: 160px; padding: 12px; border: 1px dashed var(--color-border-strong); border-radius: 16px; }
+.invite-group-facts { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; color: var(--color-text-muted); }
+.invite-check { display: flex; gap: 10px; align-items: flex-start; }
+.invite-check input { margin-top: 3px; }
+.block { display: block; }
 .pause-asked { gap: 10px; }
 .pause-note { top: 14px; left: 50%; transform: translateX(-50%); z-index: 6; margin: 0; display: flex; align-items: center; gap: 8px; width: max-content; max-width: calc(100% - 28px); padding: 8px 14px; font-size: 14px; background: var(--color-surface-2); border-color: var(--color-border-strong); pointer-events: none; }
 .pause-note svg { color: var(--color-accent-text); flex-shrink: 0; }

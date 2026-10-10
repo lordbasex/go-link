@@ -5,6 +5,7 @@ import { CustomServerBanner, ServerDialog } from "./components/ServerSettings";
 import { MainHeader } from "./components/Headers";
 import { RecordingNotices } from "./components/Recordings";
 import { PauseAskNotices } from "./components/PauseAskNotices";
+import { KnockNotices } from "./components/KnockNotices";
 import { useSignal } from "./signal/SignalProvider";
 import { SPLASH_MAX_MS, SPLASH_MIN_MS, hideSplash } from "./splash";
 import { LobbyPage, readRoomsView } from "./pages/LobbyPage";
@@ -165,6 +166,7 @@ export function App() {
       {HAS_PLAY && <HandoffBanner />}
       <RecordingNotices />
       <PauseAskNotices />
+      <KnockNotices />
       {/* The one main landmark: every page renders inside it. */}
       <main className="app-main">
       <Suspense fallback={<div className="page" aria-busy="true" />}>

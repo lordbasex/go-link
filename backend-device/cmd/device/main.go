@@ -470,6 +470,11 @@ func run() error {
 			Offset int      `json:"offset"`
 			Limit  int      `json:"limit"`
 			Names  []string `json:"names"`
+			// invite_group and knock_answer
+			Uses     int    `json:"uses"`
+			Hours    int    `json:"hours"`
+			Approval *bool  `json:"approval"`
+			Peer     string `json:"peer"`
 			services.GameRequest
 		}
 		if json.Unmarshal(data, &msg) != nil {
@@ -674,6 +679,48 @@ func run() error {
 				res["error"] = err.Error()
 			} else {
 				res["pin"], res["expires_at"] = pass.Pin, pass.ExpiresAt
+			}
+			if b, jerr := json.Marshal(res); jerr == nil {
+				stream.SendControl(peerID, b)
+			}
+			return
+		case "invite_group", "end_group", "knock_answer":
+			// A group invitation (one link and QR for several people), its
+			// end, or the host's answer to someone waiting with it. Only the
+			// host's own browsers reach this (the linked control channel).
+			res := map[string]any{"type": msg.Type + "_result", "id": msg.ID}
+			var gi models.GroupInvite
+			var gerr error
+			test := msg.ID == services.TestRoomID && room != nil
+			switch msg.Type {
+			case "invite_group":
+				approval := msg.Approval == nil || *msg.Approval // on unless turned off
+				ttl := time.Duration(max(msg.Hours, 1)) * time.Hour
+				if test {
+					gi = room.IssueGroup(msg.Uses, ttl, approval)
+				} else {
+					gi, gerr = games.InviteGroup(msg.ID, msg.Uses, ttl, approval)
+				}
+				if gerr == nil {
+					res["group"] = gi
+				}
+			case "end_group":
+				if test {
+					room.RevokeGroup()
+				} else {
+					gerr = games.RevokeGroup(msg.ID)
+				}
+			case "knock_answer":
+				res["peer"], res["accept"] = msg.Peer, msg.Accept
+				if test {
+					gerr = room.Answer(msg.Peer, msg.Accept)
+				} else {
+					gerr = games.AnswerKnock(msg.ID, msg.Peer, msg.Accept)
+				}
+			}
+			res["ok"] = gerr == nil
+			if gerr != nil {
+				res["error"] = gerr.Error()
 			}
 			if b, jerr := json.Marshal(res); jerr == nil {
 				stream.SendControl(peerID, b)
