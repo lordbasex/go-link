@@ -8,7 +8,8 @@
 # Development mode (the default, while there is no Developer ID): the macOS
 # app has an ad hoc signature and the GitHub release is marked as a
 # pre-release. With a Developer ID the app is signed with the hardened
-# runtime and the .dmg is notarized:
+# runtime and notarized with its ticket stapled (it opens offline once
+# copied to /Applications), then the .dmg made with it is notarized too:
 #
 #   VERSION=0.1.0 ./scripts/release.sh
 #   VERSION=0.1.0 CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" \
@@ -47,7 +48,14 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   make -C "$ROOT" panel
   make -C "$ROOT" device VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
   if [[ "$(uname -s)" == "Darwin" ]]; then
-    make -C "$ROOT" device-dmg VERSION="$TAG" CODESIGN_IDENTITY="$CODESIGN_IDENTITY"
+    app="$DEVICE/darwin-universal/go-link.app"
+    if [[ "$DEV" == "0" ]]; then
+      # the app's own ticket, stapled before it goes into the disk image
+      "$ROOT/backend-device/build/macos/notarize.sh" "$app"
+    fi
+    # make-dmg.sh directly: `make device-dmg` would build the app again and lose its ticket
+    CODESIGN_IDENTITY="$CODESIGN_IDENTITY" "$ROOT/backend-device/build/macos/make-dmg.sh" "$app" \
+      "$DEVICE/$NAME-macos-universal.dmg"
   fi
   if [[ "${DOCKER:-1}" == "1" ]]; then
     make -C "$ROOT" device-docker-oci VERSION="$TAG"

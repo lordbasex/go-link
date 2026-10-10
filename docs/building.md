@@ -105,7 +105,7 @@ It also updates `Casks/go-link.rb` (Homebrew: `brew install --cask go-link` from
 2. Store the notarization credentials once: `xcrun notarytool store-credentials "go-link-notary" --apple-id you@example.com --team-id TEAMID --password <app-specific-password>`.
 3. `VERSION=0.1.0 CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" NOTARY_PROFILE=go-link-notary make release`
 
-The app is then signed with the hardened runtime and `backend-device/build/macos/entitlements.plist` (`disable-library-validation`, because the device loads the libretro core, which is downloaded separately and not signed by us). The `.dmg` is signed, notarized and stapled (`build/macos/notarize.sh`), and the release is no longer a pre-release.
+The app is then signed with the hardened runtime and `backend-device/build/macos/entitlements.plist` (`disable-library-validation`, because the device loads the libretro core, which is downloaded separately and not signed by us). Notarization is done twice (`build/macos/notarize.sh`): first the app, whose ticket is stapled inside `go-link.app` (the copy in /Applications then opens without asking Apple's servers, offline too), then the `.dmg` made with that app, signed, notarized and stapled. The release is no longer a pre-release.
 
 ## Tests
 
