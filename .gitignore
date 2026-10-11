@@ -1,0 +1,4 @@
+deploy/local/
+.DS_Store
+CLAUDE.md
+.claude/

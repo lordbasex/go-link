@@ -1,0 +1,265 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>go-link</title>
+  <meta name="description" content="GO-LINK project ecosystem: open-source apps that connect people directly over WebRTC (Console, Desk, Meet, Store, Terminal).">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/i18n.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#top" aria-label="go-link">
+      <img src="/favicon.svg" width="30" height="30" alt="">
+      <span>go-link</span>
+    </a>
+    <nav class="menu" aria-label="Sections" data-i18n-label="sections">
+      <a href="#projects" data-i18n="navProjects">Projects</a>
+      <a href="#how" data-i18n="navHow">How it works</a>
+      <a href="#principles" data-i18n="navPrinciples">Principles</a>
+      <a href="https://github.com/lordbasex">GitHub</a>
+    </nav>
+    <nav class="langs" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="es" aria-pressed="false">ES</button>
+      <button type="button" data-lang="pt" aria-pressed="false">PT</button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="eyebrow" data-i18n="eyebrow">Open source · WebRTC</p>
+      <h1 data-i18n="heroTitle">One link, people connected directly.</h1>
+      <p class="lead" data-i18n="heroLead">go-link is a family of apps that join two or more people browser to browser: games, remote desktop, calls, files and terminals. They meet on one signaling server; after that, everything travels straight between them.</p>
+    </section>
+
+    <section class="eco" aria-label="Projects" data-i18n-label="projects">
+      <span class="ring" aria-hidden="true"></span>
+      <span class="spoke s1 live" aria-hidden="true"></span>
+      <span class="spoke s2" aria-hidden="true"></span>
+      <span class="spoke s3" aria-hidden="true"></span>
+      <span class="spoke s4" aria-hidden="true"></span>
+      <span class="spoke s5 work" aria-hidden="true"></span>
+
+      <div class="hub">
+        <svg class="mark" viewBox="0 0 48 24" aria-hidden="true"><path d="M24 12c-4-5-7-8-12-8a8 8 0 0 0 0 16c5 0 8-3 12-8s7-8 12-8a8 8 0 0 1 0 16c-5 0-8-3-12-8z"/></svg>
+        <strong>GO-LINK</strong>
+        <span class="rule"></span>
+        <span data-i18n="hub">Project ecosystem</span>
+        <small data-i18n="hubSub">Everything over WebRTC</small>
+      </div>
+
+      <a class="node n1 live" href="#console">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg>
+        <strong>console.go-link.org</strong>
+        <small data-i18n="console">Arcade video game console to play with friends</small>
+        <span class="tag" data-i18n="live">Available</span>
+      </a>
+      <a class="node n2 soon" href="#meet">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="4.5" cy="10" r="2"/><circle cx="19.5" cy="10" r="2"/></svg>
+        <strong>meet.go-link.org</strong>
+        <small data-i18n="meet">Video calls in the browser</small>
+        <span class="tag" data-i18n="soon">Coming soon</span>
+      </a>
+      <a class="node n3 soon" href="#terminal">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M6 12l3 2.5L6 17M12 17h5"/></svg>
+        <strong>terminal.go-link.org</strong>
+        <small data-i18n="terminal">SSH terminal from the browser</small>
+        <span class="tag" data-i18n="soon">Coming soon</span>
+      </a>
+      <a class="node n4 soon" href="#store">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>
+        <strong>store.go-link.org</strong>
+        <small data-i18n="store">Send files directly between two computers</small>
+        <span class="tag" data-i18n="soon">Coming soon</span>
+      </a>
+      <a class="node n5 work" href="#desk">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <strong>desk.go-link.org</strong>
+        <small data-i18n="desk">Remote desktop: help or work on another computer</small>
+        <span class="tag" data-i18n="work">In progress</span>
+      </a>
+    </section>
+
+    <ul class="legend" aria-label="Legend" data-i18n-label="legend">
+      <li><span class="dot live"></span><span data-i18n="live">Available</span></li>
+      <li><span class="dot work"></span><span data-i18n="work">In progress</span></li>
+      <li><span class="dot soon"></span><span data-i18n="soon">Coming soon</span></li>
+    </ul>
+
+    <a class="scroll-hint" href="#projects" data-i18n-label="scroll" aria-label="See the projects"><span aria-hidden="true"></span></a>
+
+    <section id="projects" class="section">
+      <header class="section-head reveal">
+        <p class="eyebrow" data-i18n="projectsEyebrow">The projects</p>
+        <h2 data-i18n="projectsTitle">One ecosystem, five ways to connect</h2>
+        <p class="lead" data-i18n="projectsLead">Each project is its own app and its own site, with the same idea underneath: your computer and your friends' browsers talk directly.</p>
+      </header>
+
+      <div class="cards">
+        <article id="console" class="card live reveal">
+          <div class="card-top">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg>
+            <span class="tag" data-i18n="live">Available</span>
+          </div>
+          <h3>Console</h3>
+          <p data-i18n="consoleText">Your computer becomes the arcade: it runs the games and streams them live. Friends join with a link and a PIN, from any browser or the phone app.</p>
+          <ul>
+            <li data-i18n="consoleF1">Up to four players, an arcade queue and spectators</li>
+            <li data-i18n="consoleF2">Voice chat between players, gamepads and touch controls</li>
+            <li data-i18n="consoleF3">MAME arcade games and go-link HD games</li>
+          </ul>
+          <div class="actions">
+            <a class="btn primary" href="https://console.go-link.org" data-i18n="consoleOpen">Open Console</a>
+            <a class="btn" href="https://github.com/lordbasex/go-link-console">GitHub</a>
+          </div>
+        </article>
+
+        <article id="desk" class="card work reveal">
+          <div class="card-top">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            <span class="tag" data-i18n="work">In progress</span>
+          </div>
+          <h3>Desk</h3>
+          <p data-i18n="deskText">Remote desktop: see another computer's screen and use it with your mouse and keyboard from the browser, to help someone or to reach your own machine. Always with its owner's permission.</p>
+          <ul>
+            <li data-i18n="deskF1">The screen streamed live, with mouse and keyboard</li>
+            <li data-i18n="deskF2">The owner approves every session</li>
+            <li data-i18n="deskF3">Nothing to install on the side that connects</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="https://github.com/lordbasex/go-link-desk">GitHub</a>
+          </div>
+        </article>
+
+        <article id="meet" class="card soon reveal">
+          <div class="card-top">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="4.5" cy="10" r="2"/><circle cx="19.5" cy="10" r="2"/></svg>
+            <span class="tag" data-i18n="soon">Coming soon</span>
+          </div>
+          <h3>Meet</h3>
+          <p data-i18n="meetText">Video calls between people, with a link and nothing to install: camera, microphone and screen sharing straight from the browser.</p>
+          <ul>
+            <li data-i18n="meetF1">Rooms with a link and a PIN</li>
+            <li data-i18n="meetF2">Camera, voice and screen sharing</li>
+            <li data-i18n="meetF3">Video and voice go straight between people</li>
+          </ul>
+        </article>
+
+        <article id="store" class="card soon reveal">
+          <div class="card-top">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>
+            <span class="tag" data-i18n="soon">Coming soon</span>
+          </div>
+          <h3>Store</h3>
+          <p data-i18n="storeText">Send and receive files between two computers: browse the folder the other person shares and move files straight between you, of any size.</p>
+          <ul>
+            <li data-i18n="storeF1">Two panes: your files and theirs</li>
+            <li data-i18n="storeF2">Large files, checked when they arrive</li>
+            <li data-i18n="storeF3">No upload to a cloud in the middle</li>
+          </ul>
+        </article>
+
+        <article id="terminal" class="card soon reveal">
+          <div class="card-top">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M6 12l3 2.5L6 17M12 17h5"/></svg>
+            <span class="tag" data-i18n="soon">Coming soon</span>
+          </div>
+          <h3>Terminal</h3>
+          <p data-i18n="terminalText">An SSH-style terminal to another computer, from the browser: reach a machine behind a home router without opening ports.</p>
+          <ul>
+            <li data-i18n="terminalF1">A real shell in the browser</li>
+            <li data-i18n="terminalF2">No open ports on the remote computer</li>
+            <li data-i18n="terminalF3">Access only with the owner's approval</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="how" class="section band">
+      <header class="section-head reveal">
+        <p class="eyebrow" data-i18n="howEyebrow">How it works</p>
+        <h2 data-i18n="howTitle">Meet once, then talk directly</h2>
+      </header>
+      <ol class="steps">
+        <li class="reveal">
+          <span class="num">1</span>
+          <h3 data-i18n="step1Title">Open the app</h3>
+          <p data-i18n="step1Text">The host runs the project's app on their computer, or opens its page.</p>
+        </li>
+        <li class="reveal">
+          <span class="num">2</span>
+          <h3 data-i18n="step2Title">Share a link</h3>
+          <p data-i18n="step2Text">Friends get a link, a code or a QR. The signaling server only introduces them, like a doorman.</p>
+        </li>
+        <li class="reveal">
+          <span class="num">3</span>
+          <h3 data-i18n="step3Title">Connect directly</h3>
+          <p data-i18n="step3Text">WebRTC links the browsers: picture, sound, input and files travel encrypted, straight between them.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="principles" class="section">
+      <header class="section-head reveal">
+        <p class="eyebrow" data-i18n="principlesEyebrow">Principles</p>
+        <h2 data-i18n="principlesTitle">Built to be yours</h2>
+      </header>
+      <div class="grid">
+        <div class="tile reveal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/></svg>
+          <h3 data-i18n="p1Title">Open source</h3>
+          <p data-i18n="p1Text">Every project is MIT licensed and public on GitHub.</p>
+        </div>
+        <div class="tile reveal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <h3 data-i18n="p2Title">Private by design</h3>
+          <p data-i18n="p2Text">Your data goes straight between people, encrypted; no server in the middle keeps it.</p>
+        </div>
+        <div class="tile reveal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <h3 data-i18n="p3Title">Just a browser</h3>
+          <p data-i18n="p3Text">Guests need nothing but a modern browser, on a computer or a phone.</p>
+        </div>
+        <div class="tile reveal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+          <h3 data-i18n="p4Title">Your own server</h3>
+          <p data-i18n="p4Text">The signaling server, signalhub, is open too: run your own whenever you want.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-cols">
+      <div class="foot-brand">
+        <a class="brand" href="#top" aria-label="go-link">
+          <img src="/favicon.svg" width="30" height="30" alt="">
+          <span>go-link</span>
+        </a>
+        <p data-i18n="footAbout">Open-source apps that connect people directly over WebRTC.</p>
+      </div>
+      <nav aria-label="Projects" data-i18n-label="projects">
+        <h4 data-i18n="footProjects">Projects</h4>
+        <a href="https://console.go-link.org">Console</a>
+        <a href="#desk">Desk</a>
+        <a href="#meet">Meet</a>
+        <a href="#store">Store</a>
+        <a href="#terminal">Terminal</a>
+      </nav>
+      <nav aria-label="Code" data-i18n-label="footCode">
+        <h4 data-i18n="footCode">Code</h4>
+        <a href="https://github.com/lordbasex/go-link-console">go-link-console</a>
+        <a href="https://github.com/lordbasex/go-link-desk">go-link-desk</a>
+        <a href="https://github.com/lordbasex/signalhub">signalhub</a>
+        <a href="https://github.com/lordbasex/golink-hd">go-link HD</a>
+      </nav>
+    </div>
+    <p class="foot-note" data-i18n="foot">Open source, MIT license. Every project meets on one signaling server; after that, people connect directly over WebRTC.</p>
+  </footer>
+</body>
+</html>
