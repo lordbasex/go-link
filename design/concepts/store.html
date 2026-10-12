@@ -1,0 +1,61 @@
+<!-- Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> -->
+<link rel="stylesheet" href="base.css">
+<style>
+.wrap { padding: 18px; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; height: 694px; }
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 74px; min-height: 0; }
+.pane { background: var(--s1); border: 1px solid var(--b); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+.ph { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--b); }
+.ph strong { font: 700 17px "Chakra Petch"; }
+.path { margin: 10px 16px 6px; font-size: 13px; color: var(--m); background: var(--sunk); border: 1px solid var(--b); border-radius: 8px; padding: 8px 10px; }
+.row { display: grid; grid-template-columns: 28px minmax(0, 1fr) 90px 90px; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #1d2230; font-size: 14px; color: var(--t2); }
+.row .sz, .row .dt { font: 500 12px "JetBrains Mono"; color: var(--m); text-align: right; }
+.row.sel { background: #2a1d0c; color: var(--t); box-shadow: inset 3px 0 0 var(--a); }
+.row.new { background: #16352a; color: var(--t); box-shadow: inset 3px 0 0 var(--ok); }
+.ic { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font: 600 9px "JetBrains Mono"; }
+.dir { background: #10262b; color: var(--v); } .vid { background: #1f1b33; color: #b8a8ff; } .img { background: #2a1d0c; color: var(--a); } .doc { background: #1b2030; color: var(--t2); } .zip { background: #16352a; color: var(--ok); }
+.xfer { background: var(--s1); border: 1px solid var(--b); border-radius: 16px; padding: 16px 18px; display: grid; gap: 10px; }
+.xt { display: flex; gap: 12px; align-items: center; }
+.xt strong { font-weight: 600; }
+.track { height: 10px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--b); overflow: hidden; }
+.fill { height: 100%; width: 64%; background: linear-gradient(90deg, var(--a), #ffc06b); }
+.stats { display: flex; gap: 22px; font: 500 12px "JetBrains Mono"; color: var(--m); }
+.stats b { color: var(--t); font-weight: 500; }
+.arrow { position: absolute; left: 50%; top: 300px; transform: translate(-50%, 0); width: 54px; height: 54px; border-radius: 50%; background: var(--a); color: var(--on-a); display: grid; place-items: center; box-shadow: 0 10px 30px rgb(0 0 0 / .5); }
+.arrow svg { width: 26px; height: 26px; }
+</style>
+<div class="bar">
+  <span class="logo"><svg viewBox="0 0 28 14"><path d="M14 7c-2.4-3-4.2-4.8-7-4.8a4.8 4.8 0 0 0 0 9.6c2.8 0 4.6-1.8 7-4.8s4.2-4.8 7-4.8a4.8 4.8 0 0 1 0 9.6c-2.8 0-4.6-1.8-7-4.8z"/></svg></span>
+  <span class="title" style="font-size:19px">go-link <span class="acc">Store</span></span>
+  <span class="pill ok" style="margin-left:auto">● Connected to Ana's laptop</span>
+</div>
+<div class="wrap" style="position:relative">
+  <div class="panes">
+    <div class="pane">
+      <div class="ph"><svg class="i acc" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><strong>This computer</strong><span class="mut" style="margin-left:auto;font-size:13px">Studio Mac</span></div>
+      <div class="path mono">~/Movies/Trip 2026</div>
+      <div class="row"><span class="ic dir">DIR</span><span>Raw footage</span><span class="sz">—</span><span class="dt">Oct 9</span></div>
+      <div class="row sel"><span class="ic vid">MP4</span><span>Patagonia final cut.mp4</span><span class="sz">4.7 GB</span><span class="dt">Oct 11</span></div>
+      <div class="row"><span class="ic vid">MOV</span><span>Glacier timelapse.mov</span><span class="sz">1.2 GB</span><span class="dt">Oct 8</span></div>
+      <div class="row"><span class="ic img">JPG</span><span>Cover photo.jpg</span><span class="sz">6.1 MB</span><span class="dt">Oct 8</span></div>
+      <div class="row"><span class="ic img">PNG</span><span>Map route.png</span><span class="sz">2.4 MB</span><span class="dt">Oct 7</span></div>
+      <div class="row"><span class="ic doc">PDF</span><span>Itinerary.pdf</span><span class="sz">380 KB</span><span class="dt">Sep 30</span></div>
+      <div class="row"><span class="ic zip">ZIP</span><span>Project files.zip</span><span class="sz">812 MB</span><span class="dt">Sep 28</span></div>
+    </div>
+    <div class="pane">
+      <div class="ph"><svg class="i vo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M1 19h22"/></svg><strong>Ana's laptop</strong><span class="mut" style="margin-left:auto;font-size:13px">shared folder</span></div>
+      <div class="path mono">/home/ana/Shared</div>
+      <div class="row"><span class="ic dir">DIR</span><span>Music</span><span class="sz">—</span><span class="dt">Oct 2</span></div>
+      <div class="row"><span class="ic dir">DIR</span><span>Photos</span><span class="sz">—</span><span class="dt">Oct 10</span></div>
+      <div class="row new"><span class="ic vid">MP4</span><span>Patagonia final cut.mp4</span><span class="sz">3.0 GB</span><span class="dt">now</span></div>
+      <div class="row"><span class="ic doc">TXT</span><span>Notes.txt</span><span class="sz">4 KB</span><span class="dt">Oct 5</span></div>
+      <div class="row"><span class="ic img">JPG</span><span>Ticket.jpg</span><span class="sz">1.1 MB</span><span class="dt">Oct 3</span></div>
+      <div class="row"><span class="ic zip">ZIP</span><span>Backup 2026-09.zip</span><span class="sz">2.2 GB</span><span class="dt">Sep 30</span></div>
+    </div>
+  </div>
+  <span class="arrow"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+  <div class="xfer">
+    <div class="xt"><svg class="i acc" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg><strong>Patagonia final cut.mp4</strong><span class="mut">→ Ana's laptop</span><span class="pill ok" style="margin-left:auto">Direct · encrypted</span></div>
+    <div class="track"><div class="fill"></div></div>
+    <div class="stats"><span><b>64 %</b> · 3.0 of 4.7 GB</span><span><b>38 MB/s</b></span><span>about <b>45 s</b> left</span><span style="margin-left:auto">SHA-256 checked on arrival</span></div>
+  </div>
+</div>

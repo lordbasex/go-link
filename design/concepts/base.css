@@ -1,0 +1,18 @@
+/* Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> */
+/* Shared look of the concept screens: go-link Desk tokens and fonts. */
+@font-face { font-family: "Chakra Petch"; font-weight: 600; src: url(../../site/fonts/chakra-petch-latin-600-normal.woff2); }
+@font-face { font-family: "Chakra Petch"; font-weight: 700; src: url(../../site/fonts/chakra-petch-latin-700-normal.woff2); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url(../../site/fonts/ibm-plex-sans-latin-400-normal.woff2); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url(../../site/fonts/ibm-plex-sans-latin-600-normal.woff2); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url(../../site/fonts/jetbrains-mono-latin-500-normal.woff2); }
+:root { --bg:#0e1016; --video:#05060a; --s1:#161a23; --s2:#1b2030; --sunk:#131720; --b:#262c3a; --b2:#3a4256; --t:#e9ecf2; --t2:#c4cad6; --m:#a3abbd; --f:#5d667a; --a:#f2a33a; --on-a:#1a1206; --v:#4fc3d9; --ok:#7ee2a8; --red:#f0606f; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1200px; height: 750px; overflow: hidden; background: var(--bg); color: var(--t); font: 400 15px/1.4 "IBM Plex Sans", sans-serif; }
+.mono { font-family: "JetBrains Mono", monospace; font-weight: 500; }
+.title { font-family: "Chakra Petch", sans-serif; font-weight: 700; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bar { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-bottom: 1px solid var(--b); background: var(--s1); }
+.logo { width: 30px; height: 30px; border-radius: 8px; background: var(--a); display: grid; place-items: center; color: var(--on-a); }
+.logo svg { width: 20px; height: 12px; fill: none; stroke: var(--on-a); stroke-width: 3.2; stroke-linecap: round; }
+.pill { font: 500 12px/1 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; padding: 7px 10px; border-radius: 999px; border: 1px solid currentColor; }
+.ok { color: var(--ok); } .acc { color: var(--a); } .vo { color: var(--v); } .mut { color: var(--m); }

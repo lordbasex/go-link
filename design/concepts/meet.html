@@ -1,0 +1,66 @@
+<!-- Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> -->
+<link rel="stylesheet" href="base.css">
+<style>
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; height: 694px; }
+.stage { padding: 18px; display: grid; grid-template-rows: minmax(0, 1fr) 140px 62px; min-height: 0; gap: 14px; }
+.share { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--b2); background: var(--video); }
+.share img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; display: block; }
+.badge { position: absolute; left: 12px; bottom: 12px; background: rgb(5 6 10 / .75); padding: 8px 12px; border-radius: 10px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.tile { position: relative; border-radius: 14px; background: radial-gradient(circle at 50% 35%, var(--c2), var(--c1)); border: 1px solid var(--b); display: grid; place-items: center; }
+.tile.talk { outline: 3px solid var(--v); outline-offset: -1px; }
+.av { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font: 700 24px "Chakra Petch"; background: rgb(255 255 255 / .12); color: #fff; }
+.name { position: absolute; left: 10px; bottom: 8px; font-size: 13px; background: rgb(5 6 10 / .6); padding: 4px 8px; border-radius: 8px; display: flex; gap: 6px; align-items: center; }
+.name svg { width: 14px; height: 14px; }
+.tools { justify-self: center; display: flex; gap: 10px; align-items: center; background: var(--s1); border: 1px solid var(--b); border-radius: 999px; padding: 8px 12px; }
+.tb { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--s2); color: var(--t2); }
+.tb.on { background: var(--a); color: var(--on-a); }
+.tb.end { width: 70px; border-radius: 999px; background: var(--red); color: #fff; }
+.side { min-height: 0; overflow: hidden; border-left: 1px solid var(--b); background: var(--s1); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.side h4 { margin: 0; font: 600 12px/1 "JetBrains Mono"; letter-spacing: .12em; text-transform: uppercase; color: var(--m); }
+.msg { background: var(--s2); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--t2); }
+.msg b { display: block; color: var(--t); font-size: 13px; margin-bottom: 2px; }
+.msg.me { background: #2a1d0c; border: 1px solid #6b4a1c; }
+.net { margin-top: auto; display: grid; gap: 8px; font-size: 13px; color: var(--m); }
+.net div { display: flex; justify-content: space-between; }
+.net span:last-child { color: var(--t); }
+</style>
+<div class="bar">
+  <span class="logo"><svg viewBox="0 0 28 14"><path d="M14 7c-2.4-3-4.2-4.8-7-4.8a4.8 4.8 0 0 0 0 9.6c2.8 0 4.6-1.8 7-4.8s4.2-4.8 7-4.8a4.8 4.8 0 0 1 0 9.6c-2.8 0-4.6-1.8-7-4.8z"/></svg></span>
+  <span class="title" style="font-size:19px">go-link <span class="acc">Meet</span></span>
+  <span class="mut" style="margin-left:18px">Friday sync</span>
+  <span class="pill ok" style="margin-left:auto">● 4 · direct</span>
+  <span class="pill mut">00:24:11</span>
+</div>
+<div class="wrap">
+  <div class="stage">
+    <div class="share"><img src="../../site/img/console-game.webp" alt=""><span class="badge"><i></i> Lucía is sharing her screen</span></div>
+    <div class="tiles">
+      <div class="tile talk" style="--c1:#13343b;--c2:#1f5763"><span class="av">LM</span><span class="name"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Lucía</span></div>
+      <div class="tile" style="--c1:#2a1d0c;--c2:#5a3b12"><span class="av">TR</span><span class="name">Tomás</span></div>
+      <div class="tile" style="--c1:#1f1b33;--c2:#3a3266"><span class="av">AK</span><span class="name">Ana</span></div>
+      <div class="tile" style="--c1:#16352a;--c2:#245a45"><span class="av">YO</span><span class="name">You</span></div>
+    </div>
+    <div class="tools">
+      <span class="tb"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+      <span class="tb"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg></span>
+      <span class="tb on"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4M9 10l3-3 3 3M12 7v7"/></svg></span>
+      <span class="tb"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+      <span class="tb end"><svg class="i" viewBox="0 0 24 24"><path d="M3 14c5-5 13-5 18 0l-2 3-4-1v-3a10 10 0 0 0-6 0v3l-4 1z"/></svg></span>
+    </div>
+  </div>
+  <aside class="side">
+    <h4>Chat</h4>
+    <div class="msg"><b>Tomás</b>Can you zoom in on the second level?</div>
+    <div class="msg"><b>Ana</b>Link for later: same room, same PIN</div>
+    <div class="msg me"><b>You</b>Looks great on my side 👍</div>
+    <div class="net">
+      <h4>Connection</h4>
+      <div><span>Route</span><span class="ok">Peer to peer</span></div>
+      <div><span>Video</span><span>1080p · 30 fps</span></div>
+      <div><span>Latency</span><span>21 ms</span></div>
+      <div><span>Encryption</span><span>DTLS-SRTP</span></div>
+    </div>
+  </aside>
+</div>
