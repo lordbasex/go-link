@@ -24,7 +24,7 @@ The GO-LINK project ecosystem: a landing page (`site/`) that links to every go-l
 
 ### The page
 
-One page you scroll, with the look of [desk.go-link.org](https://desk.go-link.org) (the same color tokens, fonts and landing components; dark by default, with a light theme behind the sun/moon button): the hero with Desk and Console in device frames, the five projects at a glance, Console and Desk with their real screenshots, Meet, Store and Terminal with concept screens, how it works in three steps, the principles and a footer.
+One page you scroll, with the look of [desk.go-link.org](https://desk.go-link.org) (the same color tokens, fonts and landing components; dark by default, with a light theme behind the sun/moon button): the hero with the ecosystem (the go-link hub and the five projects on a circle, drawn in pure CSS: `--a` is each one's angle, sizes follow the circle's width in container units), Console and Desk with their real screenshots, Meet, Store and Terminal with concept screens, how it works in three steps, the principles and a footer.
 
 The images are in `site/img`: Console's screenshots come from go-link-console (`frontend/apps/web/public/shots` and `media`), Desk's from go-link-desk (`frontend/apps/web/public/landing`), and the Meet, Store and Terminal concepts were drawn as HTML pages with Desk's tokens and captured with headless Chrome. Screenshots with words in them exist in each language (`console-web-en.webp`…); `data-src-lang` swaps them.
 
