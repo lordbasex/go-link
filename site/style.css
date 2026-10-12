@@ -117,7 +117,11 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 
 /* The ecosystem: the go-link hub in the middle and the five projects on a
    circle of radius --r, every 72 degrees from the top. Sizes follow the
-   circle's width (container units), so it scales down to a phone. */
+   circle's width (container units), so it scales down to a phone. Like
+   planets, the projects orbit the hub (--spin turns, they stay upright);
+   pointing at or focusing one stops them. */
+@property --spin { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+@property --zoom { syntax: "<number>"; inherits: false; initial-value: 1; }
 .orbit-wrap { container-type: inline-size; min-width: 0; }
 .orbit {
   --size: min(100cqw, 600px);
@@ -134,7 +138,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .n5 { --a: 198deg; }
 .st-live { --c: var(--color-ok); }
 .st-soon { --c: var(--color-border-dashed); }
-.spoke { position: absolute; left: 50%; top: 50%; width: calc(var(--r) - var(--node) / 2 - var(--hub) / 2); height: 2px; margin-top: -1px; background: var(--c); transform-origin: 0 50%; transform: rotate(var(--a)) translateX(calc(var(--hub) / 2)); }
+.spoke { position: absolute; left: 50%; top: 50%; width: calc(var(--r) - var(--node) / 2 - var(--hub) / 2); height: 2px; margin-top: -1px; background: var(--c); transform-origin: 0 50%; transform: rotate(calc(var(--a) + var(--spin))) translateX(calc(var(--hub) / 2)); }
 .spoke.st-soon { background: none; border-top: 2px dashed var(--c); height: 0; }
 .spoke.st-live::before { content: ""; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 12px var(--color-ok); }
 .hub { position: absolute; left: 50%; top: 50%; width: var(--hub); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 50% 30%, var(--color-accent-hover), var(--color-accent) 55%, color-mix(in srgb, var(--color-accent) 70%, #000) 100%); color: var(--color-on-accent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-accent) 14%, transparent), 0 0 60px color-mix(in srgb, var(--color-accent) 25%, transparent), 0 24px 50px var(--shadow-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--size) * 0.008); text-align: center; z-index: 1; }
@@ -143,9 +147,9 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .hub-rule { width: 18%; height: 3px; border-radius: 2px; background: var(--color-on-accent); opacity: 0.6; }
 .hub span[data-i18n] { font: 600 clamp(11px, calc(var(--size) * 0.025), 15px)/1.2 var(--font-text); }
 .hub small { font: 500 clamp(9px, calc(var(--size) * 0.018), 12px)/1.2 var(--font-mono); opacity: 0.75; max-width: 80%; }
-.node { position: absolute; left: 50%; top: 50%; width: var(--node); aspect-ratio: 1; transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r)) rotate(calc(-1 * var(--a))); border-radius: 50%; background: var(--color-surface); border: 2px solid var(--c); box-shadow: 0 14px 34px var(--shadow-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--size) * 0.008); text-align: center; text-decoration: none; color: var(--color-text); z-index: 1; transition: border-color 0.2s, box-shadow 0.2s; }
+.node { position: absolute; left: 50%; top: 50%; width: var(--node); aspect-ratio: 1; transform: translate(-50%, -50%) rotate(calc(var(--a) + var(--spin))) translateX(var(--r)) rotate(calc(-1 * (var(--a) + var(--spin)))) scale(var(--zoom)); border-radius: 50%; background: var(--color-surface); border: 2px solid var(--c); box-shadow: 0 14px 34px var(--shadow-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--size) * 0.008); text-align: center; text-decoration: none; color: var(--color-text); z-index: 1; transition: border-color 0.2s, box-shadow 0.2s, --zoom 0.2s; }
 .node.st-live { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-ok) 12%, transparent), 0 14px 34px var(--shadow-strong); }
-.node:hover, .node:focus-visible { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 20%, transparent), 0 14px 34px var(--shadow-strong); }
+.node:hover, .node:focus-visible { --zoom: 1.08; z-index: 2; outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 20%, transparent), 0 14px 34px var(--shadow-strong); }
 .node svg.i { width: 28%; height: auto; color: var(--color-accent-text); }
 .node.st-soon svg.i { color: var(--color-text-muted); }
 .node strong { font: 700 clamp(12px, calc(var(--size) * 0.032), 19px)/1 var(--font-title); }
@@ -252,6 +256,9 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
   .section { padding-block: 52px; }
 }
 @media (prefers-reduced-motion: no-preference) {
+  .orbit { animation: orbit 60s linear infinite; }
+  .orbit:has(.node:hover, .node:focus-visible) { animation-play-state: paused; }
+  @keyframes orbit { to { --spin: 360deg; } }
   .spoke.st-live::before { animation: travel 2.8s ease-in-out infinite; }
   .spoke.n2.st-live::before { animation-delay: 1.4s; }
   @keyframes travel { 0% { left: 0; opacity: 0; } 15%, 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
