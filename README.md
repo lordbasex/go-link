@@ -38,7 +38,7 @@ Until 2026-10-11 go-link.org was go-link Console's site. `edge/redirects.js` is 
 
 ### Analytics
 
-The page counts visits with Google Analytics 4 (`G-MGF9L3YHVB`): `index.html` loads `gtag.js` from googletagmanager.com and `analytics.js` sets it up (Google's snippet is inline; the Content Security Policy forbids inline scripts). The CDN's response headers policy for this distribution (`go-link-index-security-headers`) allows exactly what GA4 needs:
+The page counts visits with Google Analytics 4 (`G-MGF9L3YHVB`), only with the visitor's consent. A notice at the bottom says go-link keeps no data and asks; until they press Accept nothing from Google loads. `analytics.js` then adds `gtag.js` and sets it up (Google's snippet is inline; the Content Security Policy forbids inline scripts). The choice is remembered in the browser (`go-link.consent`); "Cookie settings" in the footer asks again, and rejecting after accepting stops it and deletes Google's `_ga` cookies. The CDN's response headers policy for this distribution (`go-link-index-security-headers`) allows exactly what GA4 needs:
 
 ```
 script-src 'self' https://*.googletagmanager.com
