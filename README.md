@@ -17,14 +17,16 @@ The GO-LINK project ecosystem: a landing page (`site/`) that links to every go-l
 | Project | Address | Repository |
 |---|---|---|
 | Console (arcade games with friends) | https://console.go-link.org | [go-link-console](https://github.com/lordbasex/go-link-console) (available) |
-| Desk (remote desktop) | https://desk.go-link.org | in progress |
+| Desk (remote desktop) | https://desk.go-link.org | [go-link-desk](https://github.com/lordbasex/go-link-desk) (available) |
 | Meet (video calls) | https://meet.go-link.org | coming soon |
 | Store (send files directly between two computers) | https://store.go-link.org | coming soon |
 | Terminal (SSH terminal from the browser) | https://terminal.go-link.org | coming soon |
 
 ### The page
 
-One page you scroll: the ecosystem (the hub and the five projects on a circle), a card per project (what it does, three key points, its links), how it works in three steps, the principles and a footer. Sections slide in with CSS scroll-driven animations where the browser has them (`animation-timeline: view()`), and simply show elsewhere or with reduced motion.
+One page you scroll, with the look of [desk.go-link.org](https://desk.go-link.org) (the same color tokens, fonts and landing components; dark by default, with a light theme behind the sun/moon button): the hero with Desk and Console in device frames, the five projects at a glance, Console and Desk with their real screenshots, Meet, Store and Terminal with concept screens, how it works in three steps, the principles and a footer.
+
+The images are in `site/img`: Console's screenshots come from go-link-console (`frontend/apps/web/public/shots` and `media`), Desk's from go-link-desk (`frontend/apps/web/public/landing`), and the Meet, Store and Terminal concepts were drawn as HTML pages with Desk's tokens and captured with headless Chrome. Screenshots with words in them exist in each language (`console-web-en.webp`…); `data-src-lang` swaps them.
 
 ### Redirects
 
@@ -34,13 +36,23 @@ Until 2026-10-11 go-link.org was go-link Console's site. `edge/redirects.js` is 
 - Any other path goes to `https://console.go-link.org` with the same path and query.
 - `www.go-link.org` goes to `go-link.org`.
 
+### Analytics
+
+The page counts visits with Google Analytics 4 (`G-MGF9L3YHVB`): `index.html` loads `gtag.js` from googletagmanager.com and `analytics.js` sets it up (Google's snippet is inline; the Content Security Policy forbids inline scripts). The CDN's response headers policy for this distribution (`go-link-index-security-headers`) allows exactly what GA4 needs:
+
+```
+script-src 'self' https://*.googletagmanager.com
+img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com
+connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com
+```
+
 ### Development
 
 ```bash
 python3 -m http.server 5199 -d site    # http://localhost:5199
 ```
 
-The page has no build step and no external requests: one HTML file, one stylesheet and one script (the Content Security Policy forbids inline ones) and the favicon. The layout is pure CSS: the projects sit on a circle around the hub (`--a` is each one's angle), and phones get a list. Each project keeps its own icon as inline SVG.
+The page has no build step: one HTML file, one stylesheet, three small scripts (`theme.js` applies the saved theme before the page paints, `i18n.js` swaps the texts and runs the theme button, `analytics.js`), the favicon, the images and the fonts. The fonts (Chakra Petch, IBM Plex Sans and JetBrains Mono, SIL Open Font License 1.1, see `site/fonts/OFL.txt`) are served from the site itself, latin and latin-ext only. Besides Google Analytics there are no external requests.
 
 ### License
 

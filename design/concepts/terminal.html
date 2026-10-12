@@ -1,0 +1,43 @@
+<!-- Copyright (c) 2026 Federico Pereira <lord.basex@gmail.com> -->
+<link rel="stylesheet" href="base.css">
+<style>
+.wrap { padding: 18px; height: 694px; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
+.win { background: var(--video); border: 1px solid var(--b2); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.tabs { display: flex; gap: 4px; padding: 10px 12px 0; background: var(--s1); border-bottom: 1px solid var(--b); }
+.tab { padding: 10px 14px; border-radius: 10px 10px 0 0; font: 500 13px "JetBrains Mono"; color: var(--m); display: flex; gap: 8px; align-items: center; }
+.tab.on { background: var(--video); color: var(--t); border: 1px solid var(--b); border-bottom-color: var(--video); margin-bottom: -1px; }
+.tab i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+pre { margin: 0; padding: 18px 22px; font: 500 15.5px/1.62 "JetBrains Mono", monospace; color: #d6dbe5; white-space: pre; }
+.p { color: var(--ok); } .h { color: var(--v); } .a { color: var(--a); } .d { color: var(--f); } .r { color: #f4a9b6; }
+.cur { display: inline-block; width: 9px; height: 18px; background: var(--a); vertical-align: -3px; }
+.foot { display: flex; gap: 22px; align-items: center; font: 500 12px "JetBrains Mono"; color: var(--m); padding: 0 6px; }
+.foot b { color: var(--t); font-weight: 500; }
+</style>
+<div class="bar">
+  <span class="logo"><svg viewBox="0 0 28 14"><path d="M14 7c-2.4-3-4.2-4.8-7-4.8a4.8 4.8 0 0 0 0 9.6c2.8 0 4.6-1.8 7-4.8s4.2-4.8 7-4.8a4.8 4.8 0 0 1 0 9.6c-2.8 0-4.6-1.8-7-4.8z"/></svg></span>
+  <span class="title" style="font-size:19px">go-link <span class="acc">Terminal</span></span>
+  <span class="pill ok" style="margin-left:auto">● Approved by the owner</span>
+</div>
+<div class="wrap">
+  <div class="win">
+    <div class="tabs"><span class="tab on"><i></i>home-server</span><span class="tab"><i></i>raspberry-pi</span><span class="tab">+</span></div>
+<pre><span class="p">ana@home-server</span>:<span class="h">~</span>$ uptime
+ 21:42:07 up 38 days,  4:12,  1 user,  load average: 0.21, 0.18, 0.12
+<span class="p">ana@home-server</span>:<span class="h">~</span>$ df -h /srv
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1       1.8T  1.1T  640G  64% /srv
+<span class="p">ana@home-server</span>:<span class="h">~</span>$ systemctl status nextcloud --no-pager | head -3
+<span class="ok">●</span> nextcloud.service - Nextcloud server
+     Loaded: loaded (/etc/systemd/system/nextcloud.service; enabled)
+     Active: <span class="ok">active (running)</span> since Tue 2026-09-04 17:30:11 -03
+<span class="p">ana@home-server</span>:<span class="h">~</span>$ sudo apt upgrade -y
+Reading package lists... Done
+Calculating upgrade... Done
+The following packages will be upgraded:
+  <span class="a">openssl  libssl3t64  tzdata</span>
+3 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+<span class="d">Get:1 http://archive.ubuntu.com noble-updates/main amd64 openssl 3.0.13 [1,002 kB]</span>
+<span class="p">ana@home-server</span>:<span class="h">~</span>$ <span class="cur"></span></pre>
+  </div>
+  <div class="foot"><span>Route <b class="ok">peer to peer</b></span><span>No open ports</span><span>Latency <b>18 ms</b></span><span>Encrypted <b>DTLS</b></span><span style="margin-left:auto">120 × 32</span></div>
+</div>
