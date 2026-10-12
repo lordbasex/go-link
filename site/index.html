@@ -58,14 +58,47 @@
             <li data-i18n="note3">Encrypted end to end</li>
           </ul>
         </div>
-        <div class="stage" role="img" aria-label="go-link Desk on a laptop and go-link Console on a phone" data-i18n-label="stageAlt">
-          <div class="laptop">
-            <div class="screen"><img src="/img/desk-session.webp" alt="" width="1200" height="750"></div>
-            <div class="base"></div>
-          </div>
-          <div class="phone phone-hero"><img src="/img/console-phone-en.webp" data-src-lang="/img/console-phone-{lang}.webp" alt="" width="420" height="913"></div>
-          <span class="tag tag-a"><b>Desk</b> · <span data-i18n="tagDesk">peer to peer</span></span>
-          <span class="tag tag-b"><b>Console</b> · 60 fps</span>
+        <div class="orbit-wrap">
+          <nav class="orbit" aria-label="The go-link projects" data-i18n-label="orbitLabel">
+            <span class="ring" aria-hidden="true"></span>
+            <span class="spoke n1 st-live" aria-hidden="true"></span>
+            <span class="spoke n2 st-live" aria-hidden="true"></span>
+            <span class="spoke n3 st-soon" aria-hidden="true"></span>
+            <span class="spoke n4 st-soon" aria-hidden="true"></span>
+            <span class="spoke n5 st-soon" aria-hidden="true"></span>
+            <div class="hub">
+              <svg class="hub-mark" viewBox="0 0 48 24" aria-hidden="true"><path d="M24 12c-4-5-7-8-12-8a8 8 0 0 0 0 16c5 0 8-3 12-8s7-8 12-8a8 8 0 0 1 0 16c-5 0-8-3-12-8z"/></svg>
+              <strong>GO-LINK</strong>
+              <span class="hub-rule" aria-hidden="true"></span>
+              <span data-i18n="hub">Project ecosystem</span>
+              <small data-i18n="hubSub">Everything over WebRTC</small>
+            </div>
+            <a class="node n1 st-live" href="#console">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg>
+              <strong>Console</strong>
+              <span class="chip chip-ok" data-i18n="live">Available</span>
+            </a>
+            <a class="node n2 st-live" href="#desk">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <strong>Desk</strong>
+              <span class="chip chip-ok" data-i18n="live">Available</span>
+            </a>
+            <a class="node n3 st-soon" href="#meet">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="4.5" cy="10" r="2"/><circle cx="19.5" cy="10" r="2"/></svg>
+              <strong>Meet</strong>
+              <span class="chip chip-soon" data-i18n="soonShort">Soon</span>
+            </a>
+            <a class="node n4 st-soon" href="#store">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>
+              <strong>Store</strong>
+              <span class="chip chip-soon" data-i18n="soonShort">Soon</span>
+            </a>
+            <a class="node n5 st-soon" href="#terminal">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M6 12l3 2.5L6 17M12 17h5"/></svg>
+              <strong>Terminal</strong>
+              <span class="chip chip-soon" data-i18n="soonShort">Soon</span>
+            </a>
+          </nav>
         </div>
       </section>
     </main>
@@ -78,29 +111,6 @@
         <h2 data-i18n="projectsTitle">One ecosystem, five ways to connect</h2>
         <p data-i18n="projectsLead">Each project is its own app and its own site, with the same idea underneath: your computer and your friends' browsers talk directly.</p>
       </header>
-
-      <ul class="eco">
-        <li><a href="#console">
-          <span class="mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg></span>
-          <strong>Console</strong><small>console.go-link.org</small>
-        </a></li>
-        <li><a href="#desk">
-          <span class="mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
-          <strong>Desk</strong><small>desk.go-link.org</small>
-        </a></li>
-        <li><a href="#meet">
-          <span class="mark mark-soon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="4.5" cy="10" r="2"/><circle cx="19.5" cy="10" r="2"/></svg></span>
-          <strong>Meet</strong><small>meet.go-link.org</small>
-        </a></li>
-        <li><a href="#store">
-          <span class="mark mark-soon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg></span>
-          <strong>Store</strong><small>store.go-link.org</small>
-        </a></li>
-        <li><a href="#terminal">
-          <span class="mark mark-soon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M6 12l3 2.5L6 17M12 17h5"/></svg></span>
-          <strong>Terminal</strong><small>terminal.go-link.org</small>
-        </a></li>
-      </ul>
 
       <article id="console" class="feature">
         <div class="media">
@@ -276,7 +286,7 @@
           <line x1="210" y1="70" x2="690" y2="70" class="svg-line"/>
           <text x="450" y="58" text-anchor="middle" class="svg-data" data-i18n="data">picture · sound · input · files — encrypted</text>
           <rect x="350" y="104" width="200" height="30" rx="8" class="svg-hub"/>
-          <text x="450" y="124" text-anchor="middle" class="svg-small" data-i18n="hub">signalhub: only introduces</text>
+          <text x="450" y="124" text-anchor="middle" class="svg-small" data-i18n="hubNote">signalhub: only introduces</text>
           <line x1="300" y1="72" x2="370" y2="104" class="svg-dash"/>
           <line x1="600" y1="72" x2="530" y2="104" class="svg-dash"/>
         </svg>

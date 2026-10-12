@@ -109,21 +109,51 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .notes { list-style: none; padding: 0; margin: 18px 0 0; font-size: 14px; color: var(--color-text-muted); display: flex; gap: 8px 16px; flex-wrap: wrap; }
 .notes li::before { content: "●"; color: var(--color-ok-text); font-size: 9px; margin-right: 7px; vertical-align: 2px; }
 
-.stage { position: relative; aspect-ratio: 16 / 11; max-width: 100%; }
-.laptop { position: absolute; inset: 0 0 12% 0; }
-.screen { position: absolute; inset: 0 6% 7% 6%; background: var(--color-video); border-radius: 14px 14px 4px 4px; padding: 2.2%; box-shadow: 0 30px 80px var(--shadow-strong); border: 1px solid var(--color-border-strong); }
-.screen img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
-.base { position: absolute; left: 0; right: 0; bottom: 3%; height: 4%; background: linear-gradient(var(--color-border-strong), var(--color-surface-2)); border-radius: 0 0 18px 18px; }
-.tag { position: absolute; font: 600 12px/1 var(--font-mono); letter-spacing: 0.06em; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-2); padding: 8px 10px; border-radius: 999px; box-shadow: 0 10px 30px var(--shadow-strong); white-space: nowrap; }
-.tag b { color: var(--color-accent-text); font-weight: 600; }
-.tag-a { left: 2%; top: 4%; }
-.tag-b { left: 8%; bottom: 16%; }
 .phone { position: absolute; background: var(--color-video); border-radius: 30px; padding: 7px; border: 1px solid var(--color-border-strong); box-shadow: 0 30px 70px var(--shadow-strong); }
 .phone img { display: block; width: 100%; border-radius: 24px; }
-.phone-hero { width: 22%; right: -1%; bottom: -4%; }
 .phone-land { width: 46%; right: -6%; bottom: -14%; border-radius: 22px; padding: 6px; }
 .phone-land img { border-radius: 17px; }
 .phone-tall { width: 26%; right: -4%; bottom: -16%; }
+
+/* The ecosystem: the go-link hub in the middle and the five projects on a
+   circle of radius --r, every 72 degrees from the top. Sizes follow the
+   circle's width (container units), so it scales down to a phone. */
+.orbit-wrap { container-type: inline-size; min-width: 0; }
+.orbit {
+  --size: min(100cqw, 600px);
+  --r: calc(var(--size) * 0.37);
+  --node: calc(var(--size) * 0.235);
+  --hub: calc(var(--size) * 0.34);
+  position: relative; width: var(--size); height: var(--size); margin: 0 auto;
+}
+.ring { position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%); border: 2px dotted var(--color-border-strong); border-radius: 50%; }
+.n1 { --a: -90deg; }
+.n2 { --a: -18deg; }
+.n3 { --a: 54deg; }
+.n4 { --a: 126deg; }
+.n5 { --a: 198deg; }
+.st-live { --c: var(--color-ok); }
+.st-soon { --c: var(--color-border-dashed); }
+.spoke { position: absolute; left: 50%; top: 50%; width: calc(var(--r) - var(--node) / 2 - var(--hub) / 2); height: 2px; margin-top: -1px; background: var(--c); transform-origin: 0 50%; transform: rotate(var(--a)) translateX(calc(var(--hub) / 2)); }
+.spoke.st-soon { background: none; border-top: 2px dashed var(--c); height: 0; }
+.spoke.st-live::before { content: ""; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--color-ok); box-shadow: 0 0 12px var(--color-ok); }
+.hub { position: absolute; left: 50%; top: 50%; width: var(--hub); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 50% 30%, var(--color-accent-hover), var(--color-accent) 55%, color-mix(in srgb, var(--color-accent) 70%, #000) 100%); color: var(--color-on-accent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-accent) 14%, transparent), 0 0 60px color-mix(in srgb, var(--color-accent) 25%, transparent), 0 24px 50px var(--shadow-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--size) * 0.008); text-align: center; z-index: 1; }
+.hub-mark { width: 34%; fill: none; stroke: var(--color-on-accent); stroke-width: 4.5; stroke-linecap: round; }
+.hub strong { font: 700 calc(var(--size) * 0.055)/1 var(--font-title); letter-spacing: 0.04em; color: var(--color-on-accent); }
+.hub-rule { width: 18%; height: 3px; border-radius: 2px; background: var(--color-on-accent); opacity: 0.6; }
+.hub span[data-i18n] { font: 600 clamp(11px, calc(var(--size) * 0.025), 15px)/1.2 var(--font-text); }
+.hub small { font: 500 clamp(9px, calc(var(--size) * 0.018), 12px)/1.2 var(--font-mono); opacity: 0.75; max-width: 80%; }
+.node { position: absolute; left: 50%; top: 50%; width: var(--node); aspect-ratio: 1; transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r)) rotate(calc(-1 * var(--a))); border-radius: 50%; background: var(--color-surface); border: 2px solid var(--c); box-shadow: 0 14px 34px var(--shadow-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--size) * 0.008); text-align: center; text-decoration: none; color: var(--color-text); z-index: 1; transition: border-color 0.2s, box-shadow 0.2s; }
+.node.st-live { box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-ok) 12%, transparent), 0 14px 34px var(--shadow-strong); }
+.node:hover, .node:focus-visible { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 20%, transparent), 0 14px 34px var(--shadow-strong); }
+.node svg.i { width: 28%; height: auto; color: var(--color-accent-text); }
+.node.st-soon svg.i { color: var(--color-text-muted); }
+.node strong { font: 700 clamp(12px, calc(var(--size) * 0.032), 19px)/1 var(--font-title); }
+.node .chip { justify-self: auto; font-size: clamp(8px, calc(var(--size) * 0.016), 10px); padding: 4px 6px; letter-spacing: 0.06em; }
+@container (max-width: 420px) {
+  .node .chip { display: none; }
+  .hub small { display: none; }
+}
 
 /* sections */
 .section { padding-block: 72px; }
@@ -131,18 +161,6 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .head { display: grid; gap: 14px; max-width: 760px; margin-bottom: 40px; }
 .head h2 { font-size: clamp(30px, 4.2vw, 48px); }
 .head p:not(.eyebrow) { color: var(--color-text-2); margin: 0; }
-
-/* the five projects at a glance */
-.eco { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
-.eco a { height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; gap: 4px 10px; align-items: center; text-decoration: none; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; padding: 12px; }
-.eco a:hover { border-color: var(--color-border-strong); }
-.eco .mark { grid-row: 1 / 3; width: 40px; height: 40px; }
-.eco strong { font: 700 18px/1.1 var(--font-title); }
-.eco small { font: 500 11px/1.2 var(--font-mono); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.eco a > span:not(.mark) { min-width: 0; }
-.mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--color-accent); color: var(--color-on-accent); }
-.mark svg.i { width: 24px; height: 24px; }
-.mark-soon { background: var(--color-surface-2); color: var(--color-text-muted); border: 1px solid var(--color-border); }
 
 .chip { justify-self: start; display: inline-block; font: 600 11px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 6px 9px; border: 1px solid currentColor; }
 .chip-ok { color: var(--color-ok-text); }
@@ -217,7 +235,6 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .langs button[aria-pressed="true"] { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
 
 @media (max-width: 1100px) {
-  .eco { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 980px) {
@@ -230,12 +247,14 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
   .media { margin-inline: 4% 8%; }
 }
 @media (max-width: 560px) {
-  .eco, .cards, .foot-top { grid-template-columns: minmax(0, 1fr); }
+  .cards, .foot-top { grid-template-columns: minmax(0, 1fr); }
   .nav-cta .btn-ghost { display: none; }
   .section { padding-block: 52px; }
-  .tag { font-size: 10px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .phone-hero { animation: float 7s ease-in-out infinite; }
-  @keyframes float { 50% { transform: translateY(-8px); } }
+  .spoke.st-live::before { animation: travel 2.8s ease-in-out infinite; }
+  .spoke.n2.st-live::before { animation-delay: 1.4s; }
+  @keyframes travel { 0% { left: 0; opacity: 0; } 15%, 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+  .hub { animation: breathe 5s ease-in-out infinite; }
+  @keyframes breathe { 50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--color-accent) 12%, transparent), 0 0 80px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 24px 50px var(--shadow-strong); } }
 }
