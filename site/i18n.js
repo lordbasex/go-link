@@ -102,6 +102,11 @@
       "footConsoleDocs": "Console documentation",
       "footReport": "Report a problem",
       "footLicense": "MIT license",
+      "cookieSettings": "Cookie settings",
+      "consentTitle": "Cookies and statistics",
+      "consentText": "go-link keeps no data about you. If you accept, Google Analytics counts your visit to this site with its cookies, so we know how many people come by; that data goes to Google. If you reject, nothing is loaded.",
+      "consentReject": "Reject",
+      "consentAccept": "Accept",
       "foot": "© 2026 go-link · Open source, MIT license. Every project meets on one signaling server; after that, people connect directly over WebRTC."
     },
     "es": {
@@ -201,6 +206,11 @@
       "footConsoleDocs": "Documentación de Console",
       "footReport": "Reportar un problema",
       "footLicense": "Licencia MIT",
+      "cookieSettings": "Configurar cookies",
+      "consentTitle": "Cookies y estadísticas",
+      "consentText": "go-link no guarda ningún dato tuyo. Si aceptas, Google Analytics cuenta tu visita a este sitio con sus cookies, para saber cuánta gente viene; esos datos van a Google. Si rechazas, no se carga nada.",
+      "consentReject": "Rechazar",
+      "consentAccept": "Aceptar",
       "foot": "© 2026 go-link · Código abierto, licencia MIT. Todos los proyectos se encuentran en un servidor de señalización; después, las personas se conectan directo por WebRTC."
     },
     "pt": {
@@ -300,6 +310,11 @@
       "footConsoleDocs": "Documentação do Console",
       "footReport": "Relatar um problema",
       "footLicense": "Licença MIT",
+      "cookieSettings": "Configurar cookies",
+      "consentTitle": "Cookies e estatísticas",
+      "consentText": "O go-link não guarda nenhum dado seu. Se você aceitar, o Google Analytics conta a sua visita a este site com os cookies dele, para sabermos quantas pessoas vêm; esses dados vão para o Google. Se recusar, nada é carregado.",
+      "consentReject": "Recusar",
+      "consentAccept": "Aceitar",
       "foot": "© 2026 go-link · Código aberto, licença MIT. Todos os projetos se encontram em um servidor de sinalização; depois, as pessoas se conectam direto por WebRTC."
     }
   };

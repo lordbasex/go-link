@@ -238,6 +238,20 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .langs button { font: 600 12px/1 var(--font-mono); color: var(--color-text-muted); background: transparent; border: 1px solid var(--color-border); border-radius: 8px; padding: 7px 9px; cursor: pointer; }
 .langs button[aria-pressed="true"] { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
 
+/* the cookie notice: Google Analytics loads only after Accept */
+.consent { position: fixed; z-index: 10; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); width: min(560px, calc(100% - 40px)); display: grid; gap: 14px; background: var(--color-surface); border: 1px solid var(--color-border-strong); border-left: 3px solid var(--color-accent); border-radius: 16px; padding: 18px 20px; box-shadow: 0 24px 60px var(--shadow-strong); }
+.consent-text { display: grid; gap: 6px; }
+.consent-text strong { font: 700 18px/1.2 var(--font-title); color: var(--color-text); }
+.consent-text p { margin: 0; font-size: 15px; color: var(--color-text-2); }
+.consent-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.consent-actions .btn { padding: 11px 16px; }
+.linkish { font: inherit; color: var(--color-text-muted); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.linkish:hover { color: var(--color-accent-text); }
+@media (max-width: 560px) {
+  .consent { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 32px); }
+  .consent-actions .btn { flex: 1; }
+}
+
 @media (max-width: 1100px) {
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

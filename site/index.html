@@ -14,9 +14,8 @@
   <link rel="preload" href="/fonts/chakra-petch-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/style.css">
   <script src="/theme.js"></script>
-  <!-- Google tag (gtag.js); its setup is in analytics.js, the CSP allows no inline scripts. -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MGF9L3YHVB"></script>
-  <script src="/analytics.js"></script>
+  <!-- Google Analytics loads only after the visitor accepts (analytics.js). -->
+  <script src="/analytics.js" defer></script>
   <script src="/i18n.js" defer></script>
 </head>
 <body>
@@ -330,6 +329,7 @@
             <li><a href="https://console.go-link.org/docs" data-i18n="footConsoleDocs">Console documentation</a></li>
             <li><a href="https://github.com/lordbasex/go-link/issues" data-i18n="footReport">Report a problem</a></li>
             <li><a href="https://github.com/lordbasex/go-link/blob/main/LICENSE" data-i18n="footLicense">MIT license</a></li>
+            <li><button type="button" class="linkish" data-consent-open data-i18n="cookieSettings">Cookie settings</button></li>
           </ul>
         </nav>
       </div>
@@ -343,5 +343,16 @@
       </div>
     </div>
   </footer>
+
+  <section class="consent" id="consent" aria-labelledby="consent-title" hidden>
+    <div class="consent-text">
+      <strong id="consent-title" data-i18n="consentTitle">Cookies and statistics</strong>
+      <p data-i18n="consentText">go-link keeps no data about you. If you accept, Google Analytics counts your visit to this site with its cookies, so we know how many people come by; that data goes to Google. If you reject, nothing is loaded.</p>
+    </div>
+    <div class="consent-actions">
+      <button type="button" class="btn btn-ghost" data-consent="denied" data-i18n="consentReject">Reject</button>
+      <button type="button" class="btn btn-primary" data-consent="granted" data-i18n="consentAccept">Accept</button>
+    </div>
+  </section>
 </body>
 </html>
