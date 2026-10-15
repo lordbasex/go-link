@@ -19,14 +19,14 @@ The GO-LINK project ecosystem: a landing page (`site/`) that links to every go-l
 | Console (arcade games with friends) | https://console.go-link.org | [go-link-console](https://github.com/lordbasex/go-link-console) (available) |
 | Desk (remote desktop) | https://desk.go-link.org | [go-link-desk](https://github.com/lordbasex/go-link-desk) (available) |
 | Meet (video calls) | https://meet.go-link.org | coming soon |
-| Store (send files directly between two computers) | https://store.go-link.org | coming soon |
+| TangoOS (open-source NAS with a browser desktop) | https://tangoos.go-link.org | live demo |
 | Terminal (SSH terminal from the browser) | https://terminal.go-link.org | coming soon |
 
 ### The page
 
-One page you scroll, with the look of [desk.go-link.org](https://desk.go-link.org) (the same color tokens, fonts and landing components; dark by default, with a light theme behind the sun/moon button): the hero with the ecosystem (the go-link hub and the five projects on a circle, drawn in pure CSS: `--a` is each one's angle, sizes follow the circle's width in container units; the projects orbit the hub once a minute, like planets, and stop while one is pointed at or focused, or not at all with reduced motion), Console and Desk with their real screenshots, Meet, Store and Terminal with concept screens, how it works in three steps, the principles and a footer.
+One page you scroll, with the look of [desk.go-link.org](https://desk.go-link.org) (the same color tokens, fonts and landing components; dark by default, with a light theme behind the sun/moon button): the hero with the ecosystem (the go-link hub and the five projects on a circle, drawn in pure CSS: `--a` is each one's angle, sizes follow the circle's width in container units; the projects orbit the hub once a minute, like planets, and stop while one is pointed at or focused, or not at all with reduced motion), Console and Desk with their real screenshots, TangoOS with its real Storage app and a link to its demo, Meet and Terminal with concept screens, how it works in three steps, the principles and a footer.
 
-The images are in `site/img`: Console's screenshots come from go-link-console (`frontend/apps/web/public/shots` and `media`), Desk's from go-link-desk (`frontend/apps/web/public/landing`), and the Meet, Store and Terminal concepts were drawn as HTML pages with Desk's tokens and captured with headless Chrome. Screenshots with words in them exist in each language (`console-web-en.webp`…); `data-src-lang` swaps them.
+The images are in `site/img`: Console's screenshots come from go-link-console (`frontend/apps/web/public/shots` and `media`), Desk's from go-link-desk (`frontend/apps/web/public/landing`), TangoOS's from its own portal (`web/apps/connect/public/img/storage-rack.png`, resized to 1200×750), and the Meet and Terminal concepts were drawn as HTML pages with Desk's tokens and captured with headless Chrome. Screenshots with words in them exist in each language (`console-web-en.webp`…); `data-src-lang` swaps them.
 
 ### Redirects
 
